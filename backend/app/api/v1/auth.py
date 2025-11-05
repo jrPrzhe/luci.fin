@@ -557,15 +557,75 @@ async def get_bot_token(
     db: Session = Depends(get_db)
 ):
     """Get JWT token for Telegram bot by telegram_id"""
-    user = db.query(User).filter(User.telegram_id == request.telegram_id).first()
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    telegram_id = str(request.telegram_id).strip()
+    logger.info(f"Bot token request for telegram_id: {telegram_id}")
+    
+    # Find user by telegram_id
+    user = db.query(User).filter(User.telegram_id == telegram_id).first()
     
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found. Please register through web interface first."
-        )
+        logger.warning(f"User not found for telegram_id: {telegram_id}, creating new user")
+        
+        # Auto-create user if not exists (for cases when user authorized via Mini App but wasn't saved properly)
+        # This ensures bot can work even if user was created through Mini App but record is missing
+        try:
+            # Create new user with minimal data
+            username = f"tg_{telegram_id}"
+            email = f"tg_{telegram_id}@telegram.local"
+            
+            # Ensure unique email
+            counter = 1
+            while db.query(User).filter(User.email == email).first():
+                email = f"tg_{telegram_id}_{counter}@telegram.local"
+                counter += 1
+            
+            user = User(
+                email=email,
+                username=username,
+                telegram_id=telegram_id,
+                is_active=True,
+                is_verified=True,  # Telegram users are considered verified
+                default_currency="RUB",
+            )
+            db.add(user)
+            db.flush()  # Flush to get user.id
+            db.commit()
+            db.refresh(user)
+            
+            logger.info(f"Auto-created user for telegram_id: {telegram_id}, user_id: {user.id}")
+            
+            # Create default account for new user
+            try:
+                from app.models.account import Account, AccountType
+                default_account = Account(
+                    user_id=user.id,
+                    name="Основной счёт",
+                    account_type=AccountType.CASH,
+                    currency=user.default_currency,
+                    initial_balance=0.0,
+                    is_active=True,
+                    description="Автоматически созданный счёт"
+                )
+                db.add(default_account)
+                db.commit()
+                logger.info(f"Created default account for user {user.id}")
+            except Exception as e:
+                logger.error(f"Failed to create default account: {e}")
+                db.rollback()
+                
+        except Exception as e:
+            logger.error(f"Failed to auto-create user: {e}", exc_info=True)
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to create user: {str(e)}"
+            )
     
     if not user.is_active:
+        logger.warning(f"User {user.id} (telegram_id: {telegram_id}) is inactive")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User account is inactive"
@@ -573,6 +633,7 @@ async def get_bot_token(
     
     # Create token
     access_token = create_access_token(data={"sub": user.id})
+    logger.info(f"Token created for user {user.id} (telegram_id: {telegram_id})")
     
     return {"access_token": access_token}
 
