@@ -1,6 +1,8 @@
-from pydantic_settings import BaseSettings
-from typing import List
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import field_validator, Field
+from typing import List, Union
 import os
+import json
 
 
 class Settings(BaseSettings):
@@ -22,11 +24,13 @@ class Settings(BaseSettings):
     REDIS_URL: str = ""
     
     # CORS (includes ngrok domains for Mini App)
-    CORS_ORIGINS: List[str] = [
-        "http://localhost:3000", 
-        "http://localhost:5173",
-        # ngrok domains (will be added dynamically if needed)
-    ]
+    CORS_ORIGINS: Union[List[str], str] = Field(
+        default=[
+            "http://localhost:3000", 
+            "http://localhost:5173",
+        ],
+        description="CORS allowed origins"
+    )
     
     # Email
     SMTP_HOST: str = "smtp.gmail.com"
@@ -55,19 +59,32 @@ class Settings(BaseSettings):
     CELERY_BROKER_URL: str = ""
     CELERY_RESULT_BACKEND: str = ""
     
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
-        
-        @classmethod
-        def parse_env_var(cls, field_name: str, raw_val: str) -> any:
-            if field_name == 'CORS_ORIGINS':
-                if raw_val:
-                    origins = [origin.strip() for origin in raw_val.split(',') if origin.strip()]
-                else:
-                    origins = []
+    @field_validator('CORS_ORIGINS', mode='before')
+    @classmethod
+    def parse_cors_origins(cls, v):
+        if isinstance(v, str):
+            # Try to parse as JSON first
+            try:
+                parsed = json.loads(v)
+                if isinstance(parsed, list):
+                    return parsed
+            except (json.JSONDecodeError, ValueError):
+                pass
+            
+            # If not JSON, parse as comma-separated string
+            if v.strip():
+                origins = [origin.strip() for origin in v.split(',') if origin.strip()]
                 return origins
-            return cls.json_loads(raw_val)
+            return []
+        elif isinstance(v, list):
+            return v
+        return []
+    
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=True,
+        extra="ignore"
+    )
 
 
 settings = Settings()
