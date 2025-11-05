@@ -16,6 +16,27 @@ from app.models import User, Account, Transaction, Category, Tag, SharedBudget, 
 # Only uncomment for initial development setup
 # Base.metadata.create_all(bind=engine)
 
+# Auto-apply migrations on startup (only in production/Railway)
+# This ensures database schema is up to date without losing data
+import os
+import logging
+migration_logger = logging.getLogger(__name__)
+
+if os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RAILWAY_PROJECT_ID") or not os.getenv("SKIP_MIGRATIONS"):
+    try:
+        from alembic import command
+        from alembic.config import Config
+        
+        migration_logger.info("Running database migrations...")
+        alembic_cfg = Config("alembic.ini")
+        command.upgrade(alembic_cfg, "head")
+        migration_logger.info("Database migrations applied successfully")
+    except Exception as e:
+        # Log but don't fail startup if migrations fail
+        # This allows the app to start even if there are migration issues
+        migration_logger.warning(f"Could not run migrations automatically: {e}")
+        migration_logger.warning("You may need to run 'alembic upgrade head' manually")
+
 # Ensure invite_code column exists (migration helper)
 try:
     from sqlalchemy import inspect, text
