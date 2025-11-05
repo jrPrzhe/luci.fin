@@ -1,0 +1,698 @@
+// Use relative URL for API when running in production/ngrok (vite proxy handles it)
+// Use full URL only when explicitly set via env variable
+// When running through ngrok, relative paths work through Vite proxy
+// If backend is also on ngrok, set VITE_API_URL to the backend ngrok URL
+const API_URL = import.meta.env.VITE_API_URL || ''
+
+export interface ApiResponse<T> {
+  data?: T
+  error?: string
+}
+
+class ApiClient {
+  private baseUrl: string
+  private token: string | null = null
+  private refreshToken: string | null = null
+  private isRefreshing: boolean = false
+  private refreshPromise: Promise<string | null> | null = null
+
+  constructor(baseUrl: string) {
+    this.baseUrl = baseUrl
+    this.token = localStorage.getItem('token')
+    this.refreshToken = localStorage.getItem('refresh_token')
+  }
+
+  setToken(token: string | null, refreshToken?: string | null) {
+    this.token = token
+    if (token) {
+      localStorage.setItem('token', token)
+      // Убеждаемся, что токен действительно сохранен
+      const savedToken = localStorage.getItem('token')
+      if (savedToken !== token) {
+        console.error('Failed to save token to localStorage')
+      }
+    } else {
+      localStorage.removeItem('token')
+      this.token = null
+    }
+
+    if (refreshToken !== undefined) {
+      this.refreshToken = refreshToken
+      if (refreshToken) {
+        localStorage.setItem('refresh_token', refreshToken)
+      } else {
+        localStorage.removeItem('refresh_token')
+        this.refreshToken = null
+      }
+    }
+  }
+
+  private async refreshAccessToken(): Promise<string | null> {
+    // If already refreshing, return the existing promise
+    if (this.isRefreshing && this.refreshPromise) {
+      return this.refreshPromise
+    }
+
+    if (!this.refreshToken) {
+      return null
+    }
+
+    this.isRefreshing = true
+    this.refreshPromise = (async () => {
+      try {
+        const response = await fetch(`${this.baseUrl}/api/v1/auth/refresh`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ refresh_token: this.refreshToken }),
+        })
+
+        if (!response.ok) {
+          // Refresh token is invalid, clear all tokens
+          this.setToken(null, null)
+          return null
+        }
+
+        const data = await response.json()
+        this.setToken(data.access_token, data.refresh_token)
+        return data.access_token
+      } catch (error) {
+        console.error('Failed to refresh token:', error)
+        this.setToken(null, null)
+        return null
+      } finally {
+        this.isRefreshing = false
+        this.refreshPromise = null
+      }
+    })()
+
+    return this.refreshPromise
+  }
+
+  private async request<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    const url = `${this.baseUrl}${endpoint}`
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(options.headers as Record<string, string> || {}),
+    }
+    
+    // Prevent caching for critical endpoints (auth, data fetching)
+    if (endpoint.includes('/auth/') || endpoint.includes('/transactions') || 
+        endpoint.includes('/accounts') || endpoint.includes('/categories') ||
+        endpoint.includes('/shared-budgets') || endpoint.includes('/balance')) {
+      headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+      headers['Pragma'] = 'no-cache'
+      headers['Expires'] = '0'
+    }
+
+    // Всегда читаем токен из localStorage перед каждым запросом
+    // чтобы гарантировать, что используется актуальный токен
+    let token = localStorage.getItem('token') || this.token
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+      // Обновляем this.token для синхронизации
+      this.token = token
+    } else {
+      // Если токена нет в localStorage, но есть в this.token, удаляем из this.token
+      this.token = null
+    }
+
+    // Отладка для проверки отправки токена
+    if (endpoint.includes('/auth/me')) {
+      console.log('[API] Request to /auth/me:', {
+        hasToken: !!token,
+        tokenLength: token?.length || 0,
+        tokenPreview: token ? `${token.substring(0, 20)}...` : 'none',
+        authorizationHeader: headers['Authorization'],
+        url,
+        allHeaders: Object.keys(headers)
+      })
+    }
+
+    // Add timeout to requests using Promise.race
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Request timeout')), 10000) // 10 seconds
+    })
+
+    try {
+      // Создаем Headers объект для правильной передачи заголовков
+      const fetchHeaders = new Headers()
+      for (const [key, value] of Object.entries(headers)) {
+        fetchHeaders.append(key, value)
+      }
+      
+      const fetchPromise = fetch(url, {
+        ...options,
+        headers: fetchHeaders,
+        cache: 'no-store', // Prevent browser caching
+      })
+
+      const response = await Promise.race([fetchPromise, timeoutPromise])
+
+      // Handle 304 Not Modified - return empty object/array based on endpoint
+      if (response.status === 304) {
+        // For GET requests, return empty array or object based on context
+        const endpoint = url.toLowerCase()
+        if (endpoint.includes('/transactions') || endpoint.includes('/accounts') || endpoint.includes('/categories') || endpoint.includes('/shared-budgets')) {
+          return [] as T
+        }
+        return {} as T
+      }
+
+      // Handle 204 No Content
+      if (response.status === 204) {
+        return {} as T
+      }
+
+      if (!response.ok) {
+        // Handle 401 Unauthorized - try to refresh token
+        if (response.status === 401 && this.refreshToken && !endpoint.includes('/auth/refresh')) {
+          // Try to refresh the token
+          const newToken = await this.refreshAccessToken()
+          if (newToken) {
+            // Retry the request with new token
+            headers['Authorization'] = `Bearer ${newToken}`
+            const fetchHeaders = new Headers()
+            for (const [key, value] of Object.entries(headers)) {
+              fetchHeaders.append(key, value)
+            }
+            
+            const retryResponse = await fetch(url, {
+              ...options,
+              headers: fetchHeaders,
+              cache: 'no-store',
+            })
+            
+            if (retryResponse.ok) {
+              // Handle successful retry
+              if (retryResponse.status === 304) {
+                const endpoint = url.toLowerCase()
+                if (endpoint.includes('/transactions') || endpoint.includes('/accounts') || endpoint.includes('/categories') || endpoint.includes('/shared-budgets')) {
+                  return [] as T
+                }
+                return {} as T
+              }
+              
+              if (retryResponse.status === 204) {
+                return {} as T
+              }
+              
+              const contentType = retryResponse.headers.get('content-type')
+              if (contentType && contentType.includes('application/json')) {
+                const text = await retryResponse.text()
+                if (!text || text.trim() === '') {
+                  const endpoint = url.toLowerCase()
+                  if (endpoint.includes('/transactions') || endpoint.includes('/accounts') || endpoint.includes('/categories') || endpoint.includes('/shared-budgets')) {
+                    return [] as T
+                  }
+                  return {} as T
+                }
+                try {
+                  return JSON.parse(text)
+                } catch (e) {
+                  return {} as T
+                }
+              }
+              return {} as T
+            }
+          } else {
+            // Refresh failed, clear tokens
+            this.setToken(null, null)
+            // Redirect to login if we're in a browser environment
+            if (typeof window !== 'undefined') {
+              window.location.href = '/'
+            }
+          }
+        } else if (response.status === 401) {
+          // No refresh token or refresh failed, clear tokens
+          this.setToken(null, null)
+        }
+        const error = await response.json().catch(() => ({ detail: 'Request failed' }))
+        throw new Error(error.detail || `HTTP error! status: ${response.status}`)
+      }
+
+      // Check if response has content
+      const contentType = response.headers.get('content-type')
+      if (contentType && contentType.includes('application/json')) {
+        const text = await response.text()
+        if (!text || text.trim() === '') {
+          // Empty response - return appropriate default based on endpoint
+          const endpoint = url.toLowerCase()
+          if (endpoint.includes('/transactions') || endpoint.includes('/accounts') || endpoint.includes('/categories') || endpoint.includes('/shared-budgets')) {
+            return [] as T
+          }
+          return {} as T
+        }
+        try {
+          return JSON.parse(text)
+        } catch (e) {
+          // Invalid JSON - return empty object
+          return {} as T
+        }
+      }
+
+      // No JSON content type - return empty object
+      return {} as T
+    } catch (error: any) {
+      if (error.message === 'Request timeout') {
+        throw new Error('Request timeout - сервер не отвечает')
+      }
+      throw error
+    }
+  }
+
+  // Auth
+  async login(email: string, password: string) {
+    const response = await this.request<{ access_token: string; refresh_token: string; user: any }>(
+      '/api/v1/auth/login',
+      {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      }
+    )
+    // Store tokens after successful login
+    if (response.access_token) {
+      this.setToken(response.access_token, response.refresh_token)
+    }
+    return response
+  }
+
+  async register(userData: {
+    email: string
+    password: string
+    username?: string
+    first_name?: string
+    last_name?: string
+  }) {
+    const response = await this.request<{ access_token: string; refresh_token: string; user: any }>(
+      '/api/v1/auth/register',
+      {
+        method: 'POST',
+        body: JSON.stringify(userData),
+      }
+    )
+    // Store tokens after successful registration
+    if (response.access_token) {
+      this.setToken(response.access_token, response.refresh_token)
+    }
+    return response
+  }
+
+  async getCurrentUser() {
+    return this.request<any>('/api/v1/auth/me')
+  }
+
+  async updateUser(userData: {
+    first_name?: string
+    last_name?: string
+    timezone?: string
+    default_currency?: string
+    language?: string
+  }) {
+    return this.request<any>('/api/v1/auth/me', {
+      method: 'PUT',
+      body: JSON.stringify(userData),
+    })
+  }
+
+  async resetAccount() {
+    return this.request<any>('/api/v1/auth/reset-account', {
+      method: 'POST',
+    })
+  }
+
+  async loginTelegram(initData: string) {
+    const response = await this.request<{ access_token: string; refresh_token: string; user: any }>(
+      '/api/v1/auth/telegram',
+      {
+        method: 'POST',
+        body: JSON.stringify({ init_data: initData }),
+      }
+    )
+    // Store tokens after successful Telegram login
+    if (response.access_token) {
+      this.setToken(response.access_token, response.refresh_token)
+    }
+    return response
+  }
+
+  // Accounts
+  async getAccounts() {
+    return this.request<any[]>('/api/v1/accounts/')
+  }
+
+  async getBalance() {
+    return this.request<{ total: number; currency: string; accounts: any[] }>(
+      '/api/v1/accounts/balance'
+    )
+  }
+
+  async createAccount(data: {
+    name: string
+    account_type: string
+    currency?: string
+    initial_balance?: number
+    description?: string
+    shared_budget_id?: number
+  }) {
+    return this.request<any>('/api/v1/accounts/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async deleteAccount(accountId: number) {
+    return this.request<void>(`/api/v1/accounts/${accountId}`, {
+      method: 'DELETE',
+    })
+  }
+
+  // Transactions
+  async getTransactions(
+    limit = 50, 
+    offset = 0, 
+    accountId?: number, 
+    filterType?: string,
+    transactionType?: string,
+    startDate?: string,
+    endDate?: string
+  ) {
+    const params = new URLSearchParams()
+    params.append('limit', limit.toString())
+    params.append('offset', offset.toString())
+    if (accountId) params.append('account_id', accountId.toString())
+    if (filterType) params.append('filter_type', filterType)
+    if (transactionType) params.append('transaction_type', transactionType)
+    if (startDate) params.append('start_date', startDate)
+    if (endDate) params.append('end_date', endDate)
+    
+    return this.request<any[]>(`/api/v1/transactions/?${params.toString()}`)
+  }
+
+  async createTransaction(transaction: {
+    account_id: number
+    transaction_type: 'income' | 'expense' | 'transfer'
+    amount: number
+    currency?: string
+    category_id?: number
+    description?: string
+    transaction_date?: string
+    to_account_id?: number
+    goal_id?: number
+  }) {
+    return this.request<any>('/api/v1/transactions/', {
+      method: 'POST',
+      body: JSON.stringify(transaction),
+    })
+  }
+
+  async updateTransaction(transactionId: number, transaction: {
+    account_id?: number
+    transaction_type?: 'income' | 'expense' | 'transfer'
+    amount?: number
+    currency?: string
+    category_id?: number
+    description?: string
+    transaction_date?: string
+    to_account_id?: number
+    goal_id?: number
+  }) {
+    return this.request<any>(`/api/v1/transactions/${transactionId}`, {
+      method: 'PUT',
+      body: JSON.stringify(transaction),
+    })
+  }
+
+  async deleteTransaction(transactionId: number) {
+    return this.request<void>(`/api/v1/transactions/${transactionId}`, {
+      method: 'DELETE',
+    })
+  }
+
+  // Shared Budgets
+  async getSharedBudgets() {
+    return this.request<any[]>('/api/v1/shared-budgets/')
+  }
+
+  async getSharedBudget(budgetId: number) {
+    return this.request<any>(`/api/v1/shared-budgets/${budgetId}`)
+  }
+
+  async createSharedBudget(data: {
+    name: string
+    description?: string
+    currency?: string
+  }) {
+    return this.request<any>('/api/v1/shared-budgets/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async updateSharedBudget(budgetId: number, data: {
+    name?: string
+    description?: string
+    is_active?: boolean
+  }) {
+    return this.request<any>(`/api/v1/shared-budgets/${budgetId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async getBudgetMembers(budgetId: number) {
+    return this.request<any[]>(`/api/v1/shared-budgets/${budgetId}/members`)
+  }
+
+  async inviteMember(budgetId: number, data: {
+    email?: string
+    telegram_id?: string
+    role?: string
+  }) {
+    return this.request<any>(`/api/v1/shared-budgets/${budgetId}/invite`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async removeMember(budgetId: number, userId: number) {
+    return this.request<void>(`/api/v1/shared-budgets/${budgetId}/members/${userId}`, {
+      method: 'DELETE',
+    })
+  }
+
+  async updateMemberRole(budgetId: number, userId: number, role: 'admin' | 'member'): Promise<any> {
+    return this.request(`/api/v1/shared-budgets/${budgetId}/members/${userId}/role`, {
+      method: 'PATCH',
+      body: JSON.stringify({ new_role: role }),
+    })
+  }
+
+  async getPendingInvitations() {
+    return this.request<any[]>('/api/v1/shared-budgets/invitations/pending')
+  }
+
+  async acceptInvitation(token?: string, inviteCode?: string) {
+    return this.request<any>('/api/v1/shared-budgets/invitations/accept', {
+      method: 'POST',
+      body: JSON.stringify({ token, invite_code: inviteCode }),
+    })
+  }
+
+  async getInviteCode(budgetId: number) {
+    return this.request<{ invite_code: string; budget_name: string }>(
+      `/api/v1/shared-budgets/${budgetId}/invite-code`
+    )
+  }
+
+  async regenerateInviteCode(budgetId: number) {
+    return this.request<{ invite_code: string; budget_name: string }>(
+      `/api/v1/shared-budgets/${budgetId}/regenerate-invite-code`,
+      { method: 'POST' }
+    )
+  }
+
+  // Goals
+  async getGoals(status?: string) {
+    const url = status ? `/api/v1/goals/?status_filter=${status}` : '/api/v1/goals/'
+    return this.request<any[]>(url)
+  }
+
+  async getGoal(goalId: number) {
+    return this.request<any>(`/api/v1/goals/${goalId}`)
+  }
+
+  async deleteGoal(goalId: number) {
+    return this.request<void>(`/api/v1/goals/${goalId}`, {
+      method: 'DELETE',
+    })
+  }
+
+  async createGoal(data: {
+    name: string
+    description?: string
+    target_amount: number
+    currency?: string
+    target_date?: string
+    goal_type?: string
+    roadmap?: string
+  }) {
+    return this.request<any>('/api/v1/goals/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async updateGoal(goalId: number, data: {
+    name?: string
+    description?: string
+    target_amount?: number
+    currency?: string
+    target_date?: string
+    current_amount?: number
+    status?: string
+    roadmap?: string
+  }) {
+    return this.request<any>(`/api/v1/goals/${goalId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async deleteGoal(goalId: number) {
+    return this.request<void>(`/api/v1/goals/${goalId}`, {
+      method: 'DELETE',
+    })
+  }
+
+  async addProgressToGoal(goalId: number, amount: number) {
+    return this.request<any>(`/api/v1/goals/${goalId}/add-progress`, {
+      method: 'POST',
+      body: JSON.stringify({ amount }),
+    })
+  }
+
+  async generateRoadmap(data: {
+    goal_name: string
+    target_amount: number
+    currency: string
+    transactions?: any[]
+    balance?: number
+    income_total?: number
+    expense_total?: number
+  }) {
+    return this.request<any>('/api/v1/goals/generate-roadmap', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async checkGoalProgress(goalId: number) {
+    return this.request<any>(`/api/v1/goals/${goalId}/check-progress`, {
+      method: 'POST',
+    })
+  }
+
+  async declineInvitation(invitationId: number) {
+    return this.request<void>(`/api/v1/shared-budgets/invitations/${invitationId}/decline`, {
+      method: 'POST',
+    })
+  }
+
+  async leaveBudget(budgetId: number) {
+    return this.request<void>(`/api/v1/shared-budgets/${budgetId}/leave`, {
+      method: 'POST',
+    })
+  }
+
+  // Categories API
+  async getCategories(transactionType?: string, favoritesOnly?: boolean, includeShared: boolean = true): Promise<any[]> {
+    const params = new URLSearchParams()
+    if (transactionType) params.append('transaction_type', transactionType)
+    if (favoritesOnly) params.append('favorites_only', 'true')
+    if (!includeShared) params.append('include_shared', 'false')
+    
+    return this.request(`/api/v1/categories/?${params.toString()}`)
+  }
+
+  async getCategory(categoryId: number): Promise<any> {
+    return this.request(`/api/v1/categories/${categoryId}`)
+  }
+
+  async createCategory(category: any): Promise<any> {
+    return this.request('/api/v1/categories/', {
+      method: 'POST',
+      body: JSON.stringify(category),
+    })
+  }
+
+  async updateCategory(categoryId: number, category: any): Promise<any> {
+    return this.request(`/api/v1/categories/${categoryId}`, {
+      method: 'PUT',
+      body: JSON.stringify(category),
+    })
+  }
+
+  async deleteCategory(categoryId: number): Promise<void> {
+    await this.request(`/api/v1/categories/${categoryId}`, {
+      method: 'DELETE',
+    })
+  }
+
+  async setCategoryFavorite(categoryId: number, isFavorite: boolean): Promise<any> {
+    return this.request(`/api/v1/categories/${categoryId}/favorite`, {
+      method: 'PATCH',
+      body: JSON.stringify({ is_favorite: isFavorite }),
+    })
+  }
+
+  // Reports/Analytics API
+  async getAnalytics(period: 'week' | 'month' | 'year' = 'month'): Promise<any> {
+    return this.request(`/api/v1/reports/analytics?period=${period}`)
+  }
+
+  // Import API
+  async getImportSources(): Promise<Array<{ id: string; name: string; description: string }>> {
+    return this.request('/api/v1/import/sources')
+  }
+
+  async importData(source: string, file: File): Promise<{
+    message: string
+    accounts_imported: number
+    transactions_imported: number
+    categories_imported: number
+    categories_created: number
+  }> {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const token = localStorage.getItem('token')
+    const url = `${this.baseUrl}/api/v1/import/?source=${encodeURIComponent(source)}`
+    
+    const headers: Record<string, string> = {}
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+    // Не устанавливаем Content-Type - браузер сам установит с boundary для FormData
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: formData,
+    })
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Request failed' }))
+      throw new Error(error.detail || `HTTP error! status: ${response.status}`)
+    }
+
+    return response.json()
+  }
+}
+
+export const api = new ApiClient(API_URL)
+

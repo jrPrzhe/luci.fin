@@ -1,0 +1,86 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+venvv/
+ENV/
+env.bak/
+venv.bak/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.env.local
+
+# Database
+*.db
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Frontend build
+frontend/dist/
+frontend/.next/
+
+# Backend
+backend/alembic.ini
+backend/.pytest_cache/
+
+# SSL Certificates (should not be committed)
+*.crt
+*.key
+*.pfx
+*.pem
+backend/localhost.*
+
+# Docker
+*.pid
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# AI models cache
+models_cache/
+
+# ngrok
+ngrok.exe
+ngrok.zip
+
+# Backup files
+*.zip
+backup.zip
+
+# Database files
+*.db
+finance.db
+MyFinance.db

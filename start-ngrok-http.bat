@@ -1,0 +1,39 @@
+@echo off
+echo ========================================
+echo Starting ngrok tunnel for HTTP backend
+echo ========================================
+echo.
+echo Backend should be running on http://localhost:8000
+echo.
+echo Press Ctrl+C to stop ngrok
+echo.
+
+REM Check if ngrok exists in project directory
+cd /d "%~dp0"
+if exist ngrok.exe (
+    echo Found ngrok.exe in project directory
+    echo Starting tunnel to http://localhost:8000...
+    echo.
+    ngrok.exe http 8000
+    goto :end
+)
+
+REM Check if ngrok is in PATH
+where ngrok >nul 2>nul
+if %ERRORLEVEL% EQU 0 (
+    echo Starting tunnel to http://localhost:8000...
+    echo.
+    ngrok http 8000
+    goto :end
+)
+
+REM Not found
+echo ERROR: ngrok not found!
+echo.
+echo Please run install-ngrok.bat first
+echo.
+pause
+exit /b 1
+
+:end
+

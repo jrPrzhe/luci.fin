@@ -1,0 +1,215 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    border-color: theme('colors.telegram.border');
+  }
+  
+  .dark * {
+    border-color: theme('colors.telegram.dark.border');
+  }
+  
+  body {
+    @apply bg-telegram-bg text-telegram-text font-sans antialiased;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    /* Prevent zoom on input focus on mobile */
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  .dark body {
+    @apply bg-telegram-dark-bg text-telegram-dark-text;
+  }
+
+  /* Safe area for mobile devices with notches */
+  .safe-area-inset-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+@layer components {
+  /* Telegram-style buttons */
+  .btn-primary {
+    @apply bg-telegram-primary text-white px-5 py-2.5 rounded-telegram 
+           hover:bg-telegram-primaryHover active:scale-[0.98] 
+           transition-all duration-200 font-medium shadow-telegram;
+  }
+  
+  .dark .btn-primary {
+    @apply bg-telegram-dark-primary hover:bg-telegram-dark-primaryHover;
+  }
+  
+  .btn-secondary {
+    @apply bg-telegram-surface text-telegram-text px-5 py-2.5 rounded-telegram 
+           hover:bg-telegram-hover active:scale-[0.98] 
+           transition-all duration-200 font-medium border border-telegram-border;
+  }
+  
+  .dark .btn-secondary {
+    @apply bg-telegram-dark-surface text-telegram-dark-text hover:bg-telegram-dark-hover border-telegram-dark-border;
+  }
+  
+  .btn-icon {
+    @apply w-10 h-10 rounded-full flex items-center justify-center
+           hover:bg-telegram-hover active:scale-95 transition-all duration-200;
+  }
+  
+  .dark .btn-icon {
+    @apply hover:bg-telegram-dark-hover;
+  }
+  
+  /* Telegram-style cards */
+  .card {
+    @apply bg-telegram-surface rounded-telegram-lg shadow-telegram p-4 md:p-5 
+           animate-fade-in;
+  }
+  
+  .dark .card {
+    @apply bg-telegram-dark-surface;
+  }
+  
+  .card-compact {
+    @apply bg-telegram-surface rounded-telegram shadow-telegram p-3 md:p-4 
+           active:shadow-telegram-lg transition-shadow duration-200;
+  }
+  
+  .dark .card-compact {
+    @apply bg-telegram-dark-surface;
+  }
+  
+  /* Telegram-style inputs */
+  .input {
+    @apply w-full px-4 py-3 bg-telegram-surface border border-telegram-border 
+           rounded-telegram focus:ring-2 focus:ring-telegram-primary 
+           focus:border-transparent transition-all duration-200 
+           placeholder:text-telegram-textSecondary
+           text-telegram-text;
+  }
+  
+  .dark .input {
+    @apply bg-telegram-dark-surface border-telegram-dark-border 
+           focus:ring-telegram-dark-primary 
+           placeholder:text-telegram-dark-textSecondary
+           text-telegram-dark-text;
+  }
+  
+  /* Navigation items */
+  .nav-item {
+    @apply flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-3 rounded-telegram 
+           text-telegram-text hover:bg-telegram-hover active:bg-telegram-hover
+           transition-all duration-200 active:scale-[0.98] text-sm md:text-base;
+  }
+  
+  .dark .nav-item {
+    @apply text-telegram-dark-text hover:bg-telegram-dark-hover active:bg-telegram-dark-hover;
+  }
+  
+  .nav-item.active {
+    @apply bg-telegram-primary text-white hover:bg-telegram-primaryHover active:bg-telegram-primaryHover;
+  }
+  
+  .dark .nav-item.active {
+    @apply bg-telegram-dark-primary hover:bg-telegram-dark-primaryHover active:bg-telegram-dark-primaryHover;
+  }
+  
+  /* Badge */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+           bg-telegram-primaryLight text-telegram-primary;
+  }
+  
+  .dark .badge {
+    @apply bg-telegram-dark-primaryLight text-telegram-dark-primary;
+  }
+  
+  /* Divider */
+  .divider {
+    @apply h-px bg-telegram-border my-4;
+  }
+  
+  .dark .divider {
+    @apply bg-telegram-dark-border;
+  }
+}
+
+/* Новогодние эффекты */
+@keyframes snowfall {
+  0% {
+    transform: translateY(-100vh) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+@keyframes gradient-shift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes garland-flicker {
+  0%, 100% {
+    opacity: 0.5;
+    filter: brightness(0.7);
+    transform: translateX(-50%) scale(0.95);
+  }
+  50% {
+    opacity: 1;
+    filter: brightness(1.3);
+    transform: translateX(-50%) scale(1.05);
+  }
+}
+
+/* Новогодний режим - легкие акценты */
+.new-year-mode {
+  position: relative;
+}
+
+.new-year-mode .card {
+  position: relative;
+  overflow: visible;
+}
+
+.new-year-mode .card::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  right: -3px;
+  bottom: -3px;
+  background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #ffa07a, #ff6b6b);
+  border-radius: inherit;
+  z-index: -1;
+  opacity: 0.15;
+  animation: gradient-shift 4s ease infinite;
+  background-size: 200% 200%;
+}
+
+.new-year-mode .btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.new-year-mode .btn-primary:hover {
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%) !important;
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+}
+
+.dark .new-year-mode .btn-primary {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+  box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
+}
+
+.dark .new-year-mode .btn-primary:hover {
+  background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%) !important;
+  box-shadow: 0 6px 20px rgba(245, 87, 108, 0.5);
+}
+

@@ -1,0 +1,217 @@
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { api } from '../services/api'
+
+interface ImportSource {
+  id: string
+  name: string
+  description: string
+}
+
+export function Import() {
+  const navigate = useNavigate()
+  const [sources, setSources] = useState<ImportSource[]>([])
+  const [selectedSource, setSelectedSource] = useState<string>('')
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+  const [importResult, setImportResult] = useState<{
+    accounts_imported: number
+    transactions_imported: number
+    categories_imported: number
+    categories_created: number
+  } | null>(null)
+
+  useEffect(() => {
+    loadSources()
+  }, [])
+
+  const loadSources = async () => {
+    try {
+      const response = await api.getImportSources()
+      setSources(response)
+      if (response.length > 0) {
+        setSelectedSource(response[0].id)
+      }
+    } catch (err: any) {
+      setError('Ошибка при загрузке списка источников: ' + (err.message || 'Неизвестная ошибка'))
+    }
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (file.name.endsWith('.db')) {
+        setSelectedFile(file)
+        setError('')
+      } else {
+        setError('Пожалуйста, выберите файл с расширением .db')
+        setSelectedFile(null)
+      }
+    }
+  }
+
+  const handleImport = async () => {
+    if (!selectedSource) {
+      setError('Пожалуйста, выберите источник импорта')
+      return
+    }
+
+    if (!selectedFile) {
+      setError('Пожалуйста, выберите файл для импорта')
+      return
+    }
+
+    setIsUploading(true)
+    setError('')
+    setSuccess('')
+    setImportResult(null)
+
+    try {
+      const result = await api.importData(selectedSource, selectedFile)
+      setSuccess('Импорт завершен успешно!')
+      setImportResult({
+        transactions_imported: result.transactions_imported,
+        categories_imported: result.categories_imported,
+        categories_created: result.categories_created
+      })
+      
+      // Очищаем выбор файла
+      setSelectedFile(null)
+      const fileInput = document.getElementById('file-input') as HTMLInputElement
+      if (fileInput) {
+        fileInput.value = ''
+      }
+    } catch (err: any) {
+      setError(err.message || 'Ошибка при импорте данных')
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen p-4 md:p-6 animate-fade-in max-w-2xl mx-auto w-full">
+      <div className="flex items-center gap-3 mb-6">
+        <button
+          onClick={() => navigate('/profile')}
+          className="text-telegram-textSecondary hover:text-telegram-text transition-colors text-xl"
+        >
+          ←
+        </button>
+        <h1 className="text-xl md:text-2xl font-semibold text-telegram-text">
+          Импорт данных
+        </h1>
+      </div>
+
+      <div className="card p-4 md:p-5 space-y-4 md:space-y-6">
+        {/* Выбор источника */}
+        <div>
+          <label className="block text-xs md:text-sm font-medium text-telegram-text mb-2">
+            Выберите приложение
+          </label>
+          <div className="space-y-2">
+            {sources.map((source) => (
+              <button
+                key={source.id}
+                onClick={() => setSelectedSource(source.id)}
+                className={`w-full p-3 rounded-telegram border-2 transition-colors text-left ${
+                  selectedSource === source.id
+                    ? 'border-telegram-primary bg-telegram-primary/10'
+                    : 'border-telegram-border hover:bg-telegram-hover'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-telegram-text">{source.name}</p>
+                    <p className="text-sm text-telegram-textSecondary mt-1">
+                      {source.description}
+                    </p>
+                  </div>
+                  {selectedSource === source.id && (
+                    <span className="text-telegram-primary text-xl">✓</span>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Выбор файла */}
+        <div>
+          <label className="block text-xs md:text-sm font-medium text-telegram-text mb-2">
+            Выберите файл бэкапа
+          </label>
+          <input
+            id="file-input"
+            type="file"
+            accept=".db"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+          <label
+            htmlFor="file-input"
+            className="block w-full p-4 border-2 border-dashed border-telegram-border rounded-telegram hover:border-telegram-primary hover:bg-telegram-hover transition-colors cursor-pointer text-center"
+          >
+            {selectedFile ? (
+              <div>
+                <p className="text-telegram-text font-medium">{selectedFile.name}</p>
+                <p className="text-sm text-telegram-textSecondary mt-1">
+                  {(selectedFile.size / 1024).toFixed(2)} KB
+                </p>
+              </div>
+            ) : (
+              <div>
+                <p className="text-telegram-text">Нажмите для выбора файла</p>
+                <p className="text-sm text-telegram-textSecondary mt-1">
+                  Поддерживаются файлы .db
+                </p>
+              </div>
+            )}
+          </label>
+        </div>
+
+        {/* Сообщения об ошибках */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-telegram text-sm">
+            {error}
+          </div>
+        )}
+
+        {/* Сообщения об успехе */}
+            {success && (
+          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-telegram text-sm">
+            {success}
+            {importResult && (
+              <div className="mt-2 space-y-1">
+                <p>Импортировано счетов: {importResult.accounts_imported}</p>
+                <p>Импортировано транзакций: {importResult.transactions_imported}</p>
+                <p>Найдено категорий: {importResult.categories_imported}</p>
+                <p>Создано новых категорий: {importResult.categories_created}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Кнопка импорта */}
+        <button
+          onClick={handleImport}
+          disabled={isUploading || !selectedFile || !selectedSource}
+          className="w-full btn-primary text-sm md:text-base py-2.5 md:py-3 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isUploading ? 'Импорт...' : 'Импортировать данные'}
+        </button>
+
+        {/* Информация */}
+        <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-telegram text-sm">
+          <p className="font-medium mb-1">Примечание:</p>
+          <p>
+            Импортируются только транзакции с датами и категории. Существующие данные не будут изменены.
+            Дубликаты транзакций будут пропущены.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
