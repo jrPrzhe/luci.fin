@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api } from '../services/api'
-import { getTelegramUser, getTelegramWebApp } from '../utils/telegram'
+import { getTelegramWebApp } from '../utils/telegram'
 
 interface SharedBudget {
   id: number
@@ -741,7 +741,7 @@ export function SharedBudgets() {
                   <button
                     onClick={() => {
                       const budget = budgets.find(b => b.id === showInviteCode)
-                      if (budget) {
+                      if (budget && budget.invite_code) {
                         sendTelegramInvite(budget.invite_code, budget.name)
                       }
                     }}

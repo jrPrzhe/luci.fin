@@ -17,7 +17,7 @@ export function Login() {
     setIsLoading(true)
     
            try {
-             const response = await api.login(email, password)
+             await api.login(email, password)
              // Tokens are already stored by api.login method
              
              // Помечаем, что пользователь только что вошел

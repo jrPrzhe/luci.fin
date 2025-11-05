@@ -2,7 +2,7 @@
 // Use full URL only when explicitly set via env variable
 // When running through ngrok, relative paths work through Vite proxy
 // If backend is also on ngrok, set VITE_API_URL to the backend ngrok URL
-const API_URL = import.meta.env.VITE_API_URL || ''
+const API_URL = (import.meta.env?.VITE_API_URL as string) || ''
 
 export interface ApiResponse<T> {
   data?: T
@@ -560,12 +560,6 @@ class ApiClient {
     return this.request<any>(`/api/v1/goals/${goalId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
-    })
-  }
-
-  async deleteGoal(goalId: number) {
-    return this.request<void>(`/api/v1/goals/${goalId}`, {
-      method: 'DELETE',
     })
   }
 

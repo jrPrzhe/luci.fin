@@ -19,7 +19,7 @@ export function Register() {
     }
     
     try {
-      const response = await api.register({ email, password })
+      await api.register({ email, password })
       // Tokens are already stored by api.register method
       
       // Помечаем, что пользователь только что вошел

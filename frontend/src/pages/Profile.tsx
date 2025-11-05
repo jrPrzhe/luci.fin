@@ -15,7 +15,6 @@ export function Profile() {
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [showResetConfirm, setShowResetConfirm] = useState(false)
-  const isMiniApp = isTelegramWebApp()
   const { theme, toggleTheme } = useTheme()
   const { isEnabled: newYearEnabled, toggle: toggleNewYear } = useNewYearTheme()
 

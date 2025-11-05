@@ -407,7 +407,7 @@ export function Reports() {
                   cx="50%"
                   cy="45%"
                   labelLine={false}
-                  label={({ name, icon, percent }) => 
+                  label={({ icon, percent }) => 
                     `${icon} ${(percent * 100).toFixed(0)}%`
                   }
                   outerRadius={70}
