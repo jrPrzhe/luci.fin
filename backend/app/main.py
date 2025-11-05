@@ -133,7 +133,7 @@ app.add_middleware(RequestLoggerMiddleware)
 # Ngrok bypass middleware (to skip browser warning page)
 app.add_middleware(NgrokBypassMiddleware)
 
-# CORS middleware with regex for ngrok domains
+# CORS middleware with regex for ngrok and Vercel domains
 # Ensure CORS_ORIGINS is a list
 cors_origins = settings.CORS_ORIGINS if isinstance(settings.CORS_ORIGINS, list) else list(settings.CORS_ORIGINS)
 
@@ -141,10 +141,11 @@ cors_origins = settings.CORS_ORIGINS if isinstance(settings.CORS_ORIGINS, list) 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
-    allow_origin_regex=r"https://.*\.ngrok-free\.app|https://.*\.ngrok\.app|https://.*\.ngrok\.io",
+    allow_origin_regex=r"https://.*\.ngrok-free\.app|https://.*\.ngrok\.app|https://.*\.ngrok\.io|https://.*\.vercel\.app",
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Rate limiting
