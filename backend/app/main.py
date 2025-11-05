@@ -11,8 +11,10 @@ from app.middleware.request_logger import RequestLoggerMiddleware
 # Import all models to register them with SQLAlchemy
 from app.models import User, Account, Transaction, Category, Tag, SharedBudget, SharedBudgetMember, Invitation, Report, Goal, Notification
 
-# Create database tables
-Base.metadata.create_all(bind=engine)
+# DO NOT use create_all() in production - it will recreate tables and lose data!
+# Use Alembic migrations instead: alembic upgrade head
+# Only uncomment for initial development setup
+# Base.metadata.create_all(bind=engine)
 
 # Ensure invite_code column exists (migration helper)
 try:

@@ -16,7 +16,21 @@ logger = logging.getLogger(__name__)
 
 # Bot configuration
 TELEGRAM_BOT_TOKEN = config("TELEGRAM_BOT_TOKEN", default="")
-BACKEND_URL = config("BACKEND_URL", default="http://localhost:8000")
+BACKEND_URL_RAW = config("BACKEND_URL", default="http://localhost:8000")
+
+# Normalize BACKEND_URL - remove trailing slash and ensure proper format
+BACKEND_URL = BACKEND_URL_RAW.rstrip("/")
+
+# Validate BACKEND_URL
+if "your-backend" in BACKEND_URL.lower() or "localhost" in BACKEND_URL.lower():
+    logger.warning(f"⚠️ BACKEND_URL seems to be a placeholder: {BACKEND_URL}")
+    logger.warning("⚠️ Please set BACKEND_URL environment variable to your actual Railway backend URL")
+    
+if not BACKEND_URL.startswith(("http://", "https://")):
+    logger.error(f"❌ Invalid BACKEND_URL format: {BACKEND_URL}. Must start with http:// or https://")
+    BACKEND_URL = "http://localhost:8000"  # Fallback to localhost
+    
+logger.info(f"Backend URL configured: {BACKEND_URL}")
 
 # Conversation states
 WAITING_AMOUNT, WAITING_DESCRIPTION, WAITING_ACCOUNT = range(3)
