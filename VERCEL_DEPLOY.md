@@ -84,51 +84,59 @@ VITE_API_URL=https://your-backend-url.com
 
 ### Обязательные переменные
 
-- `VITE_API_URL` - URL вашего backend API (например, `https://api.example.com`)
+- `VITE_API_URL` - URL вашего backend API (например, `https://my-backend.railway.app`)
+
+**⚠️ ВАЖНО:** Backend должен быть задеплоен отдельно на Railway или Render (см. `BACKEND_DEPLOY.md`)
 
 ### Пример настройки
 
-Если ваш backend развернут на `https://my-backend.railway.app`, то:
+Если ваш backend развернут на Railway: `https://my-backend.railway.app`
 
 ```
 VITE_API_URL=https://my-backend.railway.app
 ```
 
-Если backend находится на том же домене (через rewrites), можно оставить пустым или использовать относительный путь.
+Если backend на Render: `https://my-backend.onrender.com`
+
+```
+VITE_API_URL=https://my-backend.onrender.com
+```
 
 ## 📁 Структура файлов
 
 Проект использует следующую структуру:
 
 ```
-finance-manager/
-├── vercel.json          # Конфигурация Vercel
-├── frontend/            # Фронтенд приложение
+luci.fin/
+├── frontend/            # React + Vite - деплоится на Vercel
+│   ├── vercel.json      # Конфигурация Vercel
 │   ├── package.json
 │   ├── vite.config.ts
 │   └── src/
-└── backend/             # Backend (деплоится отдельно)
+└── backend/             # FastAPI - деплоится на Railway/Render
+    ├── app/
+    ├── requirements.txt
+    └── Dockerfile
 ```
+
+**Примечание:** Backend и Frontend деплоятся на разные платформы:
+- **Frontend** → Vercel (эта инструкция)
+- **Backend** → Railway или Render (см. `BACKEND_DEPLOY.md`)
 
 ## 🔧 Настройка CORS на Backend
 
-Убедитесь, что ваш backend разрешает запросы с домена Vercel:
+Убедитесь, что ваш backend разрешает запросы с домена Vercel.
 
-```python
-# В вашем FastAPI приложении
-from fastapi.middleware.cors import CORSMiddleware
+**Это нужно настроить на платформе где задеплоен backend (Railway/Render):**
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "https://your-vercel-app.vercel.app",
-        "https://your-custom-domain.com",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-```
+1. В переменных окружения backend добавьте:
+   ```
+   CORS_ORIGINS=https://your-vercel-app.vercel.app,https://your-custom-domain.com
+   ```
+
+2. Или в настройках backend (Railway/Render) найдите переменную `CORS_ORIGINS` и добавьте URL вашего frontend.
+
+Подробнее см. `BACKEND_DEPLOY.md`
 
 ## 🌍 Кастомный домен
 
@@ -169,6 +177,7 @@ app.add_middleware(
 - [Документация Vercel](https://vercel.com/docs)
 - [Vercel CLI](https://vercel.com/docs/cli)
 - [Vite на Vercel](https://vercel.com/docs/frameworks/vite)
+- [Деплой Backend (Railway/Render)](./BACKEND_DEPLOY.md)
 
 ## 🔄 Обновление
 
