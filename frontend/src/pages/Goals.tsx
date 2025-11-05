@@ -480,7 +480,6 @@ function GoalDetailModal({ goal, onClose, onDelete }: { goal: Goal; onClose: () 
 
 // Create Goal Modal Component
 function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
-  const [step, setStep] = useState<'form' | 'roadmap'>('form')
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({
     name: '',

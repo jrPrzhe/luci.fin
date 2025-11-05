@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
-import { isTelegramWebApp } from '../utils/telegram'
 import { useTheme } from '../hooks/useTheme'
 import { useNewYearTheme } from '../contexts/NewYearContext'
 

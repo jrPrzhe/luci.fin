@@ -121,6 +121,14 @@ export function Dashboard() {
     refetchOnWindowFocus: false,
   })
 
+  // Получаем цели для выбора в форме дохода
+  const { data: goals = [] } = useQuery({
+    queryKey: ['goals'],
+    queryFn: () => api.getGoals('active'),
+    staleTime: 30000,
+    refetchOnWindowFocus: false,
+  })
+
   const loadCategories = async (transactionType: 'income' | 'expense'): Promise<void> => {
     console.log(`[loadCategories] Starting to load categories for ${transactionType}`)
     try {
@@ -626,7 +634,7 @@ export function Dashboard() {
                     className="input"
                   >
                     <option value="">Не добавлять к цели</option>
-                    {goals.map(goal => (
+                    {goals.map((goal: any) => (
                       <option key={goal.id} value={goal.id}>
                         {goal.name} ({Math.round(goal.current_amount).toLocaleString()} / {Math.round(goal.target_amount).toLocaleString()} {goal.currency})
                       </option>

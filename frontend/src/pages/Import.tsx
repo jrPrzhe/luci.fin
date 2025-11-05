@@ -72,6 +72,7 @@ export function Import() {
       const result = await api.importData(selectedSource, selectedFile)
       setSuccess('Импорт завершен успешно!')
       setImportResult({
+        accounts_imported: result.accounts_imported || 0,
         transactions_imported: result.transactions_imported,
         categories_imported: result.categories_imported,
         categories_created: result.categories_created
