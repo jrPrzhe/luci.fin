@@ -376,20 +376,39 @@ async def login_telegram(
                 detail=f"Invalid Telegram user data format: {str(e)}"
             )
         
-        telegram_id = str(user_obj.get('id'))
-        if not telegram_id or telegram_id == 'None':
+        # Normalize telegram_id - ensure consistent format
+        telegram_id_raw = user_obj.get('id')
+        telegram_id = str(telegram_id_raw).strip() if telegram_id_raw is not None else None
+        
+        if not telegram_id or telegram_id == 'None' or telegram_id == '':
             logger.error(f"No telegram_id in user object: {user_obj}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Telegram user ID not found"
             )
         
+        logger.info(f"Mini App login - telegram_id: '{telegram_id}' (type: {type(telegram_id)}, length: {len(telegram_id)})")
+        
         telegram_username = user_obj.get('username')
         first_name = user_obj.get('first_name', '')
         last_name = user_obj.get('last_name', '')
         
-        # Find or create user by telegram_id
+        # Find or create user by telegram_id (exact match)
         user = db.query(User).filter(User.telegram_id == telegram_id).first()
+        
+        # If not found, try alternative formats
+        if not user:
+            try:
+                telegram_id_int = int(telegram_id)
+                for alt_id in [str(telegram_id_int), f"{telegram_id_int}"]:
+                    alt_user = db.query(User).filter(User.telegram_id == alt_id).first()
+                    if alt_user:
+                        logger.info(f"Found existing user with alternative telegram_id format: '{alt_id}', updating to '{telegram_id}'")
+                        alt_user.telegram_id = telegram_id  # Update to normalized format
+                        user = alt_user
+                        break
+            except (ValueError, TypeError):
+                pass
         is_new_user = False
         
         if not user:
@@ -560,11 +579,34 @@ async def get_bot_token(
     import logging
     logger = logging.getLogger(__name__)
     
+    # Normalize telegram_id - ensure it's a string without whitespace
     telegram_id = str(request.telegram_id).strip()
-    logger.info(f"Bot token request for telegram_id: {telegram_id}")
+    logger.info(f"Bot token request for telegram_id: '{telegram_id}' (type: {type(telegram_id)}, length: {len(telegram_id)})")
     
-    # Find user by telegram_id
+    # Try to find user by telegram_id (exact match)
     user = db.query(User).filter(User.telegram_id == telegram_id).first()
+    
+    # If not found, try to find by converting to int and back (in case of type mismatch)
+    if not user:
+        try:
+            # Sometimes telegram_id might be stored as string representation of int
+            telegram_id_int = int(telegram_id)
+            # Try searching with different string representations
+            for alt_id in [str(telegram_id_int), f"{telegram_id_int}"]:
+                alt_user = db.query(User).filter(User.telegram_id == alt_id).first()
+                if alt_user:
+                    logger.info(f"Found user with alternative telegram_id format: '{alt_id}'")
+                    user = alt_user
+                    break
+        except (ValueError, TypeError):
+            pass
+    
+    # Debug: log all users with telegram_id to see what's in database
+    if not user:
+        all_users_with_telegram = db.query(User).filter(User.telegram_id.isnot(None)).all()
+        logger.warning(f"User not found for telegram_id: '{telegram_id}'. Found {len(all_users_with_telegram)} users with telegram_id in database:")
+        for u in all_users_with_telegram[:5]:  # Log first 5
+            logger.warning(f"  - User ID: {u.id}, telegram_id: '{u.telegram_id}' (type: {type(u.telegram_id)}, repr: {repr(u.telegram_id)})")
     
     if not user:
         logger.warning(f"User not found for telegram_id: {telegram_id}, creating new user")
