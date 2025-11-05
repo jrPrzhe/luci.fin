@@ -29,8 +29,6 @@ export function Dashboard() {
   const [categories, setCategories] = useState<Category[]>([])
   const [categoriesLoading, setCategoriesLoading] = useState(false)
   const [error, setError] = useState('')
-  
-  const [goals, setGoals] = useState<any[]>([])
 
   // Quick form state
   const [quickFormData, setQuickFormData] = useState({
@@ -175,9 +173,6 @@ export function Dashboard() {
     // Show form immediately with loading state
     setShowQuickForm(true)
     setQuickFormStep(type === 'transfer' ? 'form' : 'category')
-    
-    // Load goals in parallel (don't wait)
-    loadGoals().catch(err => console.error('Failed to load goals:', err))
     
     setQuickFormData({
       category_id: '',

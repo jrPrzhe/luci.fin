@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { api } from '../services/api'
-import { useNavigate } from 'react-router-dom'
 
 interface Account {
   id: number
@@ -387,7 +386,7 @@ export function Accounts() {
                     <option value="">Личный счёт</option>
                     {sharedBudgets && Array.isArray(sharedBudgets) && sharedBudgets.length > 0
                       ? sharedBudgets
-                          .filter(b => {
+                          .filter(() => {
                             // Only show budgets where user is admin (only admins can create shared accounts)
                             // We'll check this on backend, but filter on frontend for UX
                             return true // Show all budgets user is member of

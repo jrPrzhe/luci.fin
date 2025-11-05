@@ -1,6 +1,5 @@
 import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../services/api'
 
 interface Goal {
@@ -19,12 +18,11 @@ interface Goal {
 }
 
 export function Goals() {
-  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
 
-  const { data: goals = [], isLoading, refetch } = useQuery({
+  const { data: goals = [], isLoading } = useQuery({
     queryKey: ['goals'],
     queryFn: () => api.getGoals(),
     refetchInterval: 30000, // Refetch every 30 seconds to update progress
@@ -33,6 +31,14 @@ export function Goals() {
 
   const activeGoals = goals.filter((g: Goal) => g.status === 'active')
   const completedGoals = goals.filter((g: Goal) => g.status === 'completed')
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('ru-RU', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    })
+  }
 
   if (isLoading) {
     return (
@@ -74,16 +80,8 @@ export function Goals() {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {activeGoals.map((goal: Goal) => {
-              const roadmap = parseRoadmap(goal.roadmap)
               const daysRemaining = getDaysRemaining(goal.target_date)
               const progressColor = getProgressColor(goal.progress_percentage)
-              const formatDate = (dateString: string) => {
-                return new Date(dateString).toLocaleDateString('ru-RU', {
-                  day: 'numeric',
-                  month: 'long',
-                  year: 'numeric'
-                })
-              }
               
               return (
                 <div
@@ -189,7 +187,7 @@ export function Goals() {
                 </div>
                 <div className="flex items-center gap-2 text-green-600 dark:text-green-400 font-semibold">
                   <span>✅ Достигнуто</span>
-                  <span>{formatDate(goal.updated_at)}</span>
+                  <span>{goal.created_at ? formatDate(goal.created_at) : ''}</span>
                 </div>
               </div>
             ))}

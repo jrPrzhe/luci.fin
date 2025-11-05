@@ -164,7 +164,7 @@ export function Layout() {
 
     // И затем каждые 500мс, пока не авторизованы
     const interval = setInterval(() => {
-      if (isAuthorized !== true) {
+      if (!isAuthorized) {
         checkTokenPeriodically()
       } else {
         clearInterval(interval)
