@@ -8,7 +8,10 @@ from datetime import datetime, timezone
 from decouple import config
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler
-from typing import Dict, Optional
+from typing import Dict, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import httpx
 
 # Configure logging
 logging.basicConfig(
@@ -149,7 +152,7 @@ async def make_authenticated_request(
     params: Optional[dict] = None,
     timeout: float = 5.0,
     retry_on_401: bool = True
-) -> httpx.Response:
+):
     """
     Make an authenticated HTTP request with automatic token refresh on 401
     
