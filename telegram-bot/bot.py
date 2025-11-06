@@ -20,6 +20,10 @@ logger = logging.getLogger(__name__)
 # Bot configuration
 TELEGRAM_BOT_TOKEN = config("TELEGRAM_BOT_TOKEN", default="")
 BACKEND_URL_RAW = config("BACKEND_URL", default="http://localhost:8000")
+TELEGRAM_WEBHOOK_URL = config("TELEGRAM_WEBHOOK_URL", default="")
+# Railway automatically provides HTTPS URL via RAILWAY_PUBLIC_DOMAIN
+RAILWAY_PUBLIC_DOMAIN = config("RAILWAY_PUBLIC_DOMAIN", default="")
+RAILWAY_STATIC_URL = config("RAILWAY_STATIC_URL", default="")
 
 # Normalize BACKEND_URL - remove trailing slash and ensure proper format
 BACKEND_URL = BACKEND_URL_RAW.rstrip("/")
@@ -1152,47 +1156,128 @@ def main():
     # Handle all other messages
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
-    # Delete webhook synchronously to avoid event loop issues
-    try:
-        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/deleteWebhook"
-        params = {"drop_pending_updates": "true"}
-        response = requests.get(url, params=params, timeout=5)
-        if response.status_code == 200:
-            logger.info("Webhook deleted (if existed)")
-        else:
-            logger.warning(f"Could not delete webhook: {response.status_code}")
-    except Exception as e:
-        logger.warning(f"Error deleting webhook: {e}")
+    # Determine webhook URL
+    webhook_url = None
     
-    # Create event loop for Python 3.12+ compatibility
-    # run_polling() needs an event loop to exist, but Python 3.12+ doesn't create one automatically
-    try:
-        # Try to get existing event loop
-        loop = asyncio.get_event_loop()
-        if loop.is_closed():
-            raise RuntimeError("Event loop is closed")
-    except RuntimeError:
-        # Create new event loop if none exists
-        if sys.platform == 'win32':
-            # Windows needs SelectorEventLoop
-            loop = asyncio.SelectorEventLoop()
-        else:
-            loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+    # Priority 1: Explicitly set webhook URL
+    if TELEGRAM_WEBHOOK_URL:
+        webhook_url = TELEGRAM_WEBHOOK_URL.rstrip("/")
+        logger.info(f"Using explicit webhook URL: {webhook_url}")
     
-    # Start polling - run_polling() will use the existing event loop
-    logger.info("Starting Telegram bot in polling mode...")
-    logger.info("Polling mode works on HTTP (no HTTPS required)")
+    # Priority 2: Railway public domain (automatic HTTPS)
+    elif RAILWAY_PUBLIC_DOMAIN:
+        webhook_url = f"https://{RAILWAY_PUBLIC_DOMAIN}"
+        logger.info(f"Using Railway public domain: {webhook_url}")
     
-    try:
-        application.run_polling(
-            allowed_updates=Update.ALL_TYPES,
-            drop_pending_updates=True,
-            close_loop=False,
-            poll_interval=2.0  # Poll every 2 seconds instead of default (reduces API calls)
-        )
-    except KeyboardInterrupt:
-        logger.info("Bot stopped by user")
+    # Priority 3: Railway static URL (alternative)
+    elif RAILWAY_STATIC_URL:
+        webhook_url = RAILWAY_STATIC_URL.rstrip("/")
+        logger.info(f"Using Railway static URL: {webhook_url}")
+    
+    # If webhook URL is available, use webhook mode
+    if webhook_url:
+        # Ensure webhook URL has /webhook path
+        if not webhook_url.endswith("/webhook"):
+            webhook_url = f"{webhook_url}/webhook"
+        
+        logger.info(f"🚀 Starting Telegram bot in WEBHOOK mode...")
+        logger.info(f"📡 Webhook URL: {webhook_url}")
+        
+        # Delete any existing webhook first
+        try:
+            delete_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/deleteWebhook"
+            params = {"drop_pending_updates": "true"}
+            response = requests.get(delete_url, params=params, timeout=5)
+            if response.status_code == 200:
+                logger.info("Old webhook deleted (if existed)")
+        except Exception as e:
+            logger.warning(f"Error deleting old webhook: {e}")
+        
+        # Set webhook
+        try:
+            set_webhook_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/setWebhook"
+            webhook_params = {
+                "url": webhook_url,
+                "drop_pending_updates": "true",
+                "allowed_updates": ["message", "callback_query", "inline_query"]
+            }
+            response = requests.post(set_webhook_url, json=webhook_params, timeout=10)
+            
+            if response.status_code == 200:
+                result = response.json()
+                if result.get("ok"):
+                    logger.info(f"✅ Webhook set successfully: {webhook_url}")
+                    logger.info("✅ Bot is ready to receive updates via webhook")
+                else:
+                    logger.error(f"❌ Failed to set webhook: {result.get('description')}")
+                    logger.info("⚠️ Falling back to polling mode...")
+                    webhook_url = None
+            else:
+                logger.error(f"❌ Failed to set webhook: {response.status_code} - {response.text}")
+                logger.info("⚠️ Falling back to polling mode...")
+                webhook_url = None
+        except Exception as e:
+            logger.error(f"❌ Error setting webhook: {e}")
+            logger.info("⚠️ Falling back to polling mode...")
+            webhook_url = None
+    
+    # If webhook is not available or failed, use polling
+    if not webhook_url:
+        logger.info("🔄 Starting Telegram bot in POLLING mode...")
+        logger.info("ℹ️ Polling mode works on HTTP (no HTTPS required)")
+        logger.info("💡 To use webhook mode, set TELEGRAM_WEBHOOK_URL or RAILWAY_PUBLIC_DOMAIN")
+        
+        # Delete webhook if exists (to avoid conflicts)
+        try:
+            delete_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/deleteWebhook"
+            params = {"drop_pending_updates": "true"}
+            response = requests.get(delete_url, params=params, timeout=5)
+            if response.status_code == 200:
+                logger.info("Webhook deleted (if existed)")
+        except Exception as e:
+            logger.warning(f"Error deleting webhook: {e}")
+        
+        # Create event loop for Python 3.12+ compatibility
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_closed():
+                raise RuntimeError("Event loop is closed")
+        except RuntimeError:
+            if sys.platform == 'win32':
+                loop = asyncio.SelectorEventLoop()
+            else:
+                loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        
+        try:
+            application.run_polling(
+                allowed_updates=Update.ALL_TYPES,
+                drop_pending_updates=True,
+                close_loop=False,
+                poll_interval=2.0  # Poll every 2 seconds
+            )
+        except KeyboardInterrupt:
+            logger.info("Bot stopped by user")
+    else:
+        # Webhook mode - need to run webhook server
+        # Get port from environment (Railway provides PORT)
+        port = int(config("PORT", default="8000"))
+        
+        logger.info(f"🌐 Starting webhook server on port {port}...")
+        logger.info(f"📡 Listening for webhook updates at: /webhook")
+        
+        # Run webhook
+        try:
+            application.run_webhook(
+                listen="0.0.0.0",
+                port=port,
+                webhook_url=webhook_url,
+                url_path="webhook",
+                drop_pending_updates=True,
+                allowed_updates=Update.ALL_TYPES
+            )
+        except KeyboardInterrupt:
+            logger.info("Bot stopped by user")
 
 
 if __name__ == "__main__":
