@@ -664,8 +664,8 @@ async def add_income_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /report command - generate AI-powered financial report"""
+    thinking_msg = None
     try:
-        import httpx
         telegram_id = str(update.effective_user.id)
         
         # Get token
@@ -688,99 +688,101 @@ async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Send "thinking" message
         thinking_msg = await update.message.reply_text("🤖 Генерация отчета... Пожалуйста, подождите.")
         
+        # Get transactions using authenticated request helper
+        transactions_response = await make_authenticated_request(
+            "GET",
+            f"{BACKEND_URL}/api/v1/transactions/",
+            telegram_id,
+            params={"limit": 100}
+        )
+        
+        # Get balance using authenticated request helper
+        balance_response = await make_authenticated_request(
+            "GET",
+            f"{BACKEND_URL}/api/v1/accounts/balance",
+            telegram_id
+        )
+        
+        if transactions_response.status_code != 200 or balance_response.status_code != 200:
+            await thinking_msg.edit_text("❌ Не удалось получить данные.")
+            return
+        
+        transactions = transactions_response.json()
+        balance_data = balance_response.json()
+        
+        # Prepare data for AI
+        total_balance = balance_data.get("total", 0)
+        currency = balance_data.get("currency", "RUB")
+        
+        # Calculate stats
+        income_total = sum(t['amount'] for t in transactions if t['transaction_type'] == 'income')
+        expense_total = sum(t['amount'] for t in transactions if t['transaction_type'] == 'expense')
+        transaction_count = len(transactions)
+        
+        # Group expenses by description (simple categorization)
+        expense_by_desc = {}
+        for t in transactions:
+            if t['transaction_type'] == 'expense':
+                desc = get_transaction_description(t)
+                if desc not in expense_by_desc:
+                    expense_by_desc[desc] = 0
+                expense_by_desc[desc] += t['amount']
+        
+        top_expenses = sorted(expense_by_desc.items(), key=lambda x: x[1], reverse=True)[:5]
+        
+        # Create report prompt
+        report_text = f"""📊 *Финансовый отчет*\n\n"""
+        report_text += f"💰 *Общий баланс:* {int(round(total_balance)):,} {currency}\n\n"
+        report_text += f"📈 *Статистика:*\n"
+        report_text += f"• Всего транзакций: {transaction_count}\n"
+        report_text += f"• Доходы: +{int(round(income_total)):,} {currency}\n"
+        report_text += f"• Расходы: -{int(round(expense_total)):,} {currency}\n"
+        report_text += f"• Баланс: {int(round(income_total - expense_total)):,} {currency}\n\n"
+        
+        if top_expenses:
+            report_text += f"💸 *Топ расходов:*\n"
+            for i, (desc, amount) in enumerate(top_expenses, 1):
+                report_text += f"{i}. {desc}: {int(round(amount)):,} {currency}\n"
+            report_text += "\n"
+        
+        # AI Analysis
         try:
-            # Get transactions using authenticated request helper
-            transactions_response = await make_authenticated_request(
-                "GET",
-                f"{BACKEND_URL}/api/v1/transactions/",
+            ai_response = await make_authenticated_request(
+                "POST",
+                f"{BACKEND_URL}/api/v1/ai/analyze",
                 telegram_id,
-                params={"limit": 100}
+                json_data={
+                    "transactions": transactions[:50],  # Limit for AI
+                    "balance": total_balance,
+                    "currency": currency,
+                },
+                timeout=30.0
             )
             
-            # Get balance using authenticated request helper
-            balance_response = await make_authenticated_request(
-                "GET",
-                f"{BACKEND_URL}/api/v1/accounts/balance",
-                telegram_id
-            )
-            
-            if transactions_response.status_code != 200 or balance_response.status_code != 200:
-                await thinking_msg.edit_text("❌ Не удалось получить данные.")
-                return
-            
-            transactions = transactions_response.json()
-            balance_data = balance_response.json()
-            
-            # Prepare data for AI
-            total_balance = balance_data.get("total", 0)
-            currency = balance_data.get("currency", "RUB")
-            
-            # Calculate stats
-            income_total = sum(t['amount'] for t in transactions if t['transaction_type'] == 'income')
-            expense_total = sum(t['amount'] for t in transactions if t['transaction_type'] == 'expense')
-            transaction_count = len(transactions)
-            
-            # Group expenses by description (simple categorization)
-            expense_by_desc = {}
-            for t in transactions:
-                if t['transaction_type'] == 'expense':
-                    desc = get_transaction_description(t)
-                    if desc not in expense_by_desc:
-                        expense_by_desc[desc] = 0
-                    expense_by_desc[desc] += t['amount']
-            
-            top_expenses = sorted(expense_by_desc.items(), key=lambda x: x[1], reverse=True)[:5]
-            
-            # Create report prompt
-            report_text = f"""📊 *Финансовый отчет*\n\n"""
-            report_text += f"💰 *Общий баланс:* {int(round(total_balance)):,} {currency}\n\n"
-            report_text += f"📈 *Статистика:*\n"
-            report_text += f"• Всего транзакций: {transaction_count}\n"
-            report_text += f"• Доходы: +{int(round(income_total)):,} {currency}\n"
-            report_text += f"• Расходы: -{int(round(expense_total)):,} {currency}\n"
-            report_text += f"• Баланс: {int(round(income_total - expense_total)):,} {currency}\n\n"
-            
-            if top_expenses:
-                report_text += f"💸 *Топ расходов:*\n"
-                for i, (desc, amount) in enumerate(top_expenses, 1):
-                    report_text += f"{i}. {desc}: {int(round(amount)):,} {currency}\n"
-                report_text += "\n"
-            
-            # AI Analysis
-            try:
-                ai_response = await make_authenticated_request(
-                    "POST",
-                    f"{BACKEND_URL}/api/v1/ai/analyze",
-                    telegram_id,
-                    json_data={
-                        "transactions": transactions[:50],  # Limit for AI
-                        "balance": total_balance,
-                        "currency": currency,
-                    },
-                    timeout=30.0
-                )
-                
-                if ai_response.status_code == 200:
-                    ai_data = ai_response.json()
-                    insights = ai_data.get("insights", "")
-                    if insights:
-                        report_text += f"🤖 *Анализ ИИ:*\n{insights}\n"
-            except Exception as e:
-                logger.error(f"AI analysis error: {e}")
-                # Fallback analysis
-                if expense_total > income_total:
-                    report_text += f"⚠️ *Рекомендация:* Расходы превышают доходы. Рекомендуется сократить траты.\n"
-                elif expense_total > income_total * 0.8:
-                    report_text += f"💡 *Рекомендация:* Расходы составляют более 80% от доходов. Есть возможность для оптимизации.\n"
-                else:
-                    report_text += f"✅ *Рекомендация:* Финансовое положение стабильное. Продолжайте в том же духе!\n"
-            
-            await thinking_msg.edit_text(report_text, parse_mode='Markdown')
-            
+            if ai_response.status_code == 200:
+                ai_data = ai_response.json()
+                insights = ai_data.get("insights", "")
+                if insights:
+                    report_text += f"🤖 *Анализ ИИ:*\n{insights}\n"
+        except Exception as e:
+            logger.error(f"AI analysis error: {e}")
+            # Fallback analysis
+            if expense_total > income_total:
+                report_text += f"⚠️ *Рекомендация:* Расходы превышают доходы. Рекомендуется сократить траты.\n"
+            elif expense_total > income_total * 0.8:
+                report_text += f"💡 *Рекомендация:* Расходы составляют более 80% от доходов. Есть возможность для оптимизации.\n"
+            else:
+                report_text += f"✅ *Рекомендация:* Финансовое положение стабильное. Продолжайте в том же духе!\n"
+        
+        await thinking_msg.edit_text(report_text, parse_mode='Markdown')
+        
     except Exception as e:
-        logger.error(f"Error generating report: {e}")
+        logger.error(f"Error generating report: {e}", exc_info=True)
         try:
-            await thinking_msg.edit_text("❌ Ошибка при генерации отчета.")
+            if thinking_msg:
+                await thinking_msg.edit_text("❌ Ошибка при генерации отчета.")
+            else:
+                await update.message.reply_text("❌ Ошибка при генерации отчета.")
         except:
             await update.message.reply_text("❌ Ошибка при генерации отчета.")
 
