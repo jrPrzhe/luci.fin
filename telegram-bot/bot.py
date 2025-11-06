@@ -1164,10 +1164,13 @@ def main():
     # Determine webhook URL
     webhook_url = None
     
-    # Priority 1: Explicitly set webhook URL
-    if TELEGRAM_WEBHOOK_URL:
+    # Priority 1: Explicitly set webhook URL (but validate it's not a placeholder)
+    if TELEGRAM_WEBHOOK_URL and "your-domain.com" not in TELEGRAM_WEBHOOK_URL.lower() and "example.com" not in TELEGRAM_WEBHOOK_URL.lower():
         webhook_url = TELEGRAM_WEBHOOK_URL.rstrip("/")
         logger.info(f"Using explicit webhook URL: {webhook_url}")
+    elif TELEGRAM_WEBHOOK_URL:
+        logger.warning(f"Ignoring placeholder webhook URL: {TELEGRAM_WEBHOOK_URL}")
+        webhook_url = None
     
     # Priority 2: Railway public domain (automatic HTTPS)
     elif RAILWAY_PUBLIC_DOMAIN:
