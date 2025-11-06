@@ -11,11 +11,8 @@ export function useTheme() {
     if (savedTheme && (savedTheme === 'light' || savedTheme === 'dark')) {
       return savedTheme
     }
-    // Проверяем системные настройки
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      return 'dark'
-    }
-    return 'light'
+    // По умолчанию темная тема
+    return 'dark'
   })
 
   useEffect(() => {
@@ -34,4 +31,5 @@ export function useTheme() {
 
   return { theme, setTheme, toggleTheme }
 }
+
 

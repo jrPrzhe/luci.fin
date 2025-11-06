@@ -18,11 +18,10 @@ export function NewYearProvider({ children }: { children: ReactNode }) {
       if (saved !== null) {
         return saved === 'true'
       }
-      // По умолчанию включено в декабре и январе
-      const month = new Date().getMonth() // 0-11
-      return month === 11 || month === 0 // Декабрь или Январь
+      // По умолчанию новогодний режим включен
+      return true
     }
-    return false
+    return true
   })
 
   useEffect(() => {
@@ -49,4 +48,5 @@ export function useNewYearTheme() {
   }
   return context
 }
+
 
