@@ -945,30 +945,30 @@ async def goal_info_received(update: Update, context: ContextTypes.DEFAULT_TYPE)
             },
             timeout=30.0
         )
-            
-            if roadmap_response.status_code != 200:
-                await update.message.reply_text("❌ Не удалось создать план. Попробуйте позже.")
-                return ConversationHandler.END
-            
-            roadmap_data = roadmap_response.json()
-            roadmap_json = roadmap_data.get('roadmap', '{}')
-            
-            # Parse roadmap
-            import json
-            roadmap = json.loads(roadmap_json) if isinstance(roadmap_json, str) else roadmap_json
-            
-            # Store roadmap data
-            context.user_data['roadmap'] = roadmap_json
-            context.user_data['monthly_savings'] = roadmap_data.get('monthly_savings_needed', 0)
-            context.user_data['feasibility'] = roadmap_data.get('feasibility', 'feasible')
-            context.user_data['estimated_months'] = roadmap_data.get('estimated_months', 12)
-            context.user_data['recommendations'] = roadmap_data.get('recommendations', [])
-            context.user_data['savings_by_category'] = roadmap_data.get('savings_by_category', {})
-            
-            # Format roadmap message
-            roadmap_text = roadmap.get('roadmap_text', '')
-            if not roadmap_text:
-                roadmap_text = f"""🗺️ *Дорожная карта для достижения цели*
+        
+        if roadmap_response.status_code != 200:
+            await update.message.reply_text("❌ Не удалось создать план. Попробуйте позже.")
+            return ConversationHandler.END
+        
+        roadmap_data = roadmap_response.json()
+        roadmap_json = roadmap_data.get('roadmap', '{}')
+        
+        # Parse roadmap
+        import json
+        roadmap = json.loads(roadmap_json) if isinstance(roadmap_json, str) else roadmap_json
+        
+        # Store roadmap data
+        context.user_data['roadmap'] = roadmap_json
+        context.user_data['monthly_savings'] = roadmap_data.get('monthly_savings_needed', 0)
+        context.user_data['feasibility'] = roadmap_data.get('feasibility', 'feasible')
+        context.user_data['estimated_months'] = roadmap_data.get('estimated_months', 12)
+        context.user_data['recommendations'] = roadmap_data.get('recommendations', [])
+        context.user_data['savings_by_category'] = roadmap_data.get('savings_by_category', {})
+        
+        # Format roadmap message
+        roadmap_text = roadmap.get('roadmap_text', '')
+        if not roadmap_text:
+            roadmap_text = f"""🗺️ *Дорожная карта для достижения цели*
 
 🎯 Цель: {goal_name}
 💰 Стоимость: {int(round(target_amount)):,} {currency}
@@ -976,43 +976,43 @@ async def goal_info_received(update: Update, context: ContextTypes.DEFAULT_TYPE)
 💵 Ежемесячные накопления: {int(round(roadmap_data.get('monthly_savings_needed', 0))):,} {currency}
 
 📋 Рекомендации:"""
-                for rec in roadmap_data.get('recommendations', [])[:3]:
-                    roadmap_text += f"\n• {rec}"
-            
-            feasibility_emoji = {
-                'feasible': '✅',
-                'challenging': '⚠️',
-                'difficult': '❌'
-            }
-            feasibility_text = {
-                'feasible': 'Достижимо',
-                'challenging': 'Сложно, но возможно',
-                'difficult': 'Очень сложно'
-            }
-            
-            feasibility = roadmap_data.get('feasibility', 'feasible')
-            
-            message = f"{feasibility_emoji.get(feasibility, '✅')} *{feasibility_text.get(feasibility, 'Достижимо')}*\n\n"
-            message += roadmap_text[:3000]  # Telegram message limit
-            
-            if len(roadmap_text) > 3000:
-                message += "\n\n... (план будет сохранен полностью)"
-            
-            # Add confirmation buttons
-            from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-            keyboard = [
-                [InlineKeyboardButton("✅ Создать цель", callback_data="goal_confirm")],
-                [InlineKeyboardButton("❌ Отмена", callback_data="goal_cancel")]
-            ]
-            reply_markup = InlineKeyboardMarkup(keyboard)
-            
-            await update.message.reply_text(
-                message,
-                parse_mode='Markdown',
-                reply_markup=reply_markup
-            )
-            
-            return WAITING_GOAL_CONFIRMATION
+            for rec in roadmap_data.get('recommendations', [])[:3]:
+                roadmap_text += f"\n• {rec}"
+        
+        feasibility_emoji = {
+            'feasible': '✅',
+            'challenging': '⚠️',
+            'difficult': '❌'
+        }
+        feasibility_text = {
+            'feasible': 'Достижимо',
+            'challenging': 'Сложно, но возможно',
+            'difficult': 'Очень сложно'
+        }
+        
+        feasibility = roadmap_data.get('feasibility', 'feasible')
+        
+        message = f"{feasibility_emoji.get(feasibility, '✅')} *{feasibility_text.get(feasibility, 'Достижимо')}*\n\n"
+        message += roadmap_text[:3000]  # Telegram message limit
+        
+        if len(roadmap_text) > 3000:
+            message += "\n\n... (план будет сохранен полностью)"
+        
+        # Add confirmation buttons
+        from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+        keyboard = [
+            [InlineKeyboardButton("✅ Создать цель", callback_data="goal_confirm")],
+            [InlineKeyboardButton("❌ Отмена", callback_data="goal_cancel")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await update.message.reply_text(
+            message,
+            parse_mode='Markdown',
+            reply_markup=reply_markup
+        )
+        
+        return WAITING_GOAL_CONFIRMATION
             
     except Exception as e:
         logger.error(f"Error generating roadmap: {e}", exc_info=True)
