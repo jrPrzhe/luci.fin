@@ -2,10 +2,13 @@ import logging
 import asyncio
 import sys
 import requests
+import base64
+import json
+from datetime import datetime, timezone
 from decouple import config
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler
-from typing import Dict
+from typing import Dict, Optional
 
 # Configure logging
 logging.basicConfig(
@@ -38,6 +41,173 @@ WAITING_GOAL_INFO, WAITING_GOAL_CONFIRMATION = range(3, 5)
 
 # Store user tokens
 user_tokens: Dict[int, str] = {}
+
+
+def is_token_expired(token: str) -> bool:
+    """Check if JWT token is expired"""
+    try:
+        # JWT format: header.payload.signature
+        parts = token.split('.')
+        if len(parts) != 3:
+            return True  # Invalid format, consider expired
+        
+        # Decode payload (second part)
+        payload_b64 = parts[1]
+        # Add padding if needed
+        padding = 4 - len(payload_b64) % 4
+        if padding != 4:
+            payload_b64 += '=' * padding
+        
+        payload_bytes = base64.urlsafe_b64decode(payload_b64)
+        payload = json.loads(payload_bytes)
+        
+        # Check expiration
+        exp = payload.get('exp')
+        if not exp:
+            return True  # No expiration, consider expired for safety
+        
+        # Compare with current time (exp is in UTC seconds)
+        current_time = datetime.now(timezone.utc).timestamp()
+        
+        # Add 5 minute buffer - refresh token if it expires in less than 5 minutes
+        if exp < (current_time + 300):
+            logger.debug(f"Token expires soon (exp: {exp}, current: {current_time}, diff: {exp - current_time}s)")
+            return True
+        
+        return False
+    except Exception as e:
+        logger.warning(f"Error checking token expiration: {e}, considering expired")
+        return True  # On error, consider expired for safety
+
+
+async def get_user_token(telegram_id: str, force_refresh: bool = False) -> str:
+    """Get or refresh user token with expiration check"""
+    user_id = int(telegram_id)
+    
+    # Check if we have cached token and it's not expired
+    if not force_refresh and user_id in user_tokens:
+        cached_token = user_tokens[user_id]
+        if cached_token and len(cached_token) > 50:  # JWT tokens are usually long
+            # Check if token is expired
+            if not is_token_expired(cached_token):
+                logger.debug(f"Using cached token for user {user_id}")
+                return cached_token
+            else:
+                logger.info(f"Cached token expired for user {user_id}, fetching new one")
+                del user_tokens[user_id]
+        else:
+            # Invalid cached token, remove it
+            logger.warning(f"Invalid cached token for user {user_id}, fetching new one")
+            del user_tokens[user_id]
+    
+    # Get new token
+    import httpx
+    async with httpx.AsyncClient() as client:
+        try:
+            logger.info(f"Fetching token for telegram_id: {telegram_id}")
+            response = await client.post(
+                f"{BACKEND_URL}/api/v1/auth/bot-token",
+                json={"telegram_id": telegram_id},
+                timeout=5.0
+            )
+            
+            logger.info(f"Token response status: {response.status_code}")
+            
+            if response.status_code == 200:
+                data = response.json()
+                token = data.get("access_token")
+                
+                if not token:
+                    logger.error(f"No access_token in response: {data}")
+                    raise Exception("No access_token in response")
+                
+                if len(token) < 50:
+                    logger.error(f"Token too short, might be invalid: {len(token)} chars")
+                    raise Exception(f"Invalid token received: {token[:20]}...")
+                
+                logger.info(f"Successfully fetched token (length: {len(token)})")
+                user_tokens[user_id] = token
+                return token
+            else:
+                error_text = response.text
+                logger.error(f"Failed to get token: {response.status_code} - {error_text}")
+                raise Exception(f"Failed to get token: {response.status_code} - {error_text}")
+        except Exception as e:
+            logger.error(f"Error getting token for {telegram_id}: {e}", exc_info=True)
+            raise
+
+
+async def make_authenticated_request(
+    method: str,
+    url: str,
+    telegram_id: str,
+    json_data: Optional[dict] = None,
+    params: Optional[dict] = None,
+    timeout: float = 5.0,
+    retry_on_401: bool = True
+) -> httpx.Response:
+    """
+    Make an authenticated HTTP request with automatic token refresh on 401
+    
+    Args:
+        method: HTTP method (GET, POST, PUT, DELETE, etc.)
+        url: Full URL to request
+        telegram_id: Telegram user ID for authentication
+        json_data: Optional JSON data for POST/PUT requests
+        params: Optional query parameters
+        timeout: Request timeout in seconds
+        retry_on_401: Whether to retry once with a fresh token on 401 error
+    
+    Returns:
+        httpx.Response object
+    """
+    import httpx
+    
+    # Get token
+    token = await get_user_token(telegram_id)
+    
+    async with httpx.AsyncClient() as client:
+        headers = {"Authorization": f"Bearer {token}"}
+        
+        # Make request
+        if method.upper() == "GET":
+            response = await client.get(url, headers=headers, params=params, timeout=timeout)
+        elif method.upper() == "POST":
+            response = await client.post(url, headers=headers, json=json_data, params=params, timeout=timeout)
+        elif method.upper() == "PUT":
+            response = await client.put(url, headers=headers, json=json_data, params=params, timeout=timeout)
+        elif method.upper() == "DELETE":
+            response = await client.delete(url, headers=headers, params=params, timeout=timeout)
+        elif method.upper() == "PATCH":
+            response = await client.patch(url, headers=headers, json=json_data, params=params, timeout=timeout)
+        else:
+            raise ValueError(f"Unsupported HTTP method: {method}")
+        
+        # If 401 and retry enabled, refresh token and retry once
+        if response.status_code == 401 and retry_on_401:
+            logger.warning(f"Got 401 Unauthorized, refreshing token and retrying for user {telegram_id}")
+            # Clear cached token
+            user_id = int(telegram_id)
+            if user_id in user_tokens:
+                del user_tokens[user_id]
+            
+            # Get fresh token
+            token = await get_user_token(telegram_id, force_refresh=True)
+            headers = {"Authorization": f"Bearer {token}"}
+            
+            # Retry request
+            if method.upper() == "GET":
+                response = await client.get(url, headers=headers, params=params, timeout=timeout)
+            elif method.upper() == "POST":
+                response = await client.post(url, headers=headers, json=json_data, params=params, timeout=timeout)
+            elif method.upper() == "PUT":
+                response = await client.put(url, headers=headers, json=json_data, params=params, timeout=timeout)
+            elif method.upper() == "DELETE":
+                response = await client.delete(url, headers=headers, params=params, timeout=timeout)
+            elif method.upper() == "PATCH":
+                response = await client.patch(url, headers=headers, json=json_data, params=params, timeout=timeout)
+        
+        return response
 
 
 def get_transaction_description(transaction: dict) -> str:
@@ -151,65 +321,52 @@ async def get_user_token(telegram_id: str) -> str:
 async def get_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /balance command"""
     try:
-        import httpx
         telegram_id = str(update.effective_user.id)
         
-        # Get token
+        # Use authenticated request helper with automatic token refresh
         try:
-            token = await get_user_token(telegram_id)
-            logger.debug(f"Got token for balance request, length: {len(token) if token else 0}")
-            
-            # Validate token format
-            if not token or len(token) < 50 or '.' not in token:
-                logger.error(f"Invalid token format: {token[:50] if token else 'None'}...")
-                raise Exception("Invalid token format")
+            response = await make_authenticated_request(
+                "GET",
+                f"{BACKEND_URL}/api/v1/accounts/balance",
+                telegram_id
+            )
         except Exception as e:
             logger.error(f"Error getting token: {e}")
-            # Clear invalid token from cache
-            user_id = int(telegram_id)
-            if user_id in user_tokens:
-                logger.warning(f"Clearing invalid token from cache for user {user_id}")
-                del user_tokens[user_id]
             await update.message.reply_text(
                 "❌ Не удалось авторизоваться. Пожалуйста, сначала зарегистрируйтесь через веб-интерфейс или Mini App."
             )
             return
         
-        async with httpx.AsyncClient() as client:
-            auth_header = f"Bearer {token}"
-            logger.debug(f"Making balance request with Authorization header (token length: {len(token)})")
+        if response.status_code == 200:
+            data = response.json()
+            total = data.get("total", 0)
+            currency = data.get("currency", "RUB")
             
-            response = await client.get(
-                f"{BACKEND_URL}/api/v1/accounts/balance",
-                headers={"Authorization": auth_header},
-                timeout=5.0
+            # Format message
+            message = f"💰 *Ваш баланс*\n\n"
+            message += f"💵 Всего: *{int(round(total)):,} {currency}*\n\n"
+            
+            # Add accounts breakdown
+            accounts = data.get("accounts", [])
+            if accounts:
+                message += "*По счетам:*\n"
+                for acc in accounts[:5]:  # Show first 5 accounts
+                    acc_name = acc.get("name", "Счет")
+                    acc_balance = acc.get("balance", 0)
+                    message += f"• {acc_name}: {int(round(acc_balance)):,} {currency}\n"
+            
+            await update.message.reply_text(message, parse_mode='Markdown')
+        elif response.status_code == 401:
+            await update.message.reply_text(
+                "❌ Не удалось авторизоваться. Пожалуйста, сначала зарегистрируйтесь через веб-интерфейс или Mini App."
             )
-            
-            if response.status_code == 200:
-                data = response.json()
-                total = data.get("total", 0)
-                currency = data.get("currency", "RUB")
-                
-                # Format message
-                message = f"💰 *Ваш баланс*\n\n"
-                message += f"💵 Всего: *{int(round(total)):,} {currency}*\n\n"
-                
-                # Add accounts breakdown
-                accounts = data.get("accounts", [])
-                if accounts:
-                    message += "*По счетам:*\n"
-                    for acc in accounts[:5]:  # Show first 5 accounts
-                        acc_name = acc.get("name", "Счет")
-                        acc_balance = acc.get("balance", 0)
-                        message += f"• {acc_name}: {int(round(acc_balance)):,} {currency}\n"
-                
-                await update.message.reply_text(message, parse_mode='Markdown')
-            else:
-                await update.message.reply_text(
-                    "❌ Не удалось получить баланс."
-                )
+        else:
+            logger.error(f"Failed to get balance: {response.status_code} - {response.text}")
+            await update.message.reply_text(
+                "❌ Не удалось получить баланс."
+            )
     except Exception as e:
-        logger.error(f"Error getting balance: {e}")
+        logger.error(f"Error getting balance: {e}", exc_info=True)
         await update.message.reply_text(
             "❌ Ошибка при получении баланса."
         )
@@ -218,65 +375,56 @@ async def get_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def get_transactions(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /transactions command"""
     try:
-        import httpx
         telegram_id = str(update.effective_user.id)
         
-        # Get token
+        # Use authenticated request helper with automatic token refresh
         try:
-            token = await get_user_token(telegram_id)
-            # Validate token format
-            if not token or len(token) < 50 or '.' not in token:
-                logger.error(f"Invalid token format in get_transactions")
-                raise Exception("Invalid token format")
+            response = await make_authenticated_request(
+                "GET",
+                f"{BACKEND_URL}/api/v1/transactions/",
+                telegram_id,
+                params={"limit": 10}
+            )
         except Exception as e:
             logger.error(f"Error getting token in get_transactions: {e}")
-            # Clear invalid token from cache
-            user_id = int(telegram_id)
-            if user_id in user_tokens:
-                del user_tokens[user_id]
             await update.message.reply_text(
                 "❌ Не удалось авторизоваться. Пожалуйста, сначала зарегистрируйтесь через веб-интерфейс или Mini App."
             )
             return
         
-        async with httpx.AsyncClient() as client:
-            auth_header = f"Bearer {token}"
-            logger.debug(f"Making transactions request with Authorization header")
+        if response.status_code == 200:
+            transactions = response.json()
             
-            response = await client.get(
-                f"{BACKEND_URL}/api/v1/transactions/?limit=10",
-                headers={"Authorization": auth_header},
-                timeout=5.0
+            if not transactions:
+                await update.message.reply_text("📝 У вас пока нет транзакций.")
+                return
+            
+            message = "📝 *Последние транзакции:*\n\n"
+            
+            for trans in transactions[:10]:
+                trans_type = trans.get("transaction_type", "")
+                amount = trans.get("amount", 0)
+                currency = trans.get("currency", "RUB")
+                description = get_transaction_description(trans)
+                date = trans.get("transaction_date", "")[:10]
+                
+                icon = "💰" if trans_type == "income" else "💸" if trans_type == "expense" else "↔️"
+                sign = "+" if trans_type == "income" else "-"
+                
+                message += f"{icon} *{sign}{int(round(amount)):,} {currency}*\n"
+                message += f"   {description}\n"
+                message += f"   📅 {date}\n\n"
+            
+            await update.message.reply_text(message, parse_mode='Markdown')
+        elif response.status_code == 401:
+            await update.message.reply_text(
+                "❌ Не удалось авторизоваться. Пожалуйста, сначала зарегистрируйтесь через веб-интерфейс или Mini App."
             )
-            
-            if response.status_code == 200:
-                transactions = response.json()
-                
-                if not transactions:
-                    await update.message.reply_text("📝 У вас пока нет транзакций.")
-                    return
-                
-                message = "📝 *Последние транзакции:*\n\n"
-                
-                for trans in transactions[:10]:
-                    trans_type = trans.get("transaction_type", "")
-                    amount = trans.get("amount", 0)
-                    currency = trans.get("currency", "RUB")
-                    description = get_transaction_description(trans)
-                    date = trans.get("transaction_date", "")[:10]
-                    
-                    icon = "💰" if trans_type == "income" else "💸" if trans_type == "expense" else "↔️"
-                    sign = "+" if trans_type == "income" else "-"
-                    
-                    message += f"{icon} *{sign}{int(round(amount)):,} {currency}*\n"
-                    message += f"   {description}\n"
-                    message += f"   📅 {date}\n\n"
-                
-                await update.message.reply_text(message, parse_mode='Markdown')
-            else:
-                await update.message.reply_text("❌ Не удалось получить транзакции.")
+        else:
+            logger.error(f"Failed to get transactions: {response.status_code} - {response.text}")
+            await update.message.reply_text("❌ Не удалось получить транзакции.")
     except Exception as e:
-        logger.error(f"Error getting transactions: {e}")
+        logger.error(f"Error getting transactions: {e}", exc_info=True)
         await update.message.reply_text("❌ Ошибка при получении транзакций.")
 
 
@@ -284,68 +432,54 @@ async def add_expense_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /add_expense command"""
     telegram_id = str(update.effective_user.id)
     
-    # Get token to verify user exists
+    # Get user accounts using authenticated request helper
     try:
-        token = await get_user_token(telegram_id)
-        # Validate token format
-        if not token or len(token) < 50 or '.' not in token:
-            raise Exception("Invalid token format")
-    except Exception as e:
-        logger.error(f"Error getting token in add_expense_start: {e}")
-        # Clear invalid token from cache
-        user_id = int(telegram_id)
-        if user_id in user_tokens:
-            del user_tokens[user_id]
-        await update.message.reply_text(
-            "❌ Не удалось авторизоваться. Пожалуйста, сначала зарегистрируйтесь."
+        response = await make_authenticated_request(
+            "GET",
+            f"{BACKEND_URL}/api/v1/accounts/",
+            telegram_id
         )
-        return ConversationHandler.END
-    
-    # Get user accounts
-    try:
-        import httpx
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"{BACKEND_URL}/api/v1/accounts/",
-                headers={"Authorization": f"Bearer {token}"},
-                timeout=5.0
+        
+        if response.status_code == 200:
+            accounts = response.json()
+            if not accounts:
+                await update.message.reply_text(
+                    "❌ У вас нет счетов. Сначала создайте счет через веб-интерфейс."
+                )
+                return ConversationHandler.END
+            
+            # Store accounts in context
+            context.user_data['accounts'] = accounts
+            context.user_data['type'] = 'expense'  # Set transaction type
+            
+            # Create keyboard with accounts
+            keyboard = []
+            for acc in accounts[:5]:  # Limit to 5 accounts
+                keyboard.append([InlineKeyboardButton(
+                    f"{acc['name']} ({int(round(acc['balance'])):,} {acc['currency']})",
+                    callback_data=f"account_{acc['id']}"
+                )])
+            
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await update.message.reply_text(
+                "💸 *Добавление расхода*\n\n"
+                "Выберите счет:",
+                reply_markup=reply_markup,
+                parse_mode='Markdown'
             )
             
-            if response.status_code == 200:
-                accounts = response.json()
-                if not accounts:
-                    await update.message.reply_text(
-                        "❌ У вас нет счетов. Сначала создайте счет через веб-интерфейс."
-                    )
-                    return ConversationHandler.END
-                
-                # Store accounts in context
-                context.user_data['accounts'] = accounts
-                context.user_data['type'] = 'expense'  # Set transaction type
-                
-                # Create keyboard with accounts
-                keyboard = []
-                for acc in accounts[:5]:  # Limit to 5 accounts
-                    keyboard.append([InlineKeyboardButton(
-                        f"{acc['name']} ({int(round(acc['balance'])):,} {acc['currency']})",
-                        callback_data=f"account_{acc['id']}"
-                    )])
-                
-                reply_markup = InlineKeyboardMarkup(keyboard)
-                
-                await update.message.reply_text(
-                    "💸 *Добавление расхода*\n\n"
-                    "Выберите счет:",
-                    reply_markup=reply_markup,
-                    parse_mode='Markdown'
-                )
-                
-                return WAITING_AMOUNT
-            else:
-                await update.message.reply_text("❌ Не удалось загрузить счета.")
-                return ConversationHandler.END
+            return WAITING_AMOUNT
+        elif response.status_code == 401:
+            await update.message.reply_text(
+                "❌ Не удалось авторизоваться. Пожалуйста, сначала зарегистрируйтесь."
+            )
+            return ConversationHandler.END
+        else:
+            await update.message.reply_text("❌ Не удалось загрузить счета.")
+            return ConversationHandler.END
     except Exception as e:
-        logger.error(f"Error in add_expense_start: {e}")
+        logger.error(f"Error in add_expense_start: {e}", exc_info=True)
         await update.message.reply_text("❌ Ошибка при загрузке счетов.")
         return ConversationHandler.END
 
@@ -420,43 +554,48 @@ async def description_received(update: Update, context: ContextTypes.DEFAULT_TYP
         return ConversationHandler.END
     
     try:
-        import httpx
         telegram_id = str(update.effective_user.id)
-        token = await get_user_token(telegram_id)
         
         # Get account currency
         accounts = context.user_data.get('accounts', [])
         account = next((a for a in accounts if a['id'] == account_id), None)
         currency = account['currency'] if account else 'RUB'
         
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{BACKEND_URL}/api/v1/transactions/",
-                headers={"Authorization": f"Bearer {token}"},
-                json={
-                    "account_id": account_id,
-                    "transaction_type": transaction_type,
-                    "amount": amount,
-                    "currency": currency,
-                    "description": description,
-                },
-                timeout=5.0
+        # Use authenticated request helper
+        response = await make_authenticated_request(
+            "POST",
+            f"{BACKEND_URL}/api/v1/transactions/",
+            telegram_id,
+            json_data={
+                "account_id": account_id,
+                "transaction_type": transaction_type,
+                "amount": amount,
+                "currency": currency,
+                "description": description,
+            }
+        )
+        
+        if response.status_code == 201:
+            icon = "💰" if transaction_type == "income" else "💸"
+            type_text = "Доход" if transaction_type == "income" else "Расход"
+            await update.message.reply_text(
+                f"✅ *{type_text} добавлен!*\n\n"
+                f"{icon} {int(round(amount)):,} {currency}\n"
+                f"📝 {description or 'Без описания'}",
+                parse_mode='Markdown'
             )
-            
-            if response.status_code == 201:
-                icon = "💰" if transaction_type == "income" else "💸"
-                type_text = "Доход" if transaction_type == "income" else "Расход"
-                await update.message.reply_text(
-                    f"✅ *{type_text} добавлен!*\n\n"
-                    f"{icon} {int(round(amount)):,} {currency}\n"
-                    f"📝 {description or 'Без описания'}",
-                    parse_mode='Markdown'
-                )
-            else:
+        elif response.status_code == 401:
+            await update.message.reply_text(
+                "❌ Не удалось авторизоваться. Пожалуйста, сначала зарегистрируйтесь."
+            )
+        else:
+            try:
                 error_msg = response.json().get("detail", "Ошибка")
-                await update.message.reply_text(f"❌ Ошибка: {error_msg}")
+            except:
+                error_msg = "Ошибка при создании транзакции"
+            await update.message.reply_text(f"❌ Ошибка: {error_msg}")
     except Exception as e:
-        logger.error(f"Error creating transaction: {e}")
+        logger.error(f"Error creating transaction: {e}", exc_info=True)
         type_text = "дохода" if transaction_type == "income" else "расхода"
         await update.message.reply_text(f"❌ Ошибка при создании {type_text}.")
     
@@ -469,64 +608,52 @@ async def add_income_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /add_income command"""
     telegram_id = str(update.effective_user.id)
     
+    # Get user accounts using authenticated request helper
     try:
-        token = await get_user_token(telegram_id)
-        # Validate token format
-        if not token or len(token) < 50 or '.' not in token:
-            raise Exception("Invalid token format")
-    except Exception as e:
-        logger.error(f"Error getting token in add_income_start: {e}")
-        # Clear invalid token from cache
-        user_id = int(telegram_id)
-        if user_id in user_tokens:
-            del user_tokens[user_id]
-        await update.message.reply_text(
-            "❌ Не удалось авторизоваться. Пожалуйста, сначала зарегистрируйтесь."
+        response = await make_authenticated_request(
+            "GET",
+            f"{BACKEND_URL}/api/v1/accounts/",
+            telegram_id
         )
-        return ConversationHandler.END
-    
-    try:
-        import httpx
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                f"{BACKEND_URL}/api/v1/accounts/",
-                headers={"Authorization": f"Bearer {token}"},
-                timeout=5.0
+        
+        if response.status_code == 200:
+            accounts = response.json()
+            if not accounts:
+                await update.message.reply_text(
+                    "❌ У вас нет счетов. Сначала создайте счет через веб-интерфейс."
+                )
+                return ConversationHandler.END
+            
+            context.user_data['accounts'] = accounts
+            context.user_data['type'] = 'income'
+            
+            keyboard = []
+            for acc in accounts[:5]:
+                keyboard.append([InlineKeyboardButton(
+                    f"{acc['name']} ({int(round(acc['balance'])):,} {acc['currency']})",
+                    callback_data=f"account_{acc['id']}"
+                )])
+            
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            
+            await update.message.reply_text(
+                "💰 *Добавление дохода*\n\n"
+                "Выберите счет:",
+                reply_markup=reply_markup,
+                parse_mode='Markdown'
             )
             
-            if response.status_code == 200:
-                accounts = response.json()
-                if not accounts:
-                    await update.message.reply_text(
-                        "❌ У вас нет счетов. Сначала создайте счет через веб-интерфейс."
-                    )
-                    return ConversationHandler.END
-                
-                context.user_data['accounts'] = accounts
-                context.user_data['type'] = 'income'
-                
-                keyboard = []
-                for acc in accounts[:5]:
-                    keyboard.append([InlineKeyboardButton(
-                        f"{acc['name']} ({int(round(acc['balance'])):,} {acc['currency']})",
-                        callback_data=f"account_{acc['id']}"
-                    )])
-                
-                reply_markup = InlineKeyboardMarkup(keyboard)
-                
-                await update.message.reply_text(
-                    "💰 *Добавление дохода*\n\n"
-                    "Выберите счет:",
-                    reply_markup=reply_markup,
-                    parse_mode='Markdown'
-                )
-                
-                return WAITING_AMOUNT
-            else:
-                await update.message.reply_text("❌ Не удалось загрузить счета.")
-                return ConversationHandler.END
+            return WAITING_AMOUNT
+        elif response.status_code == 401:
+            await update.message.reply_text(
+                "❌ Не удалось авторизоваться. Пожалуйста, сначала зарегистрируйтесь."
+            )
+            return ConversationHandler.END
+        else:
+            await update.message.reply_text("❌ Не удалось загрузить счета.")
+            return ConversationHandler.END
     except Exception as e:
-        logger.error(f"Error in add_income_start: {e}")
+        logger.error(f"Error in add_income_start: {e}", exc_info=True)
         await update.message.reply_text("❌ Ошибка при загрузке счетов.")
         return ConversationHandler.END
 
@@ -557,19 +684,20 @@ async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Send "thinking" message
         thinking_msg = await update.message.reply_text("🤖 Генерация отчета... Пожалуйста, подождите.")
         
-        async with httpx.AsyncClient() as client:
-            # Get transactions
-            transactions_response = await client.get(
-                f"{BACKEND_URL}/api/v1/transactions/?limit=100",
-                headers={"Authorization": f"Bearer {token}"},
-                timeout=5.0
+        try:
+            # Get transactions using authenticated request helper
+            transactions_response = await make_authenticated_request(
+                "GET",
+                f"{BACKEND_URL}/api/v1/transactions/",
+                telegram_id,
+                params={"limit": 100}
             )
             
-            # Get balance
-            balance_response = await client.get(
+            # Get balance using authenticated request helper
+            balance_response = await make_authenticated_request(
+                "GET",
                 f"{BACKEND_URL}/api/v1/accounts/balance",
-                headers={"Authorization": f"Bearer {token}"},
-                timeout=5.0
+                telegram_id
             )
             
             if transactions_response.status_code != 200 or balance_response.status_code != 200:
@@ -616,10 +744,11 @@ async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             # AI Analysis
             try:
-                ai_response = await client.post(
+                ai_response = await make_authenticated_request(
+                    "POST",
                     f"{BACKEND_URL}/api/v1/ai/analyze",
-                    headers={"Authorization": f"Bearer {token}"},
-                    json={
+                    telegram_id,
+                    json_data={
                         "transactions": transactions[:50],  # Limit for AI
                         "balance": total_balance,
                         "currency": currency,
@@ -759,56 +888,57 @@ async def goal_info_received(update: Update, context: ContextTypes.DEFAULT_TYPE)
     
     # Generate roadmap
     try:
-        import httpx
         telegram_id = str(update.effective_user.id)
-        token = await get_user_token(telegram_id)
         
-        async with httpx.AsyncClient() as client:
-            # Get transactions
-            transactions_response = await client.get(
-                f"{BACKEND_URL}/api/v1/transactions/?limit=100",
-                headers={"Authorization": f"Bearer {token}"},
-                timeout=10.0
-            )
-            
-            # Get balance
-            balance_response = await client.get(
-                f"{BACKEND_URL}/api/v1/accounts/balance",
-                headers={"Authorization": f"Bearer {token}"},
-                timeout=10.0
-            )
-            
-            if transactions_response.status_code != 200 or balance_response.status_code != 200:
-                await update.message.reply_text("❌ Не удалось получить данные о транзакциях.")
-                return ConversationHandler.END
-            
-            transactions = transactions_response.json()
-            balance_data = balance_response.json()
-            
-            # Calculate totals
-            income_total = sum(t.get('amount', 0) for t in transactions if t.get('transaction_type') == 'income')
-            expense_total = sum(t.get('amount', 0) for t in transactions if t.get('transaction_type') == 'expense')
-            balance = balance_data.get('total', 0)
-            currency = balance_data.get('currency', 'RUB')
-            
-            # Update currency in context
-            context.user_data['currency'] = currency
-            
-            # Generate roadmap
-            roadmap_response = await client.post(
-                f"{BACKEND_URL}/api/v1/goals/generate-roadmap",
-                headers={"Authorization": f"Bearer {token}"},
-                json={
-                    "goal_name": goal_name,
-                    "target_amount": float(target_amount),
-                    "currency": currency,
-                    "transactions": transactions[:50],
-                    "balance": float(balance),
-                    "income_total": float(income_total),
-                    "expense_total": float(expense_total)
-                },
-                timeout=30.0
-            )
+        # Get transactions using authenticated request helper
+        transactions_response = await make_authenticated_request(
+            "GET",
+            f"{BACKEND_URL}/api/v1/transactions/",
+            telegram_id,
+            params={"limit": 100},
+            timeout=10.0
+        )
+        
+        # Get balance using authenticated request helper
+        balance_response = await make_authenticated_request(
+            "GET",
+            f"{BACKEND_URL}/api/v1/accounts/balance",
+            telegram_id,
+            timeout=10.0
+        )
+        
+        if transactions_response.status_code != 200 or balance_response.status_code != 200:
+            await update.message.reply_text("❌ Не удалось получить данные о транзакциях.")
+            return ConversationHandler.END
+        
+        transactions = transactions_response.json()
+        balance_data = balance_response.json()
+        
+        # Calculate totals
+        income_total = sum(t.get('amount', 0) for t in transactions if t.get('transaction_type') == 'income')
+        expense_total = sum(t.get('amount', 0) for t in transactions if t.get('transaction_type') == 'expense')
+        balance = balance_data.get('total', 0)
+        currency = balance_data.get('currency', 'RUB')
+        
+        # Update currency in context
+        context.user_data['currency'] = currency
+        
+        # Generate roadmap using authenticated request helper
+        roadmap_response = await make_authenticated_request(
+            "POST",
+            f"{BACKEND_URL}/api/v1/goals/generate-roadmap",
+            telegram_id,
+            json_data={
+                "goal_name": goal_name,
+                "target_amount": float(target_amount),
+                "currency": currency,
+                "transactions": transactions[:50],
+                "balance": float(balance),
+                "income_total": float(income_total),
+                "expense_total": float(expense_total)
+            },
+            timeout=30.0
+        )
             
             if roadmap_response.status_code != 200:
                 await update.message.reply_text("❌ Не удалось создать план. Попробуйте позже.")
@@ -899,45 +1029,50 @@ async def goal_confirmation_handler(update: Update, context: ContextTypes.DEFAUL
     if query.data == "goal_confirm":
         # Create the goal
         try:
-            import httpx
             telegram_id = str(update.effective_user.id)
-            token = await get_user_token(telegram_id)
             
             goal_name = context.user_data.get('goal_name')
             target_amount = context.user_data.get('target_amount')
             currency = context.user_data.get('currency', 'RUB')
             roadmap = context.user_data.get('roadmap')
             
-            async with httpx.AsyncClient() as client:
-                # Create goal
-                goal_response = await client.post(
-                    f"{BACKEND_URL}/api/v1/goals/",
-                    headers={"Authorization": f"Bearer {token}"},
-                    json={
-                        "name": goal_name,
-                        "target_amount": float(target_amount),
-                        "currency": currency,
-                        "goal_type": "save",
-                        "roadmap": roadmap
-                    },
-                    timeout=10.0
+            # Create goal using authenticated request helper
+            goal_response = await make_authenticated_request(
+                "POST",
+                f"{BACKEND_URL}/api/v1/goals/",
+                telegram_id,
+                json_data={
+                    "name": goal_name,
+                    "target_amount": float(target_amount),
+                    "currency": currency,
+                    "goal_type": "save",
+                    "roadmap": roadmap
+                },
+                timeout=10.0
+            )
+            
+            if goal_response.status_code == 201:
+                goal_data = goal_response.json()
+                await query.edit_message_text(
+                    f"✅ *Цель создана!*\n\n"
+                    f"🎯 {goal_name}\n"
+                    f"💰 {int(round(target_amount)):,} {currency}\n"
+                    f"📊 Прогресс: 0%\n\n"
+                    f"Система будет отслеживать ваш прогресс и уведомлять вас о статусе.",
+                    parse_mode='Markdown'
                 )
-                
-                if goal_response.status_code == 201:
-                    goal_data = goal_response.json()
-                    await query.edit_message_text(
-                        f"✅ *Цель создана!*\n\n"
-                        f"🎯 {goal_name}\n"
-                        f"💰 {int(round(target_amount)):,} {currency}\n"
-                        f"📊 Прогресс: 0%\n\n"
-                        f"Система будет отслеживать ваш прогресс и уведомлять вас о статусе.",
-                        parse_mode='Markdown'
-                    )
-                else:
+            elif goal_response.status_code == 401:
+                await query.edit_message_text(
+                    "❌ Не удалось авторизоваться. Пожалуйста, сначала зарегистрируйтесь."
+                )
+            else:
+                try:
                     error_msg = goal_response.json().get("detail", "Ошибка")
-                    await query.edit_message_text(f"❌ Ошибка при создании цели: {error_msg}")
+                except:
+                    error_msg = "Ошибка при создании цели"
+                await query.edit_message_text(f"❌ Ошибка при создании цели: {error_msg}")
         except Exception as e:
-            logger.error(f"Error creating goal: {e}")
+            logger.error(f"Error creating goal: {e}", exc_info=True)
             await query.edit_message_text("❌ Ошибка при создании цели. Попробуйте позже.")
     
     context.user_data.clear()
@@ -1053,7 +1188,8 @@ def main():
         application.run_polling(
             allowed_updates=Update.ALL_TYPES,
             drop_pending_updates=True,
-            close_loop=False
+            close_loop=False,
+            poll_interval=2.0  # Poll every 2 seconds instead of default (reduces API calls)
         )
     except KeyboardInterrupt:
         logger.info("Bot stopped by user")
