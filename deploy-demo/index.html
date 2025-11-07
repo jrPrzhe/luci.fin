@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finance Manager - Демонстрация функций</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #212121;
+            min-height: 100vh;
+            overflow-x: hidden;
+            color: #FFFFFF;
+        }
+
+        .container {
+            max-width: 428px;
+            margin: 0 auto;
+            background: #212121;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        .assistant {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #3390EC 0%, #6CC3F2 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 16px rgba(51, 144, 236, 0.4);
+            z-index: 1000;
+            animation: pulse 2s infinite;
+            cursor: pointer;
+            overflow: hidden;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes emotionChange {
+            0%, 18% { opacity: 1; z-index: 1; }
+            20%, 100% { opacity: 0; z-index: 0; }
+        }
+
+        .assistant img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+
+        .assistant img:nth-child(1) {
+            animation: emotionChange 10s infinite;
+            animation-delay: 0s;
+        }
+        .assistant img:nth-child(2) {
+            animation: emotionChange 10s infinite;
+            animation-delay: 2s;
+        }
+        .assistant img:nth-child(3) {
+            animation: emotionChange 10s infinite;
+            animation-delay: 4s;
+        }
+        .assistant img:nth-child(4) {
+            animation: emotionChange 10s infinite;
+            animation-delay: 6s;
+        }
+        .assistant img:nth-child(5) {
+            animation: emotionChange 10s infinite;
+            animation-delay: 8s;
+        }
+
+        .speech-bubble {
+            position: fixed;
+            bottom: 110px;
+            right: 20px;
+            background: #2C2C2E;
+            padding: 15px 20px;
+            border-radius: 12px;
+            max-width: 300px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+            border: 1px solid #38383A;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+            z-index: 999;
+            color: #FFFFFF;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .speech-bubble.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .speech-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            right: 30px;
+            width: 0;
+            height: 0;
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-top: 10px solid #2C2C2E;
+        }
+
+        .screen {
+            display: none;
+            padding: 20px;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .header {
+            background: #2C2C2E;
+            color: #FFFFFF;
+            padding: 20px;
+            text-align: left;
+            border-bottom: 1px solid #38383A;
+            margin-bottom: 0;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .card {
+            background: #2C2C2E;
+            border-radius: 16px;
+            padding: 20px;
+            margin: 15px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            animation: slideUp 0.5s ease;
+            border: 1px solid #38383A;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .balance-card {
+            background: linear-gradient(135deg, #3390EC 0%, #6CC3F2 100%);
+            color: white;
+            border-radius: 16px;
+            padding: 25px;
+            margin: 15px;
+            animation: scaleIn 0.6s ease;
+            box-shadow: 0 4px 16px rgba(51, 144, 236, 0.2);
+        }
+
+        @keyframes scaleIn {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .balance-amount {
+            font-size: 36px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 15px;
+            margin-bottom: 20px;
+        }
+
+        .action-btn {
+            background: #2C2C2E;
+            border: 1px solid #38383A;
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .action-btn .icon {
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+
+        .transaction-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid #38383A;
+            animation: slideIn 0.4s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .transaction-item:last-child {
+            border-bottom: none;
+        }
+
+        .transaction-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            margin-right: 15px;
+        }
+
+        .transaction-icon.income {
+            background: rgba(76, 175, 80, 0.1);
+            color: #4CAF50;
+        }
+
+        .transaction-icon.expense {
+            background: rgba(244, 67, 54, 0.1);
+            color: #F44336;
+        }
+
+        .transaction-icon.transfer {
+            background: rgba(51, 144, 236, 0.1);
+            color: #3390EC;
+        }
+
+        .account-card {
+            background: #2C2C2E;
+            border-radius: 16px;
+            padding: 20px;
+            margin: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid #3390EC;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            border: 1px solid #38383A;
+        }
+
+        .goal-card {
+            background: linear-gradient(135deg, #3390EC 0%, #6CC3F2 100%);
+            color: white;
+            border-radius: 16px;
+            padding: 20px;
+            margin: 15px;
+            margin-bottom: 15px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(51, 144, 236, 0.2);
+        }
+
+        .progress-bar {
+            background: rgba(255,255,255,0.3);
+            height: 8px;
+            border-radius: 4px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            background: white;
+            height: 100%;
+            border-radius: 4px;
+            transition: width 1s ease;
+        }
+
+        .chart-container {
+            height: 200px;
+            margin: 20px 0;
+            background: #3A3A3C;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #98989D;
+            border: 1px solid #38383A;
+        }
+
+        .nav-menu {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 428px;
+            background: #2C2C2E;
+            border-top: 1px solid #38383A;
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 0;
+            z-index: 100;
+            box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 4px 8px;
+            cursor: pointer;
+            color: #98989D;
+            transition: all 0.2s;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .nav-item.active {
+            color: #3390EC;
+        }
+
+        .nav-item .icon {
+            font-size: 20px;
+            margin-bottom: 2px;
+        }
+
+        .nav-item .label {
+            font-size: 10px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+
+        .feature-highlight {
+            background: rgba(51, 144, 236, 0.15);
+            padding: 15px;
+            border-radius: 12px;
+            margin: 15px;
+            animation: highlight 1s ease;
+            border: 1px solid rgba(51, 144, 236, 0.3);
+            color: #FFFFFF;
+        }
+
+        @keyframes highlight {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .stat-card {
+            background: #3A3A3C;
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            border: 1px solid #38383A;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #3390EC;
+            margin: 5px 0;
+        }
+
+        .category-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .category-item {
+            background: #2C2C2E;
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            border: 1px solid #38383A;
+            transition: all 0.2s;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .category-item:hover {
+            border-color: #3390EC;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(51, 144, 236, 0.15);
+        }
+
+        .category-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .intro-screen {
+            text-align: center;
+            padding: 60px 20px;
+            background: #212121;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .intro-screen h1 {
+            font-size: 32px;
+            margin-bottom: 20px;
+            color: #3390EC;
+            font-weight: 700;
+        }
+
+        .start-btn {
+            background: #3390EC;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 30px;
+            box-shadow: 0 2px 8px rgba(51, 144, 236, 0.3);
+            transition: all 0.2s;
+        }
+
+        .start-btn:hover {
+            background: #2B7DD8;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(51, 144, 236, 0.4);
+        }
+
+        .start-btn:active {
+            transform: scale(0.98);
+        }
+
+        .typing-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #3390EC;
+            animation: typing 1.4s infinite;
+        }
+
+        .screen {
+            padding-bottom: 80px;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-10px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Intro Screen -->
+        <div class="screen active" id="intro">
+            <div class="intro-screen">
+                <h1>💰 Finance Manager</h1>
+                <p style="font-size: 18px; color: #FFFFFF; margin-top: 20px;">
+                    Добро пожаловать на демонстрацию<br>
+                    всех возможностей приложения!
+                </p>
+                <p style="color: #98989D; margin-top: 15px; font-size: 14px;">
+                    Я ваш бизнес-ассистент и проведу вас<br>
+                    по каждому модулю системы
+                </p>
+                <button class="start-btn" onclick="startDemo()">Начать демонстрацию</button>
+            </div>
+        </div>
+
+        <!-- Dashboard Screen -->
+        <div class="screen" id="dashboard">
+            <div class="header">
+                <h1 style="font-size: 24px; font-weight: 600; margin-bottom: 5px; color: #FFFFFF;">📊 Дашборд</h1>
+                <p style="font-size: 14px; color: #98989D;">Обзор ваших финансов</p>
+            </div>
+            <div class="balance-card">
+                <p style="opacity: 0.9; font-size: 14px;">Общий баланс</p>
+                <div class="balance-amount">125 430 ₽</div>
+                <div style="display: flex; gap: 15px; margin-top: 15px;">
+                    <div style="flex: 1; background: rgba(255,255,255,0.2); padding: 10px; border-radius: 12px;">
+                        <p style="font-size: 12px; opacity: 0.9;">Доходы</p>
+                        <p style="font-size: 18px; font-weight: bold;">+45 000 ₽</p>
+                    </div>
+                    <div style="flex: 1; background: rgba(255,255,255,0.2); padding: 10px; border-radius: 12px;">
+                        <p style="font-size: 12px; opacity: 0.9;">Расходы</p>
+                        <p style="font-size: 18px; font-weight: bold;">-28 500 ₽</p>
+                    </div>
+                </div>
+            </div>
+            <div class="quick-actions">
+                <div class="action-btn">
+                    <div class="icon">➖</div>
+                    <div style="font-size: 12px; color: #98989D;">Расход</div>
+                </div>
+                <div class="action-btn">
+                    <div class="icon">➕</div>
+                    <div style="font-size: 12px; color: #98989D;">Доход</div>
+                </div>
+                <div class="action-btn">
+                    <div class="icon">🔄</div>
+                    <div style="font-size: 12px; color: #98989D;">Перевод</div>
+                </div>
+            </div>
+            <div class="card">
+                <h3 style="margin-bottom: 15px; color: #FFFFFF; font-weight: 600;">Последние транзакции</h3>
+                <div class="transaction-item">
+                    <div class="transaction-icon income">➕</div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: bold; color: #FFFFFF;">Зарплата</div>
+                        <div style="font-size: 12px; color: #98989D;">Сегодня</div>
+                    </div>
+                    <div style="color: #4caf50; font-weight: bold;">+45 000 ₽</div>
+                </div>
+                <div class="transaction-item">
+                    <div class="transaction-icon expense">➖</div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: bold; color: #FFFFFF;">Продукты</div>
+                        <div style="font-size: 12px; color: #98989D;">Вчера</div>
+                    </div>
+                    <div style="color: #f44336; font-weight: bold;">-3 500 ₽</div>
+                </div>
+                <div class="transaction-item">
+                    <div class="transaction-icon expense">➖</div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: bold; color: #FFFFFF;">Транспорт</div>
+                        <div style="font-size: 12px; color: #98989D;">2 дня назад</div>
+                    </div>
+                    <div style="color: #f44336; font-weight: bold;">-1 200 ₽</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Accounts Screen -->
+        <div class="screen" id="accounts">
+            <div class="header">
+                <h1 style="font-size: 24px; font-weight: 600; margin-bottom: 5px; color: #FFFFFF;">💳 Счета</h1>
+                <p style="font-size: 14px; color: #98989D;">Управление вашими счетами</p>
+            </div>
+            <div class="account-card">
+                <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                    <div style="font-size: 32px; margin-right: 15px;">💳</div>
+                    <div style="flex: 1;">
+                        <h3 style="color: #FFFFFF; margin-bottom: 5px; font-weight: 600;">Основная карта</h3>
+                        <p style="font-size: 12px; color: #98989D;">Банковская карта</p>
+                    </div>
+                </div>
+                <div style="font-size: 28px; font-weight: bold; color: #3390EC;">85 430 ₽</div>
+            </div>
+            <div class="account-card">
+                <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                    <div style="font-size: 32px; margin-right: 15px;">💵</div>
+                    <div style="flex: 1;">
+                        <h3 style="color: #FFFFFF; margin-bottom: 5px; font-weight: 600;">Наличные</h3>
+                        <p style="font-size: 12px; color: #98989D;">Наличные</p>
+                    </div>
+                </div>
+                <div style="font-size: 28px; font-weight: bold; color: #3390EC;">15 000 ₽</div>
+            </div>
+            <div class="account-card">
+                <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                    <div style="font-size: 32px; margin-right: 15px;">📱</div>
+                    <div style="flex: 1;">
+                        <h3 style="color: #FFFFFF; margin-bottom: 5px; font-weight: 600;">Электронный кошелёк</h3>
+                        <p style="font-size: 12px; color: #98989D;">Электронный кошелёк</p>
+                    </div>
+                </div>
+                <div style="font-size: 28px; font-weight: bold; color: #3390EC;">25 000 ₽</div>
+            </div>
+            <div class="feature-highlight">
+                <strong>✨ Мультивалютность:</strong> Поддержка RUB, USD, EUR, KZT
+            </div>
+        </div>
+
+        <!-- Transactions Screen -->
+        <div class="screen" id="transactions">
+            <div class="header">
+                <h1 style="font-size: 24px; font-weight: 600; margin-bottom: 5px; color: #FFFFFF;">📝 Транзакции</h1>
+                <p style="font-size: 14px; color: #98989D;">История всех операций</p>
+            </div>
+            <div class="card">
+                <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+                    <button style="background: #3390EC; color: white; border: none; padding: 8px 15px; border-radius: 12px; font-size: 12px; font-weight: 500;">Все</button>
+                    <button style="background: #2C2C2E; color: #98989D; border: 1px solid #38383A; padding: 8px 15px; border-radius: 12px; font-size: 12px;">Доходы</button>
+                    <button style="background: #2C2C2E; color: #98989D; border: 1px solid #38383A; padding: 8px 15px; border-radius: 12px; font-size: 12px;">Расходы</button>
+                    <button style="background: #2C2C2E; color: #98989D; border: 1px solid #38383A; padding: 8px 15px; border-radius: 12px; font-size: 12px;">Переводы</button>
+                </div>
+            </div>
+            <div class="card">
+                <div class="transaction-item">
+                    <div class="transaction-icon income">💰</div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: bold; color: #FFFFFF;">Зарплата</div>
+                        <div style="font-size: 12px; color: #98989D;">Основная карта • 15.01.2024</div>
+                    </div>
+                    <div style="color: #4caf50; font-weight: bold;">+45 000 ₽</div>
+                </div>
+                <div class="transaction-item">
+                    <div class="transaction-icon expense">🛒</div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: bold; color: #FFFFFF;">Продукты</div>
+                        <div style="font-size: 12px; color: #98989D;">Основная карта • 14.01.2024</div>
+                    </div>
+                    <div style="color: #f44336; font-weight: bold;">-3 500 ₽</div>
+                </div>
+                <div class="transaction-item">
+                    <div class="transaction-icon expense">🚗</div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: bold; color: #FFFFFF;">Транспорт</div>
+                        <div style="font-size: 12px; color: #98989D;">Основная карта • 13.01.2024</div>
+                    </div>
+                    <div style="color: #f44336; font-weight: bold;">-1 200 ₽</div>
+                </div>
+                <div class="transaction-item">
+                    <div class="transaction-icon transfer">🔄</div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: bold; color: #FFFFFF;">Перевод между счетами</div>
+                        <div style="font-size: 12px; color: #98989D;">Основная карта → Наличные • 12.01.2024</div>
+                    </div>
+                    <div style="color: #2196f3; font-weight: bold;">↔ 5 000 ₽</div>
+                </div>
+            </div>
+            <div class="feature-highlight">
+                <strong>🔍 Фильтры:</strong> По типу, дате, категории, счету
+            </div>
+        </div>
+
+        <!-- Categories Screen -->
+        <div class="screen" id="categories">
+            <div class="header">
+                <h1 style="font-size: 24px; font-weight: 600; margin-bottom: 5px; color: #FFFFFF;">📂 Категории</h1>
+                <p style="font-size: 14px; color: #98989D;">Организация ваших расходов</p>
+            </div>
+            <div class="category-grid">
+                <div class="category-item">
+                    <div class="category-icon">🛒</div>
+                    <div style="font-weight: bold; color: #FFFFFF;">Продукты</div>
+                    <div style="font-size: 12px; color: #98989D; margin-top: 5px;">12 500 ₽</div>
+                </div>
+                <div class="category-item">
+                    <div class="category-icon">🚗</div>
+                    <div style="font-weight: bold; color: #FFFFFF;">Транспорт</div>
+                    <div style="font-size: 12px; color: #98989D; margin-top: 5px;">5 200 ₽</div>
+                </div>
+                <div class="category-item">
+                    <div class="category-icon">🏠</div>
+                    <div style="font-weight: bold; color: #FFFFFF;">Жильё</div>
+                    <div style="font-size: 12px; color: #98989D; margin-top: 5px;">15 000 ₽</div>
+                </div>
+                <div class="category-item">
+                    <div class="category-icon">🍔</div>
+                    <div style="font-weight: bold; color: #FFFFFF;">Рестораны</div>
+                    <div style="font-size: 12px; color: #98989D; margin-top: 5px;">8 300 ₽</div>
+                </div>
+                <div class="category-item">
+                    <div class="category-icon">💊</div>
+                    <div style="font-weight: bold; color: #FFFFFF;">Здоровье</div>
+                    <div style="font-size: 12px; color: #98989D; margin-top: 5px;">2 100 ₽</div>
+                </div>
+                <div class="category-item">
+                    <div class="category-icon">🎮</div>
+                    <div style="font-weight: bold; color: #FFFFFF;">Развлечения</div>
+                    <div style="font-size: 12px; color: #98989D; margin-top: 5px;">4 500 ₽</div>
+                </div>
+            </div>
+            <div class="feature-highlight">
+                <strong>⭐ Избранные категории:</strong> Быстрый доступ к часто используемым
+            </div>
+        </div>
+
+        <!-- Goals Screen -->
+        <div class="screen" id="goals">
+            <div class="header">
+                <h1 style="font-size: 24px; font-weight: 600; margin-bottom: 5px; color: #FFFFFF;">🎯 Цели</h1>
+                <p style="font-size: 14px; color: #98989D;">Достигайте финансовых целей</p>
+            </div>
+            <div class="goal-card">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
+                    <div>
+                        <h3 style="font-size: 20px; margin-bottom: 5px;">Новый автомобиль</h3>
+                        <p style="opacity: 0.9; font-size: 14px;">Цель: 1 500 000 ₽</p>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.3); padding: 5px 10px; border-radius: 15px; font-size: 12px;">
+                        Уровень 2
+                    </div>
+                </div>
+                <div style="font-size: 24px; font-weight: bold; margin: 10px 0;">450 000 ₽</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 30%;"></div>
+                </div>
+                <p style="font-size: 12px; opacity: 0.9; margin-top: 10px;">Осталось: 1 050 000 ₽</p>
+            </div>
+            <div class="goal-card" style="background: linear-gradient(135deg, #4CAF50 0%, #8BC34A 100%);">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
+                    <div>
+                        <h3 style="font-size: 20px; margin-bottom: 5px;">Отпуск на море</h3>
+                        <p style="opacity: 0.9; font-size: 14px;">Цель: 150 000 ₽</p>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.3); padding: 5px 10px; border-radius: 15px; font-size: 12px;">
+                        Уровень 4
+                    </div>
+                </div>
+                <div style="font-size: 24px; font-weight: bold; margin: 10px 0;">120 000 ₽</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 80%;"></div>
+                </div>
+                <p style="font-size: 12px; opacity: 0.9; margin-top: 10px;">Осталось: 30 000 ₽</p>
+            </div>
+            <div class="feature-highlight">
+                <strong>🎮 Игровая механика:</strong> Уровни и прогресс для мотивации
+            </div>
+        </div>
+
+        <!-- Reports Screen -->
+        <div class="screen" id="reports">
+            <div class="header">
+                <h1 style="font-size: 24px; font-weight: 600; margin-bottom: 5px; color: #FFFFFF;">📊 Отчёты</h1>
+                <p style="font-size: 14px; color: #98989D;">Детальная аналитика</p>
+            </div>
+            <div class="card">
+                <h3 style="margin-bottom: 15px; color: #FFFFFF; font-weight: 600;">Статистика за месяц</h3>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div style="font-size: 12px; color: #98989D;">Доходы</div>
+                        <div class="stat-value">45 000 ₽</div>
+                    </div>
+                    <div class="stat-card">
+                        <div style="font-size: 12px; color: #98989D;">Расходы</div>
+                        <div class="stat-value" style="color: #f44336;">28 500 ₽</div>
+                    </div>
+                    <div class="stat-card">
+                        <div style="font-size: 12px; color: #98989D;">Баланс</div>
+                        <div class="stat-value" style="color: #4caf50;">+16 500 ₽</div>
+                    </div>
+                    <div class="stat-card">
+                        <div style="font-size: 12px; color: #98989D;">Транзакций</div>
+                        <div class="stat-value">42</div>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <h3 style="margin-bottom: 15px; color: #FFFFFF; font-weight: 600;">Топ категорий расходов</h3>
+                <div class="chart-container">
+                    <div style="text-align: center;">
+                        <div style="font-size: 48px; margin-bottom: 10px;">📊</div>
+                        <div style="color: #98989D;">Интерактивные графики</div>
+                        <div style="font-size: 12px; color: #98989D; margin-top: 5px;">Круговые, линейные, столбчатые</div>
+                    </div>
+                </div>
+            </div>
+            <div class="feature-highlight">
+                <strong>🤖 ИИ-аналитика:</strong> Умные рекомендации и прогнозы
+            </div>
+        </div>
+
+        <!-- Shared Budgets Screen -->
+        <div class="screen" id="shared">
+            <div class="header">
+                <h1 style="font-size: 24px; font-weight: 600; margin-bottom: 5px; color: #FFFFFF;">👥 Совместные бюджеты</h1>
+                <p style="font-size: 14px; color: #98989D;">Управление общими финансами</p>
+            </div>
+            <div class="card">
+                <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                    <div style="font-size: 32px; margin-right: 15px;">🏠</div>
+                    <div style="flex: 1;">
+                        <h3 style="color: #FFFFFF; margin-bottom: 5px; font-weight: 600;">Семейный бюджет</h3>
+                        <p style="font-size: 12px; color: #98989D;">3 участника • Администратор</p>
+                    </div>
+                </div>
+                <div style="font-size: 24px; font-weight: bold; color: #3390EC; margin-bottom: 15px;">125 000 ₽</div>
+                <div style="display: flex; gap: 10px;">
+                    <div style="flex: 1; background: #3A3A3C; padding: 10px; border-radius: 12px; text-align: center; border: 1px solid #38383A;">
+                        <div style="font-size: 12px; color: #98989D;">Доходы</div>
+                        <div style="font-weight: bold; color: #4CAF50;">+80 000 ₽</div>
+                    </div>
+                    <div style="flex: 1; background: #3A3A3C; padding: 10px; border-radius: 12px; text-align: center; border: 1px solid #38383A;">
+                        <div style="font-size: 12px; color: #98989D;">Расходы</div>
+                        <div style="font-weight: bold; color: #F44336;">-45 000 ₽</div>
+                    </div>
+                </div>
+            </div>
+            <div class="feature-highlight">
+                <strong>🔗 Приглашения:</strong> Приглашайте друзей по коду или ссылке
+            </div>
+        </div>
+
+        <!-- Navigation Menu -->
+        <div class="nav-menu">
+            <div class="nav-item active" onclick="showScreen('dashboard')">
+                <div class="icon">📊</div>
+                <div class="label">Дашборд</div>
+            </div>
+            <div class="nav-item" onclick="showScreen('accounts')">
+                <div class="icon">💳</div>
+                <div class="label">Счета</div>
+            </div>
+            <div class="nav-item" onclick="showScreen('transactions')">
+                <div class="icon">📝</div>
+                <div class="label">Транзакции</div>
+            </div>
+            <div class="nav-item" onclick="showScreen('categories')">
+                <div class="icon">📂</div>
+                <div class="label">Категории</div>
+            </div>
+            <div class="nav-item" onclick="showScreen('goals')">
+                <div class="icon">🎯</div>
+                <div class="label">Цели</div>
+            </div>
+            <div class="nav-item" onclick="showScreen('reports')">
+                <div class="icon">📊</div>
+                <div class="label">Отчёты</div>
+            </div>
+            <div class="nav-item" onclick="showScreen('shared')">
+                <div class="icon">👥</div>
+                <div class="label">Общие</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assistant -->
+    <div class="assistant" onclick="toggleAssistant()">
+        <img src="./images/1.png" alt="Ассистент" />
+        <img src="./images/2.png" alt="Ассистент" />
+        <img src="./images/3.png" alt="Ассистент" />
+        <img src="./images/4.png" alt="Ассистент" />
+        <img src="./images/5.png" alt="Ассистент" />
+    </div>
+    <div class="speech-bubble" id="speechBubble">
+        <div id="speechText">Привет! Я ваш бизнес-ассистент. Нажмите на меня, чтобы начать демонстрацию!</div>
+    </div>
+
+    <script>
+        let currentScreen = 'intro';
+        let demoStep = 0;
+        let isAutoPlaying = false;
+        const screens = ['intro', 'dashboard', 'accounts', 'transactions', 'categories', 'goals', 'reports', 'shared'];
+        const messages = {
+            intro: "Добро пожаловать! Я проведу вас по всем функциям Finance Manager. Нажмите 'Начать демонстрацию' для автоматического тура или выберите модуль в меню.",
+            dashboard: "Это главный экран - Дашборд. Здесь вы видите общий баланс, быстрые действия для добавления транзакций и последние операции. Всё в одном месте!",
+            accounts: "Модуль Счетов. Вы можете создавать неограниченное количество счетов: карты, наличные, электронные кошельки. Поддержка мультивалютности - RUB, USD, EUR, KZT.",
+            transactions: "История всех транзакций. Мощные фильтры по типу, дате, категории и счету. Легко находите нужные операции и управляйте ими.",
+            categories: "Категории помогают организовать ваши расходы. Создавайте свои категории с иконками и цветами. Отмечайте избранные для быстрого доступа.",
+            goals: "Финансовые цели с игровой механикой! Устанавливайте цели, отслеживайте прогресс по уровням. Мотивация достигать большего!",
+            reports: "Детальная аналитика и отчёты. Графики доходов и расходов, топ категорий, сравнение периодов. ИИ-ассистент даёт умные рекомендации.",
+            shared: "Совместные бюджеты для семьи или команды. Создавайте общие бюджеты, приглашайте участников, ведите совместный учёт финансов."
+        };
+
+        function showScreen(screenId) {
+            // Hide all screens
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+            
+            // Show selected screen
+            document.getElementById(screenId).classList.add('active');
+            currentScreen = screenId;
+            
+            // Update nav items
+            document.querySelectorAll('.nav-item').forEach((item, index) => {
+                item.classList.remove('active');
+                if (screens[index + 1] === screenId) {
+                    item.classList.add('active');
+                }
+            });
+            
+            // Show message
+            showMessage(messages[screenId]);
+        }
+
+        function showMessage(text) {
+            const bubble = document.getElementById('speechBubble');
+            const speechText = document.getElementById('speechText');
+            speechText.innerHTML = text;
+            bubble.classList.add('show');
+            
+            setTimeout(() => {
+                bubble.classList.remove('show');
+            }, 5000);
+        }
+
+        function toggleAssistant() {
+            const bubble = document.getElementById('speechBubble');
+            if (bubble.classList.contains('show')) {
+                bubble.classList.remove('show');
+            } else {
+                showMessage(messages[currentScreen]);
+            }
+        }
+
+        function startDemo() {
+            isAutoPlaying = true;
+            demoStep = 1;
+            showScreen('dashboard');
+            showMessage(messages.dashboard);
+            
+            // Auto-advance through screens
+            const autoAdvance = () => {
+                if (!isAutoPlaying) return;
+                
+                setTimeout(() => {
+                    if (demoStep < screens.length - 1) {
+                        demoStep++;
+                        showScreen(screens[demoStep]);
+                        showMessage(messages[screens[demoStep]]);
+                        autoAdvance();
+                    } else {
+                        // Loop back to dashboard
+                        demoStep = 1;
+                        showScreen('dashboard');
+                        showMessage("Демонстрация завершена! Вы можете свободно переключаться между модулями в меню.");
+                        isAutoPlaying = false;
+                    }
+                }, 6000); // 6 seconds per screen
+            };
+            
+            autoAdvance();
+        }
+
+        // Initialize
+        showMessage(messages.intro);
+        
+        // Add click handlers to action buttons for demo
+        document.querySelectorAll('.action-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                showMessage("Быстрые действия позволяют быстро добавить доход, расход или перевод прямо с главного экрана!");
+            });
+        });
+    </script>
+</body>
+</html>
+
