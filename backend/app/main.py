@@ -158,6 +158,14 @@ except Exception:
     # Column might already exist or table might not exist yet - that's ok
     pass
 
+# Log admin configuration on startup
+try:
+    from app.core.config import settings
+    migration_logger.info(f"Admin configuration loaded: ADMIN_TELEGRAM_IDS = {settings.ADMIN_TELEGRAM_IDS}")
+    migration_logger.info(f"Admin IDs type: {type(settings.ADMIN_TELEGRAM_IDS)}, count: {len(settings.ADMIN_TELEGRAM_IDS) if isinstance(settings.ADMIN_TELEGRAM_IDS, list) else 'N/A'}")
+except Exception as e:
+    migration_logger.warning(f"Failed to load admin configuration: {e}")
+
 # Create app
 app = FastAPI(
     title=settings.PROJECT_NAME,

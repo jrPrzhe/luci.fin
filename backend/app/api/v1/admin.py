@@ -8,7 +8,7 @@ from app.models.user import User
 from app.models.transaction import Transaction
 from app.models.account import Account
 from app.models.category import Category
-from app.api.v1.auth import get_current_admin
+from app.api.v1.auth import get_current_admin, get_current_user
 from app.schemas.user import UserResponse
 from pydantic import BaseModel
 
@@ -252,3 +252,40 @@ async def reset_user_settings(
             detail=f"Error resetting user settings: {str(e)}"
         )
 
+
+@router.post("/sync-admin-status")
+async def sync_admin_status(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Sync admin status for current user based on ADMIN_TELEGRAM_IDS
+    This endpoint can be called by any authenticated user to update their admin status
+    """
+    import logging
+    from app.core.config import settings
+    
+    logger = logging.getLogger(__name__)
+    
+    if not current_user.telegram_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This endpoint is only for Telegram users"
+        )
+    
+    should_be_admin = str(current_user.telegram_id) in settings.ADMIN_TELEGRAM_IDS
+    
+    logger.info(f"Syncing admin status for user {current_user.id}, telegram_id={current_user.telegram_id}, should_be_admin={should_be_admin}, current_is_admin={current_user.is_admin}")
+    
+    if current_user.is_admin != should_be_admin:
+        current_user.is_admin = should_be_admin
+        db.commit()
+        db.refresh(current_user)
+        logger.info(f"Updated admin status for user {current_user.id}: is_admin={should_be_admin}")
+    
+    return {
+        "is_admin": current_user.is_admin,
+        "telegram_id": current_user.telegram_id,
+        "in_admin_list": should_be_admin,
+        "admin_list": settings.ADMIN_TELEGRAM_IDS
+    }
