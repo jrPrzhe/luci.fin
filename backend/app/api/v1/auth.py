@@ -440,7 +440,14 @@ async def login_telegram(
             # Check if user is admin
             from app.core.config import settings
             is_admin = str(telegram_id) in settings.ADMIN_TELEGRAM_IDS
-            logger.info(f"New user admin check: telegram_id={telegram_id}, ADMIN_TELEGRAM_IDS={settings.ADMIN_TELEGRAM_IDS}, is_admin={is_admin}")
+            logger.info("=" * 60)
+            logger.info("ADMIN STATUS CHECK (New User)")
+            logger.info("=" * 60)
+            logger.info(f"telegram_id = {telegram_id} (type: {type(telegram_id)})")
+            logger.info(f"ADMIN_TELEGRAM_IDS = {settings.ADMIN_TELEGRAM_IDS} (type: {type(settings.ADMIN_TELEGRAM_IDS)})")
+            logger.info(f"str(telegram_id) in ADMIN_TELEGRAM_IDS = {is_admin}")
+            logger.info(f"✅ New user will be created with is_admin = {is_admin}")
+            logger.info("=" * 60)
             
             user = User(
                 email=email,
@@ -473,11 +480,21 @@ async def login_telegram(
             # Update admin status based on config
             from app.core.config import settings
             should_be_admin = str(telegram_id) in settings.ADMIN_TELEGRAM_IDS
-            logger.info(f"Checking admin status for telegram_id={telegram_id}, ADMIN_TELEGRAM_IDS={settings.ADMIN_TELEGRAM_IDS}, should_be_admin={should_be_admin}, current_is_admin={user.is_admin}")
+            logger.info("=" * 60)
+            logger.info("ADMIN STATUS CHECK (Existing User)")
+            logger.info("=" * 60)
+            logger.info(f"telegram_id = {telegram_id} (type: {type(telegram_id)})")
+            logger.info(f"ADMIN_TELEGRAM_IDS = {settings.ADMIN_TELEGRAM_IDS} (type: {type(settings.ADMIN_TELEGRAM_IDS)})")
+            logger.info(f"str(telegram_id) in ADMIN_TELEGRAM_IDS = {should_be_admin}")
+            logger.info(f"current_is_admin = {user.is_admin}")
+            logger.info(f"should_be_admin = {should_be_admin}")
             if user.is_admin != should_be_admin:
                 user.is_admin = should_be_admin
                 updated = True
-                logger.info(f"Updated admin status for user {user.id}: is_admin={should_be_admin}")
+                logger.info(f"✅ UPDATED: User {user.id} is_admin changed to {should_be_admin}")
+            else:
+                logger.info(f"ℹ️  No change needed: is_admin already {user.is_admin}")
+            logger.info("=" * 60)
         
         user.last_login = datetime.utcnow()
         db.commit()

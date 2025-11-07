@@ -161,10 +161,23 @@ except Exception:
 # Log admin configuration on startup
 try:
     from app.core.config import settings
-    migration_logger.info(f"Admin configuration loaded: ADMIN_TELEGRAM_IDS = {settings.ADMIN_TELEGRAM_IDS}")
-    migration_logger.info(f"Admin IDs type: {type(settings.ADMIN_TELEGRAM_IDS)}, count: {len(settings.ADMIN_TELEGRAM_IDS) if isinstance(settings.ADMIN_TELEGRAM_IDS, list) else 'N/A'}")
+    import logging
+    startup_logger = logging.getLogger(__name__)
+    startup_logger.setLevel(logging.INFO)
+    startup_logger.info("=" * 60)
+    startup_logger.info("ADMIN CONFIGURATION CHECK")
+    startup_logger.info("=" * 60)
+    startup_logger.info(f"ADMIN_TELEGRAM_IDS = {settings.ADMIN_TELEGRAM_IDS}")
+    startup_logger.info(f"Type: {type(settings.ADMIN_TELEGRAM_IDS)}")
+    startup_logger.info(f"Count: {len(settings.ADMIN_TELEGRAM_IDS) if isinstance(settings.ADMIN_TELEGRAM_IDS, list) else 'N/A'}")
+    if isinstance(settings.ADMIN_TELEGRAM_IDS, list):
+        for admin_id in settings.ADMIN_TELEGRAM_IDS:
+            startup_logger.info(f"  - Admin ID: {admin_id} (type: {type(admin_id)})")
+    startup_logger.info("=" * 60)
 except Exception as e:
-    migration_logger.warning(f"Failed to load admin configuration: {e}")
+    import logging
+    startup_logger = logging.getLogger(__name__)
+    startup_logger.error(f"Failed to load admin configuration: {e}", exc_info=True)
 
 # Create app
 app = FastAPI(

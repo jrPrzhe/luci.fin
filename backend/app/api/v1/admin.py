@@ -253,6 +253,7 @@ async def reset_user_settings(
         )
 
 
+@router.get("/sync-admin-status")
 @router.post("/sync-admin-status")
 async def sync_admin_status(
     current_user: User = Depends(get_current_user),
