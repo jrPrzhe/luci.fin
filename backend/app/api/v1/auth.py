@@ -174,18 +174,23 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
         
         categories = []
         for cat_data in DEFAULT_EXPENSE_CATEGORIES + DEFAULT_INCOME_CATEGORIES:
+            # Убеждаемся, что строки правильно кодированы в UTF-8
+            name = str(cat_data["name"]).encode('utf-8').decode('utf-8')
+            icon = str(cat_data["icon"]).encode('utf-8').decode('utf-8')
+            
             categories.append(Category(
                 user_id=db_user.id,
-                name=cat_data["name"],
+                name=name,
                 transaction_type=cat_data["transaction_type"],
-                icon=cat_data["icon"],
+                icon=icon,
                 color=cat_data["color"],
                 is_system=True,
                 is_active=True,
                 is_favorite=cat_data.get("is_favorite", False)
             ))
         
-        db.bulk_save_objects(categories)
+        # Используем add_all вместо bulk_save_objects для лучшей поддержки UTF-8
+        db.add_all(categories)
         db.commit()
     except Exception as e:
         # Log error but don't fail registration
@@ -560,18 +565,23 @@ async def login_telegram(
                 
                 categories = []
                 for cat_data in DEFAULT_EXPENSE_CATEGORIES + DEFAULT_INCOME_CATEGORIES:
+                    # Убеждаемся, что строки правильно кодированы в UTF-8
+                    name = str(cat_data["name"]).encode('utf-8').decode('utf-8')
+                    icon = str(cat_data["icon"]).encode('utf-8').decode('utf-8')
+                    
                     categories.append(Category(
                         user_id=user.id,
-                        name=cat_data["name"],
+                        name=name,
                         transaction_type=cat_data["transaction_type"],
-                        icon=cat_data["icon"],
+                        icon=icon,
                         color=cat_data["color"],
                         is_system=True,  # Базовые категории помечаются как системные
                         is_active=True,
                         is_favorite=cat_data.get("is_favorite", False)
                     ))
                 
-                db.bulk_save_objects(categories)
+                # Используем add_all вместо bulk_save_objects для лучшей поддержки UTF-8
+                db.add_all(categories)
                 db.commit()
                 logger.info(f"Default account and categories created for user {user.id}")
             except Exception as e:

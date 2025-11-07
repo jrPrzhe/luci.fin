@@ -13,11 +13,19 @@ if settings.DATABASE_URL.startswith("sqlite"):
         echo=False  # Set to True for SQL debugging
     )
 else:
+    # Оптимизация для сервера с ограниченными ресурсами (0.5ГБ RAM)
+    # На сервере max_connections = 20, поэтому ограничиваем пул соединений
     engine = create_engine(
         settings.DATABASE_URL,
         pool_pre_ping=True,
-        pool_size=10,
-        max_overflow=20
+        pool_size=5,  # Уменьшено с 10 для сервера с ограниченной памятью
+        max_overflow=5,  # Уменьшено с 20 для соответствия max_connections на сервере
+        pool_recycle=3600,  # Переиспользование соединений через час
+        connect_args={
+            "connect_timeout": 10,  # Таймаут подключения 10 секунд
+            "client_encoding": "utf8"  # Явно указываем UTF-8 кодировку
+        },
+        echo=False  # Set to True for SQL debugging
     )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
