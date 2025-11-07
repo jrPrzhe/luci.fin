@@ -23,9 +23,33 @@ Telegram бот работает в режиме **polling** - это означ
 3. Выберите **Deploy from GitHub repo**
 4. Выберите тот же репозиторий (`luci.fin`)
 5. **ВАЖНО:** После выбора репозитория:
-   - В настройках найдите **Root Directory**
-   - Установите значение: `telegram-bot`
-   - Это критически важно! Без этого Railway не найдет файлы бота
+   - Railway может предложить настройки сразу
+   - Если видите опцию **Root Directory**, установите: `telegram-bot`
+   - Если не видите опцию сразу, продолжите - настроим позже
+
+### Шаг 1.5: Настройте Root Directory (КРИТИЧЕСКИ ВАЖНО!)
+
+**Если Root Directory не установлен, вы получите ошибку:**
+```
+ERROR: "/requirements.txt": not found
+```
+
+**Как установить Root Directory:**
+
+**Способ 1: Через Settings → Source**
+1. Откройте созданный сервис для бота
+2. Перейдите в **Settings** (Настройки)
+3. В правом меню найдите **Source** (или **Quick Links** → **Source**)
+4. В разделе **Source** найдите поле **Root Directory**
+5. Установите значение: `telegram-bot`
+6. Нажмите **Save** или **Apply changes**
+
+**Способ 2: Если Root Directory не видно**
+1. В Settings → **Build** проверьте настройки Builder
+2. Root Directory может быть в других настройках
+3. Если не можете найти, попробуйте пересоздать сервис и указать Root Directory при создании
+
+**Важно:** После установки Root Directory Railway автоматически перезапустит деплой
 
 ### Шаг 2: Настройте Builder
 
@@ -144,12 +168,36 @@ python-3.11.0
 2. Убедитесь что backend запущен и доступен
 3. Проверьте что backend не требует авторизации для health check (эндпоинт `/health`)
 
-### Ошибка: "requirements.txt not found"
+### Ошибка: "requirements.txt not found" / "/requirements.txt": not found
+
+**Симптомы:**
+```
+ERROR: failed to build: failed to solve: failed to compute cache key: 
+failed to calculate checksum of ref ... "/requirements.txt": not found
+```
+
+**Причина:** Root Directory не установлен или установлен неправильно.
 
 **Решение:**
-1. Убедитесь что **Root Directory** установлен в `telegram-bot`
-2. Проверьте что файл `telegram-bot/requirements.txt` существует в репозитории
-3. Проверьте что файл закоммичен и запушен в GitHub
+1. ✅ **Проверьте Root Directory:**
+   - Settings → Source → Root Directory должен быть: `telegram-bot`
+   - Если пусто или другое значение - установите `telegram-bot`
+
+2. ✅ **Проверьте что файлы существуют:**
+   - Убедитесь что файл `telegram-bot/requirements.txt` существует в репозитории
+   - Проверьте что файл закоммичен и запушен в GitHub
+
+3. ✅ **Перезапустите деплой:**
+   - После изменения Root Directory нажмите **Redeploy**
+   - Или Railway автоматически перезапустит после сохранения
+
+4. ✅ **Проверьте настройки Builder:**
+   - Settings → Build → Builder должен быть: **Dockerfile**
+   - Dockerfile Path должен быть: `Dockerfile` (или пусто, если Root Directory = `telegram-bot`)
+
+**Если проблема сохраняется:**
+- Попробуйте пересоздать сервис
+- При создании сразу укажите Root Directory: `telegram-bot`
 
 ### Ошибка: "Dockerfile not found"
 

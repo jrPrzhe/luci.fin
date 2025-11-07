@@ -57,3 +57,7 @@ Dockerfile в корне использует пути `backend/`:
 - Railway использует корень как build context
 - Dockerfile копирует файлы из `backend/` явно
 
+
+
+
+

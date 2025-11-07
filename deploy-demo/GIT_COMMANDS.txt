@@ -1,0 +1,42 @@
+═══════════════════════════════════════════════════════════════
+  КОМАНДЫ ДЛЯ ДЕПЛОЯ В ПРОДАКШН
+═══════════════════════════════════════════════════════════════
+
+Выполните эти команды по порядку:
+
+1. Клонируйте репозиторий (если еще не клонирован):
+   cd E:\finance-manager
+   git clone https://github.com/jrPrzhe/demo0811.git
+
+2. Перейдите в репозиторий:
+   cd demo0811
+
+3. Обновите репозиторий:
+   git fetch origin
+   git checkout main
+   git pull origin main
+
+4. Скопируйте файлы из deploy-demo:
+   copy ..\finance-manager\deploy-demo\index.html index.html
+   copy ..\finance-manager\deploy-demo\1.png 1.png
+   copy ..\finance-manager\deploy-demo\2.png 2.png
+   copy ..\finance-manager\deploy-demo\3.png 3.png
+   copy ..\finance-manager\deploy-demo\4.png 4.png
+   copy ..\finance-manager\deploy-demo\5.png 5.png
+
+5. Добавьте файлы в git:
+   git add .
+
+6. Создайте коммит:
+   git commit -m "Update demo: assistant on each screen with different positions"
+
+7. Отправьте изменения:
+   git push origin main
+
+═══════════════════════════════════════════════════════════════
+
+После пуша демо будет доступно через 1-2 минуты на:
+https://jrprzhe.github.io/demo0811/
+
+═══════════════════════════════════════════════════════════════
+

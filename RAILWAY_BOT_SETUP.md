@@ -159,3 +159,7 @@ BACKEND_URL=https://your-backend-production.up.railway.app
 
 **Если проблема сохраняется:** Проверьте логи на Railway и убедитесь, что переменные окружения установлены правильно.
 
+
+
+
+

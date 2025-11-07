@@ -31,6 +31,7 @@ class User(Base):
     # Account status
     is_active = Column(Boolean, default=True)
     is_verified = Column(Boolean, default=False)
+    is_admin = Column(Boolean, default=False)
     verification_token = Column(String(255), nullable=True)
     
     # Timestamps

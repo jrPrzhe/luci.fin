@@ -1,0 +1,254 @@
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from sqlalchemy import func
+from typing import List, Optional
+from datetime import datetime
+from app.core.database import get_db
+from app.models.user import User
+from app.models.transaction import Transaction
+from app.models.account import Account
+from app.models.category import Category
+from app.api.v1.auth import get_current_admin
+from app.schemas.user import UserResponse
+from pydantic import BaseModel
+
+router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+class UserStatsResponse(BaseModel):
+    id: int
+    email: str
+    username: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    telegram_id: Optional[str] = None
+    telegram_username: Optional[str] = None
+    created_at: datetime
+    last_login: Optional[datetime] = None
+    transaction_count: int
+    account_count: int
+    category_count: int
+    is_active: bool
+    is_verified: bool
+    
+    model_config = {"from_attributes": True}
+
+
+@router.get("/users", response_model=List[UserStatsResponse])
+async def get_all_users(
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Get list of all users with statistics
+    Only accessible by admins
+    """
+    # Get all users with their statistics
+    users = db.query(User).all()
+    
+    result = []
+    for user in users:
+        # Count transactions
+        transaction_count = db.query(func.count(Transaction.id)).filter(
+            Transaction.user_id == user.id
+        ).scalar() or 0
+        
+        # Count accounts
+        account_count = db.query(func.count(Account.id)).filter(
+            Account.user_id == user.id
+        ).scalar() or 0
+        
+        # Count categories
+        category_count = db.query(func.count(Category.id)).filter(
+            Category.user_id == user.id
+        ).scalar() or 0
+        
+        result.append(UserStatsResponse(
+            id=user.id,
+            email=user.email,
+            username=user.username,
+            first_name=user.first_name,
+            last_name=user.last_name,
+            telegram_id=user.telegram_id,
+            telegram_username=user.telegram_username,
+            created_at=user.created_at,
+            last_login=user.last_login,
+            transaction_count=transaction_count,
+            account_count=account_count,
+            category_count=category_count,
+            is_active=user.is_active,
+            is_verified=user.is_verified
+        ))
+    
+    return result
+
+
+@router.post("/users/{user_id}/reset", response_model=UserResponse)
+async def reset_user_settings(
+    user_id: int,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Reset user settings to factory defaults
+    Only accessible by admins
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    # Get target user
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    try:
+        from app.models.account import Account, AccountType
+        from app.models.category import Category, TransactionType
+        from app.models.shared_budget import SharedBudgetMember, SharedBudget
+        
+        logger.info(f"Admin {current_admin.id} resetting user {user_id} settings")
+        
+        # Get user's accounts first to get account IDs
+        user_accounts = db.query(Account).filter(Account.user_id == target_user.id).all()
+        account_ids = [acc.id for acc in user_accounts]
+        accounts_count = len(account_ids)
+        
+        # Delete all transactions first
+        transactions_count = db.query(Transaction).filter(
+            Transaction.user_id == target_user.id
+        ).count()
+        db.query(Transaction).filter(
+            Transaction.user_id == target_user.id
+        ).delete(synchronize_session=False)
+        logger.info(f"Deleted {transactions_count} transactions")
+        
+        # Delete all accounts
+        if account_ids:
+            db.query(Account).filter(Account.id.in_(account_ids)).delete(synchronize_session=False)
+        logger.info(f"Deleted {accounts_count} accounts")
+        
+        # Delete all categories
+        categories_count = db.query(Category).filter(Category.user_id == target_user.id).count()
+        db.query(Category).filter(Category.user_id == target_user.id).delete(synchronize_session=False)
+        logger.info(f"Deleted {categories_count} categories")
+        
+        # Delete all tags
+        from app.models.tag import Tag
+        tags_count = db.query(Tag).filter(Tag.user_id == target_user.id).count()
+        db.query(Tag).filter(Tag.user_id == target_user.id).delete(synchronize_session=False)
+        logger.info(f"Deleted {tags_count} tags")
+        
+        # Delete all goals
+        from app.models.goal import Goal
+        goals_count = db.query(Goal).filter(Goal.user_id == target_user.id).count()
+        db.query(Goal).filter(Goal.user_id == target_user.id).delete(synchronize_session=False)
+        logger.info(f"Deleted {goals_count} goals")
+        
+        # Delete all reports
+        from app.models.report import Report
+        reports_count = db.query(Report).filter(Report.user_id == target_user.id).count()
+        db.query(Report).filter(Report.user_id == target_user.id).delete(synchronize_session=False)
+        logger.info(f"Deleted {reports_count} reports")
+        
+        # Handle shared budgets
+        shared_budget_members = db.query(SharedBudgetMember).filter(
+            SharedBudgetMember.user_id == target_user.id
+        ).all()
+        
+        for member in shared_budget_members:
+            budget = db.query(SharedBudget).filter(SharedBudget.id == member.shared_budget_id).first()
+            if budget and budget.created_by == target_user.id:
+                # If user created the budget, delete the entire budget
+                db.query(SharedBudgetMember).filter(
+                    SharedBudgetMember.shared_budget_id == budget.id
+                ).delete()
+                db.query(SharedBudget).filter(SharedBudget.id == budget.id).delete()
+                logger.info(f"Deleted shared budget {budget.id} (user was creator)")
+            else:
+                # Just remove user from the budget
+                db.delete(member)
+                logger.info(f"Removed user from shared budget {member.shared_budget_id}")
+        
+        # Reset user settings to defaults (but keep authentication data)
+        target_user.first_name = None
+        target_user.last_name = None
+        target_user.timezone = "UTC"
+        target_user.default_currency = "RUB" if target_user.telegram_id else "USD"
+        target_user.language = "en"
+        target_user.is_2fa_enabled = False
+        target_user.two_factor_secret = None
+        target_user.backup_codes = None
+        
+        # Commit all deletions first
+        db.commit()
+        logger.info("All deletions committed")
+        
+        # Create default account
+        default_account = Account(
+            user_id=target_user.id,
+            name="Основной счёт",
+            account_type=AccountType.CASH,
+            currency=target_user.default_currency,
+            initial_balance=0.0,
+            is_active=True,
+            description="Автоматически созданный счёт"
+        )
+        db.add(default_account)
+        db.flush()
+        logger.info(f"Created default account: {default_account.name}")
+        
+        # Create default categories
+        DEFAULT_EXPENSE_CATEGORIES = [
+            {"name": "Продукты", "icon": "🛒", "color": "#3390EC"},
+            {"name": "Транспорт", "icon": "🚗", "color": "#4CAF50"},
+            {"name": "Жильё", "icon": "🏠", "color": "#FF9800"},
+            {"name": "Рестораны", "icon": "🍔", "color": "#9C27B0"},
+            {"name": "Здоровье", "icon": "💊", "color": "#F44336"},
+            {"name": "Развлечения", "icon": "🎮", "color": "#00BCD4"},
+        ]
+        
+        DEFAULT_INCOME_CATEGORIES = [
+            {"name": "Зарплата", "icon": "💰", "color": "#4CAF50"},
+            {"name": "Подарки", "icon": "🎁", "color": "#E91E63"},
+            {"name": "Инвестиции", "icon": "📈", "color": "#2196F3"},
+        ]
+        
+        for cat_data in DEFAULT_EXPENSE_CATEGORIES:
+            category = Category(
+                user_id=target_user.id,
+                name=cat_data["name"],
+                transaction_type=TransactionType.EXPENSE,
+                icon=cat_data["icon"],
+                color=cat_data["color"],
+                is_default=True
+            )
+            db.add(category)
+        
+        for cat_data in DEFAULT_INCOME_CATEGORIES:
+            category = Category(
+                user_id=target_user.id,
+                name=cat_data["name"],
+                transaction_type=TransactionType.INCOME,
+                icon=cat_data["icon"],
+                color=cat_data["color"],
+                is_default=True
+            )
+            db.add(category)
+        
+        db.commit()
+        db.refresh(target_user)
+        
+        logger.info(f"Successfully reset user {user_id} settings")
+        return UserResponse.model_validate(target_user)
+        
+    except Exception as e:
+        logger.error(f"Error resetting user settings: {str(e)}", exc_info=True)
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error resetting user settings: {str(e)}"
+        )
+

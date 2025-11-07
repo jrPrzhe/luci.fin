@@ -228,3 +228,6 @@ curl https://api.telegram.org/botYOUR_BOT_TOKEN/getWebhookInfo
 
 **Все готово! Бот автоматически переключится на webhook режим на Railway!** 🚀
 
+
+
+

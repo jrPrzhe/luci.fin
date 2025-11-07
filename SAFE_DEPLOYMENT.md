@@ -188,3 +188,7 @@ def downgrade():
 
 **Главное правило:** Никогда не используйте `Base.metadata.create_all()` в production! Всегда используйте миграции Alembic.
 
+
+
+
+

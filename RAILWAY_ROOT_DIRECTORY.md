@@ -95,3 +95,7 @@ Railway не может найти настройку **Root Directory** в ин
    - Создайте новый с Root Directory: `backend`
    - Railway автоматически определит проект
 
+
+
+
+

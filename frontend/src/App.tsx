@@ -15,6 +15,7 @@ import { Import } from './pages/Import'
 import { Onboarding } from './pages/Onboarding'
 import { Login } from './pages/Login'
 import { Register } from './pages/Register'
+import { Statistics } from './pages/Statistics'
 import { isTelegramWebApp, getInitData, getTelegramUser } from './utils/telegram'
 import { api } from './services/api'
 import { NewYearProvider } from './contexts/NewYearContext'
@@ -238,6 +239,7 @@ function App() {
             <Route path="reports" element={<Reports />} />
             <Route path="shared-budgets" element={<SharedBudgets />} />
             <Route path="profile" element={<Profile />} />
+            <Route path="statistics" element={<Statistics />} />
             <Route path="import" element={<Import />} />
             <Route path="about" element={<About />} />
           </Route>

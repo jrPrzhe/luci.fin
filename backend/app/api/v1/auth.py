@@ -80,6 +80,18 @@ def get_current_user(
     return user
 
 
+def get_current_admin(
+    current_user: User = Depends(get_current_user)
+) -> User:
+    """Get current user and verify admin status"""
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+    return current_user
+
+
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     """Register a new user"""
@@ -425,6 +437,10 @@ async def login_telegram(
                 email = f"tg_{telegram_id}_{counter}@telegram.local"
                 counter += 1
             
+            # Check if user is admin
+            from app.core.config import settings
+            is_admin = str(telegram_id) in settings.ADMIN_TELEGRAM_IDS
+            
             user = User(
                 email=email,
                 username=username,
@@ -434,6 +450,7 @@ async def login_telegram(
                 last_name=last_name,
                 is_active=True,
                 is_verified=True,  # Telegram users are considered verified
+                is_admin=is_admin,  # Set admin status based on config
                 default_currency="RUB",  # Default currency for Telegram users
             )
             db.add(user)
@@ -450,6 +467,13 @@ async def login_telegram(
                 updated = True
             if last_name and user.last_name != last_name:
                 user.last_name = last_name
+                updated = True
+            
+            # Update admin status based on config
+            from app.core.config import settings
+            should_be_admin = str(telegram_id) in settings.ADMIN_TELEGRAM_IDS
+            if user.is_admin != should_be_admin:
+                user.is_admin = should_be_admin
                 updated = True
         
         user.last_login = datetime.utcnow()

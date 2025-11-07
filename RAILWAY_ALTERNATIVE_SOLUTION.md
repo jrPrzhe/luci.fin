@@ -62,3 +62,7 @@ luci.fin/ (корень репозитория = build context)
 2. Установите Root Directory = `backend`
 3. Railway будет использовать `backend/Dockerfile`
 
+
+
+
+

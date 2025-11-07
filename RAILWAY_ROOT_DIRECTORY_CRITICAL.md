@@ -95,3 +95,7 @@ luci.fin/ (корень репозитория на GitHub)
 
 3. Пересоздайте сервис с Root Directory = `backend`
 
+
+
+
+

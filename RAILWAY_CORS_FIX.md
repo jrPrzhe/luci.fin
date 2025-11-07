@@ -149,3 +149,7 @@ CORS_ORIGINS=http://localhost:5173,https://luci-fin.vercel.app
 
 **Примечание:** После изменения `CORS_ORIGINS` Railway автоматически перезапустит сервис. Подождите 1-2 минуты и проверьте логи.
 
+
+
+
+

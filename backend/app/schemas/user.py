@@ -48,6 +48,7 @@ class UserResponse(UserBase):
     telegram_username: Optional[str] = None
     is_active: bool
     is_verified: bool
+    is_admin: bool = False
     is_2fa_enabled: bool
     created_at: datetime
     last_login: Optional[datetime] = None

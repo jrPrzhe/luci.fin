@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     # Telegram
     TELEGRAM_BOT_TOKEN: str = ""
     TELEGRAM_WEBHOOK_URL: str = ""
+    ADMIN_TELEGRAM_IDS: Union[List[str], str] = Field(
+        default=[],
+        description="List of Telegram IDs that should have admin access"
+    )
     
     # External APIs
     EXCHANGE_RATE_API_KEY: str = ""
@@ -75,6 +79,27 @@ class Settings(BaseSettings):
             if v.strip():
                 origins = [origin.strip() for origin in v.split(',') if origin.strip()]
                 return origins
+            return []
+        elif isinstance(v, list):
+            return v
+        return []
+    
+    @field_validator('ADMIN_TELEGRAM_IDS', mode='before')
+    @classmethod
+    def parse_admin_ids(cls, v):
+        if isinstance(v, str):
+            # Try to parse as JSON first
+            try:
+                parsed = json.loads(v)
+                if isinstance(parsed, list):
+                    return parsed
+            except (json.JSONDecodeError, ValueError):
+                pass
+            
+            # If not JSON, parse as comma-separated string
+            if v.strip():
+                ids = [id.strip() for id in v.split(',') if id.strip()]
+                return ids
             return []
         elif isinstance(v, list):
             return v

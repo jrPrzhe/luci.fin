@@ -649,6 +649,32 @@ class ApiClient {
     return this.request(`/api/v1/reports/analytics?period=${period}`)
   }
 
+  // Admin API
+  async getAdminUsers(): Promise<Array<{
+    id: number
+    email: string
+    username: string | null
+    first_name: string | null
+    last_name: string | null
+    telegram_id: string | null
+    telegram_username: string | null
+    created_at: string
+    last_login: string | null
+    transaction_count: number
+    account_count: number
+    category_count: number
+    is_active: boolean
+    is_verified: boolean
+  }>> {
+    return this.request('/api/v1/admin/users')
+  }
+
+  async resetUserSettings(userId: number): Promise<any> {
+    return this.request(`/api/v1/admin/users/${userId}/reset`, {
+      method: 'POST',
+    })
+  }
+
   // Import API
   async getImportSources(): Promise<Array<{ id: string; name: string; description: string }>> {
     return this.request('/api/v1/import/sources')

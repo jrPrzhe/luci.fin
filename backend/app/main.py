@@ -143,6 +143,21 @@ except Exception:
     # Column might already exist or table might not exist yet - that's ok
     pass
 
+# Ensure is_admin column exists in users table (migration helper)
+try:
+    from sqlalchemy import inspect, text
+    inspector = inspect(engine)
+    if inspector.has_table('users'):
+        columns = [col['name'] for col in inspector.get_columns('users')]
+        if 'is_admin' not in columns:
+            # Add column if missing
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT 0"))
+                migration_logger.info("Added is_admin column to users table")
+except Exception:
+    # Column might already exist or table might not exist yet - that's ok
+    pass
+
 # Create app
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -194,7 +209,7 @@ async def health_check():
 
 
 # Import and include routers
-from app.api.v1 import auth, transactions, accounts, shared_budgets, ai, categories, reports, goals
+from app.api.v1 import auth, transactions, accounts, shared_budgets, ai, categories, reports, goals, admin
 from app.api.v1 import import_data as import_router
 
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
@@ -206,6 +221,7 @@ app.include_router(categories.router, prefix="/api/v1/categories", tags=["Catego
 app.include_router(reports.router, prefix="/api/v1/reports", tags=["Reports"])
 app.include_router(goals.router, prefix="/api/v1/goals", tags=["Goals"])
 app.include_router(import_router.router, prefix="/api/v1/import", tags=["Import"])
+app.include_router(admin.router, prefix="/api/v1", tags=["Admin"])
 
 if __name__ == "__main__":
     import uvicorn

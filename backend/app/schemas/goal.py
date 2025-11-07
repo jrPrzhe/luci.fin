@@ -64,3 +64,7 @@ class GoalRoadmapResponse(BaseModel):
     savings_by_category: Dict[str, Decimal] = {}
     estimated_months: int
 
+
+
+
+
