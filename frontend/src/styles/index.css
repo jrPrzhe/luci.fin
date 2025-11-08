@@ -168,32 +168,6 @@
   }
 }
 
-@keyframes icicle-drip {
-  0%, 100% {
-    opacity: 0.8;
-    transform: translateX(-50%) scaleY(1);
-  }
-  50% {
-    opacity: 1;
-    transform: translateX(-50%) scaleY(1.05);
-  }
-}
-
-@keyframes icicle-drop {
-  0% {
-    opacity: 0;
-    transform: translateX(-50%) translateY(0);
-  }
-  50% {
-    opacity: 0.6;
-    transform: translateX(-50%) translateY(2px);
-  }
-  100% {
-    opacity: 0;
-    transform: translateX(-50%) translateY(4px);
-  }
-}
-
 /* Новогодний режим - легкие акценты */
 .new-year-mode {
   position: relative;

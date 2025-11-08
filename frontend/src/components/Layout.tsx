@@ -6,7 +6,6 @@ import { Welcome } from './Welcome'
 import { Stories } from './Stories'
 import { SnowEffect } from './SnowEffect'
 import { Garland } from './Garland'
-import { Icicles } from './Icicles'
 import { useNewYearTheme } from '../contexts/NewYearContext'
 import { useTheme } from '../hooks/useTheme'
 
@@ -252,9 +251,6 @@ export function Layout() {
       {/* Гирлянда в верхнем меню */}
       {newYearEnabled && <Garland />}
       
-      {/* Сосульки в нижнем меню */}
-      {newYearEnabled && <Icicles />}
-      
       {/* Desktop Sidebar - скрыт на мобильных */}
       <aside className="hidden md:flex w-64 flex-col bg-telegram-surface dark:bg-telegram-dark-surface border-r border-telegram-border dark:border-telegram-dark-border">
         <div className="p-4 border-b border-telegram-border dark:border-telegram-dark-border">
@@ -432,8 +428,8 @@ export function Layout() {
 
       {/* Mobile Bottom Navigation - только в Mini App на мобильных */}
       {isMiniApp && (
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-telegram-surface dark:bg-telegram-dark-surface border-t border-telegram-border dark:border-telegram-dark-border px-2 py-2 safe-area-inset-bottom z-30">
-          <div className="flex items-center justify-around relative">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-telegram-surface dark:bg-telegram-dark-surface border-t border-telegram-border dark:border-telegram-dark-border px-2 py-2 safe-area-inset-bottom">
+          <div className="flex items-center justify-around">
             {/* Дашборд, Транзакции, Счета, Отчёты (вместо Категорий) */}
             {navItems.filter(item => 
               item.path === '/' || 
