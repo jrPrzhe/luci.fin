@@ -94,15 +94,15 @@ try:
             print("[STARTUP] Migrations completed", file=sys.stderr, flush=True)
             migration_logger.info("Database migrations applied successfully")
         except Exception as e:
-        # Log but don't fail startup if migrations fail
-        # This allows the app to start even if there are migration issues
-        print(f"[STARTUP] WARNING: Migration failed (non-fatal): {e}", file=sys.stderr, flush=True)
-        import traceback
-        traceback.print_exc(file=sys.stderr)
-        migration_logger.warning(f"Could not run migrations automatically: {e}")
-        migration_logger.warning("You may need to run 'alembic upgrade head' manually")
-else:
-    print("[STARTUP] Skipping migrations", file=sys.stderr, flush=True)
+            # Log but don't fail startup if migrations fail
+            # This allows the app to start even if there are migration issues
+            print(f"[STARTUP] WARNING: Migration failed (non-fatal): {e}", file=sys.stderr, flush=True)
+            import traceback
+            traceback.print_exc(file=sys.stderr)
+            migration_logger.warning(f"Could not run migrations automatically: {e}")
+            migration_logger.warning("You may need to run 'alembic upgrade head' manually")
+    else:
+        print("[STARTUP] Skipping migrations", file=sys.stderr, flush=True)
 
 # Ensure invite_code column exists (migration helper)
 print("[STARTUP] Checking database schema...", file=sys.stderr, flush=True)
