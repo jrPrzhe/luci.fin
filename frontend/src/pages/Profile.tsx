@@ -21,7 +21,22 @@ export function Profile() {
     queryKey: ['currentUser'],
     queryFn: async () => {
       try {
-        return await api.getCurrentUser()
+        const userData = await api.getCurrentUser()
+        // Синхронизируем статус админа для Telegram пользователей
+        if (userData?.telegram_id && !userData?.is_admin) {
+          try {
+            const syncResponse = await api.syncAdminStatus()
+            if (syncResponse?.is_admin) {
+              // Обновляем данные пользователя после синхронизации
+              queryClient.setQueryData(['currentUser'], { ...userData, is_admin: true })
+              return { ...userData, is_admin: true }
+            }
+          } catch (syncError) {
+            // Игнорируем ошибки синхронизации
+            console.log('Admin sync failed:', syncError)
+          }
+        }
+        return userData
       } catch {
         return null
       }
@@ -223,18 +238,18 @@ export function Profile() {
           {user?.is_admin && (
             <button
               onClick={() => navigate('/statistics')}
-              className="w-full flex items-center justify-between p-3 rounded-telegram hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors text-left"
+              className="w-full flex items-center justify-between p-4 rounded-telegram bg-telegram-primary/10 dark:bg-telegram-dark-primary/10 hover:bg-telegram-primary/20 dark:hover:bg-telegram-dark-primary/20 transition-colors text-left border border-telegram-primary/20 dark:border-telegram-dark-primary/20"
             >
               <div className="flex items-center gap-3">
                 <span className="text-2xl">📊</span>
                 <div>
-                  <p className="font-medium text-telegram-text dark:text-telegram-dark-text">Статистика</p>
+                  <p className="font-semibold text-telegram-text dark:text-telegram-dark-text">Статистика пользователей</p>
                   <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-                    Статистика всех пользователей
+                    Просмотр статистики всех пользователей системы
                   </p>
                 </div>
               </div>
-              <span className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">→</span>
+              <span className="text-telegram-primary dark:text-telegram-dark-primary text-xl">→</span>
             </button>
           )}
           <button

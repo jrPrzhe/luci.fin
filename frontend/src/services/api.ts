@@ -306,6 +306,18 @@ class ApiClient {
     return this.request<any>('/api/v1/auth/me')
   }
 
+  async syncAdminStatus() {
+    return this.request<{
+      is_admin: boolean
+      email: string
+      telegram_id: string | null
+      in_admin_list: boolean
+      admin_list: string[] | null
+    }>('/api/v1/admin/sync-admin-status', {
+      method: 'POST',
+    })
+  }
+
   async updateUser(userData: {
     first_name?: string
     last_name?: string
