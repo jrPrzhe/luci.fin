@@ -2,23 +2,6 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../services/api'
 
-interface UserStats {
-  id: number
-  email: string
-  username: string | null
-  first_name: string | null
-  last_name: string | null
-  telegram_id: string | null
-  telegram_username: string | null
-  created_at: string
-  last_login: string | null
-  transaction_count: number
-  account_count: number
-  category_count: number
-  is_active: boolean
-  is_verified: boolean
-}
-
 export function Statistics() {
   const queryClient = useQueryClient()
   const [resetUserId, setResetUserId] = useState<number | null>(null)
@@ -62,7 +45,7 @@ export function Statistics() {
     })
   }
 
-  const getActivityLevel = (transactionCount: number, lastLogin: string | null) => {
+  const getActivityLevel = (lastLogin: string | null) => {
     if (!lastLogin) return { level: 'Неактивен', color: 'text-gray-500' }
     
     const daysSinceLogin = Math.floor(
@@ -175,7 +158,7 @@ export function Statistics() {
               </thead>
               <tbody>
                 {users?.map((user) => {
-                  const activity = getActivityLevel(user.transaction_count, user.last_login)
+                  const activity = getActivityLevel(user.last_login)
                   const userName = user.first_name && user.last_name
                     ? `${user.first_name} ${user.last_name}`
                     : user.first_name || user.last_name || user.username || user.email.split('@')[0]
@@ -235,4 +218,5 @@ export function Statistics() {
     </div>
   )
 }
+
 
