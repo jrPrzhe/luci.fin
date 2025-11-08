@@ -22,22 +22,36 @@ export function Profile() {
     queryFn: async () => {
       try {
         const userData = await api.getCurrentUser()
-        // Синхронизируем статус админа для Telegram пользователей
-        if (userData?.telegram_id && !userData?.is_admin) {
+        console.log('[Profile] User data loaded:', { 
+          id: userData?.id, 
+          email: userData?.email, 
+          telegram_id: userData?.telegram_id,
+          is_admin: userData?.is_admin 
+        })
+        
+        // Синхронизируем статус админа для всех пользователей (не только Telegram)
+        if (userData && !userData.is_admin) {
           try {
+            console.log('[Profile] Attempting to sync admin status...')
             const syncResponse = await api.syncAdminStatus()
+            console.log('[Profile] Sync response:', syncResponse)
             if (syncResponse?.is_admin) {
               // Обновляем данные пользователя после синхронизации
-              queryClient.setQueryData(['currentUser'], { ...userData, is_admin: true })
-              return { ...userData, is_admin: true }
+              const updatedUser = { ...userData, is_admin: true }
+              queryClient.setQueryData(['currentUser'], updatedUser)
+              console.log('[Profile] Admin status updated to true')
+              return updatedUser
             }
           } catch (syncError) {
-            // Игнорируем ошибки синхронизации
-            console.log('Admin sync failed:', syncError)
+            // Игнорируем ошибки синхронизации, но логируем
+            console.log('[Profile] Admin sync failed:', syncError)
           }
         }
+        
+        console.log('[Profile] Returning user data:', { is_admin: userData?.is_admin })
         return userData
-      } catch {
+      } catch (error) {
+        console.error('[Profile] Error loading user:', error)
         return null
       }
     },
@@ -235,7 +249,14 @@ export function Profile() {
           Настройки
         </h2>
         <div className="space-y-3">
-          {user?.is_admin && (
+          {/* Отладочная информация (можно удалить после проверки) */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="text-xs text-gray-500 p-2 bg-gray-100 dark:bg-gray-800 rounded">
+              Debug: is_admin = {String(user?.is_admin)}, user_id = {user?.id}
+            </div>
+          )}
+          
+          {user?.is_admin ? (
             <button
               onClick={() => navigate('/statistics')}
               className="w-full flex items-center justify-between p-4 rounded-telegram bg-telegram-primary/10 dark:bg-telegram-dark-primary/10 hover:bg-telegram-primary/20 dark:hover:bg-telegram-dark-primary/20 transition-colors text-left border border-telegram-primary/20 dark:border-telegram-dark-primary/20"
@@ -250,6 +271,33 @@ export function Profile() {
                 </div>
               </div>
               <span className="text-telegram-primary dark:text-telegram-dark-primary text-xl">→</span>
+            </button>
+          ) : user && (
+            <button
+              onClick={async () => {
+                try {
+                  console.log('[Profile] Manual admin sync triggered')
+                  const syncResponse = await api.syncAdminStatus()
+                  console.log('[Profile] Manual sync response:', syncResponse)
+                  if (syncResponse?.is_admin) {
+                    queryClient.invalidateQueries({ queryKey: ['currentUser'] })
+                  }
+                } catch (error) {
+                  console.error('[Profile] Manual sync error:', error)
+                }
+              }}
+              className="w-full flex items-center justify-between p-3 rounded-telegram hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors text-left border border-yellow-500/20 bg-yellow-500/5"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">🔄</span>
+                <div>
+                  <p className="font-medium text-telegram-text dark:text-telegram-dark-text">Синхронизировать статус админа</p>
+                  <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+                    Обновить права администратора
+                  </p>
+                </div>
+              </div>
+              <span className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">→</span>
             </button>
           )}
           <button
