@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
+import { SnowPile } from '../components/SnowPile'
+import { useNewYearTheme } from '../contexts/NewYearContext'
 
 interface Account {
   id: number
@@ -306,8 +308,18 @@ export function Dashboard() {
     }
   }
 
+  const { isEnabled: newYearEnabled } = useNewYearTheme()
+
   return (
-    <div className="min-h-screen p-4 md:p-6 animate-fade-in max-w-4xl mx-auto w-full">
+    <div className="min-h-screen p-4 md:p-6 animate-fade-in max-w-4xl mx-auto w-full relative">
+      {/* Снежные кучки на странице */}
+      {newYearEnabled && (
+        <>
+          <SnowPile className="top-20 right-4 md:right-8" size="small" />
+          <SnowPile className="top-40 left-4 md:left-8" size="small" />
+        </>
+      )}
+
       {/* Header - скрыт на мобильных, так как есть в Layout */}
       <div className="mb-4 md:mb-6 hidden md:block">
         <h1 className="text-2xl font-semibold text-telegram-text dark:text-telegram-dark-text mb-1">
@@ -319,7 +331,11 @@ export function Dashboard() {
       </div>
 
       {/* Balance Card - Hero */}
-      <div className="card mb-4 md:mb-6 bg-gradient-to-br from-telegram-primary dark:from-telegram-dark-primary to-telegram-primaryLight dark:to-telegram-dark-primaryLight text-white border-0 shadow-telegram-lg p-4 md:p-5">
+      <div className="card mb-4 md:mb-6 bg-gradient-to-br from-telegram-primary dark:from-telegram-dark-primary to-telegram-primaryLight dark:to-telegram-dark-primaryLight text-white border-0 shadow-telegram-lg p-4 md:p-5 relative overflow-hidden">
+        {/* Снежная кучка на карточке баланса */}
+        {newYearEnabled && (
+          <SnowPile className="bottom-2 right-2" size="small" />
+        )}
         <div className="flex items-center justify-between mb-3 md:mb-4">
           <div className="flex-1">
             <p className="text-xs md:text-sm opacity-90 mb-1">Общий баланс</p>
@@ -360,10 +376,14 @@ export function Dashboard() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-3 gap-2 md:gap-3 mb-4 md:mb-6">
+      <div className="grid grid-cols-3 gap-2 md:gap-3 mb-4 md:mb-6 relative">
+        {/* Снежная кучка на быстрых действиях */}
+        {newYearEnabled && (
+          <SnowPile className="top-2 left-1/2 -translate-x-1/2" size="small" />
+        )}
         <button 
           onClick={() => handleQuickAction('expense')}
-          className="card-compact flex flex-col items-center gap-1.5 md:gap-2 p-3 md:p-4 group active:scale-[0.98] transition-transform"
+          className="card-compact flex flex-col items-center gap-1.5 md:gap-2 p-3 md:p-4 group active:scale-[0.98] transition-transform relative"
         >
           <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-telegram-danger/10 flex items-center justify-center text-xl md:text-2xl group-active:bg-telegram-danger/20 transition-colors">
             ➖

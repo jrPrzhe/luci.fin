@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { api } from '../services/api'
+import { SnowPile } from '../components/SnowPile'
+import { useNewYearTheme } from '../contexts/NewYearContext'
 
 interface Account {
   id: number
@@ -144,8 +146,17 @@ export function Accounts() {
     )
   }
 
+  const { isEnabled: newYearEnabled } = useNewYearTheme()
+
   return (
-    <div className="p-8">
+    <div className="p-8 relative">
+      {/* Снежные кучки на странице */}
+      {newYearEnabled && (
+        <>
+          <SnowPile className="top-8 right-8" size="small" />
+          <SnowPile className="top-32 left-8" size="small" />
+        </>
+      )}
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-telegram-text dark:text-telegram-dark-text">Счета</h1>
         <button
