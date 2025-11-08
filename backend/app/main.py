@@ -56,53 +56,51 @@ print("[STARTUP] Models import completed, proceeding to migration checks...", fi
 
 print("[STARTUP] Starting migration checks...", file=sys.stderr, flush=True)
 
-# Обернем весь код после импорта моделей в try-except для диагностики
-try:
-    # Auto-apply migrations on startup (only in production/Railway)
+# Auto-apply migrations on startup (only in production/Railway)
     # This ensures database schema is up to date without losing data
     import os
     import logging
     migration_logger = logging.getLogger(__name__)
 
-    print("[STARTUP] Checking Railway environment...", file=sys.stderr, flush=True)
-    railway_env = os.getenv("RAILWAY_ENVIRONMENT")
-    railway_project = os.getenv("RAILWAY_PROJECT_ID")
-    skip_migrations = os.getenv("SKIP_MIGRATIONS")
-    print(f"[STARTUP] RAILWAY_ENVIRONMENT={railway_env}, RAILWAY_PROJECT_ID={railway_project}, SKIP_MIGRATIONS={skip_migrations}", file=sys.stderr, flush=True)
+print("[STARTUP] Checking Railway environment...", file=sys.stderr, flush=True)
+railway_env = os.getenv("RAILWAY_ENVIRONMENT")
+railway_project = os.getenv("RAILWAY_PROJECT_ID")
+skip_migrations = os.getenv("SKIP_MIGRATIONS")
+print(f"[STARTUP] RAILWAY_ENVIRONMENT={railway_env}, RAILWAY_PROJECT_ID={railway_project}, SKIP_MIGRATIONS={skip_migrations}", file=sys.stderr, flush=True)
 
-    if railway_env or railway_project or not skip_migrations:
-        print("[STARTUP] Running migrations...", file=sys.stderr, flush=True)
-        try:
-            from alembic import command
-            from alembic.config import Config
-            
-            print("[STARTUP] Alembic imported", file=sys.stderr, flush=True)
-            migration_logger.info("Running database migrations...")
-            # Try to find alembic.ini in current directory or backend directory
-            alembic_ini_path = "alembic.ini"
-            if not os.path.exists(alembic_ini_path):
-                alembic_ini_path = "backend/alembic.ini"
-            if not os.path.exists(alembic_ini_path):
-                # In Railway, working directory is /app, alembic.ini should be there
-                alembic_ini_path = "/app/alembic.ini" if os.path.exists("/app/alembic.ini") else "alembic.ini"
-            
-            print(f"[STARTUP] Using alembic.ini at: {alembic_ini_path}", file=sys.stderr, flush=True)
-            migration_logger.info(f"Using alembic.ini at: {alembic_ini_path}")
-            alembic_cfg = Config(alembic_ini_path)
-            print("[STARTUP] Running alembic upgrade head...", file=sys.stderr, flush=True)
-            command.upgrade(alembic_cfg, "head")
-            print("[STARTUP] Migrations completed", file=sys.stderr, flush=True)
-            migration_logger.info("Database migrations applied successfully")
-        except Exception as e:
-            # Log but don't fail startup if migrations fail
-            # This allows the app to start even if there are migration issues
-            print(f"[STARTUP] WARNING: Migration failed (non-fatal): {e}", file=sys.stderr, flush=True)
-            import traceback
-            traceback.print_exc(file=sys.stderr)
-            migration_logger.warning(f"Could not run migrations automatically: {e}")
-            migration_logger.warning("You may need to run 'alembic upgrade head' manually")
-    else:
-        print("[STARTUP] Skipping migrations", file=sys.stderr, flush=True)
+if railway_env or railway_project or not skip_migrations:
+    print("[STARTUP] Running migrations...", file=sys.stderr, flush=True)
+    try:
+        from alembic import command
+        from alembic.config import Config
+        
+        print("[STARTUP] Alembic imported", file=sys.stderr, flush=True)
+        migration_logger.info("Running database migrations...")
+        # Try to find alembic.ini in current directory or backend directory
+        alembic_ini_path = "alembic.ini"
+        if not os.path.exists(alembic_ini_path):
+            alembic_ini_path = "backend/alembic.ini"
+        if not os.path.exists(alembic_ini_path):
+            # In Railway, working directory is /app, alembic.ini should be there
+            alembic_ini_path = "/app/alembic.ini" if os.path.exists("/app/alembic.ini") else "alembic.ini"
+        
+        print(f"[STARTUP] Using alembic.ini at: {alembic_ini_path}", file=sys.stderr, flush=True)
+        migration_logger.info(f"Using alembic.ini at: {alembic_ini_path}")
+        alembic_cfg = Config(alembic_ini_path)
+        print("[STARTUP] Running alembic upgrade head...", file=sys.stderr, flush=True)
+        command.upgrade(alembic_cfg, "head")
+        print("[STARTUP] Migrations completed", file=sys.stderr, flush=True)
+        migration_logger.info("Database migrations applied successfully")
+    except Exception as e:
+        # Log but don't fail startup if migrations fail
+        # This allows the app to start even if there are migration issues
+        print(f"[STARTUP] WARNING: Migration failed (non-fatal): {e}", file=sys.stderr, flush=True)
+        import traceback
+        traceback.print_exc(file=sys.stderr)
+        migration_logger.warning(f"Could not run migrations automatically: {e}")
+        migration_logger.warning("You may need to run 'alembic upgrade head' manually")
+else:
+    print("[STARTUP] Skipping migrations", file=sys.stderr, flush=True)
 
 # Ensure invite_code column exists (migration helper)
 print("[STARTUP] Checking database schema...", file=sys.stderr, flush=True)
