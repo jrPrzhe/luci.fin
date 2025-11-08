@@ -40,12 +40,14 @@ from app.middleware.request_logger import RequestLoggerMiddleware
 print("[STARTUP] Importing models...", file=sys.stderr, flush=True)
 try:
     from app.models import User, Account, Transaction, Category, Tag, SharedBudget, SharedBudgetMember, Invitation, Report, Goal, Notification
-    print("[STARTUP] Models imported", file=sys.stderr, flush=True)
+    print("[STARTUP] Models imported successfully", file=sys.stderr, flush=True)
 except Exception as e:
     print(f"[STARTUP] ERROR importing models: {e}", file=sys.stderr, flush=True)
     import traceback
     traceback.print_exc(file=sys.stderr)
     raise
+
+print("[STARTUP] Models import completed, proceeding to migration checks...", file=sys.stderr, flush=True)
 
 # DO NOT use create_all() in production - it will recreate tables and lose data!
 # Use Alembic migrations instead: alembic upgrade head
@@ -54,19 +56,21 @@ except Exception as e:
 
 print("[STARTUP] Starting migration checks...", file=sys.stderr, flush=True)
 
-# Auto-apply migrations on startup (only in production/Railway)
-# This ensures database schema is up to date without losing data
-import os
-import logging
-migration_logger = logging.getLogger(__name__)
+# Обернем весь код после импорта моделей в try-except для диагностики
+try:
+    # Auto-apply migrations on startup (only in production/Railway)
+    # This ensures database schema is up to date without losing data
+    import os
+    import logging
+    migration_logger = logging.getLogger(__name__)
 
-print("[STARTUP] Checking Railway environment...", file=sys.stderr, flush=True)
-railway_env = os.getenv("RAILWAY_ENVIRONMENT")
-railway_project = os.getenv("RAILWAY_PROJECT_ID")
-skip_migrations = os.getenv("SKIP_MIGRATIONS")
-print(f"[STARTUP] RAILWAY_ENVIRONMENT={railway_env}, RAILWAY_PROJECT_ID={railway_project}, SKIP_MIGRATIONS={skip_migrations}", file=sys.stderr, flush=True)
+    print("[STARTUP] Checking Railway environment...", file=sys.stderr, flush=True)
+    railway_env = os.getenv("RAILWAY_ENVIRONMENT")
+    railway_project = os.getenv("RAILWAY_PROJECT_ID")
+    skip_migrations = os.getenv("SKIP_MIGRATIONS")
+    print(f"[STARTUP] RAILWAY_ENVIRONMENT={railway_env}, RAILWAY_PROJECT_ID={railway_project}, SKIP_MIGRATIONS={skip_migrations}", file=sys.stderr, flush=True)
 
-if railway_env or railway_project or not skip_migrations:
+    if railway_env or railway_project or not skip_migrations:
     print("[STARTUP] Running migrations...", file=sys.stderr, flush=True)
     try:
         from alembic import command
@@ -353,6 +357,7 @@ except Exception as e:
     import traceback
     traceback.print_exc(file=sys.stderr)
     raise
+
 
 if __name__ == "__main__":
     import uvicorn
