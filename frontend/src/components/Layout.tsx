@@ -6,7 +6,7 @@ import { Welcome } from './Welcome'
 import { Stories } from './Stories'
 import { SnowEffect } from './SnowEffect'
 import { Garland } from './Garland'
-import { SnowPile } from './SnowPile'
+import { Icicles } from './Icicles'
 import { useNewYearTheme } from '../contexts/NewYearContext'
 import { useTheme } from '../hooks/useTheme'
 
@@ -252,6 +252,9 @@ export function Layout() {
       {/* Гирлянда в верхнем меню */}
       {newYearEnabled && <Garland />}
       
+      {/* Сосульки в нижнем меню */}
+      {newYearEnabled && <Icicles />}
+      
       {/* Desktop Sidebar - скрыт на мобильных */}
       <aside className="hidden md:flex w-64 flex-col bg-telegram-surface dark:bg-telegram-dark-surface border-r border-telegram-border dark:border-telegram-dark-border">
         <div className="p-4 border-b border-telegram-border dark:border-telegram-dark-border">
@@ -429,26 +432,8 @@ export function Layout() {
 
       {/* Mobile Bottom Navigation - только в Mini App на мобильных */}
       {isMiniApp && (
-        <nav className={`md:hidden fixed bottom-0 left-0 right-0 bg-telegram-surface dark:bg-telegram-dark-surface border-t border-telegram-border dark:border-telegram-dark-border px-2 py-2 safe-area-inset-bottom relative overflow-hidden ${
-          newYearEnabled ? 'new-year-nav' : ''
-        }`}>
-          {/* Новогодние украшения для нижнего меню */}
-          {newYearEnabled && (
-            <>
-              {/* Снежинки на фоне */}
-              <div className="absolute top-0 left-0 right-0 h-full pointer-events-none opacity-30">
-                <span className="absolute top-1 left-[10%] text-xs animate-pulse" style={{ animationDelay: '0s' }}>❄</span>
-                <span className="absolute top-1 left-[30%] text-xs animate-pulse" style={{ animationDelay: '0.5s' }}>❄</span>
-                <span className="absolute top-1 left-[50%] text-xs animate-pulse" style={{ animationDelay: '1s' }}>❄</span>
-                <span className="absolute top-1 left-[70%] text-xs animate-pulse" style={{ animationDelay: '1.5s' }}>❄</span>
-                <span className="absolute top-1 left-[90%] text-xs animate-pulse" style={{ animationDelay: '2s' }}>❄</span>
-              </div>
-              {/* Кучки снега по углам */}
-              <SnowPile className="bottom-0 left-2" size="small" />
-              <SnowPile className="bottom-0 right-2" size="small" />
-            </>
-          )}
-          <div className="flex items-center justify-around relative z-10">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-telegram-surface dark:bg-telegram-dark-surface border-t border-telegram-border dark:border-telegram-dark-border px-2 py-2 safe-area-inset-bottom z-30">
+          <div className="flex items-center justify-around relative">
             {/* Дашборд, Транзакции, Счета, Отчёты (вместо Категорий) */}
             {navItems.filter(item => 
               item.path === '/' || 
@@ -461,35 +446,27 @@ export function Layout() {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`flex flex-col items-center gap-1 px-3 py-2 rounded-telegram min-w-[60px] transition-all relative ${
+                  className={`flex flex-col items-center gap-1 px-3 py-2 rounded-telegram min-w-[60px] transition-all ${
                     isActive 
                       ? 'text-telegram-primary' 
                       : 'text-telegram-textSecondary'
-                  } ${newYearEnabled && isActive ? 'new-year-active-nav' : ''}`}
+                  }`}
                 >
-                  <span className="text-xl relative z-10">{item.icon}</span>
-                  <span className="text-[10px] font-medium relative z-10">{item.label}</span>
-                  {/* Небольшая кучка снега на активном элементе */}
-                  {newYearEnabled && isActive && (
-                    <SnowPile className="bottom-0 left-1/2 -translate-x-1/2" size="small" />
-                  )}
+                  <span className="text-xl">{item.icon}</span>
+                  <span className="text-[10px] font-medium">{item.label}</span>
                 </Link>
               )
             })}
             <Link
               to="/profile"
-              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-telegram min-w-[60px] transition-all relative ${
+              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-telegram min-w-[60px] transition-all ${
                 location.pathname === '/profile' 
                   ? 'text-telegram-primary' 
                   : 'text-telegram-textSecondary'
-              } ${newYearEnabled && location.pathname === '/profile' ? 'new-year-active-nav' : ''}`}
+              }`}
             >
-              <span className="text-xl relative z-10">⚙️</span>
-              <span className="text-[10px] font-medium relative z-10">Профиль</span>
-              {/* Небольшая кучка снега на активном элементе */}
-              {newYearEnabled && location.pathname === '/profile' && (
-                <SnowPile className="bottom-0 left-1/2 -translate-x-1/2" size="small" />
-              )}
+              <span className="text-xl">⚙️</span>
+              <span className="text-[10px] font-medium">Профиль</span>
             </Link>
           </div>
         </nav>
