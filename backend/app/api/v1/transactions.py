@@ -183,33 +183,33 @@ async def get_transactions(
         except (ValueError, AttributeError) as e:
             logger.warning(f"Invalid end_date format: {end_date}, error: {e}")
     
-    transactions = query.order_by(Transaction.transaction_date.desc()).limit(limit).offset(offset).all()
+    # Используем joinedload для предзагрузки связей (исправление N+1 проблемы)
+    from sqlalchemy.orm import joinedload
+    transactions = query.options(
+        joinedload(Transaction.account),
+        joinedload(Transaction.category),
+        joinedload(Transaction.goal)
+    ).order_by(Transaction.transaction_date.desc()).limit(limit).offset(offset).all()
     
     logger.info(f"Found {len(transactions)} transactions for user {current_user.id}, filter={filter_type}")
     
     # Build response with additional info
-    from app.models.category import Category
     result = []
     for t in transactions:
         trans_dict = TransactionResponse.model_validate(t).model_dump()
-        # Check if transaction is from shared account
-        account = db.query(Account).filter(Account.id == t.account_id).first()
-        is_shared = account.shared_budget_id is not None if account else False
+        # Check if transaction is from shared account (используем предзагруженный account)
+        is_shared = t.account.shared_budget_id is not None if t.account else False
         trans_dict['user_id'] = t.user_id
         trans_dict['is_shared'] = is_shared
         
-        # Add category info if exists
-        if t.category_id:
-            category = db.query(Category).filter(Category.id == t.category_id).first()
-            if category:
-                trans_dict['category_name'] = category.name
-                trans_dict['category_icon'] = category.icon
+        # Add category info if exists (используем предзагруженную category)
+        if t.category:
+            trans_dict['category_name'] = t.category.name
+            trans_dict['category_icon'] = t.category.icon
         
-        # Add goal info if exists
-        if t.goal_id:
-            goal = db.query(Goal).filter(Goal.id == t.goal_id).first()
-            if goal:
-                trans_dict['goal_name'] = goal.name
+        # Add goal info if exists (используем предзагруженный goal)
+        if t.goal:
+            trans_dict['goal_name'] = t.goal.name
         
         result.append(TransactionResponse(**trans_dict))
     

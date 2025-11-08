@@ -23,9 +23,11 @@ else:
         pool_recycle=3600,  # Переиспользование соединений через час
         connect_args={
             "connect_timeout": 10,  # Таймаут подключения 10 секунд
-            "client_encoding": "utf8"  # Явно указываем UTF-8 кодировку
+            "client_encoding": "UTF8",  # Явно указываем UTF-8 кодировку (заглавными буквами для PostgreSQL)
+            "options": "-c client_encoding=UTF8"  # Дополнительная настройка кодировки
         },
         echo=False  # Set to True for SQL debugging
+        # В SQLAlchemy 2.0 все строки по умолчанию обрабатываются как Unicode
     )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
