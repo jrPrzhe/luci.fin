@@ -57,10 +57,10 @@ print("[STARTUP] Models import completed, proceeding to migration checks...", fi
 print("[STARTUP] Starting migration checks...", file=sys.stderr, flush=True)
 
 # Auto-apply migrations on startup (only in production/Railway)
-    # This ensures database schema is up to date without losing data
-    import os
-    import logging
-    migration_logger = logging.getLogger(__name__)
+# This ensures database schema is up to date without losing data
+import os
+import logging
+migration_logger = logging.getLogger(__name__)
 
 print("[STARTUP] Checking Railway environment...", file=sys.stderr, flush=True)
 railway_env = os.getenv("RAILWAY_ENVIRONMENT")
