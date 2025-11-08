@@ -1,15 +1,51 @@
-from fastapi import FastAPI
+# Раннее логирование для диагностики
+import sys
+print("[STARTUP] Python version:", sys.version, file=sys.stderr, flush=True)
+print("[STARTUP] Starting application import...", file=sys.stderr, flush=True)
+
+try:
+    from fastapi import FastAPI
+    print("[STARTUP] FastAPI imported", file=sys.stderr, flush=True)
+except Exception as e:
+    print(f"[STARTUP] ERROR importing FastAPI: {e}", file=sys.stderr, flush=True)
+    raise
+
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
-from app.core.config import settings
-from app.core.database import engine, Base
+
+print("[STARTUP] Importing config...", file=sys.stderr, flush=True)
+try:
+    from app.core.config import settings
+    print(f"[STARTUP] Config loaded, DATABASE_URL type: {type(settings.DATABASE_URL)}", file=sys.stderr, flush=True)
+except Exception as e:
+    print(f"[STARTUP] ERROR importing config: {e}", file=sys.stderr, flush=True)
+    raise
+
+print("[STARTUP] Importing database...", file=sys.stderr, flush=True)
+try:
+    from app.core.database import engine, Base
+    print("[STARTUP] Database engine imported", file=sys.stderr, flush=True)
+except Exception as e:
+    print(f"[STARTUP] ERROR importing database: {e}", file=sys.stderr, flush=True)
+    import traceback
+    traceback.print_exc(file=sys.stderr)
+    raise
+
 from app.middleware.ngrok_bypass import NgrokBypassMiddleware
 from app.middleware.request_logger import RequestLoggerMiddleware
 
 # Import all models to register them with SQLAlchemy
-from app.models import User, Account, Transaction, Category, Tag, SharedBudget, SharedBudgetMember, Invitation, Report, Goal, Notification
+print("[STARTUP] Importing models...", file=sys.stderr, flush=True)
+try:
+    from app.models import User, Account, Transaction, Category, Tag, SharedBudget, SharedBudgetMember, Invitation, Report, Goal, Notification
+    print("[STARTUP] Models imported", file=sys.stderr, flush=True)
+except Exception as e:
+    print(f"[STARTUP] ERROR importing models: {e}", file=sys.stderr, flush=True)
+    import traceback
+    traceback.print_exc(file=sys.stderr)
+    raise
 
 # DO NOT use create_all() in production - it will recreate tables and lose data!
 # Use Alembic migrations instead: alembic upgrade head
@@ -28,7 +64,16 @@ if os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RAILWAY_PROJECT_ID") or not os
         from alembic.config import Config
         
         migration_logger.info("Running database migrations...")
-        alembic_cfg = Config("alembic.ini")
+        # Try to find alembic.ini in current directory or backend directory
+        alembic_ini_path = "alembic.ini"
+        if not os.path.exists(alembic_ini_path):
+            alembic_ini_path = "backend/alembic.ini"
+        if not os.path.exists(alembic_ini_path):
+            # In Railway, working directory is /app, alembic.ini should be there
+            alembic_ini_path = "/app/alembic.ini" if os.path.exists("/app/alembic.ini") else "alembic.ini"
+        
+        migration_logger.info(f"Using alembic.ini at: {alembic_ini_path}")
+        alembic_cfg = Config(alembic_ini_path)
         command.upgrade(alembic_cfg, "head")
         migration_logger.info("Database migrations applied successfully")
     except Exception as e:
@@ -158,33 +203,50 @@ except Exception:
     # Column might already exist or table might not exist yet - that's ok
     pass
 
-# Log admin configuration on startup
+# Log admin configuration on startup (using print for guaranteed output)
 try:
     from app.core.config import settings
     import logging
     startup_logger = logging.getLogger(__name__)
     startup_logger.setLevel(logging.INFO)
-    startup_logger.info("=" * 60)
-    startup_logger.info("ADMIN CONFIGURATION CHECK")
-    startup_logger.info("=" * 60)
-    startup_logger.info(f"ADMIN_TELEGRAM_IDS = {settings.ADMIN_TELEGRAM_IDS}")
-    startup_logger.info(f"Type: {type(settings.ADMIN_TELEGRAM_IDS)}")
-    startup_logger.info(f"Count: {len(settings.ADMIN_TELEGRAM_IDS) if isinstance(settings.ADMIN_TELEGRAM_IDS, list) else 'N/A'}")
+    
+    # Use both print and logger for guaranteed visibility
+    admin_config_msg = f"""
+{'=' * 60}
+ADMIN CONFIGURATION CHECK
+{'=' * 60}
+ADMIN_TELEGRAM_IDS = {settings.ADMIN_TELEGRAM_IDS}
+Type: {type(settings.ADMIN_TELEGRAM_IDS)}
+Count: {len(settings.ADMIN_TELEGRAM_IDS) if isinstance(settings.ADMIN_TELEGRAM_IDS, list) else 'N/A'}
+"""
     if isinstance(settings.ADMIN_TELEGRAM_IDS, list):
         for admin_id in settings.ADMIN_TELEGRAM_IDS:
-            startup_logger.info(f"  - Admin ID: {admin_id} (type: {type(admin_id)})")
-    startup_logger.info("=" * 60)
+            admin_config_msg += f"  - Admin ID: {admin_id} (type: {type(admin_id)})\n"
+    admin_config_msg += "=" * 60
+    
+    print(admin_config_msg)  # Print for guaranteed output
+    startup_logger.info(admin_config_msg)
 except Exception as e:
     import logging
+    error_msg = f"Failed to load admin configuration: {e}"
+    print(error_msg)  # Print for guaranteed output
     startup_logger = logging.getLogger(__name__)
-    startup_logger.error(f"Failed to load admin configuration: {e}", exc_info=True)
+    startup_logger.error(error_msg, exc_info=True)
 
 # Create app
-app = FastAPI(
-    title=settings.PROJECT_NAME,
-    version=settings.VERSION,
-    debug=settings.DEBUG
-)
+print("[STARTUP] Creating FastAPI app...", file=sys.stderr, flush=True)
+try:
+    app = FastAPI(
+        title=settings.PROJECT_NAME,
+        version=settings.VERSION,
+        debug=settings.DEBUG
+    )
+    print("[STARTUP] FastAPI app created", file=sys.stderr, flush=True)
+except Exception as e:
+    print(f"[STARTUP] ERROR creating app: {e}", file=sys.stderr, flush=True)
+    import traceback
+    traceback.print_exc(file=sys.stderr)
+    raise
 
 # Request logger middleware (for debugging auth issues)
 app.add_middleware(RequestLoggerMiddleware)
@@ -230,19 +292,35 @@ async def health_check():
 
 
 # Import and include routers
-from app.api.v1 import auth, transactions, accounts, shared_budgets, ai, categories, reports, goals, admin
-from app.api.v1 import import_data as import_router
+print("[STARTUP] Importing routers...", file=sys.stderr, flush=True)
+try:
+    from app.api.v1 import auth, transactions, accounts, shared_budgets, ai, categories, reports, goals, admin
+    from app.api.v1 import import_data as import_router
+    print("[STARTUP] Routers imported", file=sys.stderr, flush=True)
+except Exception as e:
+    print(f"[STARTUP] ERROR importing routers: {e}", file=sys.stderr, flush=True)
+    import traceback
+    traceback.print_exc(file=sys.stderr)
+    raise
 
-app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
-app.include_router(transactions.router, prefix="/api/v1/transactions", tags=["Transactions"])
-app.include_router(accounts.router, prefix="/api/v1/accounts", tags=["Accounts"])
-app.include_router(shared_budgets.router, prefix="/api/v1/shared-budgets", tags=["Shared Budgets"])
-app.include_router(ai.router, prefix="/api/v1/ai", tags=["AI Assistant"])
-app.include_router(categories.router, prefix="/api/v1/categories", tags=["Categories"])
-app.include_router(reports.router, prefix="/api/v1/reports", tags=["Reports"])
-app.include_router(goals.router, prefix="/api/v1/goals", tags=["Goals"])
-app.include_router(import_router.router, prefix="/api/v1/import", tags=["Import"])
-app.include_router(admin.router, prefix="/api/v1", tags=["Admin"])
+print("[STARTUP] Including routers...", file=sys.stderr, flush=True)
+try:
+    app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
+    app.include_router(transactions.router, prefix="/api/v1/transactions", tags=["Transactions"])
+    app.include_router(accounts.router, prefix="/api/v1/accounts", tags=["Accounts"])
+    app.include_router(shared_budgets.router, prefix="/api/v1/shared-budgets", tags=["Shared Budgets"])
+    app.include_router(ai.router, prefix="/api/v1/ai", tags=["AI Assistant"])
+    app.include_router(categories.router, prefix="/api/v1/categories", tags=["Categories"])
+    app.include_router(reports.router, prefix="/api/v1/reports", tags=["Reports"])
+    app.include_router(goals.router, prefix="/api/v1/goals", tags=["Goals"])
+    app.include_router(import_router.router, prefix="/api/v1/import", tags=["Import"])
+    app.include_router(admin.router, prefix="/api/v1", tags=["Admin"])
+    print("[STARTUP] All routers included, application ready!", file=sys.stderr, flush=True)
+except Exception as e:
+    print(f"[STARTUP] ERROR including routers: {e}", file=sys.stderr, flush=True)
+    import traceback
+    traceback.print_exc(file=sys.stderr)
+    raise
 
 if __name__ == "__main__":
     import uvicorn
