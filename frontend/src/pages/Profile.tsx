@@ -250,7 +250,7 @@ export function Profile() {
         </h2>
         <div className="space-y-3">
           {/* Отладочная информация (можно удалить после проверки) */}
-          {process.env.NODE_ENV === 'development' && (
+          {import.meta.env.DEV && (
             <div className="text-xs text-gray-500 p-2 bg-gray-100 dark:bg-gray-800 rounded">
               Debug: is_admin = {String(user?.is_admin)}, user_id = {user?.id}
             </div>
