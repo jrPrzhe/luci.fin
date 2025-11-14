@@ -28,6 +28,7 @@ export function Dashboard() {
   const [quickFormType, setQuickFormType] = useState<'income' | 'expense' | 'transfer' | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
   const [categoriesLoading, setCategoriesLoading] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
   // Quick form state
@@ -236,10 +237,13 @@ export function Dashboard() {
       return
     }
 
+    setSubmitting(true)
+
     try {
       const account = (accounts as Account[]).find(a => a.id === parseInt(quickFormData.account_id))
       if (!account) {
         setError('Счет не найден')
+        setSubmitting(false)
         return
       }
 
@@ -266,21 +270,10 @@ export function Dashboard() {
         submitData.goal_id = parseInt(quickFormData.goal_id)
       }
 
+      // Create transaction
       await api.createTransaction(submitData)
       
-      // Refresh data - force refetch to ensure goals progress is updated
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['balance'] }),
-        queryClient.invalidateQueries({ queryKey: ['recent-transactions'] }),
-        queryClient.invalidateQueries({ queryKey: ['accounts'] }),
-        queryClient.invalidateQueries({ queryKey: ['monthly-stats'] }),
-        queryClient.invalidateQueries({ queryKey: ['goals'] }),
-      ])
-      
-      // Refetch goals immediately to update progress
-      await queryClient.refetchQueries({ queryKey: ['goals'] })
-      
-      // Close form
+      // Close form immediately (optimistic UI update)
       setShowQuickForm(false)
       setQuickFormType(null)
       setQuickFormStep('category')
@@ -292,8 +285,28 @@ export function Dashboard() {
         description: '',
         goal_id: '',
       })
+      
+      // Invalidate queries in background (don't wait for refetch)
+      // This will trigger refetch on next useQuery call
+      queryClient.invalidateQueries({ queryKey: ['balance'] })
+      queryClient.invalidateQueries({ queryKey: ['recent-transactions'] })
+      queryClient.invalidateQueries({ queryKey: ['accounts'] })
+      queryClient.invalidateQueries({ queryKey: ['monthly-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['goals'] })
+      
+      // Optionally refetch critical data in background (non-blocking)
+      Promise.all([
+        queryClient.refetchQueries({ queryKey: ['balance'], type: 'active' }),
+        queryClient.refetchQueries({ queryKey: ['recent-transactions'], type: 'active' }),
+        queryClient.refetchQueries({ queryKey: ['goals'], type: 'active' }),
+      ]).catch(console.error) // Don't block UI on refetch errors
+      
     } catch (err: any) {
       setError(err.message || 'Ошибка создания транзакции')
+      setSubmitting(false)
+    } finally {
+      // Reset submitting after a short delay to allow form to close
+      setTimeout(() => setSubmitting(false), 100)
     }
   }
 
@@ -575,7 +588,7 @@ export function Dashboard() {
                     onChange={(e) => setQuickFormData({ ...quickFormData, account_id: e.target.value })}
                     className="input text-sm py-2"
                     required
-                    disabled={accountsLoading}
+                    disabled={accountsLoading || submitting}
                   >
                     <option value="">Выберите...</option>
                     {(accounts as Account[] || []).map(account => (
@@ -596,7 +609,7 @@ export function Dashboard() {
                       onChange={(e) => setQuickFormData({ ...quickFormData, to_account_id: e.target.value })}
                       className="input text-sm py-2"
                       required
-                      disabled={accountsLoading}
+                      disabled={accountsLoading || submitting}
                     >
                       <option value="">Выберите...</option>
                       {(accounts as Account[] || [])
@@ -624,6 +637,7 @@ export function Dashboard() {
                     placeholder="0"
                     required
                     autoFocus
+                    disabled={submitting}
                   />
                 </div>
 
@@ -637,6 +651,7 @@ export function Dashboard() {
                     onChange={(e) => setQuickFormData({ ...quickFormData, description: e.target.value })}
                     className="input text-sm py-2"
                     placeholder="Необязательно"
+                    disabled={submitting}
                   />
                 </div>
               </div>
@@ -650,6 +665,7 @@ export function Dashboard() {
                     value={quickFormData.goal_id}
                     onChange={(e) => setQuickFormData({ ...quickFormData, goal_id: e.target.value })}
                     className="input"
+                    disabled={submitting}
                   >
                     <option value="">Не добавлять к цели</option>
                     {goals.map((goal: any) => (
@@ -667,8 +683,19 @@ export function Dashboard() {
               )}
 
                 <div className="flex gap-3">
-                  <button type="submit" className="btn-primary flex-1">
-                    Добавить
+                  <button 
+                    type="submit" 
+                    className="btn-primary flex-1 flex items-center justify-center gap-2"
+                    disabled={submitting}
+                  >
+                    {submitting ? (
+                      <>
+                        <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Обработка...</span>
+                      </>
+                    ) : (
+                      'Добавить'
+                    )}
                   </button>
                   <button
                     type="button"
@@ -677,8 +704,10 @@ export function Dashboard() {
                       setQuickFormType(null)
                       setQuickFormStep('category')
                       setError('')
+                      setSubmitting(false)
                     }}
                     className="btn-secondary"
+                    disabled={submitting}
                   >
                     Отмена
                   </button>
