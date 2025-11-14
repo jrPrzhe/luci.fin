@@ -127,32 +127,60 @@ export async function initVKWebApp(): Promise<void> {
 
   try {
     // Initialize VK Bridge
-    await bridge.send('VKWebAppInit')
+    await (bridge.send as any)('VKWebAppInit')
     vkInitialized = true
 
-    // Get launch params from URL
-    const urlParams = new URLSearchParams(window.location.search)
-    cachedLaunchParams = {
-      vk_user_id: urlParams.get('vk_user_id') ? Number(urlParams.get('vk_user_id')) : undefined,
-      vk_app_id: urlParams.get('vk_app_id') ? Number(urlParams.get('vk_app_id')) : undefined,
-      vk_is_app_user: urlParams.get('vk_is_app_user') ? Number(urlParams.get('vk_is_app_user')) : undefined,
-      vk_are_notifications_enabled: urlParams.get('vk_are_notifications_enabled') ? Number(urlParams.get('vk_are_notifications_enabled')) : undefined,
-      vk_language: urlParams.get('vk_language') || undefined,
-      vk_ref: urlParams.get('vk_ref') || undefined,
-      vk_access_token_settings: urlParams.get('vk_access_token_settings') || undefined,
-      vk_group_id: urlParams.get('vk_group_id') ? Number(urlParams.get('vk_group_id')) : undefined,
-      vk_viewer_group_role: urlParams.get('vk_viewer_group_role') || undefined,
-      vk_platform: urlParams.get('vk_platform') || undefined,
-      vk_is_favorite: urlParams.get('vk_is_favorite') ? Number(urlParams.get('vk_is_favorite')) : undefined,
-      sign: urlParams.get('sign') || undefined,
+    // Try to get launch params from VK Bridge first
+    let launchParamsData: any = null
+    try {
+      launchParamsData = await (bridge.send as any)('VKWebAppGetLaunchParams')
+      console.log('[VK] Got launch params from Bridge:', launchParamsData)
+    } catch (error) {
+      console.warn('[VK] Failed to get launch params from Bridge, using URL:', error)
+    }
+
+    // Use launch params from Bridge if available, otherwise use URL
+    if (launchParamsData && launchParamsData.vk_user_id) {
+      cachedLaunchParams = {
+        vk_user_id: launchParamsData.vk_user_id ? Number(launchParamsData.vk_user_id) : undefined,
+        vk_app_id: launchParamsData.vk_app_id ? Number(launchParamsData.vk_app_id) : undefined,
+        vk_is_app_user: launchParamsData.vk_is_app_user ? Number(launchParamsData.vk_is_app_user) : undefined,
+        vk_are_notifications_enabled: launchParamsData.vk_are_notifications_enabled ? Number(launchParamsData.vk_are_notifications_enabled) : undefined,
+        vk_language: launchParamsData.vk_language || undefined,
+        vk_ref: launchParamsData.vk_ref || undefined,
+        vk_access_token_settings: launchParamsData.vk_access_token_settings || undefined,
+        vk_group_id: launchParamsData.vk_group_id ? Number(launchParamsData.vk_group_id) : undefined,
+        vk_viewer_group_role: launchParamsData.vk_viewer_group_role || undefined,
+        vk_platform: launchParamsData.vk_platform || undefined,
+        vk_is_favorite: launchParamsData.vk_is_favorite ? Number(launchParamsData.vk_is_favorite) : undefined,
+        sign: launchParamsData.sign || undefined,
+      }
+    } else {
+      // Fallback: Get launch params from URL
+      const urlParams = new URLSearchParams(window.location.search)
+      cachedLaunchParams = {
+        vk_user_id: urlParams.get('vk_user_id') ? Number(urlParams.get('vk_user_id')) : undefined,
+        vk_app_id: urlParams.get('vk_app_id') ? Number(urlParams.get('vk_app_id')) : undefined,
+        vk_is_app_user: urlParams.get('vk_is_app_user') ? Number(urlParams.get('vk_is_app_user')) : undefined,
+        vk_are_notifications_enabled: urlParams.get('vk_are_notifications_enabled') ? Number(urlParams.get('vk_are_notifications_enabled')) : undefined,
+        vk_language: urlParams.get('vk_language') || undefined,
+        vk_ref: urlParams.get('vk_ref') || undefined,
+        vk_access_token_settings: urlParams.get('vk_access_token_settings') || undefined,
+        vk_group_id: urlParams.get('vk_group_id') ? Number(urlParams.get('vk_group_id')) : undefined,
+        vk_viewer_group_role: urlParams.get('vk_viewer_group_role') || undefined,
+        vk_platform: urlParams.get('vk_platform') || undefined,
+        vk_is_favorite: urlParams.get('vk_is_favorite') ? Number(urlParams.get('vk_is_favorite')) : undefined,
+        sign: urlParams.get('sign') || undefined,
+      }
     }
 
     // Get user info if available
     if (cachedLaunchParams.vk_user_id) {
       try {
-        const userData = await bridge.send('VKWebAppGetUserInfo')
+        const userData = await (bridge.send as any)('VKWebAppGetUserInfo')
         if (userData && userData.id) {
           cachedUser = userData as VKUser
+          console.log('[VK] Got user info from Bridge:', { id: userData.id, name: userData.first_name })
         }
       } catch (error) {
         console.warn('Failed to get VK user info:', error)
@@ -165,6 +193,8 @@ export async function initVKWebApp(): Promise<void> {
           }
         }
       }
+    } else {
+      console.warn('[VK] No vk_user_id found in launch params')
     }
   } catch (error) {
     console.error('Failed to initialize VK Bridge:', error)
@@ -194,14 +224,48 @@ export function getVKUserId(): number | null {
 /**
  * Get launch params for backend verification
  * Returns URL query string with all VK parameters
+ * Tries to get from VK Bridge first, then falls back to URL
  */
-export function getVKLaunchParams(): string {
+export async function getVKLaunchParams(): Promise<string> {
   if (!isVKWebApp()) {
     return ''
   }
   
-  // Return current URL query string (contains all vk_* parameters)
-  return window.location.search
+  try {
+    // Try to get launch params from VK Bridge
+    if (vkInitialized && typeof (window as any).vkBridge !== 'undefined') {
+      try {
+        const launchParams = await (bridge.send as any)('VKWebAppGetLaunchParams')
+        if (launchParams && launchParams.vk_user_id) {
+          // Build query string from launch params
+          const params = new URLSearchParams()
+          Object.keys(launchParams).forEach(key => {
+            if (launchParams[key] !== undefined && launchParams[key] !== null) {
+              params.append(key, String(launchParams[key]))
+            }
+          })
+          const queryString = params.toString()
+          console.log('[VK] Got launch params from Bridge:', { 
+            hasVkUserId: !!launchParams.vk_user_id,
+            queryStringLength: queryString.length 
+          })
+          return queryString ? `?${queryString}` : ''
+        }
+      } catch (error) {
+        console.warn('[VK] Failed to get launch params from Bridge:', error)
+      }
+    }
+  } catch (error) {
+    console.warn('[VK] Error getting launch params from Bridge:', error)
+  }
+  
+  // Fallback: return current URL query string
+  const urlParams = window.location.search
+  console.log('[VK] Using URL params as fallback:', { 
+    urlParamsLength: urlParams.length,
+    hasVkUserId: urlParams.includes('vk_user_id')
+  })
+  return urlParams
 }
 
 /**

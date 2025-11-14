@@ -319,7 +319,7 @@ function VKAuthHandler() {
         }
 
         // Автоматическая авторизация через VK Mini App
-        const launchParams = getVKLaunchParams()
+        const launchParams = await getVKLaunchParams()
         console.log('VK auto-auth check:', { 
           hasLaunchParams: !!launchParams, 
           launchParamsLength: launchParams?.length || 0,

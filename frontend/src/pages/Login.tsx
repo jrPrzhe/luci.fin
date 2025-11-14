@@ -111,7 +111,7 @@ export function Login() {
     // Инициализируем VK Bridge
     await initVKWebApp()
 
-    const launchParams = getVKLaunchParams()
+    const launchParams = await getVKLaunchParams()
     if (!launchParams || launchParams.length === 0) {
       setError('Не удалось получить данные VK. Убедитесь, что открыто через VK Mini App.')
       setIsLoading(false)
@@ -158,8 +158,8 @@ export function Login() {
       if (isTelegram && getInitData()) {
         handleTelegramLogin()
       } else if (isVK) {
-        initVKWebApp().then(() => {
-          const launchParams = getVKLaunchParams()
+        initVKWebApp().then(async () => {
+          const launchParams = await getVKLaunchParams()
           if (launchParams && launchParams.length > 0) {
             handleVKLogin()
           }
