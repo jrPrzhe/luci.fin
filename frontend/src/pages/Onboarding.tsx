@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useI18n } from '../contexts/I18nContext'
-import { api } from '../services/api'
 
 interface OnboardingPage {
   title: string
@@ -15,7 +14,6 @@ export function Onboarding({ onComplete }: { onComplete?: () => void }) {
   const { t, setLanguage, language } = useI18n()
   const [currentPage, setCurrentPage] = useState(0)
   const navigate = useNavigate()
-  const [languageSelected, setLanguageSelected] = useState(false)
   
   const onboardingPages: OnboardingPage[] = [
     {
@@ -55,7 +53,6 @@ export function Onboarding({ onComplete }: { onComplete?: () => void }) {
 
   const handleLanguageSelect = async (lang: 'ru' | 'en') => {
     await setLanguage(lang)
-    setLanguageSelected(true)
     setCurrentPage(1) // Move to first content page
   }
 
