@@ -39,10 +39,53 @@ let cachedLaunchParams: VKLaunchParams | null = null
  * Check if app is running inside VK
  */
 export function isVKWebApp(): boolean {
-  return typeof window !== 'undefined' && 
-         (window.location.search.includes('vk_') || 
-          typeof (window as any).VK !== 'undefined' ||
-          typeof (window as any).vkBridge !== 'undefined')
+  if (typeof window === 'undefined') {
+    return false
+  }
+  
+  // Check URL parameters for VK launch params
+  const urlParams = window.location.search
+  const hasVKParams = urlParams.includes('vk_user_id') || 
+                       urlParams.includes('vk_app_id') ||
+                       urlParams.includes('vk_')
+  
+  // Check for VK Bridge or VK global object
+  const hasVKBridge = typeof (window as any).vkBridge !== 'undefined' ||
+                      typeof (window as any).VK !== 'undefined'
+  
+  // Check referrer for VK domains
+  const referrer = document.referrer || ''
+  const isVKReferrer = referrer.includes('vk.com') || 
+                       referrer.includes('m.vk.com') ||
+                       referrer.includes('vk.ru')
+  
+  // Check if running in iframe (VK Mini Apps often run in iframes)
+  const isInIframe = window.self !== window.top
+  
+  // Check hostname for VK domains (if app is embedded)
+  const hostname = window.location.hostname
+  const isVKHostname = hostname.includes('vk.com') || 
+                        hostname.includes('m.vk.com') ||
+                        hostname.includes('vk.ru')
+  
+  const isVK = hasVKParams || hasVKBridge || isVKReferrer || isVKHostname
+  
+  // Debug log (always log for debugging)
+  console.log('[VK] Platform check:', {
+    hasVKParams,
+    hasVKBridge,
+    isVKReferrer,
+    isVKHostname,
+    isInIframe,
+    isVK,
+    urlParams: urlParams.substring(0, 200),
+    referrer: referrer.substring(0, 100),
+    hostname,
+    hasVkBridge: typeof (window as any).vkBridge !== 'undefined',
+    hasVK: typeof (window as any).VK !== 'undefined'
+  })
+  
+  return isVK
 }
 
 /**

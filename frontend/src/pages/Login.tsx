@@ -15,6 +15,16 @@ export function Login() {
   // Определяем платформу
   const isTelegram = isTelegramWebApp()
   const isVK = isVKWebApp()
+  
+  // Debug: логируем определение платформы
+  useEffect(() => {
+    console.log('[Login] Platform detection:', {
+      isTelegram,
+      isVK,
+      url: window.location.href,
+      search: window.location.search
+    })
+  }, [isTelegram, isVK])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
