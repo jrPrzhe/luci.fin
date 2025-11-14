@@ -22,6 +22,8 @@ export function Import() {
     categories_imported: number
     categories_created: number
   } | null>(null)
+  const [importStartTime, setImportStartTime] = useState<number | null>(null)
+  const [elapsedTime, setElapsedTime] = useState(0)
 
   useEffect(() => {
     loadSources()
@@ -67,6 +69,9 @@ export function Import() {
     setError('')
     setSuccess('')
     setImportResult(null)
+    setElapsedTime(0)
+    const startTime = Date.now()
+    setImportStartTime(startTime)
 
     try {
       const result = await api.importData(selectedSource, selectedFile)
@@ -88,8 +93,22 @@ export function Import() {
       setError(err.message || 'Ошибка при импорте данных')
     } finally {
       setIsUploading(false)
+      setImportStartTime(null)
+      setElapsedTime(0)
     }
   }
+
+  // Обновляем таймер во время импорта
+  useEffect(() => {
+    if (isUploading && importStartTime !== null) {
+      const timerInterval = setInterval(() => {
+        setElapsedTime(Math.floor((Date.now() - importStartTime) / 1000))
+      }, 1000)
+      return () => clearInterval(timerInterval)
+    } else {
+      setElapsedTime(0)
+    }
+  }, [isUploading, importStartTime])
 
   return (
     <div className="min-h-screen p-4 md:p-6 animate-fade-in max-w-2xl mx-auto w-full">
@@ -172,15 +191,31 @@ export function Import() {
           </label>
         </div>
 
+        {/* Индикатор загрузки */}
+        {isUploading && (
+          <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-4 rounded-telegram">
+            <div className="flex items-center justify-center mb-3">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+            <p className="text-center font-medium mb-2">Импорт данных...</p>
+            <p className="text-center text-sm text-blue-600 mb-2">
+              Пожалуйста, подождите. Это может занять некоторое время.
+            </p>
+            <p className="text-center text-xs text-blue-500">
+              Время выполнения: {elapsedTime > 0 ? `${elapsedTime} сек.` : 'менее 1 сек.'}
+            </p>
+          </div>
+        )}
+
         {/* Сообщения об ошибках */}
-        {error && (
+        {error && !isUploading && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-telegram text-sm">
             {error}
           </div>
         )}
 
         {/* Сообщения об успехе */}
-            {success && (
+        {success && !isUploading && (
           <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-telegram text-sm">
             {success}
             {importResult && (

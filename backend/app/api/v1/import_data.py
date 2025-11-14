@@ -72,9 +72,14 @@ def parse_myfinance_db(db_path: str, user_id: int, db: Session) -> dict:
         transactions = []
         categories = []
         
-        # Сначала парсим счета (account)
+        # Словари для маппинга uid -> данные
+        accounts_by_uid = {}  # uid счета -> данные счета
+        categories_by_uid = {}  # uid категории -> данные категории
+        transactions_by_uid = {}  # uid транзакции -> данные транзакции
+        
+        # Сначала парсим счета из таблицы Account (с заглавной буквы)
         account_table = None
-        for table_name in ['account', 'accounts']:
+        for table_name in ['Account', 'account', 'accounts']:
             if table_name in tables:
                 account_table = table_name
                 break
@@ -88,52 +93,45 @@ def parse_myfinance_db(db_path: str, user_id: int, db: Session) -> dict:
                 
                 logger.info(f"Account table columns: {list(columns.keys())}")
                 
-                query = f"SELECT * FROM {escaped_table}"
+                query = f"SELECT * FROM {escaped_table} WHERE isRemoved = 0"
                 cursor.execute(query)
                 rows = cursor.fetchall()
                 
                 for row in rows:
                     row_dict = dict(row)
                     
-                    account_id = None
+                    account_uid = None
                     account_name = None
                     account_currency = 'RUB'
-                    account_balance = 0.0
                     
-                    # Ищем ID счета
-                    for field in ['id', 'account_id', '_id']:
+                    # Ищем uid счета
+                    for field in ['uid', 'id', 'account_id', '_id']:
                         if field in row_dict and row_dict[field] is not None:
-                            account_id = int(row_dict[field])
+                            account_uid = str(row_dict[field])
                             break
                     
-                    # Ищем имя счета
-                    for field in ['name', 'title', 'account_name', 'label']:
+                    # Ищем имя счета (используем title)
+                    for field in ['title', 'name', 'account_name', 'label']:
                         if field in row_dict and row_dict[field]:
-                            account_name = str(row_dict[field])
+                            account_name = str(row_dict[field]).strip()
                             break
                     
-                    # Ищем валюту
-                    for field in ['currency', 'currency_code', 'currencyCode']:
+                    # Ищем валюту (используем currencyCode)
+                    for field in ['currencyCode', 'currency_code', 'currency']:
                         if field in row_dict and row_dict[field]:
                             account_currency = str(row_dict[field]).upper()
                             break
                     
-                    # Ищем баланс
-                    for field in ['balance', 'amount', 'initial_balance', 'initialBalance']:
-                        if field in row_dict and row_dict[field] is not None:
-                            try:
-                                account_balance = float(row_dict[field])
-                            except:
-                                pass
-                            break
-                    
-                    if account_id is not None and account_name:
-                        accounts.append({
-                            'id': account_id,
+                    if account_uid and account_name:
+                        account_data = {
+                            'uid': account_uid,
                             'name': account_name,
-                            'currency': account_currency,
-                            'balance': account_balance
-                        })
+                            'currency': account_currency
+                        }
+                        accounts.append(account_data)
+                        accounts_by_uid[account_uid] = account_data
+                        
+                logger.info(f"Imported {len(accounts)} accounts")
             except Exception as e:
                 logger.error(f"Error reading accounts from {account_table}: {e}")
         
@@ -155,7 +153,8 @@ def parse_myfinance_db(db_path: str, user_id: int, db: Session) -> dict:
             
             # Пытаемся прочитать транзакции (экранируем имя таблицы)
             try:
-                query = f"SELECT * FROM {escaped_table}"
+                # Фильтруем удаленные транзакции
+                query = f'SELECT * FROM {escaped_table} WHERE isRemoved = 0'
                 cursor.execute(query)
                 rows = cursor.fetchall()
                 
@@ -167,23 +166,25 @@ def parse_myfinance_db(db_path: str, user_id: int, db: Session) -> dict:
                     amount = None
                     date = None
                     description = None
-                    category_name = None
-                    account_id = None
+                    category_uid = None
+                    account_uid = None
+                    transaction_uid = None
                     
-                    # Ищем ID счета для транзакции
-                    for field in ['account_id', 'accountId', 'account']:
+                    # Ищем uid транзакции
+                    for field in ['uid', 'id', 'transaction_id', '_id']:
                         if field in row_dict and row_dict[field] is not None:
-                            try:
-                                account_id = int(row_dict[field])
-                            except:
-                                pass
+                            transaction_uid = str(row_dict[field])
                             break
                     
                     # Ищем поле amountInAccountCurrency (приоритет) или amount или sum или value
+                    # ВАЖНО: amountInAccountCurrency хранится в копейках, нужно делить на 100
                     for field in ['amountInAccountCurrency', 'amountInAccount', 'amount', 'sum', 'value', 'summa', 'total']:
                         if field in row_dict and row_dict[field] is not None:
                             try:
                                 amount = float(row_dict[field])
+                                # Если это amountInAccountCurrency, делим на 100 (копейки -> рубли)
+                                if field == 'amountInAccountCurrency':
+                                    amount = amount / 100.0
                             except (ValueError, TypeError):
                                 pass
                             if amount is not None:
@@ -253,7 +254,7 @@ def parse_myfinance_db(db_path: str, user_id: int, db: Session) -> dict:
                             category_name = str(row_dict[field])
                             break
                     
-                    if amount and amount != 0:  # Разрешаем любые суммы (включая отрицательные)
+                    if amount and amount != 0 and transaction_uid:  # Разрешаем любые суммы (включая отрицательные)
                         # Если сумма отрицательная, это расход
                         if amount < 0:
                             transaction_type = 'expense'
@@ -262,20 +263,23 @@ def parse_myfinance_db(db_path: str, user_id: int, db: Session) -> dict:
                             # Если тип не определен и сумма положительная, определяем по наличию знака
                             transaction_type = 'income'
                         
-                        transactions.append({
+                        transaction_data = {
+                            'uid': transaction_uid,
                             'type': transaction_type,
                             'amount': amount,
                             'date': date,
                             'description': description or '',
-                            'category': category_name,
-                            'account_id': account_id
-                        })
+                            'category_uid': category_uid,
+                            'account_uid': account_uid
+                        }
+                        transactions.append(transaction_data)
+                        transactions_by_uid[transaction_uid] = transaction_data
             except Exception as e:
                 logger.error(f"Error reading transactions from {transaction_table}: {e}")
         
-        # Пытаемся найти таблицы с категориями
+        # Парсим категории из таблицы category
         category_table = None
-        for table_name in ['categories', 'category', 'expense_categories', 'income_categories']:
+        for table_name in ['category', 'categories', 'expense_categories', 'income_categories']:
             if table_name in tables:
                 category_table = table_name
                 break
@@ -287,23 +291,30 @@ def parse_myfinance_db(db_path: str, user_id: int, db: Session) -> dict:
                 cursor.execute(f"PRAGMA table_info({escaped_table})")
                 columns = {row[1]: row[0] for row in cursor.fetchall()}
                 
-                query = f"SELECT * FROM {escaped_table}"
+                query = f"SELECT * FROM {escaped_table} WHERE isRemoved = 0"
                 cursor.execute(query)
                 rows = cursor.fetchall()
                 
                 for row in rows:
                     row_dict = dict(row)
                     
+                    category_uid = None
                     category_name = None
                     category_type = 'both'
                     
-                    # Ищем имя категории
-                    for field in ['name', 'title', 'category_name', 'label']:
-                        if field in row_dict and row_dict[field]:
-                            category_name = str(row_dict[field])
+                    # Ищем uid категории
+                    for field in ['uid', 'id', 'category_id', '_id']:
+                        if field in row_dict and row_dict[field] is not None:
+                            category_uid = str(row_dict[field])
                             break
                     
-                    # Определяем тип категории
+                    # Ищем имя категории (используем title)
+                    for field in ['title', 'name', 'category_name', 'label']:
+                        if field in row_dict and row_dict[field]:
+                            category_name = str(row_dict[field]).strip()
+                            break
+                    
+                    # Определяем тип категории (используем type)
                     for field in ['type', 'category_type', 'transaction_type']:
                         if field in row_dict:
                             type_val = str(row_dict[field]).lower()
@@ -313,13 +324,59 @@ def parse_myfinance_db(db_path: str, user_id: int, db: Session) -> dict:
                                 category_type = 'income'
                             break
                     
-                    if category_name:
-                        categories.append({
-                            'name': category_name,
+                    # Импортируем категорию, даже если имя пустое (может быть системная категория)
+                    if category_uid:
+                        # Если имя пустое, используем дефолтное имя
+                        if not category_name or not category_name.strip():
+                            category_name = f"Категория {category_uid[:8]}"
+                        
+                        category_data = {
+                            'uid': category_uid,
+                            'name': category_name.strip(),
                             'type': category_type
-                        })
+                        }
+                        categories.append(category_data)
+                        categories_by_uid[category_uid] = category_data
+                        
+                logger.info(f"Imported {len(categories)} categories")
             except Exception as e:
                 logger.error(f"Error reading categories from {category_table}: {e}")
+        
+        # Используем таблицу sync_link для привязки транзакций к счетам и категориям
+        if 'sync_link' in tables:
+            try:
+                cursor.execute('''
+                    SELECT entityUid, otherType, otherUid
+                    FROM sync_link
+                    WHERE entityType = 'Transaction' AND isRemoved = 0
+                ''')
+                links = cursor.fetchall()
+                
+                for link in links:
+                    transaction_uid = link[0]
+                    other_type = link[1]
+                    other_uid = link[2]
+                    
+                    if transaction_uid in transactions_by_uid:
+                        transaction_data = transactions_by_uid[transaction_uid]
+                        
+                        if other_type == 'Account' and other_uid in accounts_by_uid:
+                            transaction_data['account_uid'] = other_uid
+                            logger.debug(f"Linked transaction {transaction_uid} to account {other_uid}")
+                        elif other_type == 'Category' and other_uid in categories_by_uid:
+                            transaction_data['category_uid'] = other_uid
+                            logger.debug(f"Linked transaction {transaction_uid} to category {other_uid}")
+                
+                logger.info(f"Processed {len(links)} sync links")
+            except Exception as e:
+                logger.error(f"Error reading sync_link: {e}")
+        
+        # Обновляем транзакции с именами категорий и счетов для удобства
+        for transaction in transactions:
+            if transaction.get('category_uid') and transaction['category_uid'] in categories_by_uid:
+                transaction['category'] = categories_by_uid[transaction['category_uid']]['name']
+            if transaction.get('account_uid') and transaction['account_uid'] in accounts_by_uid:
+                transaction['account'] = accounts_by_uid[transaction['account_uid']]['name']
         
         conn.close()
         
@@ -371,36 +428,45 @@ async def import_data(
         data = parse_myfinance_db(temp_path, current_user.id, db)
         
         # Импортируем счета
-        accounts_map = {}  # Сопоставление ID счетов из импорта к ID в нашей БД
+        accounts_map = {}  # Сопоставление uid счетов из импорта к ID в нашей БД
         accounts_imported = 0
         
         for account_data in data.get('accounts', []):
+            account_uid = account_data.get('uid')
+            account_name = account_data.get('name')
+            
+            if not account_name:
+                continue
+            
             # Проверяем, существует ли счет с таким именем
             existing_account = db.query(Account).filter(
                 Account.user_id == current_user.id,
-                Account.name == account_data['name'],
+                Account.name == account_name,
                 Account.shared_budget_id.is_(None),
                 Account.is_archived == False
             ).first()
             
             if existing_account:
                 # Используем существующий счет
-                accounts_map[account_data['id']] = existing_account.id
+                if account_uid:
+                    accounts_map[account_uid] = existing_account.id
             else:
                 # Создаем новый счет
                 new_account = Account(
                     user_id=current_user.id,
-                    name=account_data['name'],
+                    name=account_name,
                     account_type=AccountType.CASH,  # По умолчанию наличные
                     currency=account_data.get('currency', current_user.default_currency or "RUB"),
-                    initial_balance=Decimal(str(account_data.get('balance', 0))),
+                    initial_balance=Decimal('0'),  # Баланс не импортируем, он будет рассчитан из транзакций
                     is_active=True,
                     is_archived=False
                 )
                 db.add(new_account)
                 db.flush()
-                accounts_map[account_data['id']] = new_account.id
+                if account_uid:
+                    accounts_map[account_uid] = new_account.id
                 accounts_imported += 1
+                logger.info(f"Created new account: {account_name} (ID: {new_account.id})")
         
         # Получаем или создаем основной счет пользователя (если нет счетов)
         default_account = None
@@ -463,10 +529,12 @@ async def import_data(
         transactions_imported = 0
         
         for trans_data in data['transactions']:
-            # Определяем счет для транзакции
+            # Определяем счет для транзакции через account_uid
             target_account_id = None
-            if trans_data.get('account_id') and trans_data['account_id'] in accounts_map:
-                target_account_id = accounts_map[trans_data['account_id']]
+            account_uid = trans_data.get('account_uid')
+            
+            if account_uid and account_uid in accounts_map:
+                target_account_id = accounts_map[account_uid]
             elif default_account:
                 target_account_id = default_account.id
             elif accounts_map:
@@ -474,6 +542,7 @@ async def import_data(
                 target_account_id = list(accounts_map.values())[0]
             else:
                 # Пропускаем транзакцию, если нет счетов
+                logger.warning(f"Transaction {trans_data.get('uid', 'unknown')} skipped: no account available")
                 continue
             
             # Проверяем, не существует ли уже такая транзакция (по дате, сумме и описанию)
@@ -504,9 +573,18 @@ async def import_data(
             if existing_transaction:
                 continue  # Пропускаем дубликаты
             
-            # Определяем category_id
+            # Определяем category_id через category_uid или category name
             category_id = None
+            category_uid = trans_data.get('category_uid')
             category_name = trans_data.get('category')
+            
+            # Сначала пытаемся найти по uid через имя категории
+            if category_uid:
+                # Ищем категорию по uid в импортированных данных
+                for cat_data in data.get('categories', []):
+                    if cat_data.get('uid') == category_uid:
+                        category_name = cat_data.get('name')
+                        break
             
             # Проверяем, что category_name не пустой
             if category_name and str(category_name).strip():
