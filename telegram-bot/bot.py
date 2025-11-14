@@ -49,6 +49,19 @@ WAITING_GOAL_INFO, WAITING_GOAL_CONFIRMATION = range(4, 6)
 # Store user tokens
 user_tokens: Dict[int, str] = {}
 
+# Import translations
+from locales.ru import ru
+from locales.en import en
+
+# Translations dictionary
+translations = {
+    "ru": ru,
+    "en": en,
+}
+
+# Default language
+DEFAULT_LANGUAGE = "ru"
+
 
 def is_token_expired(token: str) -> bool:
     """Check if JWT token is expired"""
@@ -217,7 +230,68 @@ async def make_authenticated_request(
         return response
 
 
-def get_transaction_description(transaction: dict) -> str:
+async def get_user_language(telegram_id: str) -> str:
+    """Get user language from profile, default to 'ru'"""
+    try:
+        user_response = await make_authenticated_request(
+            "GET",
+            f"{BACKEND_URL}/api/v1/auth/me",
+            telegram_id,
+            timeout=5.0
+        )
+        if user_response.status_code == 200:
+            user_data = user_response.json()
+            lang = user_data.get('language', DEFAULT_LANGUAGE)
+            # Normalize language code
+            lang = lang.lower() if lang else DEFAULT_LANGUAGE
+            if lang not in translations:
+                lang = DEFAULT_LANGUAGE
+            return lang
+    except Exception as e:
+        logger.warning(f"Could not get user language: {e}, using default")
+    return DEFAULT_LANGUAGE
+
+
+def t(key: str, language: str = "ru", **kwargs) -> str:
+    """
+    Get translated text
+    
+    Args:
+        key: Translation key in format "section.key" (e.g., "start.greeting")
+        language: Language code ("ru" or "en")
+        **kwargs: Format arguments for the translation string
+    
+    Returns:
+        Translated and formatted string
+    """
+    if language not in translations:
+        language = DEFAULT_LANGUAGE
+    
+    try:
+        # Split key into section and key
+        parts = key.split(".", 1)
+        if len(parts) != 2:
+            logger.warning(f"Invalid translation key format: {key}")
+            return key
+        
+        section, item = parts
+        translation = translations[language].get(section, {}).get(item, key)
+        
+        # Format with kwargs if provided
+        if kwargs:
+            try:
+                return translation.format(**kwargs)
+            except KeyError as e:
+                logger.warning(f"Missing format argument {e} for key {key}")
+                return translation
+        
+        return translation
+    except Exception as e:
+        logger.error(f"Error getting translation for key {key}: {e}")
+        return key
+
+
+def get_transaction_description(transaction: dict, language: str = "ru") -> str:
     """Get transaction description, using category_name if description is missing"""
     description = transaction.get('description')
     category_name = transaction.get('category_name')
@@ -230,47 +304,124 @@ def get_transaction_description(transaction: dict) -> str:
         return str(category_name).strip()
     # Default fallback
     else:
-        return 'Без описания'
+        return t("common.no_description", language)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /start command"""
     user = update.effective_user
-    await update.message.reply_text(
-        f"Привет, {user.first_name}! 👋\n\n"
-        f"Я помогу тебе управлять финансами через Telegram.\n\n"
-        f"📋 *Доступные команды:*\n"
-        f"💰 /balance - текущий баланс\n"
-        f"📝 /transactions - последние транзакции\n"
-        f"💸 /add\\_expense - добавить расход\n"
-        f"💰 /add\\_income - добавить доход\n"
-        f"📊 /report - получить AI-отчёт\n"
-        f"🎯 /goal - создать финансовую цель\n"
-        f"❓ /help - справка\n\n"
-        f"*Важно:* Для работы бота необходимо сначала зарегистрироваться через веб-интерфейс или Mini App.",
-        parse_mode='Markdown'
+    telegram_id = str(user.id)
+    
+    # Get user language
+    lang = await get_user_language(telegram_id)
+    
+    # Build message
+    message = (
+        t("start.greeting", lang, name=user.first_name) +
+        t("start.commands", lang) +
+        t("start.balance", lang) +
+        t("start.transactions", lang) +
+        t("start.add_expense", lang) +
+        t("start.add_income", lang) +
+        t("start.report", lang) +
+        t("start.goal", lang) +
+        t("start.help", lang) +
+        t("start.language", lang) +
+        t("start.important", lang)
     )
+    
+    await update.message.reply_text(message, parse_mode='Markdown')
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /help command"""
-    help_text = """📊 *Доступные команды:*
-
-/start - начать работу с ботом
-💰 /balance - показать текущий баланс по всем счетам
-📝 /transactions - показать последние транзакции
-💸 /add\\_expense - добавить новый расход
-💰 /add\\_income - добавить новый доход
-📊 /report - получить AI-анализ финансов
-🎯 /goal - создать финансовую цель с AI-планом
-/cancel - отменить текущую операцию
-❓ /help - эта справка
-
-*Использование:*
-• После команды /add\\_expense или /add\\_income выберите счет и следуйте инструкциям
-• Команда /report анализирует ваши транзакции и дает рекомендации
-• Команда /goal создаст индивидуальный план для достижения вашей финансовой цели"""
+    user = update.effective_user
+    telegram_id = str(user.id)
+    
+    # Get user language
+    lang = await get_user_language(telegram_id)
+    
+    # Build help text
+    help_text = (
+        t("help.title", lang) +
+        t("help.start", lang) +
+        t("help.balance", lang) +
+        t("help.transactions", lang) +
+        t("help.add_expense", lang) +
+        t("help.add_income", lang) +
+        t("help.report", lang) +
+        t("help.goal", lang) +
+        t("help.language", lang) +
+        t("help.cancel", lang) +
+        t("help.help", lang) +
+        t("help.usage", lang) +
+        t("help.usage_expense", lang) +
+        t("help.usage_report", lang) +
+        t("help.usage_goal", lang)
+    )
+    
     await update.message.reply_text(help_text, parse_mode='Markdown')
+
+
+async def language_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle /language command - change user language"""
+    user = update.effective_user
+    telegram_id = str(user.id)
+    
+    # Get current language
+    current_lang = await get_user_language(telegram_id)
+    lang_display = "Русский" if current_lang == "ru" else "English"
+    
+    # Create keyboard with language options
+    keyboard = [
+        [
+            InlineKeyboardButton("🇷🇺 Русский", callback_data="lang_ru"),
+            InlineKeyboardButton("🇬🇧 English", callback_data="lang_en"),
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    # Get language for message (use current language)
+    lang = current_lang
+    message = (
+        t("language.select", lang) +
+        t("language.current", lang, lang=lang_display)
+    )
+    
+    await update.message.reply_text(message, reply_markup=reply_markup, parse_mode='Markdown')
+
+
+async def language_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle language selection callback"""
+    query = update.callback_query
+    await query.answer()
+    
+    telegram_id = str(query.from_user.id)
+    selected_lang = query.data.split("_")[1]  # lang_ru or lang_en
+    
+    if selected_lang not in ["ru", "en"]:
+        await query.edit_message_text(t("language.error", "ru"))
+        return
+    
+    try:
+        # Update user language in backend
+        response = await make_authenticated_request(
+            "PUT",
+            f"{BACKEND_URL}/api/v1/auth/me",
+            telegram_id,
+            json_data={"language": selected_lang},
+            timeout=5.0
+        )
+        
+        if response.status_code == 200:
+            lang_display = "Русский" if selected_lang == "ru" else "English"
+            message = t("language.changed", selected_lang, lang=lang_display)
+            await query.edit_message_text(message, parse_mode='Markdown')
+        else:
+            await query.edit_message_text(t("language.error", selected_lang))
+    except Exception as e:
+        logger.error(f"Error changing language: {e}")
+        await query.edit_message_text(t("language.error", selected_lang))
 
 
 async def get_user_token(telegram_id: str) -> str:
@@ -330,6 +481,9 @@ async def get_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         telegram_id = str(update.effective_user.id)
         
+        # Get user language
+        lang = await get_user_language(telegram_id)
+        
         # Use authenticated request helper with automatic token refresh
         try:
             response = await make_authenticated_request(
@@ -339,9 +493,7 @@ async def get_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         except Exception as e:
             logger.error(f"Error getting token: {e}")
-            await update.message.reply_text(
-                "❌ Не удалось авторизоваться. Пожалуйста, сначала зарегистрируйтесь через веб-интерфейс или Mini App."
-            )
+            await update.message.reply_text(t("auth.failed", lang))
             return
         
         if response.status_code == 200:
@@ -350,39 +502,36 @@ async def get_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
             currency = data.get("currency", "RUB")
             
             # Format message
-            message = f"💰 *Ваш баланс*\n\n"
-            message += f"💵 Всего: *{int(round(total)):,} {currency}*\n\n"
+            message = t("balance.title", lang)
+            message += t("balance.total", lang, amount=f"{int(round(total)):,}", currency=currency)
             
             # Add accounts breakdown
             accounts = data.get("accounts", [])
             if accounts:
-                message += "*По счетам:*\n"
+                message += t("balance.accounts", lang)
                 for acc in accounts[:5]:  # Show first 5 accounts
-                    acc_name = acc.get("name", "Счет")
+                    acc_name = acc.get("name", t("common.account", lang))
                     acc_balance = acc.get("balance", 0)
-                    message += f"• {acc_name}: {int(round(acc_balance)):,} {currency}\n"
+                    message += t("balance.account_item", lang, name=acc_name, amount=f"{int(round(acc_balance)):,}", currency=currency)
             
             await update.message.reply_text(message, parse_mode='Markdown')
         elif response.status_code == 401:
-            await update.message.reply_text(
-                "❌ Не удалось авторизоваться. Пожалуйста, сначала зарегистрируйтесь через веб-интерфейс или Mini App."
-            )
+            await update.message.reply_text(t("auth.failed", lang))
         else:
             logger.error(f"Failed to get balance: {response.status_code} - {response.text}")
-            await update.message.reply_text(
-                "❌ Не удалось получить баланс."
-            )
+            await update.message.reply_text(t("balance.error", lang))
     except Exception as e:
         logger.error(f"Error getting balance: {e}", exc_info=True)
-        await update.message.reply_text(
-            "❌ Ошибка при получении баланса."
-        )
+        await update.message.reply_text(t("balance.error", lang))
 
 
 async def get_transactions(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /transactions command"""
     try:
         telegram_id = str(update.effective_user.id)
+        
+        # Get user language
+        lang = await get_user_language(telegram_id)
         
         # Use authenticated request helper with automatic token refresh
         try:
@@ -394,50 +543,52 @@ async def get_transactions(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         except Exception as e:
             logger.error(f"Error getting token in get_transactions: {e}")
-            await update.message.reply_text(
-                "❌ Не удалось авторизоваться. Пожалуйста, сначала зарегистрируйтесь через веб-интерфейс или Mini App."
-            )
+            await update.message.reply_text(t("auth.failed", lang))
             return
         
         if response.status_code == 200:
             transactions = response.json()
             
             if not transactions:
-                await update.message.reply_text("📝 У вас пока нет транзакций.")
+                await update.message.reply_text(t("transactions.empty", lang))
                 return
             
-            message = "📝 *Последние транзакции:*\n\n"
+            message = t("transactions.title", lang)
             
             for trans in transactions[:10]:
                 trans_type = trans.get("transaction_type", "")
                 amount = trans.get("amount", 0)
                 currency = trans.get("currency", "RUB")
-                description = get_transaction_description(trans)
+                description = get_transaction_description(trans, lang)
                 date = trans.get("transaction_date", "")[:10]
                 
                 icon = "💰" if trans_type == "income" else "💸" if trans_type == "expense" else "↔️"
                 sign = "+" if trans_type == "income" else "-"
                 
-                message += f"{icon} *{sign}{int(round(amount)):,} {currency}*\n"
-                message += f"   {description}\n"
-                message += f"   📅 {date}\n\n"
+                message += t("transactions.item", lang, 
+                           icon=icon, 
+                           description=description,
+                           date=date,
+                           amount=f"{sign}{int(round(amount)):,}",
+                           currency=currency)
             
             await update.message.reply_text(message, parse_mode='Markdown')
         elif response.status_code == 401:
-            await update.message.reply_text(
-                "❌ Не удалось авторизоваться. Пожалуйста, сначала зарегистрируйтесь через веб-интерфейс или Mini App."
-            )
+            await update.message.reply_text(t("auth.failed", lang))
         else:
             logger.error(f"Failed to get transactions: {response.status_code} - {response.text}")
-            await update.message.reply_text("❌ Не удалось получить транзакции.")
+            await update.message.reply_text(t("transactions.error", lang))
     except Exception as e:
         logger.error(f"Error getting transactions: {e}", exc_info=True)
-        await update.message.reply_text("❌ Ошибка при получении транзакций.")
+        await update.message.reply_text(t("transactions.error", lang))
 
 
 async def add_expense_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /add_expense command"""
     telegram_id = str(update.effective_user.id)
+    
+    # Get user language
+    lang = await get_user_language(telegram_id)
     
     # Get user accounts using authenticated request helper
     try:
@@ -450,14 +601,13 @@ async def add_expense_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if response.status_code == 200:
             accounts = response.json()
             if not accounts:
-                await update.message.reply_text(
-                    "❌ У вас нет счетов. Сначала создайте счет через веб-интерфейс."
-                )
+                await update.message.reply_text(t("expense.error", lang))
                 return ConversationHandler.END
             
             # Store accounts in context
             context.user_data['accounts'] = accounts
             context.user_data['type'] = 'expense'  # Set transaction type
+            context.user_data['language'] = lang  # Store language for later use
             
             # Create keyboard with accounts
             keyboard = []
@@ -469,25 +619,23 @@ async def add_expense_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             reply_markup = InlineKeyboardMarkup(keyboard)
             
+            message = t("expense.title", lang) + t("expense.select_account", lang)
             await update.message.reply_text(
-                "💸 *Добавление расхода*\n\n"
-                "Выберите счет:",
+                message,
                 reply_markup=reply_markup,
                 parse_mode='Markdown'
             )
             
             return WAITING_AMOUNT
         elif response.status_code == 401:
-            await update.message.reply_text(
-                "❌ Не удалось авторизоваться. Пожалуйста, сначала зарегистрируйтесь."
-            )
+            await update.message.reply_text(t("auth.failed", lang))
             return ConversationHandler.END
         else:
-            await update.message.reply_text("❌ Не удалось загрузить счета.")
+            await update.message.reply_text(t("expense.error", lang))
             return ConversationHandler.END
     except Exception as e:
         logger.error(f"Error in add_expense_start: {e}", exc_info=True)
-        await update.message.reply_text("❌ Ошибка при загрузке счетов.")
+        await update.message.reply_text(t("expense.error", lang))
         return ConversationHandler.END
 
 
@@ -499,13 +647,20 @@ async def account_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
     account_id = int(query.data.split('_')[1])
     context.user_data['account_id'] = account_id
     
+    # Get language from context or fetch it
+    lang = context.user_data.get('language', 'ru')
+    if not lang:
+        telegram_id = str(query.from_user.id)
+        lang = await get_user_language(telegram_id)
+        context.user_data['language'] = lang
+    
     # Find account name
     accounts = context.user_data.get('accounts', [])
     account = next((a for a in accounts if a['id'] == account_id), None)
-    account_name = account['name'] if account else "счет"
+    account_name = account['name'] if account else t("common.account", lang)
     
     trans_type = context.user_data.get('type', 'expense')
-    type_text = "дохода" if trans_type == "income" else "расхода"
+    type_text = "income" if trans_type == "income" else "expense"
     icon = "💰" if trans_type == "income" else "💸"
     
     # For expense/income, load categories first
@@ -540,7 +695,7 @@ async def account_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         row = []
                         # First category in row
                         cat = categories[i]
-                        cat_name = cat.get('name', 'Категория')
+                        cat_name = cat.get('name', t("common.category", lang))
                         cat_icon = cat.get('icon', '📦')
                         # Truncate long names (max 15 chars)
                         if len(cat_name) > 15:
@@ -552,7 +707,7 @@ async def account_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         # Second category in row (if exists)
                         if i + 1 < len(categories) and i + 1 < 10:
                             cat = categories[i + 1]
-                            cat_name = cat.get('name', 'Категория')
+                            cat_name = cat.get('name', t("common.category", lang))
                             cat_icon = cat.get('icon', '📦')
                             if len(cat_name) > 15:
                                 cat_name = cat_name[:12] + '...'
@@ -563,17 +718,21 @@ async def account_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         keyboard.append(row)
                     
                     # Add "Skip category" button (full width)
+                    skip_text = t("expense.skip_category", lang) if trans_type == "expense" else t("income.skip_category", lang)
                     keyboard.append([InlineKeyboardButton(
-                        "⏭️ Пропустить категорию",
+                        skip_text,
                         callback_data="category_skip"
                     )])
                     
                     reply_markup = InlineKeyboardMarkup(keyboard)
                     
+                    title_text = t("expense.title", lang) if trans_type == "expense" else t("income.title", lang)
+                    select_cat_text = t("expense.select_category", lang) if trans_type == "expense" else t("income.select_category", lang)
+                    
                     await query.edit_message_text(
-                        f"{icon} Добавление {type_text}\n\n"
-                        f"Счет: *{account_name}*\n\n"
-                        f"Выберите категорию:",
+                        f"{title_text}\n"
+                        f"{t('common.account', lang)}: *{account_name}*\n\n"
+                        f"{select_cat_text}",
                         reply_markup=reply_markup,
                         parse_mode='Markdown'
                     )
@@ -581,29 +740,35 @@ async def account_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     return WAITING_CATEGORY
                 else:
                     # No categories, skip to amount
+                    title_text = t("expense.title", lang) if trans_type == "expense" else t("income.title", lang)
+                    enter_amount_text = t("expense.enter_amount", lang) if trans_type == "expense" else t("income.enter_amount", lang)
                     await query.edit_message_text(
-                        f"{icon} Добавление {type_text}\n\n"
-                        f"Счет: *{account_name}*\n\n"
-                        f"Введите сумму {type_text}:",
+                        f"{title_text}\n"
+                        f"{t('common.account', lang)}: *{account_name}*\n\n"
+                        f"{enter_amount_text}",
                         parse_mode='Markdown'
                     )
                     return WAITING_AMOUNT
             else:
                 # Error loading categories, skip to amount
+                title_text = t("expense.title", lang) if trans_type == "expense" else t("income.title", lang)
+                enter_amount_text = t("expense.enter_amount", lang) if trans_type == "expense" else t("income.enter_amount", lang)
                 await query.edit_message_text(
-                    f"{icon} Добавление {type_text}\n\n"
-                    f"Счет: *{account_name}*\n\n"
-                    f"Введите сумму {type_text}:",
+                    f"{title_text}\n"
+                    f"{t('common.account', lang)}: *{account_name}*\n\n"
+                    f"{enter_amount_text}",
                     parse_mode='Markdown'
                 )
                 return WAITING_AMOUNT
         except Exception as e:
             logger.error(f"Error loading categories: {e}")
             # On error, skip to amount
+            title_text = t("expense.title", lang) if trans_type == "expense" else t("income.title", lang)
+            enter_amount_text = t("expense.enter_amount", lang) if trans_type == "expense" else t("income.enter_amount", lang)
             await query.edit_message_text(
-                f"{icon} Добавление {type_text}\n\n"
-                f"Счет: *{account_name}*\n\n"
-                f"Введите сумму {type_text}:",
+                f"{title_text}\n"
+                f"{t('common.account', lang)}: *{account_name}*\n\n"
+                f"{enter_amount_text}",
                 parse_mode='Markdown'
             )
             return WAITING_AMOUNT
@@ -623,6 +788,9 @@ async def category_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     
+    # Get language from context
+    lang = context.user_data.get('language', 'ru')
+    
     if query.data == "category_skip":
         context.user_data['category_id'] = None
     else:
@@ -633,20 +801,22 @@ async def category_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
         categories = context.user_data.get('categories', [])
         category = next((c for c in categories if c['id'] == category_id), None)
         if category:
-            category_name = f"{category.get('icon', '📦')} {category.get('name', 'Категория')}"
+            category_name = f"{category.get('icon', '📦')} {category.get('name', t('common.category', lang))}"
             context.user_data['category_name'] = category_name
     
     trans_type = context.user_data.get('type', 'expense')
-    type_text = "дохода" if trans_type == "income" else "расхода"
     icon = "💰" if trans_type == "income" else "💸"
+    
+    title_text = t("expense.title", lang) if trans_type == "expense" else t("income.title", lang)
+    enter_amount_text = t("expense.enter_amount", lang) if trans_type == "expense" else t("income.enter_amount", lang)
     
     category_info = ""
     if context.user_data.get('category_id'):
-        category_info = f"Категория: {context.user_data.get('category_name', '')}\n\n"
+        category_info = f"{t('common.category', lang)}: {context.user_data.get('category_name', '')}\n\n"
     
     await query.edit_message_text(
-        f"{icon} Добавление {type_text}\n\n"
-        f"{category_info}Введите сумму {type_text}:",
+        f"{title_text}\n"
+        f"{category_info}{enter_amount_text}",
         parse_mode='Markdown'
     )
     
@@ -655,39 +825,49 @@ async def category_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def amount_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle amount input"""
+    # Get language from context
+    lang = context.user_data.get('language', 'ru')
+    
     try:
         amount = float(update.message.text.replace(',', '.'))
         if amount <= 0:
-            await update.message.reply_text("❌ Сумма должна быть больше 0. Введите сумму:")
+            enter_amount_text = t("expense.enter_amount", lang) if context.user_data.get('type') == "expense" else t("income.enter_amount", lang)
+            await update.message.reply_text(f"{t('common.error', lang)} {enter_amount_text}")
             return WAITING_AMOUNT
         
         context.user_data['amount'] = amount
         
         trans_type = context.user_data.get('type', 'expense')
-        type_text = "дохода" if trans_type == "income" else "расхода"
         icon = "💰" if trans_type == "income" else "💸"
+        
+        title_text = t("expense.title", lang) if trans_type == "expense" else t("income.title", lang)
+        enter_desc_text = t("expense.enter_description", lang) if trans_type == "expense" else t("income.enter_description", lang)
         
         category_info = ""
         if context.user_data.get('category_id'):
-            category_info = f"Категория: {context.user_data.get('category_name', '')}\n\n"
+            category_info = f"{t('common.category', lang)}: {context.user_data.get('category_name', '')}\n\n"
         
         await update.message.reply_text(
-            f"{icon} Добавление {type_text}\n\n"
-            f"{category_info}Сумма: *{int(round(amount)):,}*\n\n"
-            f"Введите описание (или отправьте '—' чтобы пропустить):",
+            f"{title_text}\n"
+            f"{category_info}{t('common.amount', lang)}: *{int(round(amount)):,}*\n\n"
+            f"{enter_desc_text}",
             parse_mode='Markdown'
         )
         
         return WAITING_DESCRIPTION
     except ValueError:
-        await update.message.reply_text("❌ Неверный формат суммы. Введите число:")
+        enter_amount_text = t("expense.enter_amount", lang) if context.user_data.get('type') == "expense" else t("income.enter_amount", lang)
+        await update.message.reply_text(f"{t('common.error', lang)} {enter_amount_text}")
         return WAITING_AMOUNT
 
 
 async def description_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle description input and create transaction"""
+    # Get language from context
+    lang = context.user_data.get('language', 'ru')
+    
     description = update.message.text.strip()
-    if description == '—' or description.lower() == 'нет':
+    if description == '—' or description.lower() in ['нет', 'no', 'skip']:
         description = None
     
     account_id = context.user_data.get('account_id')
@@ -696,7 +876,7 @@ async def description_received(update: Update, context: ContextTypes.DEFAULT_TYP
     
     if not account_id or not amount:
         cmd = "/add_expense" if transaction_type == "expense" else "/add_income"
-        await update.message.reply_text(f"❌ Ошибка. Попробуйте снова: {cmd}")
+        await update.message.reply_text(f"{t('common.error', lang)} {cmd}")
         return ConversationHandler.END
     
     # Show typing indicator immediately
@@ -710,7 +890,7 @@ async def description_received(update: Update, context: ContextTypes.DEFAULT_TYP
     try:
         icon = "💰" if transaction_type == "income" else "💸"
         processing_msg = await update.message.reply_text(
-            f"{icon} Обработка транзакции...",
+            f"{icon} {t('common.processing', lang)}",
             parse_mode='Markdown'
         )
     except:
@@ -794,12 +974,23 @@ async def description_received(update: Update, context: ContextTypes.DEFAULT_TYP
         
         if response.status_code == 201:
             icon = "💰" if transaction_type == "income" else "💸"
-            type_text = "Доход" if transaction_type == "income" else "Расход"
-            success_text = (
-                f"✅ *{type_text} добавлен!*\n\n"
-                f"{icon} {int(round(amount)):,} {currency}\n"
-                f"📝 {description or 'Без описания'}"
-            )
+            # Get account and category names for success message
+            accounts = context.user_data.get('accounts', [])
+            account = next((a for a in accounts if a['id'] == account_id), None)
+            account_name = account['name'] if account else t("common.account", lang)
+            category_name = context.user_data.get('category_name', '') or t("common.category", lang)
+            
+            success_text = t("expense.created", lang, 
+                           amount=f"{int(round(amount)):,}",
+                           currency=currency,
+                           account=account_name,
+                           category=category_name,
+                           description=description or t("common.no_description", lang)) if transaction_type == "expense" else t("income.created", lang,
+                           amount=f"{int(round(amount)):,}",
+                           currency=currency,
+                           account=account_name,
+                           category=category_name,
+                           description=description or t("common.no_description", lang))
             
             # Edit processing message or send new one
             if processing_msg:
@@ -814,7 +1005,7 @@ async def description_received(update: Update, context: ContextTypes.DEFAULT_TYP
             else:
                 await update.message.reply_text(success_text, parse_mode='Markdown')
         elif response.status_code == 401:
-            error_text = "❌ Не удалось авторизоваться. Пожалуйста, сначала зарегистрируйтесь."
+            error_text = t("auth.failed", lang)
             if processing_msg:
                 try:
                     await processing_msg.edit_text(error_text)
@@ -828,10 +1019,10 @@ async def description_received(update: Update, context: ContextTypes.DEFAULT_TYP
                 await update.message.reply_text(error_text)
         else:
             try:
-                error_msg = response.json().get("detail", "Ошибка")
+                error_msg = response.json().get("detail", t("common.error", lang))
             except:
-                error_msg = "Ошибка при создании транзакции"
-            error_text = f"❌ Ошибка: {error_msg}"
+                error_msg = t("expense.error", lang) if transaction_type == "expense" else t("income.error", lang)
+            error_text = f"{t('common.error', lang)}: {error_msg}"
             if processing_msg:
                 try:
                     await processing_msg.edit_text(error_text)
@@ -845,8 +1036,7 @@ async def description_received(update: Update, context: ContextTypes.DEFAULT_TYP
                 await update.message.reply_text(error_text)
     except Exception as e:
         logger.error(f"Error creating transaction: {e}", exc_info=True)
-        type_text = "дохода" if transaction_type == "income" else "расхода"
-        error_text = f"❌ Ошибка при создании {type_text}."
+        error_text = t("expense.error", lang) if transaction_type == "expense" else t("income.error", lang)
         if processing_msg:
             try:
                 await processing_msg.edit_text(error_text)
@@ -868,6 +1058,9 @@ async def add_income_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /add_income command"""
     telegram_id = str(update.effective_user.id)
     
+    # Get user language
+    lang = await get_user_language(telegram_id)
+    
     # Get user accounts using authenticated request helper
     try:
         response = await make_authenticated_request(
@@ -879,13 +1072,12 @@ async def add_income_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if response.status_code == 200:
             accounts = response.json()
             if not accounts:
-                await update.message.reply_text(
-                    "❌ У вас нет счетов. Сначала создайте счет через веб-интерфейс."
-                )
+                await update.message.reply_text(t("income.error", lang))
                 return ConversationHandler.END
             
             context.user_data['accounts'] = accounts
             context.user_data['type'] = 'income'
+            context.user_data['language'] = lang  # Store language for later use
             
             keyboard = []
             for acc in accounts[:5]:
@@ -896,25 +1088,23 @@ async def add_income_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             reply_markup = InlineKeyboardMarkup(keyboard)
             
+            message = t("income.title", lang) + t("income.select_account", lang)
             await update.message.reply_text(
-                "💰 *Добавление дохода*\n\n"
-                "Выберите счет:",
+                message,
                 reply_markup=reply_markup,
                 parse_mode='Markdown'
             )
             
             return WAITING_AMOUNT
         elif response.status_code == 401:
-            await update.message.reply_text(
-                "❌ Не удалось авторизоваться. Пожалуйста, сначала зарегистрируйтесь."
-            )
+            await update.message.reply_text(t("auth.failed", lang))
             return ConversationHandler.END
         else:
-            await update.message.reply_text("❌ Не удалось загрузить счета.")
+            await update.message.reply_text(t("income.error", lang))
             return ConversationHandler.END
     except Exception as e:
         logger.error(f"Error in add_income_start: {e}", exc_info=True)
-        await update.message.reply_text("❌ Ошибка при загрузке счетов.")
+        await update.message.reply_text(t("income.error", lang))
         return ConversationHandler.END
 
 
@@ -936,13 +1126,15 @@ async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             user_id = int(telegram_id)
             if user_id in user_tokens:
                 del user_tokens[user_id]
-            await update.message.reply_text(
-                "❌ Не удалось авторизоваться. Пожалуйста, сначала зарегистрируйтесь."
-            )
+            lang = await get_user_language(telegram_id)
+            await update.message.reply_text(t("auth.failed", lang))
             return
         
+        # Get user language
+        lang = await get_user_language(telegram_id)
+        
         # Send "thinking" message
-        thinking_msg = await update.message.reply_text("🤖 Генерация отчета... Пожалуйста, подождите.")
+        thinking_msg = await update.message.reply_text(t("report.generating", lang))
         
         # Get transactions using authenticated request helper
         transactions_response = await make_authenticated_request(
@@ -960,7 +1152,7 @@ async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         
         if transactions_response.status_code != 200 or balance_response.status_code != 200:
-            await thinking_msg.edit_text("❌ Не удалось получить данные.")
+            await thinking_msg.edit_text(t("report.error_data", lang))
             return
         
         transactions = transactions_response.json()
@@ -1362,6 +1554,8 @@ def main():
     application.add_handler(CommandHandler("balance", get_balance))
     application.add_handler(CommandHandler("transactions", get_transactions))
     application.add_handler(CommandHandler("report", report_command))
+    application.add_handler(CommandHandler("language", language_command))
+    application.add_handler(CallbackQueryHandler(language_callback, pattern="^lang_"))
     
     # Goal creation conversation handler
     from telegram.ext import CallbackQueryHandler
