@@ -332,12 +332,14 @@ async def refresh_token(
 
 class TelegramLoginRequest(BaseModel):
     init_data: str
+    current_token: Optional[str] = None  # Optional token to link to existing account
 
 
 @router.post("/telegram", response_model=TokenResponse)
 async def login_telegram(
     request: TelegramLoginRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    authorization: Optional[str] = None
 ):
     """
     Login via Telegram Mini App
@@ -427,12 +429,31 @@ async def login_telegram(
             except (ValueError, TypeError):
                 pass
         
-        # If still not found, try to link to existing VK account
-        # This allows users to use both platforms with the same account
-        # Strategy: If user logged in via VK first, then via Telegram, link them
+        # If still not found, try to link to existing account
+        # Strategy 1: If user provided current_token, link to that account
+        if not user and request.current_token:
+            try:
+                payload = decode_token(request.current_token)
+                if payload and payload.get("sub"):
+                    current_user_id = int(payload.get("sub"))
+                    current_user = db.query(User).filter(User.id == current_user_id).first()
+                    if current_user:
+                        logger.info(f"Linking Telegram account to existing user {current_user.id} (from token)")
+                        user = current_user
+                        user.telegram_id = telegram_id
+                        user.telegram_username = telegram_username
+                        # Update name if available and not set
+                        if first_name and not user.first_name:
+                            user.first_name = first_name
+                        if last_name and not user.last_name:
+                            user.last_name = last_name
+                        is_new_user = False
+            except Exception as e:
+                logger.warning(f"Failed to decode current_token for account linking: {e}")
+        
+        # Strategy 2: If no token, try to link to existing VK account
+        # Check if there's exactly one user with vk_id but no telegram_id
         if not user:
-            # Check if there's exactly one user with vk_id but no telegram_id
-            # This is a simple heuristic: if only one VK user exists, assume it's the same person
             existing_vk_users = db.query(User).filter(
                 User.vk_id.isnot(None),
                 User.telegram_id.is_(None)
@@ -651,12 +672,14 @@ async def login_telegram(
 
 class VKLoginRequest(BaseModel):
     launch_params: str  # URL query string with vk_* parameters
+    current_token: Optional[str] = None  # Optional token to link to existing account
 
 
 @router.post("/vk", response_model=TokenResponse)
 async def login_vk(
     request: VKLoginRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    authorization: Optional[str] = None
 ):
     """
     Login via VK Mini App
@@ -737,12 +760,30 @@ async def login_vk(
             except (ValueError, TypeError):
                 pass
         
-        # If still not found, try to link to existing Telegram account
-        # This allows users to use both platforms with the same account
-        # Strategy: If user logged in via Telegram first, then via VK, link them
+        # If still not found, try to link to existing account
+        # Strategy 1: If user provided current_token, link to that account
+        if not user and request.current_token:
+            try:
+                payload = decode_token(request.current_token)
+                if payload and payload.get("sub"):
+                    current_user_id = int(payload.get("sub"))
+                    current_user = db.query(User).filter(User.id == current_user_id).first()
+                    if current_user:
+                        logger.info(f"Linking VK account to existing user {current_user.id} (from token)")
+                        user = current_user
+                        user.vk_id = vk_id
+                        # Update name if available and not set
+                        if first_name and not user.first_name:
+                            user.first_name = first_name
+                        if last_name and not user.last_name:
+                            user.last_name = last_name
+                        is_new_user = False
+            except Exception as e:
+                logger.warning(f"Failed to decode current_token for account linking: {e}")
+        
+        # Strategy 2: If no token, try to link to existing Telegram account
+        # Check if there's exactly one user with telegram_id but no vk_id
         if not user:
-            # Check if there's exactly one user with telegram_id but no vk_id
-            # This is a simple heuristic: if only one Telegram user exists, assume it's the same person
             existing_tg_users = db.query(User).filter(
                 User.telegram_id.isnot(None),
                 User.vk_id.is_(None)

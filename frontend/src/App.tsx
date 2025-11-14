@@ -142,7 +142,9 @@ function TelegramAuthHandler() {
           hasAttemptedAuth.current = true
           try {
             console.log('Attempting automatic Telegram login...')
-            const response = await api.loginTelegram(initData)
+            // Get current token for account linking (if user is already logged in via VK)
+            const currentToken = localStorage.getItem('token')
+            const response = await api.loginTelegram(initData, currentToken)
             console.log('Telegram auto-login successful:', { 
               userId: response.user?.id,
               hasAccessToken: !!response.access_token,
@@ -331,7 +333,9 @@ function VKAuthHandler() {
           hasAttemptedAuth.current = true
           try {
             console.log('Attempting automatic VK login...')
-            const response = await api.loginVK(launchParams)
+            // Get current token for account linking (if user is already logged in via Telegram)
+            const currentToken = localStorage.getItem('token')
+            const response = await api.loginVK(launchParams, currentToken)
             console.log('VK auto-login successful:', { 
               userId: response.user?.id,
               hasAccessToken: !!response.access_token,

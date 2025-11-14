@@ -337,12 +337,15 @@ class ApiClient {
     })
   }
 
-  async loginTelegram(initData: string) {
+  async loginTelegram(initData: string, currentToken?: string | null) {
     const response = await this.request<{ access_token: string; refresh_token: string; user: any }>(
       '/api/v1/auth/telegram',
       {
         method: 'POST',
-        body: JSON.stringify({ init_data: initData }),
+        body: JSON.stringify({ 
+          init_data: initData,
+          current_token: currentToken || null
+        }),
       }
     )
     // Store tokens after successful Telegram login
@@ -352,12 +355,15 @@ class ApiClient {
     return response
   }
 
-  async loginVK(launchParams: string) {
+  async loginVK(launchParams: string, currentToken?: string | null) {
     const response = await this.request<{ access_token: string; refresh_token: string; user: any }>(
       '/api/v1/auth/vk',
       {
         method: 'POST',
-        body: JSON.stringify({ launch_params: launchParams }),
+        body: JSON.stringify({ 
+          launch_params: launchParams,
+          current_token: currentToken || null
+        }),
       }
     )
     // Store tokens after successful VK login

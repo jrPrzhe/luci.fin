@@ -65,7 +65,9 @@ export function Login() {
     }
 
     try {
-      const response = await api.loginTelegram(initData)
+      // Try to get current token for account linking
+      const currentToken = localStorage.getItem('token')
+      const response = await api.loginTelegram(initData, currentToken)
       console.log('[Login] Telegram login response:', {
         hasAccessToken: !!response.access_token,
         accessTokenLength: response.access_token?.length || 0,
@@ -119,7 +121,9 @@ export function Login() {
     }
 
     try {
-      const response = await api.loginVK(launchParams)
+      // Try to get current token for account linking
+      const currentToken = localStorage.getItem('token')
+      const response = await api.loginVK(launchParams, currentToken)
       console.log('[Login] VK login response:', {
         hasAccessToken: !!response.access_token,
         accessTokenLength: response.access_token?.length || 0,
