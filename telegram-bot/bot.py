@@ -242,8 +242,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"📋 *Доступные команды:*\n"
         f"💰 /balance - текущий баланс\n"
         f"📝 /transactions - последние транзакции\n"
-        f"💸 /add_expense - добавить расход\n"
-        f"💰 /add_income - добавить доход\n"
+        f"💸 /add\\_expense - добавить расход\n"
+        f"💰 /add\\_income - добавить доход\n"
         f"📊 /report - получить AI-отчёт\n"
         f"🎯 /goal - создать финансовую цель\n"
         f"❓ /help - справка\n\n"
@@ -259,15 +259,15 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 /start - начать работу с ботом
 💰 /balance - показать текущий баланс по всем счетам
 📝 /transactions - показать последние транзакции
-💸 /add_expense - добавить новый расход
-💰 /add_income - добавить новый доход
+💸 /add\\_expense - добавить новый расход
+💰 /add\\_income - добавить новый доход
 📊 /report - получить AI-анализ финансов
 🎯 /goal - создать финансовую цель с AI-планом
 /cancel - отменить текущую операцию
 ❓ /help - эта справка
 
 *Использование:*
-• После команды /add_expense или /add_income выберите счет и следуйте инструкциям
+• После команды /add\\_expense или /add\\_income выберите счет и следуйте инструкциям
 • Команда /report анализирует ваши транзакции и дает рекомендации
 • Команда /goal создаст индивидуальный план для достижения вашей финансовой цели"""
     await update.message.reply_text(help_text, parse_mode='Markdown')
@@ -525,17 +525,36 @@ async def account_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if categories:
                     context.user_data['categories'] = categories
                     
-                    # Create keyboard with categories (limit to 10)
+                    # Create keyboard with categories in 2 columns grid (limit to 10)
                     keyboard = []
-                    for cat in categories[:10]:
+                    # Group categories in pairs (2 columns)
+                    for i in range(0, min(len(categories), 10), 2):
+                        row = []
+                        # First category in row
+                        cat = categories[i]
                         cat_name = cat.get('name', 'Категория')
                         cat_icon = cat.get('icon', '📦')
-                        keyboard.append([InlineKeyboardButton(
+                        # Truncate long names (max 15 chars)
+                        if len(cat_name) > 15:
+                            cat_name = cat_name[:12] + '...'
+                        row.append(InlineKeyboardButton(
                             f"{cat_icon} {cat_name}",
                             callback_data=f"category_{cat['id']}"
-                        )])
+                        ))
+                        # Second category in row (if exists)
+                        if i + 1 < len(categories) and i + 1 < 10:
+                            cat = categories[i + 1]
+                            cat_name = cat.get('name', 'Категория')
+                            cat_icon = cat.get('icon', '📦')
+                            if len(cat_name) > 15:
+                                cat_name = cat_name[:12] + '...'
+                            row.append(InlineKeyboardButton(
+                                f"{cat_icon} {cat_name}",
+                                callback_data=f"category_{cat['id']}"
+                            ))
+                        keyboard.append(row)
                     
-                    # Add "Skip category" button
+                    # Add "Skip category" button (full width)
                     keyboard.append([InlineKeyboardButton(
                         "⏭️ Пропустить категорию",
                         callback_data="category_skip"
