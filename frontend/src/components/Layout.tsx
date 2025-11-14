@@ -22,7 +22,7 @@ export function Layout() {
   const isMiniApp = isTelegramWebApp()
   const { isEnabled: newYearEnabled } = useNewYearTheme()
   const { theme, toggleTheme } = useTheme()
-  const { t } = useI18n()
+  const { language, setLanguage, t } = useI18n()
 
   // Предзагрузка изображений для Stories при монтировании компонента
   useEffect(() => {
@@ -298,6 +298,40 @@ export function Layout() {
                 </nav>
 
         <div className="p-3 border-t border-telegram-border dark:border-telegram-dark-border space-y-2">
+          {/* Language Toggle */}
+          <div className="w-full flex items-center justify-between p-3 rounded-telegram hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🌍</span>
+              <div>
+                <p className="font-medium text-sm text-telegram-text dark:text-telegram-dark-text">{t.profile.language}</p>
+                <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+                  {language === 'ru' ? 'Русский' : 'English'}
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setLanguage('ru')}
+                className={`px-2 py-1 rounded-telegram text-xs font-medium transition-colors ${
+                  language === 'ru'
+                    ? 'bg-telegram-primary text-white dark:bg-telegram-dark-primary'
+                    : 'bg-telegram-border hover:bg-telegram-hover dark:bg-telegram-dark-border dark:hover:bg-telegram-dark-hover'
+                }`}
+              >
+                🇷🇺 RU
+              </button>
+              <button
+                onClick={() => setLanguage('en')}
+                className={`px-2 py-1 rounded-telegram text-xs font-medium transition-colors ${
+                  language === 'en'
+                    ? 'bg-telegram-primary text-white dark:bg-telegram-dark-primary'
+                    : 'bg-telegram-border hover:bg-telegram-hover dark:bg-telegram-dark-border dark:hover:bg-telegram-dark-hover'
+                }`}
+              >
+                🇬🇧 EN
+              </button>
+            </div>
+          </div>
           {/* Theme Toggle */}
           <button
             onClick={toggleTheme}
@@ -306,9 +340,9 @@ export function Layout() {
             <div className="flex items-center gap-3">
               <span className="text-2xl">{theme === 'dark' ? '🌙' : '☀️'}</span>
               <div>
-                <p className="font-medium text-sm text-telegram-text dark:text-telegram-dark-text">Темная тема</p>
+                <p className="font-medium text-sm text-telegram-text dark:text-telegram-dark-text">{t.profile.darkTheme}</p>
                 <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-                  {theme === 'dark' ? 'Включена' : 'Выключена'}
+                  {theme === 'dark' ? t.profile.darkThemeEnabled : t.profile.darkThemeDisabled}
                 </p>
               </div>
             </div>
@@ -322,7 +356,7 @@ export function Layout() {
             onClick={handleLogout}
             className="w-full btn-secondary text-telegram-danger dark:text-telegram-dark-danger hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-telegram-danger dark:hover:text-red-300 text-sm py-2"
           >
-            Выход
+            {t.common.logout}
           </button>
         </div>
       </aside>
@@ -348,18 +382,43 @@ export function Layout() {
                       </h1>
           </div>
           <div className="flex items-center gap-2">
+            {/* Language Toggle */}
+            <div className="flex gap-1 bg-telegram-hover dark:bg-telegram-dark-hover rounded-telegram p-1">
+              <button
+                onClick={() => setLanguage('ru')}
+                className={`px-2 py-1 rounded-telegram text-xs font-medium transition-colors ${
+                  language === 'ru'
+                    ? 'bg-telegram-primary text-white dark:bg-telegram-dark-primary'
+                    : 'text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text'
+                }`}
+                title="Русский"
+              >
+                🇷🇺
+              </button>
+              <button
+                onClick={() => setLanguage('en')}
+                className={`px-2 py-1 rounded-telegram text-xs font-medium transition-colors ${
+                  language === 'en'
+                    ? 'bg-telegram-primary text-white dark:bg-telegram-dark-primary'
+                    : 'text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text'
+                }`}
+                title="English"
+              >
+                🇬🇧
+              </button>
+            </div>
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
               className="btn-icon w-10 h-10 flex items-center justify-center bg-telegram-hover dark:bg-telegram-dark-hover hover:bg-telegram-border dark:hover:bg-telegram-dark-border"
-              title={theme === 'dark' ? 'Переключить на светлую тему' : 'Переключить на темную тему'}
+              title={theme === 'dark' ? t.profile.darkThemeDisabled : t.profile.darkThemeEnabled}
             >
               <span className="text-xl">{theme === 'dark' ? '🌙' : '☀️'}</span>
             </button>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="btn-icon w-10 h-10 bg-telegram-hover dark:bg-telegram-dark-hover hover:bg-telegram-border dark:hover:bg-telegram-dark-border"
-              aria-label="Меню"
+              aria-label={t.nav.settings}
             >
               <span className="text-xl">{mobileMenuOpen ? '✕' : '☰'}</span>
             </button>
@@ -412,12 +471,46 @@ export function Layout() {
               })}
             </nav>
             
-            <div className="p-3 border-t border-telegram-border dark:border-telegram-dark-border mt-auto">
+            <div className="p-3 border-t border-telegram-border dark:border-telegram-dark-border mt-auto space-y-2">
+              {/* Language Toggle */}
+              <div className="w-full flex items-center justify-between p-3 rounded-telegram hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors">
+                <div className="flex items-center gap-3">
+                  <span className="text-xl">🌍</span>
+                  <div>
+                    <p className="font-medium text-sm text-telegram-text dark:text-telegram-dark-text">{t.profile.language}</p>
+                    <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+                      {language === 'ru' ? 'Русский' : 'English'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setLanguage('ru')}
+                    className={`px-2 py-1 rounded-telegram text-xs font-medium transition-colors ${
+                      language === 'ru'
+                        ? 'bg-telegram-primary text-white dark:bg-telegram-dark-primary'
+                        : 'bg-telegram-border hover:bg-telegram-hover dark:bg-telegram-dark-border dark:hover:bg-telegram-dark-hover'
+                    }`}
+                  >
+                    🇷🇺 RU
+                  </button>
+                  <button
+                    onClick={() => setLanguage('en')}
+                    className={`px-2 py-1 rounded-telegram text-xs font-medium transition-colors ${
+                      language === 'en'
+                        ? 'bg-telegram-primary text-white dark:bg-telegram-dark-primary'
+                        : 'bg-telegram-border hover:bg-telegram-hover dark:bg-telegram-dark-border dark:hover:bg-telegram-dark-hover'
+                    }`}
+                  >
+                    🇬🇧 EN
+                  </button>
+                </div>
+              </div>
               <button
                 onClick={handleLogout}
                 className="w-full btn-secondary text-telegram-danger dark:text-telegram-dark-danger hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-telegram-danger dark:hover:text-red-300 text-sm py-2"
               >
-                Выход
+                {t.common.logout}
               </button>
             </div>
           </div>

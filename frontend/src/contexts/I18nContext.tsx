@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react'
 import { ru } from '../locales/ru'
 import { en } from '../locales/en'
 import { api } from '../services/api'
@@ -23,6 +23,7 @@ const translations: Record<Language, Translations> = {
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>('ru')
   const [isLoading, setIsLoading] = useState(true)
+  const languageRef = useRef<Language>('ru')
 
   // Load language from localStorage or user profile
   useEffect(() => {
@@ -33,44 +34,69 @@ export function I18nProvider({ children }: { children: ReactNode }) {
         if (savedLang && (savedLang === 'ru' || savedLang === 'en')) {
           setLanguageState(savedLang)
           setIsLoading(false)
+          // Still check profile to sync
+          checkProfileLanguage(savedLang)
           return
         }
 
         // Try to get from user profile
-        try {
-          const token = localStorage.getItem('token')
-          if (token) {
-            const user = await api.getCurrentUser()
-            if (user?.language) {
-              const userLang = user.language.toLowerCase() as Language
-              if (userLang === 'ru' || userLang === 'en') {
-                setLanguageState(userLang)
-                localStorage.setItem('language', userLang)
-                setIsLoading(false)
-                return
-              }
-            }
-          }
-        } catch (error) {
-          console.log('Could not load language from user profile:', error)
-        }
-
-        // Default to Russian
-        setLanguageState('ru')
-        localStorage.setItem('language', 'ru')
+        await checkProfileLanguage()
       } catch (error) {
         console.error('Error loading language:', error)
         setLanguageState('ru')
-      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    const checkProfileLanguage = async (currentLang?: Language) => {
+      try {
+        const token = localStorage.getItem('token')
+        if (token) {
+          const user = await api.getCurrentUser()
+          if (user?.language) {
+            const userLang = user.language.toLowerCase() as Language
+            if (userLang === 'ru' || userLang === 'en') {
+              // If language changed in profile, update state
+              if (!currentLang || currentLang !== userLang) {
+                setLanguageState(userLang)
+                languageRef.current = userLang
+                localStorage.setItem('language', userLang)
+              }
+              if (!currentLang) {
+                setIsLoading(false)
+              }
+              return
+            }
+          }
+        }
+      } catch (error) {
+        console.log('Could not load language from user profile:', error)
+      }
+      
+      // Default to Russian if no profile language
+      if (!currentLang) {
+        setLanguageState('ru')
+        localStorage.setItem('language', 'ru')
         setIsLoading(false)
       }
     }
 
     loadLanguage()
-  }, [])
+    
+    // Periodically check for language changes (every 5 seconds)
+    const interval = setInterval(() => {
+      const token = localStorage.getItem('token')
+      if (token) {
+        checkProfileLanguage(languageRef.current)
+      }
+    }, 5000)
+    
+    return () => clearInterval(interval)
+  }, []) // Only run once on mount
 
   const setLanguage = async (lang: Language) => {
     setLanguageState(lang)
+    languageRef.current = lang
     localStorage.setItem('language', lang)
     
     // Update user profile if logged in

@@ -23,6 +23,7 @@ export const ru = {
     optional: 'Необязательно',
     required: 'Обязательно',
     page: 'Страница',
+    logout: 'Выход',
   },
   
   // Navigation

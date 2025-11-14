@@ -23,6 +23,7 @@ export const en = {
     optional: 'Optional',
     required: 'Required',
     page: 'Page',
+    logout: 'Logout',
   },
   
   // Navigation
