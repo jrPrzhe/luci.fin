@@ -1558,7 +1558,6 @@ def main():
     application.add_handler(CallbackQueryHandler(language_callback, pattern="^lang_"))
     
     # Goal creation conversation handler
-    from telegram.ext import CallbackQueryHandler
     goal_handler = ConversationHandler(
         entry_points=[CommandHandler("goal", goal_command_start)],
         states={
