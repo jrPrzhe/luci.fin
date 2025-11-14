@@ -1164,7 +1164,13 @@ async def reset_account(
         ).delete(synchronize_session=False)
         logger.info(f"Deleted {transactions_count} transactions")
         
-        # Delete all accounts
+        # Delete all goals BEFORE accounts (goals have foreign key to accounts)
+        from app.models.goal import Goal
+        goals_count = db.query(Goal).filter(Goal.user_id == current_user.id).count()
+        db.query(Goal).filter(Goal.user_id == current_user.id).delete(synchronize_session=False)
+        logger.info(f"Deleted {goals_count} goals")
+        
+        # Delete all accounts (after goals are deleted)
         if account_ids:
             db.query(Account).filter(Account.id.in_(account_ids)).delete(synchronize_session=False)
         logger.info(f"Deleted {accounts_count} accounts")
@@ -1179,12 +1185,6 @@ async def reset_account(
         tags_count = db.query(Tag).filter(Tag.user_id == current_user.id).count()
         db.query(Tag).filter(Tag.user_id == current_user.id).delete(synchronize_session=False)
         logger.info(f"Deleted {tags_count} tags")
-        
-        # Delete all goals
-        from app.models.goal import Goal
-        goals_count = db.query(Goal).filter(Goal.user_id == current_user.id).count()
-        db.query(Goal).filter(Goal.user_id == current_user.id).delete(synchronize_session=False)
-        logger.info(f"Deleted {goals_count} goals")
         
         # Delete all reports
         from app.models.report import Report
