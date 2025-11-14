@@ -346,7 +346,7 @@ export function Transactions() {
   }
 
   return (
-    <div className="p-4 md:p-8">
+    <div className="p-4 sm:p-6 md:p-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-telegram-text dark:text-telegram-dark-text">Транзакции</h1>
         <button
