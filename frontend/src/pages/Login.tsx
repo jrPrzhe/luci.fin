@@ -203,7 +203,7 @@ export function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-telegram-bg p-4 animate-fade-in safe-area-inset">
-      <div className="w-full max-w-md">
+          <div className="w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl">
         {/* Logo/Header */}
         <div className="text-center mb-6 md:mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-telegram-primary to-telegram-primaryLight mb-3 md:mb-4 shadow-telegram-lg overflow-hidden">

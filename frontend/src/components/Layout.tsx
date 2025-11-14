@@ -254,7 +254,7 @@ export function Layout() {
       {newYearEnabled && <Garland />}
       
       {/* Desktop Sidebar - скрыт на мобильных */}
-      <aside className="hidden md:flex w-64 flex-col bg-telegram-surface dark:bg-telegram-dark-surface border-r border-telegram-border dark:border-telegram-dark-border">
+      <aside className="hidden lg:flex w-64 flex-col bg-telegram-surface dark:bg-telegram-dark-surface border-r border-telegram-border dark:border-telegram-dark-border flex-shrink-0">
         <div className="p-4 border-b border-telegram-border dark:border-telegram-dark-border">
           <div className="flex items-center gap-3">
             <button
@@ -361,8 +361,8 @@ export function Layout() {
         </div>
       </aside>
 
-      {/* Mobile Header - только на мобильных */}
-      <header className="md:hidden bg-telegram-surface dark:bg-telegram-dark-surface border-b border-telegram-border dark:border-telegram-dark-border px-4 py-3 flex items-center justify-between sticky top-0 z-10 relative">
+      {/* Mobile/Tablet Header - скрыт на desktop (lg+) */}
+      <header className="lg:hidden bg-telegram-surface dark:bg-telegram-dark-surface border-b border-telegram-border dark:border-telegram-dark-border px-4 py-3 flex items-center justify-between sticky top-0 z-10 relative">
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowStories(true)}
@@ -425,10 +425,10 @@ export function Layout() {
           </div>
         </header>
 
-      {/* Mobile Menu Overlay */}
+      {/* Mobile/Tablet Menu Overlay */}
       {mobileMenuOpen && (
         <div 
-          className="md:hidden fixed inset-0 bg-black/50 z-20"
+          className="lg:hidden fixed inset-0 bg-black/50 z-20"
           onClick={() => setMobileMenuOpen(false)}
         >
           <div 
@@ -518,13 +518,15 @@ export function Layout() {
       )}
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto pb-16 md:pb-0">
-        <Outlet />
+      <main className="flex-1 overflow-auto pb-16 lg:pb-0">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 lg:py-6 w-full">
+          <Outlet />
+        </div>
       </main>
 
       {/* Mobile Bottom Navigation - только в Mini App на мобильных */}
       {isMiniApp && (
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-telegram-surface dark:bg-telegram-dark-surface border-t border-telegram-border dark:border-telegram-dark-border px-2 py-2 safe-area-inset-bottom">
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-telegram-surface dark:bg-telegram-dark-surface border-t border-telegram-border dark:border-telegram-dark-border px-2 py-2 safe-area-inset-bottom">
           <div className="flex items-center justify-around">
             {/* Дашборд, Транзакции, Счета, Отчёты (вместо Категорий) */}
             {navItems.filter(item => 

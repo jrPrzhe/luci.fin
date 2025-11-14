@@ -322,7 +322,7 @@ export function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen p-4 md:p-6 animate-fade-in max-w-4xl mx-auto w-full">
+    <div className="min-h-screen animate-fade-in w-full">
       {/* Header - скрыт на мобильных, так как есть в Layout */}
       <div className="mb-4 md:mb-6 hidden md:block">
         <h1 className="text-2xl font-semibold text-telegram-text dark:text-telegram-dark-text mb-1">
@@ -417,7 +417,7 @@ export function Dashboard() {
       {/* Quick Form Modal */}
       {showQuickForm && quickFormType && (
         <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="card max-w-md w-full max-h-[90vh] overflow-y-auto">
+          <div className="card max-w-md sm:max-w-lg md:max-w-xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <div className="flex items-center gap-2">
                 {quickFormStep === 'category' && (
@@ -513,7 +513,7 @@ export function Dashboard() {
                     <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-3">
                       {t.dashboard.form.selectCategory} ({categories.length} {t.dashboard.form.available})
                     </p>
-                    <div className="grid grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 gap-3 max-h-[60vh] overflow-y-auto">
                       {categories
                         .sort((a, b) => (b.is_favorite ? 1 : 0) - (a.is_favorite ? 1 : 0))
                         .map((category) => (
