@@ -620,6 +620,247 @@ async def login_telegram(
         )
 
 
+class VKLoginRequest(BaseModel):
+    launch_params: str  # URL query string with vk_* parameters
+
+
+@router.post("/vk", response_model=TokenResponse)
+async def login_vk(
+    request: VKLoginRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Login via VK Mini App
+    Accepts VK launch params from URL query string
+    Creates user automatically by vk_id if doesn't exist
+    Each user has isolated data based on their vk_id
+    """
+    import logging
+    import urllib.parse
+    logger = logging.getLogger(__name__)
+    
+    try:
+        launch_params = request.launch_params
+        
+        # Log for debugging (without sensitive data)
+        logger.info(f"Received VK login request, launch_params length: {len(launch_params) if launch_params else 0}")
+        
+        if not launch_params or len(launch_params) == 0:
+            logger.warning("Empty launch_params received")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Empty launch_params"
+            )
+        
+        # Parse launch params - Format: ?vk_user_id=123&vk_app_id=456&sign=...
+        # Remove leading ? if present
+        if launch_params.startswith('?'):
+            launch_params = launch_params[1:]
+        
+        params = {}
+        for param in launch_params.split('&'):
+            if '=' in param:
+                key, value = param.split('=', 1)
+                params[key] = urllib.parse.unquote(value)
+        
+        logger.info(f"Parsed launch params: {list(params.keys())}")
+        
+        # Extract vk_user_id
+        vk_user_id_raw = params.get('vk_user_id')
+        if not vk_user_id_raw:
+            logger.warning(f"No 'vk_user_id' in launch params. Available params: {list(params.keys())}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="VK user ID not found in launch params"
+            )
+        
+        # Normalize vk_id - ensure consistent format
+        vk_id = str(vk_user_id_raw).strip()
+        
+        if not vk_id or vk_id == 'None' or vk_id == '':
+            logger.error(f"Invalid vk_id: {vk_id}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid VK user ID"
+            )
+        
+        logger.info(f"VK Mini App login - vk_id: '{vk_id}' (type: {type(vk_id)}, length: {len(vk_id)})")
+        
+        # Note: VK launch params don't include user name/photo by default
+        # We'll need to get it via VK API if needed, but for now we'll use empty strings
+        first_name = params.get('first_name', '')
+        last_name = params.get('last_name', '')
+        
+        # Find or create user by vk_id (exact match)
+        user = db.query(User).filter(User.vk_id == vk_id).first()
+        
+        # If not found, try alternative formats
+        if not user:
+            try:
+                vk_id_int = int(vk_id)
+                for alt_id in [str(vk_id_int), f"{vk_id_int}"]:
+                    alt_user = db.query(User).filter(User.vk_id == alt_id).first()
+                    if alt_user:
+                        logger.info(f"Found existing user with alternative vk_id format: '{alt_id}', updating to '{vk_id}'")
+                        alt_user.vk_id = vk_id  # Update to normalized format
+                        user = alt_user
+                        break
+            except (ValueError, TypeError):
+                pass
+        
+        is_new_user = False
+        
+        if not user:
+            # Create new user - ensure unique email
+            username = f"vk_{vk_id}"
+            
+            # Create unique email based on vk_id
+            base_email = f"vk_{vk_id}@vk.local"
+            email = base_email
+            
+            # If email exists (shouldn't happen with vk_id, but just in case)
+            counter = 1
+            while db.query(User).filter(User.email == email).first():
+                email = f"vk_{vk_id}_{counter}@vk.local"
+                counter += 1
+            
+            # Check if user is admin (can add VK admin IDs to config if needed)
+            from app.core.config import settings
+            # For now, VK users are not admins by default
+            # Can add ADMIN_VK_IDS to settings if needed
+            is_admin = False
+            
+            user = User(
+                email=email,
+                username=username,
+                vk_id=vk_id,
+                first_name=first_name,
+                last_name=last_name,
+                is_active=True,
+                is_verified=True,  # VK users are considered verified
+                is_admin=is_admin,
+                default_currency="RUB",  # Default currency for VK users
+            )
+            db.add(user)
+            db.flush()  # Flush to get user.id
+            is_new_user = True
+        else:
+            # Update existing user info if needed
+            updated = False
+            if first_name and user.first_name != first_name:
+                user.first_name = first_name
+                updated = True
+            if last_name and user.last_name != last_name:
+                user.last_name = last_name
+                updated = True
+        
+        user.last_login = datetime.utcnow()
+        db.commit()
+        db.refresh(user)
+        
+        logger.info(f"User processed: id={user.id}, vk_id={user.vk_id}, is_new={is_new_user}")
+        
+        # Create default account and categories for new users
+        if is_new_user:
+            try:
+                from app.models.account import Account, AccountType
+                from app.models.category import Category, TransactionType
+                
+                # Create default account
+                default_account = Account(
+                    user_id=user.id,
+                    name="Основной счёт",
+                    account_type=AccountType.CASH,
+                    currency=user.default_currency,
+                    initial_balance=0.0,
+                    is_active=True,
+                    description="Автоматически созданный счёт"
+                )
+                db.add(default_account)
+                
+                # Create default categories (same as Telegram)
+                DEFAULT_EXPENSE_CATEGORIES = [
+                    {"name": "Продукты", "icon": "🛒", "color": "#4CAF50", "transaction_type": TransactionType.EXPENSE, "is_favorite": True},
+                    {"name": "Транспорт", "icon": "🚗", "color": "#2196F3", "transaction_type": TransactionType.EXPENSE, "is_favorite": True},
+                    {"name": "Коммунальные услуги", "icon": "💡", "color": "#FFC107", "transaction_type": TransactionType.EXPENSE, "is_favorite": True},
+                    {"name": "Связь и интернет", "icon": "📱", "color": "#00BCD4", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Кафе и рестораны", "icon": "🍽️", "color": "#FF9800", "transaction_type": TransactionType.EXPENSE, "is_favorite": True},
+                    {"name": "Доставка еды", "icon": "🍕", "color": "#FF5722", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Здоровье", "icon": "🏥", "color": "#F44336", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Аптека", "icon": "💊", "color": "#E91E63", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Красота и уход", "icon": "💅", "color": "#9C27B0", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Одежда", "icon": "👕", "color": "#E91E63", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Обувь", "icon": "👟", "color": "#795548", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Бытовая техника", "icon": "🏠", "color": "#607D8B", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Развлечения", "icon": "🎬", "color": "#9C27B0", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Кино и театр", "icon": "🎭", "color": "#673AB7", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Хобби", "icon": "🎨", "color": "#9C27B0", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Образование", "icon": "📚", "color": "#3F51B5", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Курсы", "icon": "🎓", "color": "#2196F3", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Подарки", "icon": "🎁", "color": "#FF5722", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Праздники", "icon": "🎉", "color": "#FF9800", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Дети", "icon": "👶", "color": "#FFC107", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Домашние животные", "icon": "🐾", "color": "#795548", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Прочее", "icon": "📦", "color": "#607D8B", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                ]
+                DEFAULT_INCOME_CATEGORIES = [
+                    {"name": "Зарплата", "icon": "💰", "color": "#4CAF50", "transaction_type": TransactionType.INCOME, "is_favorite": True},
+                    {"name": "Премия", "icon": "🎯", "color": "#FFC107", "transaction_type": TransactionType.INCOME, "is_favorite": False},
+                    {"name": "Фриланс", "icon": "💼", "color": "#9C27B0", "transaction_type": TransactionType.INCOME, "is_favorite": True},
+                    {"name": "Подработка", "icon": "⚡", "color": "#FF9800", "transaction_type": TransactionType.INCOME, "is_favorite": False},
+                    {"name": "Инвестиции", "icon": "📈", "color": "#2196F3", "transaction_type": TransactionType.INCOME, "is_favorite": False},
+                    {"name": "Дивиденды", "icon": "💹", "color": "#4CAF50", "transaction_type": TransactionType.INCOME, "is_favorite": False},
+                    {"name": "Подарки", "icon": "🎁", "color": "#FF9800", "transaction_type": TransactionType.INCOME, "is_favorite": False},
+                    {"name": "Возврат покупки", "icon": "↩️", "color": "#00BCD4", "transaction_type": TransactionType.INCOME, "is_favorite": False},
+                    {"name": "Кэшбэк", "icon": "💳", "color": "#4CAF50", "transaction_type": TransactionType.INCOME, "is_favorite": False},
+                    {"name": "Прочее", "icon": "📦", "color": "#607D8B", "transaction_type": TransactionType.INCOME, "is_favorite": False},
+                ]
+                
+                categories = []
+                for cat_data in DEFAULT_EXPENSE_CATEGORIES + DEFAULT_INCOME_CATEGORIES:
+                    name = str(cat_data["name"]).encode('utf-8').decode('utf-8')
+                    icon = str(cat_data["icon"]).encode('utf-8').decode('utf-8')
+                    
+                    categories.append(Category(
+                        user_id=user.id,
+                        name=name,
+                        transaction_type=cat_data["transaction_type"],
+                        icon=icon,
+                        color=cat_data["color"],
+                        is_system=True,
+                        is_active=True,
+                        is_favorite=cat_data.get("is_favorite", False)
+                    ))
+                
+                db.add_all(categories)
+                db.commit()
+                logger.info(f"Default account and categories created for user {user.id}")
+            except Exception as e:
+                logger.error(f"Failed to create default account/categories: {e}", exc_info=True)
+                db.rollback()
+        
+        # Create tokens
+        access_token = create_access_token(data={"sub": user.id})
+        refresh_token = create_refresh_token(data={"sub": user.id})
+        
+        logger.info(f"Tokens created for user {user.id}, access_token length: {len(access_token)}")
+        
+        return TokenResponse(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            user=UserResponse.model_validate(user)
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"VK auth error: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid VK authentication: {str(e)}"
+        )
+
+
 class BotTokenRequest(BaseModel):
     telegram_id: str
 

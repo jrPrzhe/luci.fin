@@ -15,6 +15,7 @@ class User(Base):
     hashed_password = Column(String(255))
     telegram_id = Column(String(50), unique=True, index=True, nullable=True)
     telegram_username = Column(String(100), nullable=True)
+    vk_id = Column(String(50), unique=True, index=True, nullable=True)
     
     # Profile
     first_name = Column(String(100))

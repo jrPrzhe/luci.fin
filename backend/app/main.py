@@ -177,6 +177,21 @@ except Exception as e:
     print(f"[STARTUP] Schema check warning (non-fatal): {e}", file=sys.stderr, flush=True)
     pass
 
+# Ensure vk_id column exists in users table (migration helper)
+print("[STARTUP] Checking users.vk_id...", file=sys.stderr, flush=True)
+try:
+    if inspector.has_table('users'):
+        columns = [col['name'] for col in inspector.get_columns('users')]
+        if 'vk_id' not in columns:
+            print("[STARTUP] Adding vk_id to users...", file=sys.stderr, flush=True)
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE users ADD COLUMN vk_id VARCHAR(50)"))
+                conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_vk_id ON users(vk_id)"))
+            print("[STARTUP] vk_id column added", file=sys.stderr, flush=True)
+except Exception as e:
+    print(f"[STARTUP] Schema check warning (non-fatal): {e}", file=sys.stderr, flush=True)
+    pass
+
 # Ensure roadmap column exists in goals table (migration helper)
 print("[STARTUP] Checking goals.roadmap...", file=sys.stderr, flush=True)
 try:
