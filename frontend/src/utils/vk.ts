@@ -140,19 +140,23 @@ export async function initVKWebApp(): Promise<void> {
     }
 
     // Use launch params from Bridge if available, otherwise use URL
-    if (launchParamsData && launchParamsData.vk_user_id) {
+    // VK Bridge may return user_id instead of vk_user_id
+    const userId = launchParamsData?.vk_user_id || launchParamsData?.user_id || launchParamsData?.uid
+    
+    if (launchParamsData && userId) {
+      console.log('[VK] Found user ID in launch params:', { userId, allKeys: Object.keys(launchParamsData) })
       cachedLaunchParams = {
-        vk_user_id: launchParamsData.vk_user_id ? Number(launchParamsData.vk_user_id) : undefined,
-        vk_app_id: launchParamsData.vk_app_id ? Number(launchParamsData.vk_app_id) : undefined,
-        vk_is_app_user: launchParamsData.vk_is_app_user ? Number(launchParamsData.vk_is_app_user) : undefined,
-        vk_are_notifications_enabled: launchParamsData.vk_are_notifications_enabled ? Number(launchParamsData.vk_are_notifications_enabled) : undefined,
-        vk_language: launchParamsData.vk_language || undefined,
-        vk_ref: launchParamsData.vk_ref || undefined,
-        vk_access_token_settings: launchParamsData.vk_access_token_settings || undefined,
-        vk_group_id: launchParamsData.vk_group_id ? Number(launchParamsData.vk_group_id) : undefined,
-        vk_viewer_group_role: launchParamsData.vk_viewer_group_role || undefined,
-        vk_platform: launchParamsData.vk_platform || undefined,
-        vk_is_favorite: launchParamsData.vk_is_favorite ? Number(launchParamsData.vk_is_favorite) : undefined,
+        vk_user_id: userId ? Number(userId) : undefined,
+        vk_app_id: launchParamsData.vk_app_id || launchParamsData.app_id ? Number(launchParamsData.vk_app_id || launchParamsData.app_id) : undefined,
+        vk_is_app_user: launchParamsData.vk_is_app_user || launchParamsData.is_app_user ? Number(launchParamsData.vk_is_app_user || launchParamsData.is_app_user) : undefined,
+        vk_are_notifications_enabled: launchParamsData.vk_are_notifications_enabled || launchParamsData.are_notifications_enabled ? Number(launchParamsData.vk_are_notifications_enabled || launchParamsData.are_notifications_enabled) : undefined,
+        vk_language: launchParamsData.vk_language || launchParamsData.language || undefined,
+        vk_ref: launchParamsData.vk_ref || launchParamsData.ref || undefined,
+        vk_access_token_settings: launchParamsData.vk_access_token_settings || launchParamsData.access_token_settings || undefined,
+        vk_group_id: launchParamsData.vk_group_id || launchParamsData.group_id ? Number(launchParamsData.vk_group_id || launchParamsData.group_id) : undefined,
+        vk_viewer_group_role: launchParamsData.vk_viewer_group_role || launchParamsData.viewer_group_role || undefined,
+        vk_platform: launchParamsData.vk_platform || launchParamsData.platform || undefined,
+        vk_is_favorite: launchParamsData.vk_is_favorite || launchParamsData.is_favorite ? Number(launchParamsData.vk_is_favorite || launchParamsData.is_favorite) : undefined,
         sign: launchParamsData.sign || undefined,
       }
     } else {
@@ -228,6 +232,7 @@ export function getVKUserId(): number | null {
  */
 export async function getVKLaunchParams(): Promise<string> {
   if (!isVKWebApp()) {
+    console.warn('[VK] Not a VK WebApp, returning empty launch params')
     return ''
   }
   
@@ -236,7 +241,9 @@ export async function getVKLaunchParams(): Promise<string> {
     if (vkInitialized && typeof (window as any).vkBridge !== 'undefined') {
       try {
         const launchParams = await (bridge.send as any)('VKWebAppGetLaunchParams')
-        if (launchParams && launchParams.vk_user_id) {
+        console.log('[VK] Raw launch params from Bridge:', launchParams)
+        
+        if (launchParams) {
           // Build query string from launch params
           const params = new URLSearchParams()
           Object.keys(launchParams).forEach(key => {
@@ -247,13 +254,25 @@ export async function getVKLaunchParams(): Promise<string> {
           const queryString = params.toString()
           console.log('[VK] Got launch params from Bridge:', { 
             hasVkUserId: !!launchParams.vk_user_id,
-            queryStringLength: queryString.length 
+            hasUserId: !!launchParams.user_id,
+            hasUid: !!launchParams.uid,
+            allKeys: Object.keys(launchParams),
+            queryStringLength: queryString.length,
+            queryString: queryString.substring(0, 200)
           })
-          return queryString ? `?${queryString}` : ''
+          
+          // Check if we have user ID in any form
+          if (launchParams.vk_user_id || launchParams.user_id || launchParams.uid) {
+            return queryString ? `?${queryString}` : ''
+          } else {
+            console.warn('[VK] No user ID found in Bridge launch params:', launchParams)
+          }
         }
       } catch (error) {
         console.warn('[VK] Failed to get launch params from Bridge:', error)
       }
+    } else {
+      console.warn('[VK] VK Bridge not initialized or not available')
     }
   } catch (error) {
     console.warn('[VK] Error getting launch params from Bridge:', error)
@@ -263,8 +282,25 @@ export async function getVKLaunchParams(): Promise<string> {
   const urlParams = window.location.search
   console.log('[VK] Using URL params as fallback:', { 
     urlParamsLength: urlParams.length,
-    hasVkUserId: urlParams.includes('vk_user_id')
+    hasVkUserId: urlParams.includes('vk_user_id'),
+    hasUserId: urlParams.includes('user_id'),
+    urlParams: urlParams.substring(0, 200)
   })
+  
+  // Also check if we have cached launch params
+  if (cachedLaunchParams && cachedLaunchParams.vk_user_id) {
+    console.log('[VK] Using cached launch params')
+    const params = new URLSearchParams()
+    if (cachedLaunchParams.vk_user_id) params.append('vk_user_id', String(cachedLaunchParams.vk_user_id))
+    if (cachedLaunchParams.vk_app_id) params.append('vk_app_id', String(cachedLaunchParams.vk_app_id))
+    if (cachedLaunchParams.sign) params.append('sign', cachedLaunchParams.sign)
+    const cachedQuery = params.toString()
+    if (cachedQuery) {
+      console.log('[VK] Returning cached params:', cachedQuery)
+      return `?${cachedQuery}`
+    }
+  }
+  
   return urlParams
 }
 

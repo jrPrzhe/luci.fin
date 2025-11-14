@@ -704,6 +704,9 @@ async def login_vk(
                 detail="Empty launch_params"
             )
         
+        # Log raw launch_params for debugging
+        logger.info(f"Raw launch_params (first 500 chars): {launch_params[:500]}")
+        
         # Parse launch params - Format: ?vk_user_id=123&vk_app_id=456&sign=...
         # Remove leading ? if present
         if launch_params.startswith('?'):
@@ -715,15 +718,19 @@ async def login_vk(
                 key, value = param.split('=', 1)
                 params[key] = urllib.parse.unquote(value)
         
-        logger.info(f"Parsed launch params: {list(params.keys())}")
+        logger.info(f"Parsed launch params keys: {list(params.keys())}")
+        logger.info(f"Parsed launch params values (first 200 chars each): {[(k, str(v)[:200]) for k, v in params.items()]}")
         
-        # Extract vk_user_id
-        vk_user_id_raw = params.get('vk_user_id')
+        # Extract vk_user_id - try different possible keys
+        vk_user_id_raw = params.get('vk_user_id') or params.get('user_id') or params.get('uid')
+        
         if not vk_user_id_raw:
-            logger.warning(f"No 'vk_user_id' in launch params. Available params: {list(params.keys())}")
+            # Log all params for debugging
+            logger.error(f"VK user ID not found. All params: {params}")
+            logger.error(f"Launch params string: {launch_params[:500]}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="VK user ID not found in launch params"
+                detail=f"VK user ID not found in launch params. Available keys: {list(params.keys())}"
             )
         
         # Normalize vk_id - ensure consistent format
