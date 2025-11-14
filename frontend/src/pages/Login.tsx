@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { api } from '../services/api'
 import { isTelegramWebApp, getInitData } from '../utils/telegram'
-import { isVKWebApp, getVKLaunchParams, initVKWebApp } from '../utils/vk'
+import { isVKWebApp, getVKLaunchParams, initVKWebApp, getVKUser } from '../utils/vk'
 
 export function Login() {
   const [authMethod, setAuthMethod] = useState<'select' | 'telegram' | 'vk' | 'email'>('select')
@@ -120,10 +120,24 @@ export function Login() {
       return
     }
 
+    // Получаем данные пользователя из VK для имени
+    let firstName: string | null = null
+    let lastName: string | null = null
+    try {
+      const vkUser = getVKUser()
+      if (vkUser) {
+        firstName = vkUser.first_name || null
+        lastName = vkUser.last_name || null
+        console.log('[Login] Got VK user info:', { firstName, lastName })
+      }
+    } catch (error) {
+      console.warn('[Login] Failed to get VK user info:', error)
+    }
+
     try {
       // Try to get current token for account linking
       const currentToken = localStorage.getItem('token')
-      const response = await api.loginVK(launchParams, currentToken)
+      const response = await api.loginVK(launchParams, currentToken, firstName, lastName)
       console.log('[Login] VK login response:', {
         hasAccessToken: !!response.access_token,
         accessTokenLength: response.access_token?.length || 0,

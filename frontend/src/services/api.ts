@@ -355,14 +355,16 @@ class ApiClient {
     return response
   }
 
-  async loginVK(launchParams: string, currentToken?: string | null) {
+  async loginVK(launchParams: string, currentToken?: string | null, firstName?: string | null, lastName?: string | null) {
     const response = await this.request<{ access_token: string; refresh_token: string; user: any }>(
       '/api/v1/auth/vk',
       {
         method: 'POST',
         body: JSON.stringify({ 
           launch_params: launchParams,
-          current_token: currentToken || null
+          current_token: currentToken || null,
+          first_name: firstName || null,
+          last_name: lastName || null
         }),
       }
     )

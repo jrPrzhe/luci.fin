@@ -17,7 +17,7 @@ import { Login } from './pages/Login'
 import { Register } from './pages/Register'
 import { Statistics } from './pages/Statistics'
 import { isTelegramWebApp, getInitData, getTelegramUser } from './utils/telegram'
-import { isVKWebApp, getVKLaunchParams, getVKUserId, initVKWebApp } from './utils/vk'
+import { isVKWebApp, getVKLaunchParams, getVKUserId, initVKWebApp, getVKUser } from './utils/vk'
 import { api } from './services/api'
 import { NewYearProvider } from './contexts/NewYearContext'
 import { I18nProvider } from './contexts/I18nContext'
@@ -333,9 +333,24 @@ function VKAuthHandler() {
           hasAttemptedAuth.current = true
           try {
             console.log('Attempting automatic VK login...')
+            
+            // Получаем данные пользователя из VK для имени
+            let firstName: string | null = null
+            let lastName: string | null = null
+            try {
+              const vkUser = getVKUser()
+              if (vkUser) {
+                firstName = vkUser.first_name || null
+                lastName = vkUser.last_name || null
+                console.log('VK user info for auto-login:', { firstName, lastName })
+              }
+            } catch (error) {
+              console.warn('Failed to get VK user info for auto-login:', error)
+            }
+            
             // Get current token for account linking (if user is already logged in via Telegram)
             const currentToken = localStorage.getItem('token')
-            const response = await api.loginVK(launchParams, currentToken)
+            const response = await api.loginVK(launchParams, currentToken, firstName, lastName)
             console.log('VK auto-login successful:', { 
               userId: response.user?.id,
               hasAccessToken: !!response.access_token,

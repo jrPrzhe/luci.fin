@@ -673,6 +673,8 @@ async def login_telegram(
 class VKLoginRequest(BaseModel):
     launch_params: str  # URL query string with vk_* parameters
     current_token: Optional[str] = None  # Optional token to link to existing account
+    first_name: Optional[str] = None  # User's first name from VK profile
+    last_name: Optional[str] = None  # User's last name from VK profile
 
 
 @router.post("/vk", response_model=TokenResponse)
@@ -745,10 +747,12 @@ async def login_vk(
         
         logger.info(f"VK Mini App login - vk_id: '{vk_id}' (type: {type(vk_id)}, length: {len(vk_id)})")
         
-        # Note: VK launch params don't include user name/photo by default
-        # We'll need to get it via VK API if needed, but for now we'll use empty strings
-        first_name = params.get('first_name', '')
-        last_name = params.get('last_name', '')
+        # Get user name from request (sent from frontend via VKWebAppGetUserInfo)
+        # Fallback to launch params if not provided
+        first_name = request.first_name or params.get('first_name', '') or ''
+        last_name = request.last_name or params.get('last_name', '') or ''
+        
+        logger.info(f"VK user name: first_name='{first_name}', last_name='{last_name}'")
         
         # Find or create user by vk_id (exact match)
         user = db.query(User).filter(User.vk_id == vk_id).first()
