@@ -8,6 +8,7 @@ import { SnowEffect } from './SnowEffect'
 import { Garland } from './Garland'
 import { useNewYearTheme } from '../contexts/NewYearContext'
 import { useTheme } from '../hooks/useTheme'
+import { useI18n } from '../contexts/I18nContext'
 
 export function Layout() {
   const navigate = useNavigate()
@@ -21,6 +22,7 @@ export function Layout() {
   const isMiniApp = isTelegramWebApp()
   const { isEnabled: newYearEnabled } = useNewYearTheme()
   const { theme, toggleTheme } = useTheme()
+  const { t } = useI18n()
 
   // Предзагрузка изображений для Stories при монтировании компонента
   useEffect(() => {
@@ -208,7 +210,7 @@ export function Layout() {
       <div className="min-h-screen flex items-center justify-center bg-telegram-bg">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-telegram-primary mb-4"></div>
-          <p className="text-telegram-textSecondary">Загрузка...</p>
+          <p className="text-telegram-textSecondary">{t.common.loading}</p>
         </div>
       </div>
     )
@@ -233,14 +235,14 @@ export function Layout() {
   }
 
   const navItems = [
-    { path: '/', label: 'Дашборд', icon: '📊' },
-    { path: '/transactions', label: 'Транзакции', icon: '💸' },
-    { path: '/accounts', label: 'Счета', icon: '💳' },
-    { path: '/categories', label: 'Категории', icon: '📦' },
-    { path: '/goals', label: 'Цели', icon: '🎯' },
-    { path: '/shared-budgets', label: 'Бюджеты', icon: '👥' },
-    { path: '/reports', label: 'Отчёты', icon: '📈' },
-    { path: '/profile', label: 'Профиль', icon: '⚙️' },
+    { path: '/', label: t.nav.dashboard, icon: '📊' },
+    { path: '/transactions', label: t.nav.transactions, icon: '💸' },
+    { path: '/accounts', label: t.nav.accounts, icon: '💳' },
+    { path: '/categories', label: t.nav.categories, icon: '📦' },
+    { path: '/goals', label: t.nav.goals, icon: '🎯' },
+    { path: '/shared-budgets', label: t.nav.budgets, icon: '👥' },
+    { path: '/reports', label: t.nav.reports, icon: '📈' },
+    { path: '/profile', label: t.nav.profile, icon: '⚙️' },
   ]
 
   return (

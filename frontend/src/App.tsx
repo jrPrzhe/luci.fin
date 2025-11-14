@@ -19,6 +19,7 @@ import { Statistics } from './pages/Statistics'
 import { isTelegramWebApp, getInitData, getTelegramUser } from './utils/telegram'
 import { api } from './services/api'
 import { NewYearProvider } from './contexts/NewYearContext'
+import { I18nProvider } from './contexts/I18nContext'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -223,29 +224,31 @@ function TelegramAuthHandler() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <NewYearProvider>
-        <Router>
-          <TelegramAuthHandler />
-          <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/onboarding" element={<Onboarding />} />
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Dashboard />} />
-            <Route path="transactions" element={<Transactions />} />
-            <Route path="accounts" element={<Accounts />} />
-            <Route path="categories" element={<Categories />} />
-            <Route path="goals" element={<Goals />} />
-            <Route path="reports" element={<Reports />} />
-            <Route path="shared-budgets" element={<SharedBudgets />} />
-            <Route path="profile" element={<Profile />} />
-            <Route path="statistics" element={<Statistics />} />
-            <Route path="import" element={<Import />} />
-            <Route path="about" element={<About />} />
-          </Route>
-        </Routes>
-      </Router>
-      </NewYearProvider>
+      <I18nProvider>
+        <NewYearProvider>
+          <Router>
+            <TelegramAuthHandler />
+            <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="/" element={<Layout />}>
+              <Route index element={<Dashboard />} />
+              <Route path="transactions" element={<Transactions />} />
+              <Route path="accounts" element={<Accounts />} />
+              <Route path="categories" element={<Categories />} />
+              <Route path="goals" element={<Goals />} />
+              <Route path="reports" element={<Reports />} />
+              <Route path="shared-budgets" element={<SharedBudgets />} />
+              <Route path="profile" element={<Profile />} />
+              <Route path="statistics" element={<Statistics />} />
+              <Route path="import" element={<Import />} />
+              <Route path="about" element={<About />} />
+            </Route>
+          </Routes>
+        </Router>
+        </NewYearProvider>
+      </I18nProvider>
     </QueryClientProvider>
   )
 }

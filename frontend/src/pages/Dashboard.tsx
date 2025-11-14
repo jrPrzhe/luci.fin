@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
+import { useI18n } from '../contexts/I18nContext'
 
 interface Account {
   id: number
@@ -21,6 +22,7 @@ interface Category {
 }
 
 export function Dashboard() {
+  const { t } = useI18n()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const [showQuickForm, setShowQuickForm] = useState(false)
@@ -139,7 +141,7 @@ export function Dashboard() {
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => {
           console.error('[loadCategories] Timeout after 8 seconds')
-          reject(new Error('Превышено время ожидания загрузки категорий'))
+          reject(new Error(t.dashboard.form.retry))
         }, 8000)
       })
       
@@ -200,7 +202,7 @@ export function Dashboard() {
         console.log(`[handleQuickAction] Categories loaded successfully`)
       } catch (err: any) {
         console.error('[handleQuickAction] Error loading categories:', err)
-        setError(err.message || 'Ошибка загрузки категорий')
+        setError(err.message || t.errors.networkError)
       } finally {
         // Always reset loading state
         console.log(`[handleQuickAction] Setting categoriesLoading = false`)
@@ -223,17 +225,17 @@ export function Dashboard() {
     setError('')
 
     if (!quickFormData.account_id) {
-      setError('Выберите счет')
+      setError(t.dashboard.form.selectAccount)
       return
     }
 
     if (!quickFormData.amount || parseFloat(quickFormData.amount) <= 0) {
-      setError('Введите сумму больше 0')
+      setError(t.errors.required)
       return
     }
 
     if (quickFormType === 'transfer' && !quickFormData.to_account_id) {
-      setError('Выберите счет получателя')
+      setError(t.dashboard.form.toAccount)
       return
     }
 
@@ -242,7 +244,7 @@ export function Dashboard() {
     try {
       const account = (accounts as Account[]).find(a => a.id === parseInt(quickFormData.account_id))
       if (!account) {
-        setError('Счет не найден')
+        setError(t.errors.notFound)
         setSubmitting(false)
         return
       }
@@ -302,7 +304,7 @@ export function Dashboard() {
       ]).catch(console.error) // Don't block UI on refetch errors
       
     } catch (err: any) {
-      setError(err.message || 'Ошибка создания транзакции')
+      setError(err.message || t.errors.serverError)
       setSubmitting(false)
     } finally {
       // Reset submitting after a short delay to allow form to close
@@ -312,9 +314,9 @@ export function Dashboard() {
 
   const getTransactionTypeLabel = (type: string) => {
     switch (type) {
-      case 'income': return 'Доход'
-      case 'expense': return 'Расход'
-      case 'transfer': return 'Перевод'
+      case 'income': return t.dashboard.quickActions.income
+      case 'expense': return t.dashboard.quickActions.expense
+      case 'transfer': return t.dashboard.quickActions.transfer
       default: return type
     }
   }
@@ -324,10 +326,10 @@ export function Dashboard() {
       {/* Header - скрыт на мобильных, так как есть в Layout */}
       <div className="mb-4 md:mb-6 hidden md:block">
         <h1 className="text-2xl font-semibold text-telegram-text dark:text-telegram-dark-text mb-1">
-          Дашборд
+          {t.dashboard.title}
         </h1>
         <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-          Обзор ваших финансов
+          {t.dashboard.subtitle}
         </p>
       </div>
 
@@ -335,7 +337,7 @@ export function Dashboard() {
       <div className="card mb-4 md:mb-6 bg-gradient-to-br from-telegram-primary dark:from-telegram-dark-primary to-telegram-primaryLight dark:to-telegram-dark-primaryLight text-white border-0 shadow-telegram-lg p-4 md:p-5">
         <div className="flex items-center justify-between mb-3 md:mb-4">
           <div className="flex-1">
-            <p className="text-xs md:text-sm opacity-90 mb-1">Общий баланс</p>
+            <p className="text-xs md:text-sm opacity-90 mb-1">{t.dashboard.totalBalance}</p>
             {balanceLoading ? (
               <div className="h-8 md:h-10 w-24 md:w-32 bg-white/20 rounded-telegram animate-pulse"></div>
             ) : (
@@ -350,7 +352,7 @@ export function Dashboard() {
         </div>
         <div className="flex gap-2 md:gap-4 text-xs md:text-sm">
           <div className="flex-1 bg-white/10 rounded-telegram p-2 md:p-3 backdrop-blur-sm">
-            <p className="opacity-80 mb-1">Доходы</p>
+            <p className="opacity-80 mb-1">{t.dashboard.income}</p>
             {monthlyStatsLoading ? (
               <div className="h-5 md:h-6 w-20 md:w-24 bg-white/20 rounded animate-pulse"></div>
             ) : (
@@ -360,7 +362,7 @@ export function Dashboard() {
             )}
           </div>
           <div className="flex-1 bg-white/10 rounded-telegram p-2 md:p-3 backdrop-blur-sm">
-            <p className="opacity-80 mb-1">Расходы</p>
+            <p className="opacity-80 mb-1">{t.dashboard.expenses}</p>
             {monthlyStatsLoading ? (
               <div className="h-5 md:h-6 w-20 md:w-24 bg-white/20 rounded animate-pulse"></div>
             ) : (
@@ -381,7 +383,7 @@ export function Dashboard() {
           <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-telegram-danger/10 flex items-center justify-center text-xl md:text-2xl group-active:bg-telegram-danger/20 transition-colors">
             ➖
           </div>
-          <span className="text-xs md:text-sm font-medium text-telegram-text dark:text-telegram-dark-text">Расход</span>
+          <span className="text-xs md:text-sm font-medium text-telegram-text dark:text-telegram-dark-text">{t.dashboard.quickActions.expense}</span>
         </button>
         <button 
           onClick={() => handleQuickAction('income')}
@@ -390,7 +392,7 @@ export function Dashboard() {
           <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-telegram-success/10 dark:bg-telegram-success/20 flex items-center justify-center text-xl md:text-2xl group-active:bg-telegram-success/20 dark:group-active:bg-telegram-success/30 transition-colors">
             ➕
           </div>
-          <span className="text-xs md:text-sm font-medium text-telegram-text dark:text-telegram-dark-text">Доход</span>
+          <span className="text-xs md:text-sm font-medium text-telegram-text dark:text-telegram-dark-text">{t.dashboard.quickActions.income}</span>
         </button>
         <button 
           onClick={() => handleQuickAction('transfer')}
@@ -399,7 +401,7 @@ export function Dashboard() {
           <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-telegram-primaryLight/20 dark:bg-telegram-dark-primaryLight/20 flex items-center justify-center text-xl md:text-2xl group-active:bg-telegram-primaryLight/30 dark:group-active:bg-telegram-dark-primaryLight/30 transition-colors">
             🔄
           </div>
-          <span className="text-xs md:text-sm font-medium text-telegram-text dark:text-telegram-dark-text">Перевод</span>
+          <span className="text-xs md:text-sm font-medium text-telegram-text dark:text-telegram-dark-text">{t.dashboard.quickActions.transfer}</span>
         </button>
         <button 
           onClick={() => navigate('/categories')}
@@ -408,7 +410,7 @@ export function Dashboard() {
           <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-telegram-primary/10 dark:bg-telegram-primary/20 flex items-center justify-center text-xl md:text-2xl group-active:bg-telegram-primary/20 dark:group-active:bg-telegram-primary/30 transition-colors">
             📦
           </div>
-          <span className="text-xs md:text-sm font-medium text-telegram-text dark:text-telegram-dark-text">Категории</span>
+          <span className="text-xs md:text-sm font-medium text-telegram-text dark:text-telegram-dark-text">{t.dashboard.quickActions.categories}</span>
         </button>
       </div>
 
@@ -439,8 +441,8 @@ export function Dashboard() {
                     ←
                   </button>
                 )}
-                <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text">
-                  {quickFormStep === 'category' ? 'Выберите категорию' : getTransactionTypeLabel(quickFormType)}
+                  <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text">
+                  {quickFormStep === 'category' ? t.dashboard.form.selectCategory : getTransactionTypeLabel(quickFormType)}
                 </h2>
               </div>
               <button
@@ -468,7 +470,7 @@ export function Dashboard() {
                 {categoriesLoading ? (
                   <div className="text-center py-8">
                     <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-telegram-primary dark:border-telegram-dark-primary mb-4"></div>
-                    <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-3">Загрузка категорий...</p>
+                    <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-3">{t.common.loading}</p>
                     <button
                       onClick={() => {
                         console.log('[UI] User cancelled loading')
@@ -477,13 +479,13 @@ export function Dashboard() {
                       }}
                       className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary underline hover:text-telegram-text dark:hover:text-telegram-dark-text"
                     >
-                      Отмена
+                      {t.common.cancel}
                     </button>
                   </div>
                 ) : categories.length === 0 ? (
                   <div className="text-center py-8">
                     <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-4">
-                      Нет доступных категорий для {quickFormType === 'income' ? 'доходов' : 'расходов'}
+                      {t.dashboard.form.noCategories} {quickFormType === 'income' ? t.dashboard.income.toLowerCase() : t.dashboard.expenses.toLowerCase()}
                     </p>
                     <button
                       onClick={() => {
@@ -492,7 +494,7 @@ export function Dashboard() {
                       }}
                       className="btn-primary"
                     >
-                      Создать категорию
+                      {t.dashboard.form.createCategory}
                     </button>
                     <button
                       onClick={() => {
@@ -503,13 +505,13 @@ export function Dashboard() {
                       }}
                       className="btn-secondary mt-2"
                     >
-                      Повторить загрузку
+                      {t.dashboard.form.retry}
                     </button>
                   </div>
                 ) : (
                   <div>
                     <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-3">
-                      Выберите категорию ({categories.length} доступно)
+                      {t.dashboard.form.selectCategory} ({categories.length} {t.dashboard.form.available})
                     </p>
                     <div className="grid grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto">
                       {categories
@@ -570,7 +572,7 @@ export function Dashboard() {
                           }}
                           className="ml-auto text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text"
                         >
-                          Изменить
+                          {t.dashboard.form.change}
                         </button>
                       </>
                     ) : null
@@ -581,7 +583,7 @@ export function Dashboard() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2">
                   <label className="block text-xs font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
-                    {quickFormType === 'transfer' ? 'Счет отправления' : 'Счет'}
+                    {quickFormType === 'transfer' ? t.dashboard.form.fromAccount : t.dashboard.form.account}
                   </label>
                   <select
                     value={quickFormData.account_id}
@@ -590,7 +592,7 @@ export function Dashboard() {
                     required
                     disabled={accountsLoading || submitting}
                   >
-                    <option value="">Выберите...</option>
+                    <option value="">{t.dashboard.form.selectAccount}</option>
                     {(accounts as Account[] || []).map(account => (
                       <option key={account.id} value={account.id}>
                         {account.name} ({Math.round(account.balance).toLocaleString('ru-RU')} {account.currency})
@@ -602,7 +604,7 @@ export function Dashboard() {
                 {quickFormType === 'transfer' ? (
                   <div className="col-span-2">
                     <label className="block text-xs font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
-                      Счет получателя
+                      {t.dashboard.form.toAccount}
                     </label>
                     <select
                       value={quickFormData.to_account_id}
@@ -611,7 +613,7 @@ export function Dashboard() {
                       required
                       disabled={accountsLoading || submitting}
                     >
-                      <option value="">Выберите...</option>
+                      <option value="">{t.dashboard.form.selectAccount}</option>
                       {(accounts as Account[] || [])
                         .filter(account => account.id !== parseInt(quickFormData.account_id || '0'))
                         .map(account => (
@@ -625,7 +627,7 @@ export function Dashboard() {
 
                 <div className="col-span-2">
                   <label className="block text-xs font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
-                    Сумма *
+                    {t.dashboard.form.amount} *
                   </label>
                   <input
                     type="number"
@@ -643,14 +645,14 @@ export function Dashboard() {
 
                 <div className="col-span-2">
                   <label className="block text-xs font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
-                    Описание
+                    {t.dashboard.form.description}
                   </label>
                   <input
                     type="text"
                     value={quickFormData.description}
                     onChange={(e) => setQuickFormData({ ...quickFormData, description: e.target.value })}
                     className="input text-sm py-2"
-                    placeholder="Необязательно"
+                    placeholder={t.common.optional}
                     disabled={submitting}
                   />
                 </div>
@@ -659,7 +661,7 @@ export function Dashboard() {
               {quickFormType === 'income' && goals.length > 0 && (
                 <div>
                   <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                    🎯 Добавить к цели (опционально)
+                    🎯 {t.dashboard.form.addToGoalOptional}
                   </label>
                   <select
                     value={quickFormData.goal_id}
@@ -667,7 +669,7 @@ export function Dashboard() {
                     className="input"
                     disabled={submitting}
                   >
-                    <option value="">Не добавлять к цели</option>
+                    <option value="">{t.dashboard.form.notAddToGoal}</option>
                     {goals.map((goal: any) => (
                       <option key={goal.id} value={goal.id}>
                         {goal.name} ({Math.round(goal.current_amount).toLocaleString()} / {Math.round(goal.target_amount).toLocaleString()} {goal.currency})
@@ -676,7 +678,7 @@ export function Dashboard() {
                   </select>
                   {quickFormData.goal_id && (
                     <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
-                      Эта сумма будет добавлена к выбранной цели
+                      {t.dashboard.form.goalAmountNote}
                     </p>
                   )}
                 </div>
@@ -691,10 +693,10 @@ export function Dashboard() {
                     {submitting ? (
                       <>
                         <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        <span>Обработка...</span>
+                        <span>{t.dashboard.form.processing}</span>
                       </>
                     ) : (
-                      'Добавить'
+                      t.common.add
                     )}
                   </button>
                   <button
@@ -709,7 +711,7 @@ export function Dashboard() {
                     className="btn-secondary"
                     disabled={submitting}
                   >
-                    Отмена
+                    {t.common.cancel}
                   </button>
                 </div>
               </form>
@@ -722,13 +724,13 @@ export function Dashboard() {
       <div className="card p-4 md:p-5">
         <div className="flex items-center justify-between mb-3 md:mb-4">
           <h2 className="text-base md:text-lg font-semibold text-telegram-text dark:text-telegram-dark-text">
-            Последние транзакции
+            {t.dashboard.recentTransactions}
           </h2>
           <button 
             onClick={() => navigate('/transactions')}
             className="text-xs md:text-sm text-telegram-primary dark:text-telegram-dark-primary active:underline"
           >
-            Все →
+            {t.dashboard.viewAll}
           </button>
         </div>
         
@@ -767,7 +769,7 @@ export function Dashboard() {
                       <span className="text-base">{transaction.category_icon}</span>
                     )}
                     <p className="font-medium text-sm md:text-base text-telegram-text dark:text-telegram-dark-text truncate">
-                      {transaction.category_name || transaction.description || 'Без категории'}
+                      {transaction.category_name || transaction.description || t.dashboard.form.category}
                     </p>
                   </div>
                   <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
@@ -793,9 +795,9 @@ export function Dashboard() {
         ) : (
           <div className="text-center py-8 md:py-12">
             <div className="text-4xl md:text-5xl mb-3 md:mb-4 opacity-30">💳</div>
-            <p className="text-sm md:text-base text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-2">Нет транзакций</p>
+            <p className="text-sm md:text-base text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-2">{t.dashboard.noTransactions}</p>
             <p className="text-xs md:text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary px-4">
-              Добавьте первую транзакцию, нажав на кнопки выше
+              {t.dashboard.noTransactionsDesc}
             </p>
           </div>
         )}

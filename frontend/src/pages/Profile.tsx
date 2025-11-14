@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
 import { useTheme } from '../hooks/useTheme'
 import { useNewYearTheme } from '../contexts/NewYearContext'
+import { useI18n } from '../contexts/I18nContext'
 
 export function Profile() {
   const queryClient = useQueryClient()
@@ -16,6 +17,7 @@ export function Profile() {
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const { theme, toggleTheme } = useTheme()
   const { isEnabled: newYearEnabled, toggle: toggleNewYear } = useNewYearTheme()
+  const { language, setLanguage, t } = useI18n()
 
   const { data: user, isLoading } = useQuery({
     queryKey: ['currentUser'],
@@ -69,12 +71,12 @@ export function Profile() {
     mutationFn: api.updateUser,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['currentUser'] })
-      setSuccessMessage('Профиль успешно обновлен!')
+      setSuccessMessage(t.profile.saved)
       setErrorMessage('')
       setTimeout(() => setSuccessMessage(''), 3000)
     },
     onError: (error: any) => {
-      setErrorMessage(error.message || 'Ошибка при обновлении профиля')
+      setErrorMessage(error.message || t.errors.serverError)
       setSuccessMessage('')
     },
   })
@@ -99,13 +101,13 @@ export function Profile() {
       queryClient.invalidateQueries({ queryKey: ['transactions'] })
       queryClient.invalidateQueries({ queryKey: ['categories'] })
       queryClient.invalidateQueries({ queryKey: ['balance'] })
-      setSuccessMessage('Все данные успешно сброшены!')
+      setSuccessMessage(t.profile.saved)
       setErrorMessage('')
       setShowResetConfirm(false)
       setTimeout(() => setSuccessMessage(''), 5000)
     },
     onError: (error: any) => {
-      setErrorMessage(error.message || 'Ошибка при сбросе данных')
+      setErrorMessage(error.message || t.errors.serverError)
       setSuccessMessage('')
       setShowResetConfirm(false)
     },
@@ -129,7 +131,7 @@ export function Profile() {
   return (
     <div className="min-h-screen p-4 md:p-6 animate-fade-in max-w-2xl mx-auto w-full">
       <h1 className="text-xl md:text-2xl font-semibold text-telegram-text dark:text-telegram-dark-text mb-4 md:mb-6">
-        Профиль
+        {t.profile.title}
       </h1>
       
       <div className="card p-4 md:p-5 space-y-4 md:space-y-6">
@@ -150,7 +152,7 @@ export function Profile() {
           {user?.telegram_username && (
             <div>
               <label className="block text-xs md:text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                Telegram username
+                {t.profile.telegramUsername}
               </label>
               <input
                 type="text"
@@ -159,7 +161,7 @@ export function Profile() {
                 className="input bg-telegram-bg dark:bg-telegram-dark-bg cursor-not-allowed opacity-60"
               />
               <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
-                Ваш Telegram username нельзя изменить
+                {t.profile.telegramUsernameDesc}
               </p>
             </div>
           )}
@@ -167,33 +169,33 @@ export function Profile() {
           {/* Имя (редактируемое) */}
           <div>
             <label className="block text-xs md:text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-              Имя {!user?.telegram_username && '(отображается как имя)'}
+              {t.profile.firstName}
             </label>
             <input
               type="text"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
               className="input text-sm md:text-base"
-              placeholder="Введите ваше имя"
+              placeholder={t.profile.firstNamePlaceholder}
             />
             <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
               {user?.telegram_username 
-                ? 'Имя для отображения в приложении'
-                : 'Это имя будет отображаться в приложении'}
+                ? t.profile.firstNameDesc
+                : t.profile.firstNameDescAlt}
             </p>
           </div>
 
           {/* Фамилия (опционально) */}
           <div>
             <label className="block text-xs md:text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-              Фамилия (опционально)
+              {t.profile.lastName} ({t.common.optional})
             </label>
             <input
               type="text"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
               className="input text-sm md:text-base"
-              placeholder="Введите вашу фамилию"
+              placeholder={t.profile.lastNamePlaceholder}
             />
           </div>
 
@@ -201,7 +203,7 @@ export function Profile() {
           {user?.telegram_id && (
             <div>
               <label className="block text-xs md:text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                Email
+                {t.profile.email}
               </label>
               <input
                 type="email"
@@ -210,7 +212,7 @@ export function Profile() {
                 className="input bg-telegram-bg dark:bg-telegram-dark-bg cursor-not-allowed opacity-60"
               />
               <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
-                Email автоматически создан для Telegram аккаунта
+                {t.profile.emailDesc}
               </p>
             </div>
           )}
@@ -218,7 +220,7 @@ export function Profile() {
           {/* Валюта по умолчанию */}
           <div>
             <label className="block text-xs md:text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-              Валюта по умолчанию
+              {t.profile.defaultCurrency}
             </label>
             <select
               value={defaultCurrency}
@@ -238,7 +240,7 @@ export function Profile() {
             disabled={updateMutation.isPending}
             className="w-full btn-primary text-sm md:text-base py-2.5 md:py-3 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {updateMutation.isPending ? 'Сохранение...' : 'Сохранить'}
+            {updateMutation.isPending ? t.profile.saving : t.common.save}
           </button>
         </form>
       </div>
@@ -246,7 +248,7 @@ export function Profile() {
       {/* Additional Settings */}
       <div className="card p-4 md:p-5 mt-4 md:mt-6">
         <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
-          Настройки
+          {t.profile.settings}
         </h2>
         <div className="space-y-3">
           {/* Отладочная информация (можно удалить после проверки) */}
@@ -307,9 +309,9 @@ export function Profile() {
             <div className="flex items-center gap-3">
               <span className="text-2xl">{theme === 'dark' ? '🌙' : '☀️'}</span>
               <div>
-                <p className="font-medium text-telegram-text dark:text-telegram-dark-text">Темная тема</p>
+                <p className="font-medium text-telegram-text dark:text-telegram-dark-text">{t.profile.darkTheme}</p>
                 <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-                  {theme === 'dark' ? 'Темная тема включена' : 'Светлая тема включена'}
+                  {theme === 'dark' ? t.profile.darkThemeEnabled : t.profile.darkThemeDisabled}
                 </p>
               </div>
             </div>
@@ -326,9 +328,9 @@ export function Profile() {
             <div className="flex items-center gap-3">
               <span className="text-2xl">🎄</span>
               <div>
-                <p className="font-medium text-telegram-text dark:text-telegram-dark-text">Новогодний режим</p>
+                <p className="font-medium text-telegram-text dark:text-telegram-dark-text">{t.profile.newYearMode}</p>
                 <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-                  {newYearEnabled ? 'Новогодний дизайн включен' : 'Новогодний дизайн выключен'}
+                  {newYearEnabled ? t.profile.newYearModeEnabled : t.profile.newYearModeDisabled}
                 </p>
               </div>
             </div>
@@ -338,13 +340,46 @@ export function Profile() {
               }`}></div>
             </div>
           </button>
+          <div className="w-full flex items-center justify-between p-3 rounded-telegram hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🌍</span>
+              <div>
+                <p className="font-medium text-telegram-text dark:text-telegram-dark-text">{t.profile.language}</p>
+                <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+                  {language === 'ru' ? 'Русский' : 'English'}
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setLanguage('ru')}
+                className={`px-3 py-1.5 rounded-telegram text-sm font-medium transition-colors ${
+                  language === 'ru'
+                    ? 'bg-telegram-primary text-white dark:bg-telegram-dark-primary'
+                    : 'bg-telegram-border hover:bg-telegram-hover dark:bg-telegram-dark-border dark:hover:bg-telegram-dark-hover'
+                }`}
+              >
+                🇷🇺 RU
+              </button>
+              <button
+                onClick={() => setLanguage('en')}
+                className={`px-3 py-1.5 rounded-telegram text-sm font-medium transition-colors ${
+                  language === 'en'
+                    ? 'bg-telegram-primary text-white dark:bg-telegram-dark-primary'
+                    : 'bg-telegram-border hover:bg-telegram-hover dark:bg-telegram-dark-border dark:hover:bg-telegram-dark-hover'
+                }`}
+              >
+                🇬🇧 EN
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Information Section */}
       <div className="card p-4 md:p-5 mt-4 md:mt-6">
         <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
-          Информация
+          {t.profile.info}
         </h2>
         <div className="space-y-3">
           <button
@@ -354,8 +389,8 @@ export function Profile() {
             <div className="flex items-center gap-3">
               <span className="text-2xl">📥</span>
               <div>
-                <p className="font-medium text-telegram-text dark:text-telegram-dark-text">Импорт данных</p>
-                <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">Импорт из других приложений</p>
+                <p className="font-medium text-telegram-text dark:text-telegram-dark-text">{t.profile.importData}</p>
+                <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{t.profile.importDataDesc}</p>
               </div>
             </div>
             <span className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">→</span>
@@ -367,8 +402,8 @@ export function Profile() {
             <div className="flex items-center gap-3">
               <span className="text-2xl">📚</span>
               <div>
-                <p className="font-medium text-telegram-text dark:text-telegram-dark-text">О приложении</p>
-                <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">Подсказки и помощь</p>
+                <p className="font-medium text-telegram-text dark:text-telegram-dark-text">{t.profile.about}</p>
+                <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{t.profile.aboutDesc}</p>
               </div>
             </div>
             <span className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">→</span>
@@ -379,32 +414,29 @@ export function Profile() {
       {/* Reset Account Section */}
       <div className="card p-4 md:p-5 mt-4 md:mt-6 border-2 border-red-200 dark:border-red-800">
         <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4 text-red-600 dark:text-red-400">
-          Опасная зона
+          {t.profile.dangerZone}
         </h2>
         
         {!showResetConfirm ? (
           <div>
             <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-4">
-              Сброс всех данных вернет вашу учетную запись к заводским настройкам. 
-              Будут удалены все счета, транзакции, категории, цели и отчеты. 
-              Это действие нельзя отменить!
+              {t.profile.resetAccountDesc}
             </p>
             <button
               onClick={() => setShowResetConfirm(true)}
               disabled={resetMutation.isPending}
               className="w-full btn-secondary text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-700 dark:hover:text-red-300 border-red-300 dark:border-red-700 text-sm md:text-base py-2.5 md:py-3 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Сбросить все данные
+              {t.profile.resetAccount}
             </button>
           </div>
         ) : (
           <div>
             <p className="text-sm font-semibold text-red-600 dark:text-red-400 mb-2">
-              Вы уверены, что хотите сбросить все данные?
+              {t.profile.resetConfirm}
             </p>
             <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-4">
-              Это действие удалит все ваши данные и вернет учетную запись к первоначальному состоянию. 
-              Это действие необратимо!
+              {t.profile.resetConfirmDesc}
             </p>
             <div className="flex gap-3">
               <button
@@ -412,14 +444,14 @@ export function Profile() {
                 disabled={resetMutation.isPending}
                 className="flex-1 btn-secondary text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-700 dark:hover:text-red-300 border-red-300 dark:border-red-700 text-sm md:text-base py-2.5 md:py-3 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {resetMutation.isPending ? 'Сброс...' : 'Да, сбросить'}
+                {resetMutation.isPending ? t.common.loading : t.profile.resetButton}
               </button>
               <button
                 onClick={() => setShowResetConfirm(false)}
                 disabled={resetMutation.isPending}
                 className="flex-1 btn-secondary text-sm md:text-base py-2.5 md:py-3 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Отмена
+                {t.common.cancel}
               </button>
             </div>
           </div>
