@@ -6,7 +6,7 @@ import base64
 import json
 from datetime import datetime, timezone
 from decouple import config
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ChatAction
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler, CallbackQueryHandler
 from typing import Dict, Optional, TYPE_CHECKING
 
@@ -514,7 +514,7 @@ async def account_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         # Show typing indicator while loading categories
         try:
-            await query.message.reply_chat_action(ChatAction.TYPING)
+            await query.message.reply_chat_action("typing")
         except:
             pass
         
@@ -701,7 +701,7 @@ async def description_received(update: Update, context: ContextTypes.DEFAULT_TYP
     
     # Show typing indicator immediately
     try:
-        await update.message.reply_chat_action(ChatAction.TYPING)
+        await update.message.reply_chat_action("typing")
     except:
         pass
     
