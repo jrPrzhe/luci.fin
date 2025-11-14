@@ -360,7 +360,7 @@ export function Dashboard() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-3 gap-2 md:gap-3 mb-4 md:mb-6">
+      <div className="grid grid-cols-4 gap-2 md:gap-3 mb-4 md:mb-6">
         <button 
           onClick={() => handleQuickAction('expense')}
           className="card-compact flex flex-col items-center gap-1.5 md:gap-2 p-3 md:p-4 group active:scale-[0.98] transition-transform"
@@ -387,6 +387,15 @@ export function Dashboard() {
             🔄
           </div>
           <span className="text-xs md:text-sm font-medium text-telegram-text dark:text-telegram-dark-text">Перевод</span>
+        </button>
+        <button 
+          onClick={() => navigate('/categories')}
+          className="card-compact flex flex-col items-center gap-1.5 md:gap-2 p-3 md:p-4 group active:scale-[0.98] transition-transform"
+        >
+          <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-telegram-primary/10 dark:bg-telegram-primary/20 flex items-center justify-center text-xl md:text-2xl group-active:bg-telegram-primary/20 dark:group-active:bg-telegram-primary/30 transition-colors">
+            📦
+          </div>
+          <span className="text-xs md:text-sm font-medium text-telegram-text dark:text-telegram-dark-text">Категории</span>
         </button>
       </div>
 
@@ -525,102 +534,111 @@ export function Dashboard() {
 
             {/* Form Step */}
             {quickFormStep === 'form' && (
-              <form onSubmit={handleQuickSubmit} className="space-y-4">
-              {/* Show selected category */}
+              <form onSubmit={handleQuickSubmit} className="space-y-3">
+              {/* Show selected category - compact display */}
               {quickFormType !== 'transfer' && quickFormData.category_id && (
-                <div className="bg-telegram-surface dark:bg-telegram-dark-surface p-3 rounded-telegram mb-4">
-                  <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-1">Выбранная категория:</p>
-                  <div className="flex items-center gap-2">
-                    {(() => {
-                      const selectedCategory = categories.find(c => c.id === parseInt(quickFormData.category_id))
-                      return selectedCategory ? (
-                        <>
-                          <div
-                            className="w-8 h-8 rounded-full flex items-center justify-center text-lg"
-                            style={{ backgroundColor: `${selectedCategory.color || '#4CAF50'}20` }}
-                          >
-                            {selectedCategory.icon || '📦'}
-                          </div>
-                          <span className="font-medium text-telegram-text dark:text-telegram-dark-text">{selectedCategory.name}</span>
-                        </>
-                      ) : null
-                    })()}
-                  </div>
+                <div className="bg-telegram-surface dark:bg-telegram-dark-surface p-2 rounded-telegram mb-2 flex items-center gap-2">
+                  {(() => {
+                    const selectedCategory = categories.find(c => c.id === parseInt(quickFormData.category_id))
+                    return selectedCategory ? (
+                      <>
+                        <div
+                          className="w-6 h-6 rounded-full flex items-center justify-center text-sm flex-shrink-0"
+                          style={{ backgroundColor: `${selectedCategory.color || '#4CAF50'}20` }}
+                        >
+                          {selectedCategory.icon || '📦'}
+                        </div>
+                        <span className="font-medium text-sm text-telegram-text dark:text-telegram-dark-text">{selectedCategory.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setQuickFormStep('category')
+                            setQuickFormData({ ...quickFormData, category_id: '' })
+                          }}
+                          className="ml-auto text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text"
+                        >
+                          Изменить
+                        </button>
+                      </>
+                    ) : null
+                  })()}
                 </div>
               )}
               
-              <div>
-                <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                  {quickFormType === 'transfer' ? 'Счет отправления' : 'Счет'}
-                </label>
-                <select
-                  value={quickFormData.account_id}
-                  onChange={(e) => setQuickFormData({ ...quickFormData, account_id: e.target.value })}
-                  className="input"
-                  required
-                  disabled={accountsLoading}
-                >
-                  <option value="">Выберите счет</option>
-                  {(accounts as Account[] || []).map(account => (
-                    <option key={account.id} value={account.id}>
-                      {account.name} ({account.balance.toLocaleString('ru-RU')} {account.currency})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {quickFormType === 'transfer' && (
-                <div>
-                  <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                    Счет получателя
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
+                    {quickFormType === 'transfer' ? 'Счет отправления' : 'Счет'}
                   </label>
                   <select
-                    value={quickFormData.to_account_id}
-                    onChange={(e) => setQuickFormData({ ...quickFormData, to_account_id: e.target.value })}
-                    className="input"
+                    value={quickFormData.account_id}
+                    onChange={(e) => setQuickFormData({ ...quickFormData, account_id: e.target.value })}
+                    className="input text-sm py-2"
                     required
                     disabled={accountsLoading}
                   >
-                    <option value="">Выберите счет</option>
-                    {(accounts as Account[] || [])
-                      .filter(account => account.id !== parseInt(quickFormData.account_id || '0'))
-                      .map(account => (
-                        <option key={account.id} value={account.id}>
-                          {account.name} ({account.balance.toLocaleString('ru-RU')} {account.currency})
-                        </option>
-                      ))}
+                    <option value="">Выберите...</option>
+                    {(accounts as Account[] || []).map(account => (
+                      <option key={account.id} value={account.id}>
+                        {account.name} ({Math.round(account.balance).toLocaleString('ru-RU')} {account.currency})
+                      </option>
+                    ))}
                   </select>
                 </div>
-              )}
 
-              <div>
-                <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                  Сумма
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  value={quickFormData.amount}
-                  onChange={(e) => setQuickFormData({ ...quickFormData, amount: e.target.value })}
-                  className="input"
-                  placeholder="0.00"
-                  required
-                  autoFocus
-                />
-              </div>
+                {quickFormType === 'transfer' ? (
+                  <div className="col-span-2">
+                    <label className="block text-xs font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
+                      Счет получателя
+                    </label>
+                    <select
+                      value={quickFormData.to_account_id}
+                      onChange={(e) => setQuickFormData({ ...quickFormData, to_account_id: e.target.value })}
+                      className="input text-sm py-2"
+                      required
+                      disabled={accountsLoading}
+                    >
+                      <option value="">Выберите...</option>
+                      {(accounts as Account[] || [])
+                        .filter(account => account.id !== parseInt(quickFormData.account_id || '0'))
+                        .map(account => (
+                          <option key={account.id} value={account.id}>
+                            {account.name} ({Math.round(account.balance).toLocaleString('ru-RU')} {account.currency})
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                ) : null}
 
-              <div>
-                <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                  Описание (необязательно)
-                </label>
-                <input
-                  type="text"
-                  value={quickFormData.description}
-                  onChange={(e) => setQuickFormData({ ...quickFormData, description: e.target.value })}
-                  className="input"
-                  placeholder="Краткое описание"
-                />
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
+                    Сумма *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    value={quickFormData.amount}
+                    onChange={(e) => setQuickFormData({ ...quickFormData, amount: e.target.value })}
+                    className="input text-lg font-semibold py-2"
+                    placeholder="0"
+                    required
+                    autoFocus
+                  />
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
+                    Описание
+                  </label>
+                  <input
+                    type="text"
+                    value={quickFormData.description}
+                    onChange={(e) => setQuickFormData({ ...quickFormData, description: e.target.value })}
+                    className="input text-sm py-2"
+                    placeholder="Необязательно"
+                  />
+                </div>
               </div>
 
               {quickFormType === 'income' && goals.length > 0 && (

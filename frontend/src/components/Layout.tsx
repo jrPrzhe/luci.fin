@@ -349,14 +349,15 @@ export function Layout() {
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
-              className="btn-icon w-10 h-10 flex items-center justify-center"
+              className="btn-icon w-10 h-10 flex items-center justify-center bg-telegram-hover dark:bg-telegram-dark-hover hover:bg-telegram-border dark:hover:bg-telegram-dark-border"
               title={theme === 'dark' ? 'Переключить на светлую тему' : 'Переключить на темную тему'}
             >
               <span className="text-xl">{theme === 'dark' ? '🌙' : '☀️'}</span>
             </button>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="btn-icon w-10 h-10"
+              className="btn-icon w-10 h-10 bg-telegram-hover dark:bg-telegram-dark-hover hover:bg-telegram-border dark:hover:bg-telegram-dark-border"
+              aria-label="Меню"
             >
               <span className="text-xl">{mobileMenuOpen ? '✕' : '☰'}</span>
             </button>

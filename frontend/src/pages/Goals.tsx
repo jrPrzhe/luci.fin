@@ -544,9 +544,18 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
         className="bg-telegram-surface dark:bg-telegram-dark-surface rounded-2xl max-w-md w-full p-6"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-2xl font-bold text-telegram-text dark:text-telegram-dark-text mb-4">
-          Новая цель
-        </h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-2xl font-bold text-telegram-text dark:text-telegram-dark-text">
+            Новая цель
+          </h2>
+          <button
+            onClick={onClose}
+            className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text text-xl"
+            disabled={loading}
+          >
+            ×
+          </button>
+        </div>
 
         <div className="space-y-4">
           <div>
@@ -617,13 +626,6 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
         </div>
 
         <div className="flex gap-3 mt-6">
-          <button
-            onClick={onClose}
-            className="flex-1 btn-secondary"
-            disabled={loading}
-          >
-            Отмена
-          </button>
           <button
             onClick={handleCreate}
             className="flex-1 btn-primary"

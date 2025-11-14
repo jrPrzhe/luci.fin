@@ -7,7 +7,7 @@ import json
 from datetime import datetime, timezone
 from decouple import config
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler, CallbackQueryHandler
 from typing import Dict, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -43,8 +43,8 @@ if not BACKEND_URL.startswith(("http://", "https://")):
 logger.info(f"Backend URL configured: {BACKEND_URL}")
 
 # Conversation states
-WAITING_AMOUNT, WAITING_DESCRIPTION, WAITING_ACCOUNT = range(3)
-WAITING_GOAL_INFO, WAITING_GOAL_CONFIRMATION = range(3, 5)
+WAITING_AMOUNT, WAITING_DESCRIPTION, WAITING_ACCOUNT, WAITING_CATEGORY = range(4)
+WAITING_GOAL_INFO, WAITING_GOAL_CONFIRMATION = range(4, 6)
 
 # Store user tokens
 user_tokens: Dict[int, str] = {}
@@ -508,10 +508,118 @@ async def account_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
     type_text = "дохода" if trans_type == "income" else "расхода"
     icon = "💰" if trans_type == "income" else "💸"
     
+    # For expense/income, load categories first
+    if trans_type in ['expense', 'income']:
+        telegram_id = str(query.from_user.id)
+        try:
+            # Load categories
+            response = await make_authenticated_request(
+                "GET",
+                f"{BACKEND_URL}/api/v1/categories/",
+                telegram_id,
+                params={"transaction_type": trans_type}
+            )
+            
+            if response.status_code == 200:
+                categories = response.json()
+                if categories:
+                    context.user_data['categories'] = categories
+                    
+                    # Create keyboard with categories (limit to 10)
+                    keyboard = []
+                    for cat in categories[:10]:
+                        cat_name = cat.get('name', 'Категория')
+                        cat_icon = cat.get('icon', '📦')
+                        keyboard.append([InlineKeyboardButton(
+                            f"{cat_icon} {cat_name}",
+                            callback_data=f"category_{cat['id']}"
+                        )])
+                    
+                    # Add "Skip category" button
+                    keyboard.append([InlineKeyboardButton(
+                        "⏭️ Пропустить категорию",
+                        callback_data="category_skip"
+                    )])
+                    
+                    reply_markup = InlineKeyboardMarkup(keyboard)
+                    
+                    await query.edit_message_text(
+                        f"{icon} Добавление {type_text}\n\n"
+                        f"Счет: *{account_name}*\n\n"
+                        f"Выберите категорию:",
+                        reply_markup=reply_markup,
+                        parse_mode='Markdown'
+                    )
+                    
+                    return WAITING_CATEGORY
+                else:
+                    # No categories, skip to amount
+                    await query.edit_message_text(
+                        f"{icon} Добавление {type_text}\n\n"
+                        f"Счет: *{account_name}*\n\n"
+                        f"Введите сумму {type_text}:",
+                        parse_mode='Markdown'
+                    )
+                    return WAITING_AMOUNT
+            else:
+                # Error loading categories, skip to amount
+                await query.edit_message_text(
+                    f"{icon} Добавление {type_text}\n\n"
+                    f"Счет: *{account_name}*\n\n"
+                    f"Введите сумму {type_text}:",
+                    parse_mode='Markdown'
+                )
+                return WAITING_AMOUNT
+        except Exception as e:
+            logger.error(f"Error loading categories: {e}")
+            # On error, skip to amount
+            await query.edit_message_text(
+                f"{icon} Добавление {type_text}\n\n"
+                f"Счет: *{account_name}*\n\n"
+                f"Введите сумму {type_text}:",
+                parse_mode='Markdown'
+            )
+            return WAITING_AMOUNT
+    else:
+        # For transfer, go directly to amount
+        await query.edit_message_text(
+            f"{icon} Добавление {type_text}\n\n"
+            f"Счет: *{account_name}*\n\n"
+            f"Введите сумму {type_text}:",
+            parse_mode='Markdown'
+        )
+        return WAITING_AMOUNT
+
+
+async def category_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle category selection"""
+    query = update.callback_query
+    await query.answer()
+    
+    if query.data == "category_skip":
+        context.user_data['category_id'] = None
+    else:
+        category_id = int(query.data.split('_')[1])
+        context.user_data['category_id'] = category_id
+        
+        # Find category name for display
+        categories = context.user_data.get('categories', [])
+        category = next((c for c in categories if c['id'] == category_id), None)
+        if category:
+            category_name = f"{category.get('icon', '📦')} {category.get('name', 'Категория')}"
+            context.user_data['category_name'] = category_name
+    
+    trans_type = context.user_data.get('type', 'expense')
+    type_text = "дохода" if trans_type == "income" else "расхода"
+    icon = "💰" if trans_type == "income" else "💸"
+    
+    category_info = ""
+    if context.user_data.get('category_id'):
+        category_info = f"Категория: {context.user_data.get('category_name', '')}\n\n"
+    
     await query.edit_message_text(
         f"{icon} Добавление {type_text}\n\n"
-        f"Счет: *{account_name}*\n\n"
-        f"Введите сумму {type_text}:",
+        f"{category_info}Введите сумму {type_text}:",
         parse_mode='Markdown'
     )
     
@@ -532,9 +640,13 @@ async def amount_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
         type_text = "дохода" if trans_type == "income" else "расхода"
         icon = "💰" if trans_type == "income" else "💸"
         
+        category_info = ""
+        if context.user_data.get('category_id'):
+            category_info = f"Категория: {context.user_data.get('category_name', '')}\n\n"
+        
         await update.message.reply_text(
             f"{icon} Добавление {type_text}\n\n"
-            f"Сумма: *{int(round(amount)):,}*\n\n"
+            f"{category_info}Сумма: *{int(round(amount)):,}*\n\n"
             f"Введите описание (или отправьте '—' чтобы пропустить):",
             parse_mode='Markdown'
         )
@@ -568,18 +680,26 @@ async def description_received(update: Update, context: ContextTypes.DEFAULT_TYP
         account = next((a for a in accounts if a['id'] == account_id), None)
         currency = account['currency'] if account else 'RUB'
         
+        # Prepare transaction data
+        transaction_data = {
+            "account_id": account_id,
+            "transaction_type": transaction_type,
+            "amount": amount,
+            "currency": currency,
+            "description": description,
+        }
+        
+        # Add category_id if selected
+        category_id = context.user_data.get('category_id')
+        if category_id:
+            transaction_data["category_id"] = category_id
+        
         # Use authenticated request helper
         response = await make_authenticated_request(
             "POST",
             f"{BACKEND_URL}/api/v1/transactions/",
             telegram_id,
-            json_data={
-                "account_id": account_id,
-                "transaction_type": transaction_type,
-                "amount": amount,
-                "currency": currency,
-                "description": description,
-            }
+            json_data=transaction_data
         )
         
         if response.status_code == 201:
@@ -1130,6 +1250,9 @@ def main():
     expense_handler = ConversationHandler(
         entry_points=[CommandHandler("add_expense", add_expense_start)],
         states={
+            WAITING_CATEGORY: [
+                CallbackQueryHandler(category_selected, pattern="^category_"),
+            ],
             WAITING_AMOUNT: [
                 CallbackQueryHandler(account_selected, pattern="^account_"),
                 MessageHandler(filters.TEXT & ~filters.COMMAND, amount_received),
@@ -1146,6 +1269,9 @@ def main():
     income_handler = ConversationHandler(
         entry_points=[CommandHandler("add_income", add_income_start)],
         states={
+            WAITING_CATEGORY: [
+                CallbackQueryHandler(category_selected, pattern="^category_"),
+            ],
             WAITING_AMOUNT: [
                 CallbackQueryHandler(account_selected, pattern="^account_"),
                 MessageHandler(filters.TEXT & ~filters.COMMAND, amount_received),
