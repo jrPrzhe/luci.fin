@@ -331,8 +331,8 @@ class ApiClient {
     })
   }
 
-  async resetAccount() {
-    return this.request<any>('/api/v1/auth/reset-account', {
+  resetAccount = async (): Promise<any> => {
+    return await this.request<any>('/api/v1/auth/reset-account', {
       method: 'POST',
     })
   }

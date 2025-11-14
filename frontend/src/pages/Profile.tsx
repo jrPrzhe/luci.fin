@@ -196,37 +196,6 @@ export function Profile() {
             </select>
           </div>
           
-          {/* Language Switcher */}
-          <div>
-            <label className="block text-xs md:text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-              {t.profile.language}
-            </label>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setLanguage('ru')}
-                className={`flex-1 px-3 py-2.5 rounded-telegram text-sm font-medium transition-colors ${
-                  language === 'ru'
-                    ? 'bg-telegram-primary text-white dark:bg-telegram-dark-primary'
-                    : 'bg-telegram-border hover:bg-telegram-hover dark:bg-telegram-dark-border dark:hover:bg-telegram-dark-hover'
-                }`}
-              >
-                🇷🇺 Русский
-              </button>
-              <button
-                type="button"
-                onClick={() => setLanguage('en')}
-                className={`flex-1 px-3 py-2.5 rounded-telegram text-sm font-medium transition-colors ${
-                  language === 'en'
-                    ? 'bg-telegram-primary text-white dark:bg-telegram-dark-primary'
-                    : 'bg-telegram-border hover:bg-telegram-hover dark:bg-telegram-dark-border dark:hover:bg-telegram-dark-hover'
-                }`}
-              >
-                🇬🇧 English
-              </button>
-            </div>
-          </div>
-          
           <button
             type="submit"
             disabled={updateMutation.isPending}
@@ -250,7 +219,7 @@ export function Profile() {
             </div>
           )}
           
-          {user?.is_admin ? (
+          {user?.is_admin && (
             <button
               onClick={() => navigate('/statistics')}
               className="w-full flex items-center justify-between p-4 rounded-telegram bg-telegram-primary/10 dark:bg-telegram-dark-primary/10 hover:bg-telegram-primary/20 dark:hover:bg-telegram-dark-primary/20 transition-colors text-left border border-telegram-primary/20 dark:border-telegram-dark-primary/20"
@@ -265,33 +234,6 @@ export function Profile() {
                 </div>
               </div>
               <span className="text-telegram-primary dark:text-telegram-dark-primary text-xl">→</span>
-            </button>
-          ) : user && (
-            <button
-              onClick={async () => {
-                try {
-                  console.log('[Profile] Manual admin sync triggered')
-                  const syncResponse = await api.syncAdminStatus()
-                  console.log('[Profile] Manual sync response:', syncResponse)
-                  if (syncResponse?.is_admin) {
-                    queryClient.invalidateQueries({ queryKey: ['currentUser'] })
-                  }
-                } catch (error) {
-                  console.error('[Profile] Manual sync error:', error)
-                }
-              }}
-              className="w-full flex items-center justify-between p-3 rounded-telegram hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors text-left border border-yellow-500/20 bg-yellow-500/5"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">🔄</span>
-                <div>
-                  <p className="font-medium text-telegram-text dark:text-telegram-dark-text">Синхронизировать статус админа</p>
-                  <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-                    Обновить права администратора
-                  </p>
-                </div>
-              </div>
-              <span className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">→</span>
             </button>
           )}
           <button
