@@ -171,36 +171,52 @@ export function getVKLaunchParamsObject(): VKLaunchParams | null {
 /**
  * Show VK alert
  */
-export function showVKAlert(message: string): Promise<void> {
+export async function showVKAlert(message: string): Promise<void> {
   if (!isVKWebApp()) {
     alert(message)
-    return Promise.resolve()
+    return
   }
   
-  return bridge.send('VKWebAppShowAlert', { message })
+  try {
+    await (bridge.send as any)('VKWebAppShowAlert', { message })
+  } catch (error) {
+    console.error('Failed to show VK alert:', error)
+    alert(message)
+  }
 }
 
 /**
  * Show VK confirmation
  */
-export function showVKConfirm(message: string): Promise<boolean> {
+export async function showVKConfirm(message: string): Promise<boolean> {
   if (!isVKWebApp()) {
     const confirmed = confirm(message)
-    return Promise.resolve(confirmed)
+    return confirmed
   }
   
-  return bridge.send('VKWebAppShowConfirm', { message }).then(result => result.result || false)
+  try {
+    const result = await (bridge.send as any)('VKWebAppShowConfirm', { message }) as any
+    return result?.result === true || false
+  } catch (error) {
+    console.error('Failed to show VK confirm:', error)
+    const confirmed = confirm(message)
+    return confirmed
+  }
 }
 
 /**
  * Haptic feedback
  */
-export function hapticImpact(style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft' = 'medium') {
+export function hapticImpact(style: 'light' | 'medium' | 'heavy' = 'medium') {
   if (!isVKWebApp()) {
     return
   }
   
-  bridge.send('VKWebAppTapticImpactOccurred', { style })
+  try {
+    (bridge.send as any)('VKWebAppTapticImpactOccurred', { style })
+  } catch (error) {
+    console.error('Failed to trigger haptic impact:', error)
+  }
 }
 
 export function hapticNotification(type: 'error' | 'success' | 'warning') {
@@ -208,19 +224,26 @@ export function hapticNotification(type: 'error' | 'success' | 'warning') {
     return
   }
   
-  const hapticType = type === 'error' ? 'error' : type === 'success' ? 'success' : 'warning'
-  bridge.send('VKWebAppTapticNotificationOccurred', { type: hapticType })
+  try {
+    (bridge.send as any)('VKWebAppTapticNotificationOccurred', { type })
+  } catch (error) {
+    console.error('Failed to trigger haptic notification:', error)
+  }
 }
 
 /**
  * Share link
  */
-export function shareLink(url: string, text?: string): Promise<void> {
+export async function shareLink(url: string, _text?: string): Promise<void> {
   if (!isVKWebApp()) {
-    return Promise.resolve()
+    return
   }
   
-  return bridge.send('VKWebAppShare', { link: url, text })
+  try {
+    await (bridge.send as any)('VKWebAppShare', { link: url })
+  } catch (error) {
+    console.error('Failed to share link:', error)
+  }
 }
 
 /**
