@@ -724,6 +724,50 @@ async def description_received(update: Update, context: ContextTypes.DEFAULT_TYP
         account = next((a for a in accounts if a['id'] == account_id), None)
         currency = account['currency'] if account else 'RUB'
         
+        # Get user timezone from backend to convert time properly
+        user_timezone = "UTC"  # Default
+        try:
+            user_response = await make_authenticated_request(
+                "GET",
+                f"{BACKEND_URL}/api/v1/auth/me",
+                telegram_id,
+                timeout=5.0
+            )
+            if user_response.status_code == 200:
+                user_data = user_response.json()
+                user_timezone = user_data.get('timezone', 'UTC')
+        except Exception as e:
+            logger.warning(f"Could not get user timezone: {e}, using UTC")
+        
+        # Use message date which represents when user sent the message
+        # Telegram sends message.date as timezone-aware datetime (usually UTC)
+        message_date = update.message.date
+        # Ensure it's timezone-aware (if not, assume UTC)
+        if message_date.tzinfo is None:
+            message_date = message_date.replace(tzinfo=timezone.utc)
+        
+        # Convert to user's timezone if not UTC
+        if user_timezone and user_timezone != "UTC":
+            try:
+                # Try using zoneinfo (Python 3.9+)
+                try:
+                    from zoneinfo import ZoneInfo
+                    user_tz = ZoneInfo(user_timezone)
+                except ImportError:
+                    # Fallback to pytz if zoneinfo not available
+                    import pytz
+                    user_tz = pytz.timezone(user_timezone)
+                
+                # Convert UTC message date to user's local time
+                local_time = message_date.astimezone(user_tz)
+                transaction_date = local_time.isoformat()
+            except Exception as e:
+                logger.warning(f"Could not convert to timezone {user_timezone}: {e}, using UTC")
+                transaction_date = message_date.isoformat()
+        else:
+            # Use message date as-is (already UTC)
+            transaction_date = message_date.isoformat()
+        
         # Prepare transaction data
         transaction_data = {
             "account_id": account_id,
@@ -731,6 +775,7 @@ async def description_received(update: Update, context: ContextTypes.DEFAULT_TYP
             "amount": amount,
             "currency": currency,
             "description": description,
+            "transaction_date": transaction_date,
         }
         
         # Add category_id if selected
