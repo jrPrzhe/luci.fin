@@ -186,8 +186,42 @@ try:
             print("[STARTUP] Adding vk_id to users...", file=sys.stderr, flush=True)
             with engine.begin() as conn:
                 conn.execute(text("ALTER TABLE users ADD COLUMN vk_id VARCHAR(50)"))
-                conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_vk_id ON users(vk_id)"))
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_users_vk_id ON users(vk_id)"))
             print("[STARTUP] vk_id column added", file=sys.stderr, flush=True)
+        else:
+            # Check if unique constraint exists and remove it to allow account linking
+            indexes = inspector.get_indexes('users')
+            vk_index = next((idx for idx in indexes if idx['name'] == 'ix_users_vk_id' or (idx['column_names'] == ['vk_id'] and idx.get('unique', False))), None)
+            if vk_index and vk_index.get('unique', False):
+                print("[STARTUP] Removing unique constraint from vk_id to allow account linking...", file=sys.stderr, flush=True)
+                with engine.begin() as conn:
+                    # Drop unique index and create non-unique index
+                    try:
+                        conn.execute(text("DROP INDEX IF EXISTS ix_users_vk_id"))
+                    except:
+                        pass
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_users_vk_id ON users(vk_id)"))
+                print("[STARTUP] vk_id unique constraint removed", file=sys.stderr, flush=True)
+except Exception as e:
+    print(f"[STARTUP] Schema check warning (non-fatal): {e}", file=sys.stderr, flush=True)
+    pass
+
+# Ensure telegram_id is not unique (to allow account linking)
+print("[STARTUP] Checking users.telegram_id unique constraint...", file=sys.stderr, flush=True)
+try:
+    if inspector.has_table('users'):
+        indexes = inspector.get_indexes('users')
+        tg_index = next((idx for idx in indexes if idx['name'] == 'ix_users_telegram_id' or (idx['column_names'] == ['telegram_id'] and idx.get('unique', False))), None)
+        if tg_index and tg_index.get('unique', False):
+            print("[STARTUP] Removing unique constraint from telegram_id to allow account linking...", file=sys.stderr, flush=True)
+            with engine.begin() as conn:
+                # Drop unique index and create non-unique index
+                try:
+                    conn.execute(text("DROP INDEX IF EXISTS ix_users_telegram_id"))
+                except:
+                    pass
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_users_telegram_id ON users(telegram_id)"))
+            print("[STARTUP] telegram_id unique constraint removed", file=sys.stderr, flush=True)
 except Exception as e:
     print(f"[STARTUP] Schema check warning (non-fatal): {e}", file=sys.stderr, flush=True)
     pass

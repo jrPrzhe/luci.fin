@@ -426,6 +426,35 @@ async def login_telegram(
                         break
             except (ValueError, TypeError):
                 pass
+        
+        # If still not found, try to link to existing VK account
+        # This allows users to use both platforms with the same account
+        # Strategy: If user logged in via VK first, then via Telegram, link them
+        if not user:
+            # Check if there's exactly one user with vk_id but no telegram_id
+            # This is a simple heuristic: if only one VK user exists, assume it's the same person
+            existing_vk_users = db.query(User).filter(
+                User.vk_id.isnot(None),
+                User.telegram_id.is_(None)
+            ).all()
+            
+            if len(existing_vk_users) == 1:
+                existing_vk_user = existing_vk_users[0]
+                logger.info(f"Found single existing user with vk_id '{existing_vk_user.vk_id}' but no telegram_id. Linking Telegram account.")
+                user = existing_vk_user
+                user.telegram_id = telegram_id
+                user.telegram_username = telegram_username
+                # Update name if available and not set
+                if first_name and not user.first_name:
+                    user.first_name = first_name
+                if last_name and not user.last_name:
+                    user.last_name = last_name
+                is_new_user = False
+            elif len(existing_vk_users) > 1:
+                logger.info(f"Found {len(existing_vk_users)} users with vk_id but no telegram_id. Cannot auto-link, will create new user.")
+            else:
+                logger.info(f"No existing VK user found to link. Will create new user with telegram_id '{telegram_id}'")
+        
         is_new_user = False
         
         if not user:
@@ -707,6 +736,33 @@ async def login_vk(
                         break
             except (ValueError, TypeError):
                 pass
+        
+        # If still not found, try to link to existing Telegram account
+        # This allows users to use both platforms with the same account
+        # Strategy: If user logged in via Telegram first, then via VK, link them
+        if not user:
+            # Check if there's exactly one user with telegram_id but no vk_id
+            # This is a simple heuristic: if only one Telegram user exists, assume it's the same person
+            existing_tg_users = db.query(User).filter(
+                User.telegram_id.isnot(None),
+                User.vk_id.is_(None)
+            ).all()
+            
+            if len(existing_tg_users) == 1:
+                existing_tg_user = existing_tg_users[0]
+                logger.info(f"Found single existing user with telegram_id '{existing_tg_user.telegram_id}' but no vk_id. Linking VK account.")
+                user = existing_tg_user
+                user.vk_id = vk_id
+                # Update name if available and not set
+                if first_name and not user.first_name:
+                    user.first_name = first_name
+                if last_name and not user.last_name:
+                    user.last_name = last_name
+                is_new_user = False
+            elif len(existing_tg_users) > 1:
+                logger.info(f"Found {len(existing_tg_users)} users with telegram_id but no vk_id. Cannot auto-link, will create new user.")
+            else:
+                logger.info(f"No existing Telegram user found to link. Will create new user with vk_id '{vk_id}'")
         
         is_new_user = False
         
