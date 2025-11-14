@@ -10,7 +10,6 @@ export function Profile() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
   const [defaultCurrency, setDefaultCurrency] = useState('RUB')
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
@@ -62,7 +61,6 @@ export function Profile() {
   useEffect(() => {
     if (user) {
       setFirstName(user.first_name || '')
-      setLastName(user.last_name || '')
       setDefaultCurrency(user.default_currency || 'RUB')
     }
   }, [user])
@@ -87,8 +85,6 @@ export function Profile() {
     setErrorMessage('')
 
     updateMutation.mutate({
-      first_name: firstName || undefined,
-      last_name: lastName || undefined,
       default_currency: defaultCurrency,
     })
   }
@@ -166,7 +162,7 @@ export function Profile() {
             </div>
           )}
 
-          {/* Имя (редактируемое) */}
+          {/* Имя (только для отображения) */}
           <div>
             <label className="block text-xs md:text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
               {t.profile.firstName}
@@ -174,48 +170,13 @@ export function Profile() {
             <input
               type="text"
               value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              className="input text-sm md:text-base"
-              placeholder={t.profile.firstNamePlaceholder}
+              disabled
+              className="input bg-telegram-bg dark:bg-telegram-dark-bg cursor-not-allowed opacity-60 text-sm md:text-base"
             />
             <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
-              {user?.telegram_username 
-                ? t.profile.firstNameDesc
-                : t.profile.firstNameDescAlt}
+              {t.profile.firstNameDesc}
             </p>
           </div>
-
-          {/* Фамилия (опционально) */}
-          <div>
-            <label className="block text-xs md:text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-              {t.profile.lastName} ({t.common.optional})
-            </label>
-            <input
-              type="text"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              className="input text-sm md:text-base"
-              placeholder={t.profile.lastNamePlaceholder}
-            />
-          </div>
-
-          {/* Email (только для отображения, если Telegram пользователь) */}
-          {user?.telegram_id && (
-            <div>
-              <label className="block text-xs md:text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                {t.profile.email}
-              </label>
-              <input
-                type="email"
-                value={user.email}
-                disabled
-                className="input bg-telegram-bg dark:bg-telegram-dark-bg cursor-not-allowed opacity-60"
-              />
-              <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
-                {t.profile.emailDesc}
-              </p>
-            </div>
-          )}
 
           {/* Валюта по умолчанию */}
           <div>
