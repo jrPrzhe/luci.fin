@@ -6,7 +6,7 @@ import base64
 import json
 from datetime import datetime, timezone
 from decouple import config
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ChatAction
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler, CallbackQueryHandler
 from typing import Dict, Optional, TYPE_CHECKING
 
@@ -511,13 +511,21 @@ async def account_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # For expense/income, load categories first
     if trans_type in ['expense', 'income']:
         telegram_id = str(query.from_user.id)
+        
+        # Show typing indicator while loading categories
         try:
-            # Load categories
+            await query.message.reply_chat_action(ChatAction.TYPING)
+        except:
+            pass
+        
+        try:
+            # Load categories with increased timeout
             response = await make_authenticated_request(
                 "GET",
                 f"{BACKEND_URL}/api/v1/categories/",
                 telegram_id,
-                params={"transaction_type": trans_type}
+                params={"transaction_type": trans_type},
+                timeout=10.0  # Increased timeout
             )
             
             if response.status_code == 200:
@@ -691,6 +699,23 @@ async def description_received(update: Update, context: ContextTypes.DEFAULT_TYP
         await update.message.reply_text(f"❌ Ошибка. Попробуйте снова: {cmd}")
         return ConversationHandler.END
     
+    # Show typing indicator immediately
+    try:
+        await update.message.reply_chat_action(ChatAction.TYPING)
+    except:
+        pass
+    
+    # Send processing message immediately
+    processing_msg = None
+    try:
+        icon = "💰" if transaction_type == "income" else "💸"
+        processing_msg = await update.message.reply_text(
+            f"{icon} Обработка транзакции...",
+            parse_mode='Markdown'
+        )
+    except:
+        pass
+    
     try:
         telegram_id = str(update.effective_user.id)
         
@@ -713,37 +738,81 @@ async def description_received(update: Update, context: ContextTypes.DEFAULT_TYP
         if category_id:
             transaction_data["category_id"] = category_id
         
-        # Use authenticated request helper
+        # Use authenticated request helper with increased timeout
         response = await make_authenticated_request(
             "POST",
             f"{BACKEND_URL}/api/v1/transactions/",
             telegram_id,
-            json_data=transaction_data
+            json_data=transaction_data,
+            timeout=15.0  # Increased timeout for transaction creation
         )
         
         if response.status_code == 201:
             icon = "💰" if transaction_type == "income" else "💸"
             type_text = "Доход" if transaction_type == "income" else "Расход"
-            await update.message.reply_text(
+            success_text = (
                 f"✅ *{type_text} добавлен!*\n\n"
                 f"{icon} {int(round(amount)):,} {currency}\n"
-                f"📝 {description or 'Без описания'}",
-                parse_mode='Markdown'
+                f"📝 {description or 'Без описания'}"
             )
+            
+            # Edit processing message or send new one
+            if processing_msg:
+                try:
+                    await processing_msg.edit_text(success_text, parse_mode='Markdown')
+                except:
+                    try:
+                        await processing_msg.delete()
+                        await update.message.reply_text(success_text, parse_mode='Markdown')
+                    except:
+                        await update.message.reply_text(success_text, parse_mode='Markdown')
+            else:
+                await update.message.reply_text(success_text, parse_mode='Markdown')
         elif response.status_code == 401:
-            await update.message.reply_text(
-                "❌ Не удалось авторизоваться. Пожалуйста, сначала зарегистрируйтесь."
-            )
+            error_text = "❌ Не удалось авторизоваться. Пожалуйста, сначала зарегистрируйтесь."
+            if processing_msg:
+                try:
+                    await processing_msg.edit_text(error_text)
+                except:
+                    try:
+                        await processing_msg.delete()
+                        await update.message.reply_text(error_text)
+                    except:
+                        await update.message.reply_text(error_text)
+            else:
+                await update.message.reply_text(error_text)
         else:
             try:
                 error_msg = response.json().get("detail", "Ошибка")
             except:
                 error_msg = "Ошибка при создании транзакции"
-            await update.message.reply_text(f"❌ Ошибка: {error_msg}")
+            error_text = f"❌ Ошибка: {error_msg}"
+            if processing_msg:
+                try:
+                    await processing_msg.edit_text(error_text)
+                except:
+                    try:
+                        await processing_msg.delete()
+                        await update.message.reply_text(error_text)
+                    except:
+                        await update.message.reply_text(error_text)
+            else:
+                await update.message.reply_text(error_text)
     except Exception as e:
         logger.error(f"Error creating transaction: {e}", exc_info=True)
         type_text = "дохода" if transaction_type == "income" else "расхода"
-        await update.message.reply_text(f"❌ Ошибка при создании {type_text}.")
+        error_text = f"❌ Ошибка при создании {type_text}."
+        if processing_msg:
+            try:
+                await processing_msg.edit_text(error_text)
+            except:
+                try:
+                    await processing_msg.delete()
+                    await update.message.reply_text(error_text)
+                except:
+                    await update.message.reply_text(error_text)
+        else:
+            await update.message.reply_text(error_text)
     
     # Clear context
     context.user_data.clear()
