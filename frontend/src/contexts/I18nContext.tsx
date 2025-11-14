@@ -33,6 +33,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
         const savedLang = localStorage.getItem('language') as Language | null
         if (savedLang && (savedLang === 'ru' || savedLang === 'en')) {
           setLanguageState(savedLang)
+          languageRef.current = savedLang
           setIsLoading(false)
           // Still check profile to sync
           checkProfileLanguage(savedLang)
@@ -44,6 +45,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         console.error('Error loading language:', error)
         setLanguageState('ru')
+        languageRef.current = 'ru'
         setIsLoading(false)
       }
     }
@@ -76,6 +78,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       // Default to Russian if no profile language
       if (!currentLang) {
         setLanguageState('ru')
+        languageRef.current = 'ru'
         localStorage.setItem('language', 'ru')
         setIsLoading(false)
       }
