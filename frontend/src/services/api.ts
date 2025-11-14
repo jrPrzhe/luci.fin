@@ -352,6 +352,21 @@ class ApiClient {
     return response
   }
 
+  async loginVK(launchParams: string) {
+    const response = await this.request<{ access_token: string; refresh_token: string; user: any }>(
+      '/api/v1/auth/vk',
+      {
+        method: 'POST',
+        body: JSON.stringify({ launch_params: launchParams }),
+      }
+    )
+    // Store tokens after successful VK login
+    if (response.access_token) {
+      this.setToken(response.access_token, response.refresh_token)
+    }
+    return response
+  }
+
   // Accounts
   async getAccounts() {
     return this.request<any[]>('/api/v1/accounts/')

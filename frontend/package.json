@@ -9,18 +9,19 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
   },
   "dependencies": {
+    "@hookform/resolvers": "^3.3.3",
+    "@tanstack/react-query": "^5.14.0",
+    "@vkontakte/vk-bridge": "^2.15.9",
+    "axios": "^1.6.5",
+    "clsx": "^2.1.0",
+    "date-fns": "^3.2.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.21.0",
-    "@tanstack/react-query": "^5.14.0",
-    "axios": "^1.6.5",
-    "recharts": "^2.10.3",
-    "date-fns": "^3.2.0",
-    "zustand": "^4.4.7",
-    "clsx": "^2.1.0",
     "react-hook-form": "^7.49.2",
+    "react-router-dom": "^6.21.0",
+    "recharts": "^2.10.3",
     "zod": "^3.22.4",
-    "@hookform/resolvers": "^3.3.3"
+    "zustand": "^4.4.7"
   },
   "devDependencies": {
     "@types/react": "^18.2.47",
@@ -38,4 +39,3 @@
     "vite": "^5.0.10"
   }
 }
-

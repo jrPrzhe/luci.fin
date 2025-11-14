@@ -3,9 +3,13 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 import './styles/index.css'
 import { initTelegramWebApp } from './utils/telegram'
+import { initVKWebApp } from './utils/vk'
 
 // Initialize Telegram Web App if running inside Telegram
 initTelegramWebApp()
+
+// Initialize VK Web App if running inside VK
+initVKWebApp()
 
 // Initialize theme from localStorage
 const savedTheme = localStorage.getItem('theme')

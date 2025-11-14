@@ -17,6 +17,7 @@ import { Login } from './pages/Login'
 import { Register } from './pages/Register'
 import { Statistics } from './pages/Statistics'
 import { isTelegramWebApp, getInitData, getTelegramUser } from './utils/telegram'
+import { isVKWebApp, getVKLaunchParams, getVKUserId, initVKWebApp } from './utils/vk'
 import { api } from './services/api'
 import { NewYearProvider } from './contexts/NewYearContext'
 import { I18nProvider } from './contexts/I18nContext'
@@ -221,6 +222,195 @@ function TelegramAuthHandler() {
   return null
 }
 
+function VKAuthHandler() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [isChecking, setIsChecking] = useState(true)
+  const hasAttemptedAuth = useRef(false)
+
+  useEffect(() => {
+    let mounted = true
+    let timeoutId: ReturnType<typeof setTimeout>
+
+    const checkVKAuth = async () => {
+      try {
+        // Timeout after 3 seconds
+        timeoutId = setTimeout(() => {
+          if (mounted) {
+            setIsChecking(false)
+          }
+        }, 3000)
+
+        // Если не в VK Mini App, пропускаем проверку
+        if (!isVKWebApp()) {
+          if (mounted) setIsChecking(false)
+          return
+        }
+
+        // Инициализируем VK Bridge
+        await initVKWebApp()
+
+        // Если уже есть токен, проверяем его валидность
+        const token = localStorage.getItem('token')
+        if (token) {
+          try {
+            const user = await api.getCurrentUser()
+            if (mounted && user) {
+              // Токен валиден, но если это Mini App, проверяем, что пользователь совпадает с VK
+              if (isVKWebApp()) {
+                const vkUserId = getVKUserId()
+                if (vkUserId) {
+                  // Проверяем, что токен принадлежит текущему VK пользователю
+                  const vkId = vkUserId.toString()
+                  // Получаем vk_id из ответа API (если есть)
+                  // Если user.vk_id не совпадает с текущим VK ID, очищаем токен
+                  if (user.vk_id && user.vk_id !== vkId) {
+                    console.warn('Token belongs to different VK user, clearing and re-authenticating')
+                    localStorage.removeItem('token')
+                    api.setToken(null)
+                    // Продолжаем авторизацию через VK
+                  } else {
+                    // Токен валиден и принадлежит текущему пользователю
+                    clearTimeout(timeoutId)
+                    setIsChecking(false)
+                    // Если на странице логина/регистрации, перенаправляем
+                    if (location.pathname === '/login' || location.pathname === '/register') {
+                      const returnTo = new URLSearchParams(window.location.search).get('returnTo') || '/'
+                      navigate(returnTo)
+                    }
+                    return
+                  }
+                } else {
+                  // Нет данных VK, но токен есть - оставляем как есть
+                  clearTimeout(timeoutId)
+                  setIsChecking(false)
+                  if (location.pathname === '/login' || location.pathname === '/register') {
+                    const returnTo = new URLSearchParams(window.location.search).get('returnTo') || '/'
+                    navigate(returnTo)
+                  }
+                  return
+                }
+              } else {
+                // Не Mini App, токен валиден
+                clearTimeout(timeoutId)
+                setIsChecking(false)
+                if (location.pathname === '/login' || location.pathname === '/register') {
+                  const returnTo = new URLSearchParams(window.location.search).get('returnTo') || '/'
+                  navigate(returnTo)
+                }
+                return
+              }
+            }
+          } catch (error) {
+            // Токен невалиден, удаляем его и продолжаем авторизацию
+            console.warn('Token invalid, will re-authenticate via VK')
+            localStorage.removeItem('token')
+            api.setToken(null)
+          }
+        }
+
+        // Не делаем повторные попытки авторизации
+        if (hasAttemptedAuth.current) {
+          if (mounted) {
+            clearTimeout(timeoutId)
+            setIsChecking(false)
+          }
+          return
+        }
+
+        // Автоматическая авторизация через VK Mini App
+        const launchParams = getVKLaunchParams()
+        console.log('VK auto-auth check:', { 
+          hasLaunchParams: !!launchParams, 
+          launchParamsLength: launchParams?.length || 0,
+          isMiniApp: isVKWebApp(),
+          currentPath: location.pathname
+        })
+        
+        if (launchParams && launchParams.length > 0) {
+          hasAttemptedAuth.current = true
+          try {
+            console.log('Attempting automatic VK login...')
+            const response = await api.loginVK(launchParams)
+            console.log('VK auto-login successful:', { 
+              userId: response.user?.id,
+              hasAccessToken: !!response.access_token,
+              accessTokenLength: response.access_token?.length || 0
+            })
+            
+            if (mounted) {
+              // Tokens are already stored by api.loginVK method
+              // Проверяем, что токен действительно сохранен
+              const savedToken = localStorage.getItem('token')
+              if (!savedToken || savedToken !== response.access_token) {
+                console.error('[VKAuthHandler] Token was not saved correctly!')
+                clearTimeout(timeoutId)
+                setIsChecking(false)
+                return
+              }
+              
+              console.log('[VKAuthHandler] Token saved successfully')
+              
+              // Помечаем, что пользователь только что вошел
+              sessionStorage.setItem('justLoggedIn', 'true')
+              clearTimeout(timeoutId)
+              setIsChecking(false)
+              
+              // Проверяем онбординг - Layout перенаправит на онбординг если нужно
+              navigate('/', { replace: true })
+            }
+          } catch (error: any) {
+            console.error('VK auto-auth failed:', error)
+            if (mounted) {
+              clearTimeout(timeoutId)
+              setIsChecking(false)
+              // Если авторизация не удалась, редиректим на логин
+              if (location.pathname !== '/login' && location.pathname !== '/register') {
+                navigate('/login')
+              }
+            }
+          }
+        } else {
+          // Нет launch params - возможно, Mini App еще не инициализирован
+          console.warn('No launch params available for VK auto-auth')
+          if (mounted) {
+            clearTimeout(timeoutId)
+            setIsChecking(false)
+          }
+        }
+      } catch (error) {
+        console.error('Auth check error:', error)
+        if (mounted) {
+          clearTimeout(timeoutId)
+          setIsChecking(false)
+        }
+      }
+    }
+
+    // Запускаем проверку
+    checkVKAuth()
+
+    return () => {
+      mounted = false
+      if (timeoutId) clearTimeout(timeoutId)
+    }
+  }, [navigate, location.pathname])
+
+  // Показываем загрузку только на страницах логина/регистрации и если проверяем
+  if (isChecking && (location.pathname === '/login' || location.pathname === '/register')) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-telegram-bg">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-telegram-primary mb-4"></div>
+          <p className="text-telegram-textSecondary">Загрузка...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return null
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -228,6 +418,7 @@ function App() {
         <NewYearProvider>
           <Router>
             <TelegramAuthHandler />
+            <VKAuthHandler />
             <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
