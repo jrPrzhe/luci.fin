@@ -196,6 +196,37 @@ export function Profile() {
             </select>
           </div>
           
+          {/* Language Switcher */}
+          <div>
+            <label className="block text-xs md:text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
+              {t.profile.language}
+            </label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setLanguage('ru')}
+                className={`flex-1 px-3 py-2.5 rounded-telegram text-sm font-medium transition-colors ${
+                  language === 'ru'
+                    ? 'bg-telegram-primary text-white dark:bg-telegram-dark-primary'
+                    : 'bg-telegram-border hover:bg-telegram-hover dark:bg-telegram-dark-border dark:hover:bg-telegram-dark-hover'
+                }`}
+              >
+                🇷🇺 Русский
+              </button>
+              <button
+                type="button"
+                onClick={() => setLanguage('en')}
+                className={`flex-1 px-3 py-2.5 rounded-telegram text-sm font-medium transition-colors ${
+                  language === 'en'
+                    ? 'bg-telegram-primary text-white dark:bg-telegram-dark-primary'
+                    : 'bg-telegram-border hover:bg-telegram-hover dark:bg-telegram-dark-border dark:hover:bg-telegram-dark-hover'
+                }`}
+              >
+                🇬🇧 English
+              </button>
+            </div>
+          </div>
+          
           <button
             type="submit"
             disabled={updateMutation.isPending}
