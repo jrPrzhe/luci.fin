@@ -57,7 +57,24 @@ if not VK_BOT_TOKEN:
     logger.error("VK_BOT_TOKEN is not set!")
     sys.exit(1)
 
-bot = Bot(token=VK_BOT_TOKEN)
+# Initialize bot with group_id if provided (for Long Poll)
+# IMPORTANT: VK_BOT_TOKEN must be a COMMUNITY token, not user token!
+# Get it from: Community Settings -> Work with API -> Create Key
+if GROUP_ID:
+    try:
+        group_id = int(GROUP_ID)
+        # Remove minus sign if present (VK group IDs can be negative)
+        if group_id < 0:
+            group_id = abs(group_id)
+        bot = Bot(token=VK_BOT_TOKEN, group_id=group_id)
+        logger.info(f"Bot initialized with group_id: {group_id}")
+    except ValueError:
+        logger.warning(f"Invalid GROUP_ID format: {GROUP_ID}, using default bot")
+        bot = Bot(token=VK_BOT_TOKEN)
+else:
+    logger.warning("VK_GROUP_ID not set! Bot may not work properly without group_id.")
+    logger.warning("Please set VK_GROUP_ID environment variable with your community ID.")
+    bot = Bot(token=VK_BOT_TOKEN)
 
 
 def is_token_expired(token: str) -> bool:
