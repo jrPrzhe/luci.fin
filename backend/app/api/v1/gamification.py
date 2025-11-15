@@ -217,25 +217,64 @@ def generate_daily_quests(profile: UserGamificationProfile, db: Session, user: U
     # Получаем активные шаблоны квестов
     quest_templates = db.query(DailyQuest).filter(DailyQuest.is_active == True).all()
     
-    # Создаем квесты из шаблонов
-    for template in quest_templates[:2]:  # Максимум 2 общих квеста
-        user_quest = UserDailyQuest(
-            profile_id=profile.id,
-            quest_id=template.id,
-            quest_type=template.quest_type,
-            title=template.title,
-            description=template.description,
-            xp_reward=template.xp_reward,
-            conditions=template.conditions,
-            quest_date=today,
-            status=QuestStatus.PENDING,
-            progress=0,
-        )
-        db.add(user_quest)
+    # Если шаблонов нет, создаем базовые квесты напрямую
+    if not quest_templates:
+        logger.warning(f"No quest templates found for user {user.id}, creating default quests")
+        default_quests = [
+            {
+                "quest_type": QuestType.RECORD_EXPENSE,
+                "title": "Запиши трату",
+                "description": "Запиши любую трату сегодня",
+                "xp_reward": 10,
+            },
+            {
+                "quest_type": QuestType.RECORD_INCOME,
+                "title": "Запиши доход",
+                "description": "Запиши любой доход сегодня",
+                "xp_reward": 15,
+            },
+        ]
+        
+        for quest_data in default_quests:
+            user_quest = UserDailyQuest(
+                profile_id=profile.id,
+                quest_id=None,  # Нет шаблона
+                quest_type=quest_data["quest_type"],
+                title=quest_data["title"],
+                description=quest_data["description"],
+                xp_reward=quest_data["xp_reward"],
+                conditions=None,
+                quest_date=today,
+                status=QuestStatus.PENDING,
+                progress=0,
+            )
+            db.add(user_quest)
+    else:
+        # Создаем квесты из шаблонов
+        for template in quest_templates[:2]:  # Максимум 2 общих квеста
+            user_quest = UserDailyQuest(
+                profile_id=profile.id,
+                quest_id=template.id,
+                quest_type=template.quest_type,
+                title=template.title,
+                description=template.description,
+                xp_reward=template.xp_reward,
+                conditions=template.conditions,
+                quest_date=today,
+                status=QuestStatus.PENDING,
+                progress=0,
+            )
+            db.add(user_quest)
     
     # TODO: Генерировать персональный квест через ИИ (можно добавить позже)
     
-    db.commit()
+    try:
+        db.commit()
+        logger.info(f"Generated daily quests for user {user.id} on {today}")
+    except Exception as e:
+        logger.error(f"Error generating daily quests: {e}")
+        db.rollback()
+        return []
     
     # Получаем созданные квесты
     return db.query(UserDailyQuest).filter(
