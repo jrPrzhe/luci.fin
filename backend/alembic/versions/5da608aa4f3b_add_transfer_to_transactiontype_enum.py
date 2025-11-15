@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = '5da608aa4f3b'
-down_revision: Union[str, None] = None
+down_revision: Union[str, None] = '3f8ef46fad30'  # Следует за миграцией gamification
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
