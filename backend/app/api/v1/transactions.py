@@ -575,6 +575,10 @@ async def create_transaction(
         if isinstance(transaction_date_only, datetime):
             transaction_date_only = transaction_date_only.date()
         
+        # Генерируем квесты, если их еще нет на сегодня
+        from app.api.v1.gamification import generate_daily_quests
+        generate_daily_quests(profile, db, current_user)
+        
         quest_type_map = {
             "expense": QuestType.RECORD_EXPENSE,
             "income": QuestType.RECORD_INCOME,
@@ -605,6 +609,14 @@ async def create_transaction(
                 logger.info(f"Quest {user_quest.id} marked as completed, total quests completed: {profile.total_quests_completed}")
             else:
                 logger.warning(f"No pending quest found for user {current_user.id}, type {quest_type}, dates checked: {today_utc}, {transaction_date_only}")
+                # Попробуем найти любой квест этого типа на сегодня (на случай если статус не PENDING)
+                any_quest = db.query(UserDailyQuest).filter(
+                    UserDailyQuest.profile_id == profile.id,
+                    UserDailyQuest.quest_type == quest_type,
+                    UserDailyQuest.quest_date.in_([today_utc, transaction_date_only])
+                ).first()
+                if any_quest:
+                    logger.warning(f"Found quest {any_quest.id} but status is {any_quest.status}, not PENDING")
         
         # Подготавливаем информацию о геймификации для ответа
         gamification_info = {
