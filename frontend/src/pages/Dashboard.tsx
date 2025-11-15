@@ -379,12 +379,12 @@ export function Dashboard() {
       </div>
 
       {/* Gamification Status */}
-      <div className="card mb-4 md:mb-6 p-4 md:p-5">
+      <div className="mb-4 md:mb-6">
         <GamificationStatus />
       </div>
 
       {/* Daily Quests */}
-      <div className="card mb-4 md:mb-6 p-4 md:p-5">
+      <div className="mb-4 md:mb-6">
         <DailyQuests />
       </div>
 
