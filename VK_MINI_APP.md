@@ -113,3 +113,5 @@ def verify_vk_sign(params: dict, secret: str) -> bool:
 - [VK Bridge API](https://dev.vk.com/mini-apps/development/launch-params)
 - [VK Bridge Methods](https://dev.vk.com/mini-apps/development/bridge)
 
+
+

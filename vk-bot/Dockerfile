@@ -12,3 +12,4 @@ COPY . .
 # Run bot
 CMD ["python", "bot.py"]
 
+

@@ -38,3 +38,7 @@ git push origin main
 
 Подробная инструкция: см. DEPLOY.md
 
+
+
+
+

@@ -444,3 +444,27 @@ async def get_achievements(
     
     return result
 
+
+@router.post("/send-daily-reminders")
+async def send_daily_reminders_endpoint(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Отправить ежедневные напоминания (только для админов или для тестирования)"""
+    # Проверяем, что пользователь - админ (или можно убрать проверку для тестирования)
+    if not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+    
+    from app.api.v1.gamification_notifications import send_daily_reminders_to_all_users
+    import asyncio
+    
+    sent_count = await send_daily_reminders_to_all_users()
+    
+    return {
+        "message": f"Daily reminders sent to {sent_count} users",
+        "sent_count": sent_count
+    }
+

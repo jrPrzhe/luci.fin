@@ -49,6 +49,10 @@ class Settings(BaseSettings):
         description="List of Telegram IDs that should have admin access"
     )
     
+    # VK
+    VK_BOT_TOKEN: str = ""
+    VK_GROUP_ID: str = ""
+    
     # External APIs
     EXCHANGE_RATE_API_KEY: str = ""
     
