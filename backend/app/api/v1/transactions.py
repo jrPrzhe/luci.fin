@@ -566,7 +566,15 @@ async def create_transaction(
         new_achievements = check_achievements(profile, db)
         
         # Обновляем квесты
-        today = transaction_date.date() if isinstance(transaction_date, datetime) else transaction_date
+        # Используем текущую дату UTC для поиска квестов (квесты создаются на текущую дату)
+        from datetime import timezone
+        today_utc = datetime.now(timezone.utc).date()
+        
+        # Также проверяем дату транзакции (на случай если транзакция создана на другую дату)
+        transaction_date_only = transaction_date.date() if isinstance(transaction_date, datetime) else transaction_date
+        if isinstance(transaction_date_only, datetime):
+            transaction_date_only = transaction_date_only.date()
+        
         quest_type_map = {
             "expense": QuestType.RECORD_EXPENSE,
             "income": QuestType.RECORD_INCOME,
@@ -574,24 +582,29 @@ async def create_transaction(
         quest_type = quest_type_map.get(transaction_data.transaction_type)
         
         if quest_type:
-            # Ищем соответствующий квест
+            # Ищем соответствующий квест на сегодня или на дату транзакции
             user_quest = db.query(UserDailyQuest).filter(
                 UserDailyQuest.profile_id == profile.id,
                 UserDailyQuest.quest_type == quest_type,
-                UserDailyQuest.quest_date == today,
+                UserDailyQuest.quest_date.in_([today_utc, transaction_date_only]),
                 UserDailyQuest.status == QuestStatus.PENDING
             ).first()
             
             if user_quest:
+                logger.info(f"Found quest {user_quest.id} for user {current_user.id}, type {quest_type}, date {user_quest.quest_date}")
                 # Обновляем прогресс квеста
                 user_quest.progress = 100
                 user_quest.status = QuestStatus.COMPLETED
-                user_quest.completed_at = datetime.utcnow()
+                user_quest.completed_at = datetime.now(timezone.utc)
                 
                 # Начисляем награду за квест
+                logger.info(f"Awarding {user_quest.xp_reward} XP for quest completion")
                 add_xp(profile, user_quest.xp_reward, db)
                 profile.total_quests_completed += 1
                 db.commit()
+                logger.info(f"Quest {user_quest.id} marked as completed, total quests completed: {profile.total_quests_completed}")
+            else:
+                logger.warning(f"No pending quest found for user {current_user.id}, type {quest_type}, dates checked: {today_utc}, {transaction_date_only}")
         
         # Подготавливаем информацию о геймификации для ответа
         gamification_info = {
