@@ -973,6 +973,10 @@ class BotTokenRequest(BaseModel):
     telegram_id: str
 
 
+class VKBotTokenRequest(BaseModel):
+    vk_id: str
+
+
 @router.post("/bot-token")
 async def get_bot_token(
     request: BotTokenRequest,
@@ -1079,6 +1083,112 @@ async def get_bot_token(
     # Create token
     access_token = create_access_token(data={"sub": user.id})
     logger.info(f"Token created for user {user.id} (telegram_id: {telegram_id})")
+    
+    return {"access_token": access_token}
+
+
+@router.post("/bot-token-vk")
+async def get_bot_token_vk(
+    request: VKBotTokenRequest,
+    db: Session = Depends(get_db)
+):
+    """Get JWT token for VK bot by vk_id"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    # Normalize vk_id - ensure it's a string without whitespace
+    vk_id = str(request.vk_id).strip()
+    logger.info(f"VK bot token request for vk_id: '{vk_id}' (type: {type(vk_id)}, length: {len(vk_id)})")
+    
+    # Try to find user by vk_id (exact match)
+    user = db.query(User).filter(User.vk_id == vk_id).first()
+    
+    # If not found, try to find by converting to int and back (in case of type mismatch)
+    if not user:
+        try:
+            vk_id_int = int(vk_id)
+            for alt_id in [str(vk_id_int), f"{vk_id_int}"]:
+                alt_user = db.query(User).filter(User.vk_id == alt_id).first()
+                if alt_user:
+                    logger.info(f"Found user with alternative vk_id format: '{alt_id}'")
+                    user = alt_user
+                    break
+        except (ValueError, TypeError):
+            pass
+    
+    # Debug: log all users with vk_id to see what's in database
+    if not user:
+        all_users_with_vk = db.query(User).filter(User.vk_id.isnot(None)).all()
+        logger.warning(f"User not found for vk_id: '{vk_id}'. Found {len(all_users_with_vk)} users with vk_id in database:")
+        for u in all_users_with_vk[:5]:
+            logger.warning(f"  - User ID: {u.id}, vk_id: '{u.vk_id}' (type: {type(u.vk_id)}, repr: {repr(u.vk_id)})")
+    
+    if not user:
+        logger.warning(f"User not found for vk_id: {vk_id}, creating new user")
+        
+        # Auto-create user if not exists
+        try:
+            username = f"vk_{vk_id}"
+            email = f"vk_{vk_id}@vk.local"
+            
+            # Ensure unique email
+            counter = 1
+            while db.query(User).filter(User.email == email).first():
+                email = f"vk_{vk_id}_{counter}@vk.local"
+                counter += 1
+            
+            user = User(
+                email=email,
+                username=username,
+                vk_id=vk_id,
+                is_active=True,
+                is_verified=True,  # VK users are considered verified
+                default_currency="RUB",
+            )
+            db.add(user)
+            db.flush()
+            db.commit()
+            db.refresh(user)
+            
+            logger.info(f"Auto-created user for vk_id: {vk_id}, user_id: {user.id}")
+            
+            # Create default account for new user
+            try:
+                from app.models.account import Account, AccountType
+                default_account = Account(
+                    user_id=user.id,
+                    name="Основной счёт",
+                    account_type=AccountType.CASH,
+                    currency=user.default_currency,
+                    initial_balance=0.0,
+                    is_active=True,
+                    description="Автоматически созданный счёт"
+                )
+                db.add(default_account)
+                db.commit()
+                logger.info(f"Created default account for user {user.id}")
+            except Exception as e:
+                logger.error(f"Failed to create default account: {e}")
+                db.rollback()
+                
+        except Exception as e:
+            logger.error(f"Failed to auto-create user: {e}", exc_info=True)
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to create user: {str(e)}"
+            )
+    
+    if not user.is_active:
+        logger.warning(f"User {user.id} (vk_id: {vk_id}) is inactive")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is inactive"
+        )
+    
+    # Create token
+    access_token = create_access_token(data={"sub": user.id})
+    logger.info(f"Token created for user {user.id} (vk_id: {vk_id})")
     
     return {"access_token": access_token}
 

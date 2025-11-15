@@ -1,0 +1,5 @@
+vkbottle==3.3.0
+httpx~=0.25.2
+python-decouple==3.8
+aiohttp>=3.9.0
+
