@@ -5,6 +5,8 @@ import { api } from '../services/api'
 import { useI18n } from '../contexts/I18nContext'
 import { GamificationStatus } from '../components/GamificationStatus'
 import { DailyQuestsCompact } from '../components/DailyQuestsCompact'
+import { AchievementModal } from '../components/AchievementModal'
+import { LevelUpModal } from '../components/LevelUpModal'
 
 interface Account {
   id: number
@@ -34,6 +36,8 @@ export function Dashboard() {
   const [categoriesLoading, setCategoriesLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [newAchievement, setNewAchievement] = useState<any>(null)
+  const [levelUp, setLevelUp] = useState<number | null>(null)
 
   // Quick form state
   const [quickFormData, setQuickFormData] = useState({
@@ -275,7 +279,23 @@ export function Dashboard() {
       }
 
       // Create transaction
-      await api.createTransaction(submitData)
+      const response = await api.createTransaction(submitData)
+      
+      // Проверяем события геймификации
+      if (response.gamification) {
+        const gamification = response.gamification
+        
+        // Проверяем повышение уровня
+        if (gamification.level_up && gamification.new_level) {
+          setLevelUp(gamification.new_level)
+        }
+        
+        // Проверяем новые достижения
+        if (gamification.new_achievements && gamification.new_achievements.length > 0) {
+          // Показываем первое достижение, остальные покажем после закрытия
+          setNewAchievement(gamification.new_achievements[0])
+        }
+      }
       
       // Close form immediately (optimistic UI update)
       setShowQuickForm(false)

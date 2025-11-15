@@ -593,16 +593,40 @@ async def create_transaction(
                 profile.total_quests_completed += 1
                 db.commit()
         
-        # Если был уровень ап или разблокировано достижение, можно отправить уведомление
-        # (это можно сделать через фоновую задачу или через фронтенд)
+        # Подготавливаем информацию о геймификации для ответа
+        gamification_info = {
+            "level_up": xp_result.get("level_up", False),
+            "new_level": xp_result.get("new_level", profile.level),
+            "new_achievements": [
+                {
+                    "id": ach.id,
+                    "title": ach.title,
+                    "description": ach.description,
+                    "icon": ach.icon,
+                    "xp_reward": ach.xp_reward,
+                    "rarity": ach.rarity,
+                }
+                for ach in new_achievements
+            ] if new_achievements else []
+        }
         
     except Exception as e:
         logger.error(f"Gamification update error: {e}")
+        gamification_info = {
+            "level_up": False,
+            "new_level": None,
+            "new_achievements": []
+        }
         # Не прерываем создание транзакции из-за ошибки геймификации
     
     logger.info(f"Transaction created: id={transaction.id}, user_id={transaction.user_id}, account_id={transaction.account_id}, goal_id={transaction_data.goal_id}")
     
-    return TransactionResponse.model_validate(transaction)
+    response = TransactionResponse.model_validate(transaction)
+    # Добавляем информацию о геймификации в ответ (через dict для совместимости)
+    response_dict = response.model_dump()
+    response_dict["gamification"] = gamification_info
+    
+    return response_dict
 
 
 @router.put("/{transaction_id}", response_model=TransactionResponse)
