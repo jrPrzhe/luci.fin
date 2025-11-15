@@ -69,14 +69,28 @@ async def main():
 
 
 if __name__ == "__main__":
+    # Принудительно выводим в stderr тоже (на случай если stdout не работает)
+    import sys
+    def log_all(msg):
+        print(msg, flush=True, file=sys.stdout)
+        print(msg, flush=True, file=sys.stderr)
+        sys.stdout.flush()
+        sys.stderr.flush()
+    
     try:
-        log("[START] Script execution started")
-        log(f"[START] Python version: {sys.version}")
-        log(f"[START] Script path: {__file__}")
+        log_all("[START] Script execution started")
+        log_all(f"[START] Python version: {sys.version}")
+        log_all(f"[START] Script path: {__file__}")
+        log_all(f"[START] Working directory: {os.getcwd()}")
+        log_all(f"[START] Python executable: {sys.executable}")
+        
         asyncio.run(main())
-        log("[END] Script execution completed successfully")
+        log_all("[END] Script execution completed successfully")
+    except KeyboardInterrupt:
+        log_all("[INFO] Script interrupted by user")
+        sys.exit(0)
     except Exception as e:
-        log(f"[ERROR] Fatal error: {e}")
-        log(f"[ERROR] Traceback: {traceback.format_exc()}")
+        log_all(f"[ERROR] Fatal error: {e}")
+        log_all(f"[ERROR] Traceback: {traceback.format_exc()}")
         sys.exit(1)
 
