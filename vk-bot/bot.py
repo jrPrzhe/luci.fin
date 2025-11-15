@@ -274,30 +274,37 @@ def create_inline_keyboard(buttons: list, one_time: bool = False):
 @bot.on.message(CommandRule("start", ["начать", "старт"]))
 async def start_handler(message: Message):
     """Handle /start command"""
+    logger.info(f"Received /start command from user {message.from_id}")
     vk_id = str(message.from_id)
     try:
         user_info = await bot.api.users.get(message.from_id)
         user_name = user_info[0].first_name if user_info else "Пользователь"
-    except:
+    except Exception as e:
+        logger.warning(f"Failed to get user info: {e}")
         user_name = "Пользователь"
     
-    lang = await get_user_language(vk_id)
-    
-    message_text = (
-        t("start.greeting", lang, name=user_name) +
-        t("start.commands", lang) +
-        t("start.balance", lang) +
-        t("start.transactions", lang) +
-        t("start.add_expense", lang) +
-        t("start.add_income", lang) +
-        t("start.report", lang) +
-        t("start.goal", lang) +
-        t("start.help", lang) +
-        t("start.language", lang) +
-        t("start.important", lang)
-    )
-    
-    await message.answer(message_text)
+    try:
+        lang = await get_user_language(vk_id)
+        
+        message_text = (
+            t("start.greeting", lang, name=user_name) +
+            t("start.commands", lang) +
+            t("start.balance", lang) +
+            t("start.transactions", lang) +
+            t("start.add_expense", lang) +
+            t("start.add_income", lang) +
+            t("start.report", lang) +
+            t("start.goal", lang) +
+            t("start.help", lang) +
+            t("start.language", lang) +
+            t("start.important", lang)
+        )
+        
+        await message.answer(message_text)
+        logger.info(f"Sent start message to user {message.from_id}")
+    except Exception as e:
+        logger.error(f"Error in start_handler: {e}", exc_info=True)
+        await message.answer("❌ Ошибка при обработке команды. Попробуйте позже.")
 
 
 @bot.on.message(CommandRule("help", ["помощь", "справка"]))
@@ -426,6 +433,13 @@ async def transactions_handler(message: Message):
     except Exception as e:
         logger.error(f"Error getting transactions: {e}", exc_info=True)
         await message.answer(t("transactions.error", "ru"))
+
+
+# Debug handler - log all messages
+@bot.on.message()
+async def debug_handler(message: Message):
+    """Debug handler to log all incoming messages"""
+    logger.info(f"Received message from {message.from_id}: {message.text[:100] if message.text else '(no text)'}")
 
 
 if __name__ == "__main__":
