@@ -8,6 +8,16 @@ from app.models.invitation import Invitation
 from app.models.report import Report
 from app.models.goal import Goal
 from app.models.notification import Notification
+from app.models.gamification import (
+    UserGamificationProfile,
+    DailyQuest,
+    UserDailyQuest,
+    Achievement,
+    UserAchievement,
+    QuestType,
+    QuestStatus,
+    AchievementType,
+)
 
 __all__ = [
     "User",
@@ -21,5 +31,13 @@ __all__ = [
     "Report",
     "Goal",
     "Notification",
+    "UserGamificationProfile",
+    "DailyQuest",
+    "UserDailyQuest",
+    "Achievement",
+    "UserAchievement",
+    "QuestType",
+    "QuestStatus",
+    "AchievementType",
 ]
 

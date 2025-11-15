@@ -537,6 +537,69 @@ async def create_transaction(
     if goal_account_id:
         _sync_goal_with_account(goal_account_id, current_user.id, db)
     
+    # Gamification: Update streak, add XP, check achievements
+    try:
+        from app.api.v1.gamification import (
+            get_or_create_profile,
+            update_streak,
+            add_xp,
+            check_achievements,
+            XP_FOR_TRANSACTION,
+            XP_FOR_STREAK,
+        )
+        from app.models.gamification import QuestType, QuestStatus, UserDailyQuest
+        
+        profile = get_or_create_profile(current_user.id, db)
+        transaction_date = transaction.transaction_date or datetime.utcnow()
+        
+        # Проверяем, была ли это первая транзакция за день
+        was_streak_broken = update_streak(profile, transaction_date, db)
+        
+        # Начисляем XP за транзакцию
+        xp_amount = XP_FOR_TRANSACTION
+        if profile.streak_days > 1:
+            xp_amount += XP_FOR_STREAK  # Бонус за страйк
+        
+        xp_result = add_xp(profile, xp_amount, db)
+        
+        # Проверяем достижения
+        new_achievements = check_achievements(profile, db)
+        
+        # Обновляем квесты
+        today = transaction_date.date() if isinstance(transaction_date, datetime) else transaction_date
+        quest_type_map = {
+            "expense": QuestType.RECORD_EXPENSE,
+            "income": QuestType.RECORD_INCOME,
+        }
+        quest_type = quest_type_map.get(transaction_data.transaction_type)
+        
+        if quest_type:
+            # Ищем соответствующий квест
+            user_quest = db.query(UserDailyQuest).filter(
+                UserDailyQuest.profile_id == profile.id,
+                UserDailyQuest.quest_type == quest_type,
+                UserDailyQuest.quest_date == today,
+                UserDailyQuest.status == QuestStatus.PENDING
+            ).first()
+            
+            if user_quest:
+                # Обновляем прогресс квеста
+                user_quest.progress = 100
+                user_quest.status = QuestStatus.COMPLETED
+                user_quest.completed_at = datetime.utcnow()
+                
+                # Начисляем награду за квест
+                add_xp(profile, user_quest.xp_reward, db)
+                profile.total_quests_completed += 1
+                db.commit()
+        
+        # Если был уровень ап или разблокировано достижение, можно отправить уведомление
+        # (это можно сделать через фоновую задачу или через фронтенд)
+        
+    except Exception as e:
+        logger.error(f"Gamification update error: {e}")
+        # Не прерываем создание транзакции из-за ошибки геймификации
+    
     logger.info(f"Transaction created: id={transaction.id}, user_id={transaction.user_id}, account_id={transaction.account_id}, goal_id={transaction_data.goal_id}")
     
     return TransactionResponse.model_validate(transaction)

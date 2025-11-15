@@ -747,6 +747,100 @@ class ApiClient {
 
     return response.json()
   }
+
+  // Gamification API
+  async getGamificationStatus(): Promise<{
+    profile: {
+      level: number
+      xp: number
+      xp_to_next_level: number
+      streak_days: number
+      heart_level: number
+      total_xp_earned: number
+      total_quests_completed: number
+      last_entry_date: string | null
+    }
+    daily_quests: Array<{
+      id: number
+      quest_type: string
+      title: string
+      description: string | null
+      xp_reward: number
+      status: string
+      progress: number
+      target_value: number | null
+      quest_date: string
+    }>
+    recent_achievements: Array<{
+      id: number
+      achievement_type: string
+      title: string
+      description: string | null
+      icon: string | null
+      xp_reward: number
+      rarity: string
+      unlocked_at: string | null
+      is_unlocked: boolean
+    }>
+    next_level_xp: number
+  }> {
+    return this.request('/api/v1/gamification/status')
+  }
+
+  async getDailyQuests(): Promise<Array<{
+    id: number
+    quest_type: string
+    title: string
+    description: string | null
+    xp_reward: number
+    status: string
+    progress: number
+    target_value: number | null
+    quest_date: string
+  }>> {
+    return this.request('/api/v1/gamification/quests')
+  }
+
+  async completeQuest(questId: number, progress?: number): Promise<{
+    id: number
+    quest_type: string
+    title: string
+    description: string | null
+    xp_reward: number
+    status: string
+    progress: number
+    target_value: number | null
+    quest_date: string
+  }> {
+    return this.request(`/api/v1/gamification/quests/${questId}/complete`, {
+      method: 'POST',
+      body: JSON.stringify({ progress }),
+    })
+  }
+
+  async getAchievements(): Promise<Array<{
+    id: number
+    achievement_type: string
+    title: string
+    description: string | null
+    icon: string | null
+    xp_reward: number
+    rarity: string
+    unlocked_at: string | null
+    is_unlocked: boolean
+  }>> {
+    return this.request('/api/v1/gamification/achievements')
+  }
+
+  async getGamificationMessage(event: string, userData?: Record<string, any>): Promise<{
+    message: string
+    emotion: string
+  }> {
+    return this.request('/api/v1/ai/gamification-message', {
+      method: 'POST',
+      body: JSON.stringify({ event, user_data: userData }),
+    })
+  }
 }
 
 export const api = new ApiClient(API_URL)

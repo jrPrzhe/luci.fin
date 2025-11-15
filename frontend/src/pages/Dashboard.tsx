@@ -3,6 +3,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
 import { useI18n } from '../contexts/I18nContext'
+import { GamificationStatus } from '../components/GamificationStatus'
+import { DailyQuests } from '../components/DailyQuests'
+import { LucyMessage } from '../components/LucyAvatar'
 
 interface Account {
   id: number
@@ -295,6 +298,8 @@ export function Dashboard() {
       queryClient.invalidateQueries({ queryKey: ['accounts'] })
       queryClient.invalidateQueries({ queryKey: ['monthly-stats'] })
       queryClient.invalidateQueries({ queryKey: ['goals'] })
+      queryClient.invalidateQueries({ queryKey: ['gamification-status'] })
+      queryClient.invalidateQueries({ queryKey: ['daily-quests'] })
       
       // Optionally refetch critical data in background (non-blocking)
       Promise.all([
@@ -372,6 +377,16 @@ export function Dashboard() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Gamification Status */}
+      <div className="card mb-4 md:mb-6 p-4 md:p-5">
+        <GamificationStatus />
+      </div>
+
+      {/* Daily Quests */}
+      <div className="card mb-4 md:mb-6 p-4 md:p-5">
+        <DailyQuests />
       </div>
 
       {/* Quick Actions */}

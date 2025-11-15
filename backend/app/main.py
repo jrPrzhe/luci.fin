@@ -377,7 +377,7 @@ async def health_check():
 # Import and include routers
 print("[STARTUP] Importing routers...", file=sys.stderr, flush=True)
 try:
-    from app.api.v1 import auth, transactions, accounts, shared_budgets, ai, categories, reports, goals, admin
+    from app.api.v1 import auth, transactions, accounts, shared_budgets, ai, categories, reports, goals, admin, gamification
     from app.api.v1 import import_data as import_router
     print("[STARTUP] Routers imported", file=sys.stderr, flush=True)
 except Exception as e:
@@ -397,6 +397,7 @@ try:
     app.include_router(reports.router, prefix="/api/v1/reports", tags=["Reports"])
     app.include_router(goals.router, prefix="/api/v1/goals", tags=["Goals"])
     app.include_router(import_router.router, prefix="/api/v1/import", tags=["Import"])
+    app.include_router(gamification.router, prefix="/api/v1/gamification", tags=["Gamification"])
     app.include_router(admin.router, prefix="/api/v1", tags=["Admin"])
     print("[STARTUP] All routers included, application ready!", file=sys.stderr, flush=True)
 except Exception as e:
