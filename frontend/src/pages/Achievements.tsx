@@ -1,9 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../services/api'
-import { useI18n } from '../contexts/I18nContext'
 
 export function Achievements() {
-  const { t } = useI18n()
   const { data: achievements, isLoading } = useQuery({
     queryKey: ['achievements'],
     queryFn: () => api.getAchievements(),
@@ -13,7 +11,7 @@ export function Achievements() {
   if (isLoading) {
     return (
       <div className="achievements-page loading">
-        <h1>{t('achievements') || 'Достижения'}</h1>
+        <h1>Достижения</h1>
         <div className="skeleton">Загрузка...</div>
       </div>
     )
@@ -35,7 +33,7 @@ export function Achievements() {
 
   return (
     <div className="achievements-page">
-      <h1>{t('achievements') || 'Достижения'}</h1>
+      <h1>Достижения</h1>
       
       {unlocked.length > 0 && (
         <div className="achievements-section">

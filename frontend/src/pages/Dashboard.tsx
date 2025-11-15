@@ -5,7 +5,6 @@ import { api } from '../services/api'
 import { useI18n } from '../contexts/I18nContext'
 import { GamificationStatus } from '../components/GamificationStatus'
 import { DailyQuests } from '../components/DailyQuests'
-import { LucyMessage } from '../components/LucyAvatar'
 
 interface Account {
   id: number
