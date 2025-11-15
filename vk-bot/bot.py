@@ -9,7 +9,7 @@ from typing import Dict, Optional
 from vkbottle import Bot
 from vkbottle.bot import Message
 from vkbottle.dispatch.rules.base import CommandRule
-from vkbottle import Keyboard, Text, KeyboardButtonColor
+from vkbottle import Keyboard, Text
 import httpx
 
 # Configure logging
