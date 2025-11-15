@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 import json
 import logging
+import os
 
 from app.core.database import get_db
 from app.api.v1.auth import get_current_user
@@ -459,12 +460,53 @@ async def send_daily_reminders_endpoint(
         )
     
     from app.api.v1.gamification_notifications import send_daily_reminders_to_all_users
-    import asyncio
     
-    sent_count = await send_daily_reminders_to_all_users()
+    try:
+        sent_count = await send_daily_reminders_to_all_users()
+        
+        return {
+            "message": f"Daily reminders sent to {sent_count} users",
+            "sent_count": sent_count,
+            "status": "success"
+        }
+    except Exception as e:
+        logger.error(f"Error in send_daily_reminders_endpoint: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to send reminders: {str(e)}"
+        )
+
+
+@router.post("/send-daily-reminders/public")
+async def send_daily_reminders_public(
+    secret_key: str = None,
+    db: Session = Depends(get_db)
+):
+    """Публичный эндпоинт для отправки напоминаний (защищен секретным ключом)"""
+    # Проверяем секретный ключ из переменных окружения
+    from app.core.config import settings
+    expected_key = os.environ.get("DAILY_REMINDERS_SECRET_KEY", "")
     
-    return {
-        "message": f"Daily reminders sent to {sent_count} users",
-        "sent_count": sent_count
-    }
+    if not expected_key or secret_key != expected_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid secret key"
+        )
+    
+    from app.api.v1.gamification_notifications import send_daily_reminders_to_all_users
+    
+    try:
+        sent_count = await send_daily_reminders_to_all_users()
+        
+        return {
+            "message": f"Daily reminders sent to {sent_count} users",
+            "sent_count": sent_count,
+            "status": "success"
+        }
+    except Exception as e:
+        logger.error(f"Error in send_daily_reminders_public: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to send reminders: {str(e)}"
+        )
 
