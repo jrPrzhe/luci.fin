@@ -54,7 +54,7 @@ export function DailyQuests() {
   }
 
   return (
-    <div className="daily-quests">
+    <div className="daily-quests bg-telegram-surface dark:bg-telegram-dark-surface rounded-2xl p-4 md:p-5 shadow-telegram">
       <div className="flex items-center gap-2 mb-4">
         <span className="text-2xl">🎯</span>
         <h3 className="text-lg font-bold text-telegram-text dark:text-telegram-dark-text">
