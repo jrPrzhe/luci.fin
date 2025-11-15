@@ -57,24 +57,23 @@ if not VK_BOT_TOKEN:
     logger.error("VK_BOT_TOKEN is not set!")
     sys.exit(1)
 
-# Initialize bot with group_id if provided (for Long Poll)
+# Initialize bot
 # IMPORTANT: VK_BOT_TOKEN must be a COMMUNITY token, not user token!
 # Get it from: Community Settings -> Work with API -> Create Key
+# In vkbottle 4.x, group_id is handled automatically via token
+bot = Bot(token=VK_BOT_TOKEN)
+
 if GROUP_ID:
     try:
         group_id = int(GROUP_ID)
         # Remove minus sign if present (VK group IDs can be negative)
         if group_id < 0:
             group_id = abs(group_id)
-        bot = Bot(token=VK_BOT_TOKEN, group_id=group_id)
-        logger.info(f"Bot initialized with group_id: {group_id}")
+        logger.info(f"VK_GROUP_ID configured: {group_id} (used for reference, bot auto-detects from token)")
     except ValueError:
-        logger.warning(f"Invalid GROUP_ID format: {GROUP_ID}, using default bot")
-        bot = Bot(token=VK_BOT_TOKEN)
+        logger.warning(f"Invalid GROUP_ID format: {GROUP_ID}")
 else:
-    logger.warning("VK_GROUP_ID not set! Bot may not work properly without group_id.")
-    logger.warning("Please set VK_GROUP_ID environment variable with your community ID.")
-    bot = Bot(token=VK_BOT_TOKEN)
+    logger.warning("VK_GROUP_ID not set. Bot should work, but group_id helps with debugging.")
 
 
 def is_token_expired(token: str) -> bool:
@@ -431,5 +430,11 @@ async def transactions_handler(message: Message):
 
 if __name__ == "__main__":
     logger.info("Starting VK bot...")
-    bot.run_forever()
+    try:
+        bot.run_forever()
+    except KeyboardInterrupt:
+        logger.info("Bot stopped by user")
+    except Exception as e:
+        logger.error(f"Bot error: {e}", exc_info=True)
+        raise
 
