@@ -196,60 +196,67 @@ async def send_daily_reminder_vk(user: User, db: Session) -> bool:
 
 async def send_daily_reminders_to_all_users():
     """Отправить ежедневные напоминания всем пользователям с активными ботами"""
-    print("[INFO] Starting send_daily_reminders_to_all_users...")
+    # Используем sys.stdout для гарантированного вывода
+    import sys
+    def log(msg):
+        print(msg, flush=True)
+        sys.stdout.flush()
+        logger.info(msg)
+    
+    log("[INFO] Starting send_daily_reminders_to_all_users...")
     db = SessionLocal()
     try:
-        print("[INFO] Querying users with Telegram or VK IDs...")
+        log("[INFO] Querying users with Telegram or VK IDs...")
         # Получаем всех пользователей с Telegram или VK
         users = db.query(User).filter(
             User.is_active == True,
             (User.telegram_id.isnot(None)) | (User.vk_id.isnot(None))
         ).all()
         
-        print(f"[INFO] Found {len(users)} users with Telegram or VK IDs")
+        log(f"[INFO] Found {len(users)} users with Telegram or VK IDs")
         logger.info(f"Sending daily reminders to {len(users)} users")
         
         if len(users) == 0:
-            print("[WARNING] No users found with Telegram or VK IDs")
+            log("[WARNING] No users found with Telegram or VK IDs")
             return 0
         
         sent_count = 0
         for i, user in enumerate(users, 1):
             try:
-                print(f"[INFO] Processing user {i}/{len(users)}: ID={user.id}, Telegram={bool(user.telegram_id)}, VK={bool(user.vk_id)}")
+                log(f"[INFO] Processing user {i}/{len(users)}: ID={user.id}, Telegram={bool(user.telegram_id)}, VK={bool(user.vk_id)}")
                 
                 if user.telegram_id:
-                    print(f"[INFO] Sending Telegram reminder to user {user.id}...")
+                    log(f"[INFO] Sending Telegram reminder to user {user.id}...")
                     success = await send_daily_reminder_telegram(user, db)
                     if success:
                         sent_count += 1
-                        print(f"[SUCCESS] Telegram reminder sent to user {user.id}")
+                        log(f"[SUCCESS] Telegram reminder sent to user {user.id}")
                     else:
-                        print(f"[WARNING] Failed to send Telegram reminder to user {user.id}")
+                        log(f"[WARNING] Failed to send Telegram reminder to user {user.id}")
                 
                 if user.vk_id:
-                    print(f"[INFO] Sending VK reminder to user {user.id}...")
+                    log(f"[INFO] Sending VK reminder to user {user.id}...")
                     success = await send_daily_reminder_vk(user, db)
                     if success:
                         sent_count += 1
-                        print(f"[SUCCESS] VK reminder sent to user {user.id}")
+                        log(f"[SUCCESS] VK reminder sent to user {user.id}")
                     else:
-                        print(f"[WARNING] Failed to send VK reminder to user {user.id}")
+                        log(f"[WARNING] Failed to send VK reminder to user {user.id}")
             except Exception as e:
-                print(f"[ERROR] Error sending reminder to user {user.id}: {e}")
+                log(f"[ERROR] Error sending reminder to user {user.id}: {e}")
                 logger.error(f"Error sending reminder to user {user.id}: {e}", exc_info=True)
                 continue
         
-        print(f"[INFO] Daily reminders sent to {sent_count} out of {len(users)} users")
+        log(f"[INFO] Daily reminders sent to {sent_count} out of {len(users)} users")
         logger.info(f"Daily reminders sent to {sent_count} users")
         return sent_count
         
     except Exception as e:
-        print(f"[ERROR] Fatal error in send_daily_reminders_to_all_users: {e}")
-        print(f"[ERROR] Traceback: {traceback.format_exc()}")
+        log(f"[ERROR] Fatal error in send_daily_reminders_to_all_users: {e}")
+        log(f"[ERROR] Traceback: {traceback.format_exc()}")
         logger.error(f"Error in send_daily_reminders_to_all_users: {e}", exc_info=True)
         return 0
     finally:
         db.close()
-        print("[INFO] Database connection closed")
+        log("[INFO] Database connection closed")
 

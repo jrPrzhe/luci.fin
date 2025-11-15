@@ -16,56 +16,67 @@ sys.path.insert(0, backend_dir)
 # Устанавливаем PYTHONPATH для импортов
 os.environ.setdefault('PYTHONPATH', backend_dir)
 
-print(f"[DEBUG] Script directory: {script_dir}")
-print(f"[DEBUG] Backend directory: {backend_dir}")
-print(f"[DEBUG] PYTHONPATH: {os.environ.get('PYTHONPATH', 'not set')}")
-print(f"[DEBUG] Python path: {sys.path}")
+# Принудительно выводим в stdout с flush для Railway
+def log(message):
+    print(message, flush=True)
+    sys.stdout.flush()
+
+log(f"[DEBUG] Script directory: {script_dir}")
+log(f"[DEBUG] Backend directory: {backend_dir}")
+log(f"[DEBUG] PYTHONPATH: {os.environ.get('PYTHONPATH', 'not set')}")
+log(f"[DEBUG] Python path: {sys.path}")
+log(f"[DEBUG] Current working directory: {os.getcwd()}")
+log(f"[DEBUG] Files in current dir: {os.listdir('.')}")
 
 try:
-    print("[DEBUG] Importing send_daily_reminders_to_all_users...")
+    log("[DEBUG] Importing send_daily_reminders_to_all_users...")
     from app.api.v1.gamification_notifications import send_daily_reminders_to_all_users
-    print("[DEBUG] Import successful!")
+    log("[DEBUG] Import successful!")
 except ImportError as e:
-    print(f"[ERROR] Failed to import: {e}")
-    print(f"[ERROR] Traceback: {traceback.format_exc()}")
+    log(f"[ERROR] Failed to import: {e}")
+    log(f"[ERROR] Traceback: {traceback.format_exc()}")
     sys.exit(1)
 
 async def main():
     """Основная функция"""
     try:
-        print("=" * 50)
-        print("🚀 Starting daily reminders script...")
-        print("=" * 50)
+        log("=" * 50)
+        log("🚀 Starting daily reminders script...")
+        log("=" * 50)
         
         # Проверяем переменные окружения
         db_url = os.environ.get('DATABASE_URL', '')
         telegram_token = os.environ.get('TELEGRAM_BOT_TOKEN', '')
         
-        print(f"[DEBUG] DATABASE_URL: {'set' if db_url else 'NOT SET'}")
-        print(f"[DEBUG] TELEGRAM_BOT_TOKEN: {'set' if telegram_token else 'NOT SET'}")
+        log(f"[DEBUG] DATABASE_URL: {'set' if db_url else 'NOT SET'}")
+        log(f"[DEBUG] TELEGRAM_BOT_TOKEN: {'set' if telegram_token else 'NOT SET'}")
         
         if not db_url:
-            print("[ERROR] DATABASE_URL is not set!")
+            log("[ERROR] DATABASE_URL is not set!")
             return
         
-        print("[INFO] Calling send_daily_reminders_to_all_users...")
+        log("[INFO] Calling send_daily_reminders_to_all_users...")
         sent_count = await send_daily_reminders_to_all_users()
         
-        print("=" * 50)
-        print(f"✅ Daily reminders sent to {sent_count} users")
-        print("=" * 50)
+        log("=" * 50)
+        log(f"✅ Daily reminders sent to {sent_count} users")
+        log("=" * 50)
         
     except Exception as e:
-        print(f"[ERROR] Exception in main: {e}")
-        print(f"[ERROR] Traceback: {traceback.format_exc()}")
+        log(f"[ERROR] Exception in main: {e}")
+        log(f"[ERROR] Traceback: {traceback.format_exc()}")
         sys.exit(1)
 
 
 if __name__ == "__main__":
     try:
+        log("[START] Script execution started")
+        log(f"[START] Python version: {sys.version}")
+        log(f"[START] Script path: {__file__}")
         asyncio.run(main())
+        log("[END] Script execution completed successfully")
     except Exception as e:
-        print(f"[ERROR] Fatal error: {e}")
-        print(f"[ERROR] Traceback: {traceback.format_exc()}")
+        log(f"[ERROR] Fatal error: {e}")
+        log(f"[ERROR] Traceback: {traceback.format_exc()}")
         sys.exit(1)
 
