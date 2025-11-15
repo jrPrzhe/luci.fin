@@ -450,6 +450,10 @@ async def debug_handler(message: Message):
 
 if __name__ == "__main__":
     logger.info("Starting VK bot...")
+    logger.info("Bot is ready to receive messages!")
+    logger.info("Make sure Long Poll API is enabled in your VK community settings:")
+    logger.info("  - Community Settings -> Work with API -> Long Poll API -> Enable")
+    logger.info("  - Enable 'Incoming messages' event type")
     try:
         bot.run_forever()
     except KeyboardInterrupt:
