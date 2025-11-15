@@ -238,6 +238,8 @@ export function Layout() {
     { path: '/', label: t.nav.dashboard, icon: '📊' },
     { path: '/transactions', label: t.nav.transactions, icon: '💸' },
     { path: '/accounts', label: t.nav.accounts, icon: '💳' },
+    { path: '/quests', label: 'Задания', icon: '🎯' },
+    { path: '/achievements', label: 'Достижения', icon: '🏆' },
     { path: '/categories', label: t.nav.categories, icon: '📦' },
     { path: '/goals', label: t.nav.goals, icon: '🎯' },
     { path: '/shared-budgets', label: t.nav.budgets, icon: '👥' },

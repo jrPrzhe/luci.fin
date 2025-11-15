@@ -17,6 +17,7 @@ import { Login } from './pages/Login'
 import { Register } from './pages/Register'
 import { Statistics } from './pages/Statistics'
 import { Achievements } from './pages/Achievements'
+import { Quests } from './pages/Quests'
 import { isTelegramWebApp, getInitData, getTelegramUser } from './utils/telegram'
 import { isVKWebApp, getVKLaunchParams, getVKUserId, initVKWebApp, getVKUser } from './utils/vk'
 import { api } from './services/api'
@@ -456,6 +457,7 @@ function App() {
               <Route path="import" element={<Import />} />
               <Route path="about" element={<About />} />
               <Route path="achievements" element={<Achievements />} />
+              <Route path="quests" element={<Quests />} />
             </Route>
           </Routes>
         </Router>

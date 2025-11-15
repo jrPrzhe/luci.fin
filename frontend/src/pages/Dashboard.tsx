@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
 import { useI18n } from '../contexts/I18nContext'
 import { GamificationStatus } from '../components/GamificationStatus'
-import { DailyQuests } from '../components/DailyQuests'
+import { DailyQuestsCompact } from '../components/DailyQuestsCompact'
 
 interface Account {
   id: number
@@ -383,9 +383,9 @@ export function Dashboard() {
         <GamificationStatus />
       </div>
 
-      {/* Daily Quests */}
+      {/* Daily Quests - Compact */}
       <div className="mb-4 md:mb-6">
-        <DailyQuests />
+        <DailyQuestsCompact />
       </div>
 
       {/* Quick Actions */}
