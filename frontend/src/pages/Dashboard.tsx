@@ -408,6 +408,25 @@ export function Dashboard() {
         <DailyQuestsCompact />
       </div>
 
+      {/* Achievement Modal */}
+      {newAchievement && (
+        <AchievementModal
+          achievement={newAchievement}
+          onClose={() => {
+            setNewAchievement(null)
+            // Можно добавить очередь для показа следующих достижений
+          }}
+        />
+      )}
+
+      {/* Level Up Modal */}
+      {levelUp && (
+        <LevelUpModal
+          newLevel={levelUp}
+          onClose={() => setLevelUp(null)}
+        />
+      )}
+
       {/* Quick Actions */}
       <div className="grid grid-cols-4 gap-2 md:gap-3 mb-4 md:mb-6">
         <button 
