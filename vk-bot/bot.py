@@ -435,11 +435,17 @@ async def transactions_handler(message: Message):
         await message.answer(t("transactions.error", "ru"))
 
 
-# Debug handler - log all messages
+# Debug handler - log all messages that don't match commands
+# This should be last to not interfere with command handlers
 @bot.on.message()
 async def debug_handler(message: Message):
-    """Debug handler to log all incoming messages"""
-    logger.info(f"Received message from {message.from_id}: {message.text[:100] if message.text else '(no text)'}")
+    """Debug handler to log all incoming messages that don't match commands"""
+    text = message.text or ""
+    # Only log if it's not a command (doesn't start with /)
+    if not text.startswith("/") and text.strip():
+        logger.info(f"Received non-command message from {message.from_id}: {text[:100]}")
+        # Send help message for unknown commands
+        await message.answer("Я не понимаю эту команду. Используйте /help для списка команд.")
 
 
 if __name__ == "__main__":
