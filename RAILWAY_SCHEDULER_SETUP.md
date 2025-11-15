@@ -38,15 +38,24 @@ Railway Scheduler — это сервис в Railway, который позво�
 ### Шаг 4: Настройка команды
 
 1. В настройках сервиса найдите поле **"Command"** или **"Start Command"**
-2. Введите команду:
+2. Введите команду (выберите один из вариантов):
+
+   **Вариант A (если Root Directory = `/`):**
    ```bash
-   python backend/scripts/send_daily_reminders.py
+   cd backend && python scripts/send_daily_reminders.py
    ```
-   
-   Или если используете виртуальное окружение:
+
+   **Вариант B (если Root Directory = `backend`):**
    ```bash
-   python3 backend/scripts/send_daily_reminders.py
+   python scripts/send_daily_reminders.py
    ```
+
+   **Вариант C (универсальный):**
+   ```bash
+   PYTHONPATH=/app/backend python /app/backend/scripts/send_daily_reminders.py
+   ```
+
+   **Рекомендуется:** Вариант A с Root Directory = `/`
 
 ### Шаг 5: Настройка переменных окружения
 
