@@ -530,119 +530,143 @@ async def create_transaction(
     )
     
     db.add(transaction)
-    db.commit()
-    db.refresh(transaction)
+    
+    # Для transfer также нужно обновить баланс получателя
+    if transaction_data.transaction_type == "transfer" and to_transaction:
+        try:
+            db.commit()  # Коммитим обе транзакции вместе
+            db.refresh(transaction)
+            db.refresh(to_transaction)
+            logger.info(f"Transfer created: source transaction {transaction.id}, destination transaction {to_transaction.id}")
+        except Exception as e:
+            logger.error(f"Error creating transfer transactions: {e}", exc_info=True)
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to create transfer: {str(e)}"
+            )
+    else:
+        db.commit()
+        db.refresh(transaction)
     
     # If transaction is on goal's account, sync goal with account balance
     if goal_account_id:
         _sync_goal_with_account(goal_account_id, current_user.id, db)
     
     # Gamification: Update streak, add XP, check achievements
-    try:
-        from app.api.v1.gamification import (
-            get_or_create_profile,
-            update_streak,
-            add_xp,
-            check_achievements,
-            XP_FOR_TRANSACTION,
-            XP_FOR_STREAK,
-        )
-        from app.models.gamification import QuestType, QuestStatus, UserDailyQuest
-        
-        profile = get_or_create_profile(current_user.id, db)
-        transaction_date = transaction.transaction_date or datetime.utcnow()
-        
-        # Проверяем, была ли это первая транзакция за день
-        was_streak_broken = update_streak(profile, transaction_date, db)
-        
-        # Начисляем XP за транзакцию
-        xp_amount = XP_FOR_TRANSACTION
-        if profile.streak_days > 1:
-            xp_amount += XP_FOR_STREAK  # Бонус за страйк
-        
-        xp_result = add_xp(profile, xp_amount, db)
-        
-        # Проверяем достижения
-        new_achievements = check_achievements(profile, db)
-        
-        # Обновляем квесты
-        # Используем текущую дату UTC для поиска квестов (квесты создаются на текущую дату)
-        from datetime import timezone
-        today_utc = datetime.now(timezone.utc).date()
-        
-        # Также проверяем дату транзакции (на случай если транзакция создана на другую дату)
-        transaction_date_only = transaction_date.date() if isinstance(transaction_date, datetime) else transaction_date
-        if isinstance(transaction_date_only, datetime):
-            transaction_date_only = transaction_date_only.date()
-        
-        # Генерируем квесты, если их еще нет на сегодня
-        from app.api.v1.gamification import generate_daily_quests
-        generate_daily_quests(profile, db, current_user)
-        
-        quest_type_map = {
-            "expense": QuestType.RECORD_EXPENSE,
-            "income": QuestType.RECORD_INCOME,
-        }
-        quest_type = quest_type_map.get(transaction_data.transaction_type)
-        
-        if quest_type:
-            # Ищем соответствующий квест на сегодня или на дату транзакции
-            user_quest = db.query(UserDailyQuest).filter(
-                UserDailyQuest.profile_id == profile.id,
-                UserDailyQuest.quest_type == quest_type,
-                UserDailyQuest.quest_date.in_([today_utc, transaction_date_only]),
-                UserDailyQuest.status == QuestStatus.PENDING
-            ).first()
+    # НЕ применяем геймификацию для transfer (это не трата и не доход)
+    gamification_info = {
+        "level_up": False,
+        "new_level": None,
+        "new_achievements": []
+    }
+    
+    if transaction_data.transaction_type != "transfer":
+        try:
+            from app.api.v1.gamification import (
+                get_or_create_profile,
+                update_streak,
+                add_xp,
+                check_achievements,
+                XP_FOR_TRANSACTION,
+                XP_FOR_STREAK,
+            )
+            from app.models.gamification import QuestType, QuestStatus, UserDailyQuest
             
-            if user_quest:
-                logger.info(f"Found quest {user_quest.id} for user {current_user.id}, type {quest_type}, date {user_quest.quest_date}")
-                # Обновляем прогресс квеста
-                user_quest.progress = 100
-                user_quest.status = QuestStatus.COMPLETED
-                user_quest.completed_at = datetime.now(timezone.utc)
-                
-                # Начисляем награду за квест
-                logger.info(f"Awarding {user_quest.xp_reward} XP for quest completion")
-                add_xp(profile, user_quest.xp_reward, db)
-                profile.total_quests_completed += 1
-                db.commit()
-                logger.info(f"Quest {user_quest.id} marked as completed, total quests completed: {profile.total_quests_completed}")
-            else:
-                logger.warning(f"No pending quest found for user {current_user.id}, type {quest_type}, dates checked: {today_utc}, {transaction_date_only}")
-                # Попробуем найти любой квест этого типа на сегодня (на случай если статус не PENDING)
-                any_quest = db.query(UserDailyQuest).filter(
+            profile = get_or_create_profile(current_user.id, db)
+            transaction_date = transaction.transaction_date or datetime.utcnow()
+            
+            # Проверяем, была ли это первая транзакция за день
+            was_streak_broken = update_streak(profile, transaction_date, db)
+            
+            # Начисляем XP за транзакцию
+            xp_amount = XP_FOR_TRANSACTION
+            if profile.streak_days > 1:
+                xp_amount += XP_FOR_STREAK  # Бонус за страйк
+            
+            xp_result = add_xp(profile, xp_amount, db)
+            
+            # Проверяем достижения
+            new_achievements = check_achievements(profile, db)
+            
+            # Обновляем квесты
+            # Используем текущую дату UTC для поиска квестов (квесты создаются на текущую дату)
+            from datetime import timezone
+            today_utc = datetime.now(timezone.utc).date()
+            
+            # Также проверяем дату транзакции (на случай если транзакция создана на другую дату)
+            transaction_date_only = transaction_date.date() if isinstance(transaction_date, datetime) else transaction_date
+            if isinstance(transaction_date_only, datetime):
+                transaction_date_only = transaction_date_only.date()
+            
+            # Генерируем квесты, если их еще нет на сегодня
+            from app.api.v1.gamification import generate_daily_quests
+            generate_daily_quests(profile, db, current_user)
+            
+            quest_type_map = {
+                "expense": QuestType.RECORD_EXPENSE,
+                "income": QuestType.RECORD_INCOME,
+            }
+            quest_type = quest_type_map.get(transaction_data.transaction_type)
+            
+            if quest_type:
+                # Ищем соответствующий квест на сегодня или на дату транзакции
+                user_quest = db.query(UserDailyQuest).filter(
                     UserDailyQuest.profile_id == profile.id,
                     UserDailyQuest.quest_type == quest_type,
-                    UserDailyQuest.quest_date.in_([today_utc, transaction_date_only])
+                    UserDailyQuest.quest_date.in_([today_utc, transaction_date_only]),
+                    UserDailyQuest.status == QuestStatus.PENDING
                 ).first()
-                if any_quest:
-                    logger.warning(f"Found quest {any_quest.id} but status is {any_quest.status}, not PENDING")
-        
-        # Подготавливаем информацию о геймификации для ответа
-        gamification_info = {
-            "level_up": xp_result.get("level_up", False),
-            "new_level": xp_result.get("new_level", profile.level),
-            "new_achievements": [
-                {
-                    "id": ach.id,
-                    "title": ach.title,
-                    "description": ach.description,
-                    "icon": ach.icon,
-                    "xp_reward": ach.xp_reward,
-                    "rarity": ach.rarity,
-                }
-                for ach in new_achievements
-            ] if new_achievements else []
-        }
-        
-    except Exception as e:
-        logger.error(f"Gamification update error: {e}")
-        gamification_info = {
-            "level_up": False,
-            "new_level": None,
-            "new_achievements": []
-        }
-        # Не прерываем создание транзакции из-за ошибки геймификации
+                
+                if user_quest:
+                    logger.info(f"Found quest {user_quest.id} for user {current_user.id}, type {quest_type}, date {user_quest.quest_date}")
+                    # Обновляем прогресс квеста
+                    user_quest.progress = 100
+                    user_quest.status = QuestStatus.COMPLETED
+                    user_quest.completed_at = datetime.now(timezone.utc)
+                    
+                    # Начисляем награду за квест
+                    logger.info(f"Awarding {user_quest.xp_reward} XP for quest completion")
+                    add_xp(profile, user_quest.xp_reward, db)
+                    profile.total_quests_completed += 1
+                    db.commit()
+                    logger.info(f"Quest {user_quest.id} marked as completed, total quests completed: {profile.total_quests_completed}")
+                else:
+                    logger.warning(f"No pending quest found for user {current_user.id}, type {quest_type}, dates checked: {today_utc}, {transaction_date_only}")
+                    # Попробуем найти любой квест этого типа на сегодня (на случай если статус не PENDING)
+                    any_quest = db.query(UserDailyQuest).filter(
+                        UserDailyQuest.profile_id == profile.id,
+                        UserDailyQuest.quest_type == quest_type,
+                        UserDailyQuest.quest_date.in_([today_utc, transaction_date_only])
+                    ).first()
+                    if any_quest:
+                        logger.warning(f"Found quest {any_quest.id} but status is {any_quest.status}, not PENDING")
+            
+            # Подготавливаем информацию о геймификации для ответа
+            gamification_info = {
+                "level_up": xp_result.get("level_up", False),
+                "new_level": xp_result.get("new_level", profile.level),
+                "new_achievements": [
+                    {
+                        "id": ach.id,
+                        "title": ach.title,
+                        "description": ach.description,
+                        "icon": ach.icon,
+                        "xp_reward": ach.xp_reward,
+                        "rarity": ach.rarity,
+                    }
+                    for ach in new_achievements
+                ] if new_achievements else []
+            }
+            
+        except Exception as e:
+            logger.error(f"Gamification update error: {e}", exc_info=True)
+            gamification_info = {
+                "level_up": False,
+                "new_level": None,
+                "new_achievements": []
+            }
+            # Не прерываем создание транзакции из-за ошибки геймификации
     
     logger.info(f"Transaction created: id={transaction.id}, user_id={transaction.user_id}, account_id={transaction.account_id}, goal_id={transaction_data.goal_id}")
     
