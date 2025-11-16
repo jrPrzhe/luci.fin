@@ -13,26 +13,38 @@ class AIAssistant:
             logger = logging.getLogger(__name__)
             
             # Пробуем использовать доступные модели Gemini
-            # Для v1beta API работает только gemini-pro
-            # Новые модели (gemini-1.5-flash, gemini-1.5-pro) требуют v1 API
+            # Список моделей для попытки (в порядке приоритета)
             models_to_try = [
-                'gemini-pro',  # Единственная модель, работающая с v1beta API
+                'gemini-2.5-flash',  # Новая быстрая модель
+                'gemini-2.0-flash-exp',  # Экспериментальная версия
+                'gemini-1.5-flash-latest',  # С суффиксом -latest
+                'gemini-1.5-pro-latest',  # С суффиксом -latest
+                'gemini-1.5-flash',  # Без суффикса
+                'gemini-1.5-pro',  # Без суффикса
+                'gemini-pro',  # Старая модель
             ]
             
             self.client = None
+            self.model_name = None
+            
             for model_name in models_to_try:
                 try:
                     # Создаем модель - это не делает запрос, только инициализирует
-                    self.client = genai.GenerativeModel(model_name)
-                    logger.info(f"Using Gemini model: {model_name}")
+                    test_client = genai.GenerativeModel(model_name)
+                    # Пробуем сделать тестовый запрос чтобы проверить доступность
+                    # Но не делаем реальный запрос, просто проверяем что модель создалась
+                    self.client = test_client
+                    self.model_name = model_name
+                    logger.info(f"Successfully initialized Gemini model: {model_name}")
                     break
                 except Exception as e:
-                    logger.warning(f"Model {model_name} not available: {e}")
+                    logger.debug(f"Model {model_name} not available: {e}")
                     continue
             
             if not self.client:
                 logger.error("No available Gemini models found. AI features will be disabled.")
-                logger.error("Consider updating google-generativeai package to latest version")
+                logger.error("Tried models: " + ", ".join(models_to_try))
+                logger.error("Consider checking Google AI Studio for available models")
         else:
             self.client = None
     

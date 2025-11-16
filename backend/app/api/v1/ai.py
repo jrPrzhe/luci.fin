@@ -639,15 +639,63 @@ async def ask_lucy(
         logger.info(f"Processing question for user {current_user.id}: {sanitized_question[:100]}")
         logger.debug(f"System prompt length: {len(system_prompt)}")
         
+        # Логируем используемую модель
+        model_name = getattr(assistant, 'model_name', 'unknown')
+        logger.info(f"Using AI model: {model_name}")
+        
         import asyncio
         loop = asyncio.get_event_loop()
-        response = await loop.run_in_executor(
-            None,
-            assistant.client.generate_content,
-            system_prompt
-        )
         
-        logger.info("AI response received")
+        # Пробуем использовать текущую модель
+        try:
+            response = await loop.run_in_executor(
+                None,
+                assistant.client.generate_content,
+                system_prompt
+            )
+            logger.info("AI response received")
+        except Exception as model_error:
+            # Если модель не найдена, пробуем другие модели
+            error_str = str(model_error)
+            if "404" in error_str or "not found" in error_str.lower() or "not supported" in error_str.lower():
+                logger.warning(f"Model {model_name} not available, trying alternatives: {error_str}")
+                
+                # Пробуем другие модели
+                alternative_models = [
+                    'gemini-2.5-flash',
+                    'gemini-1.5-flash-latest',
+                    'gemini-1.5-pro-latest',
+                    'gemini-1.5-flash',
+                    'gemini-1.5-pro',
+                ]
+                
+                response = None
+                for alt_model in alternative_models:
+                    if alt_model == model_name:
+                        continue  # Пропускаем уже попробованную модель
+                    
+                    try:
+                        logger.info(f"Trying alternative model: {alt_model}")
+                        import google.generativeai as genai
+                        alt_client = genai.GenerativeModel(alt_model)
+                        response = await loop.run_in_executor(
+                            None,
+                            alt_client.generate_content,
+                            system_prompt
+                        )
+                        logger.info(f"Successfully used alternative model: {alt_model}")
+                        # Обновляем модель в assistant для будущих запросов
+                        assistant.client = alt_client
+                        assistant.model_name = alt_model
+                        break
+                    except Exception as alt_error:
+                        logger.debug(f"Alternative model {alt_model} also failed: {alt_error}")
+                        continue
+                
+                if not response:
+                    raise model_error  # Если все модели не сработали, пробрасываем исходную ошибку
+            else:
+                raise  # Если это не ошибка модели, пробрасываем дальше
         
         answer = response.text if hasattr(response, 'text') else str(response)
         # Очищаем ответ
