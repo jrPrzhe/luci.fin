@@ -29,13 +29,12 @@ class TransactionTypeEnum(TypeDecorator):
         # If it's a string, ensure it's lowercase
         if isinstance(value, str):
             return value.lower()
-        # If it's somehow the enum name (uppercase string), convert to lowercase
-        if hasattr(value, 'upper'):
-            str_value = str(value)
-            if str_value.upper() in ['INCOME', 'EXPENSE', 'TRANSFER']:
-                return str_value.lower()
         # Fallback: convert to string and lowercase
-        return str(value).lower() if value else None
+        # This handles any other type including enum names
+        try:
+            return str(value).lower()
+        except Exception:
+            return None
     
     def process_result_value(self, value, dialect):
         if value is None:
