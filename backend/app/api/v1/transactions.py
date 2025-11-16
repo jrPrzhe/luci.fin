@@ -196,22 +196,48 @@ async def get_transactions(
     # Build response with additional info
     result = []
     for t in transactions:
-        trans_dict = TransactionResponse.model_validate(t).model_dump()
-        # Check if transaction is from shared account (используем предзагруженный account)
-        is_shared = t.account.shared_budget_id is not None if t.account else False
-        trans_dict['user_id'] = t.user_id
-        trans_dict['is_shared'] = is_shared
-        
-        # Add category info if exists (используем предзагруженную category)
-        if t.category:
-            trans_dict['category_name'] = t.category.name
-            trans_dict['category_icon'] = t.category.icon
-        
-        # Add goal info if exists (используем предзагруженный goal)
-        if t.goal:
-            trans_dict['goal_name'] = t.goal.name
-        
-        result.append(TransactionResponse(**trans_dict))
+        try:
+            # Safely build transaction dict
+            trans_dict = {
+                "id": t.id,
+                "account_id": t.account_id,
+                "transaction_type": t.transaction_type.value if t.transaction_type else None,
+                "amount": float(t.amount) if t.amount else 0.0,
+                "currency": t.currency or "USD",
+                "category_id": t.category_id,
+                "description": t.description,
+                "shared_budget_id": t.shared_budget_id,
+                "goal_id": t.goal_id,
+                "transaction_date": t.transaction_date,
+                "to_account_id": t.to_account_id,
+                "created_at": t.created_at,
+                "updated_at": t.updated_at,
+                "user_id": t.user_id,
+            }
+            
+            # Check if transaction is from shared account (используем предзагруженный account)
+            is_shared = t.account.shared_budget_id is not None if t.account else False
+            trans_dict['is_shared'] = is_shared
+            
+            # Add category info if exists (используем предзагруженную category)
+            if t.category:
+                trans_dict['category_name'] = t.category.name
+                trans_dict['category_icon'] = t.category.icon
+            else:
+                trans_dict['category_name'] = None
+                trans_dict['category_icon'] = None
+            
+            # Add goal info if exists (используем предзагруженный goal)
+            if t.goal:
+                trans_dict['goal_name'] = t.goal.name
+            else:
+                trans_dict['goal_name'] = None
+            
+            result.append(TransactionResponse(**trans_dict))
+        except Exception as e:
+            logger.error(f"Error serializing transaction {t.id}: {e}", exc_info=True)
+            # Skip this transaction if there's an error
+            continue
     
     return result
 

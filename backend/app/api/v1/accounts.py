@@ -8,6 +8,9 @@ from app.models.user import User
 from app.models.account import Account, AccountType
 from app.models.transaction import Transaction, TransactionType
 from decimal import Decimal
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -53,52 +56,57 @@ async def get_accounts(
     
     result = []
     for account in all_accounts:
-        # Calculate current balance
-        # For shared accounts, count ALL transactions (from all members)
-        # For personal accounts, count only user's transactions
-        if account.shared_budget_id:
-            # Shared account: count all transactions
-            transactions = db.query(Transaction).filter(
-                Transaction.account_id == account.id
-            ).all()
-        else:
-            # Personal account: count only user's transactions
-            transactions = db.query(Transaction).filter(
-                Transaction.account_id == account.id,
-                Transaction.user_id == current_user.id
-            ).all()
-        
-        balance = Decimal(str(account.initial_balance))
-        for trans in transactions:
-            if trans.transaction_type == TransactionType.INCOME:
-                balance += Decimal(str(trans.amount))
-            elif trans.transaction_type == TransactionType.EXPENSE:
-                balance -= Decimal(str(trans.amount))
-            elif trans.transaction_type == TransactionType.TRANSFER:
-                # Transfer уменьшает баланс счета отправления
-                balance -= Decimal(str(trans.amount))
-        
-        # Get shared budget name if applicable
-        shared_budget_name = None
-        if account.shared_budget_id:
-            from app.models.shared_budget import SharedBudget
-            shared_budget = db.query(SharedBudget).filter(SharedBudget.id == account.shared_budget_id).first()
-            shared_budget_name = shared_budget.name if shared_budget else None
-        
-        result.append({
-            "id": account.id,
-            "name": account.name,
-            "type": account.account_type.value,
-            "currency": account.currency,
-            "balance": float(balance),
-            "initial_balance": float(account.initial_balance),
-            "is_active": account.is_active,
-            "description": account.description,
-            "created_at": account.created_at.isoformat() if account.created_at else None,
-            "shared_budget_id": account.shared_budget_id,
-            "shared_budget_name": shared_budget_name,
-            "is_shared": account.shared_budget_id is not None
-        })
+        try:
+            # Calculate current balance
+            # For shared accounts, count ALL transactions (from all members)
+            # For personal accounts, count only user's transactions
+            if account.shared_budget_id:
+                # Shared account: count all transactions
+                transactions = db.query(Transaction).filter(
+                    Transaction.account_id == account.id
+                ).all()
+            else:
+                # Personal account: count only user's transactions
+                transactions = db.query(Transaction).filter(
+                    Transaction.account_id == account.id,
+                    Transaction.user_id == current_user.id
+                ).all()
+            
+            balance = Decimal(str(account.initial_balance)) if account.initial_balance else Decimal("0")
+            for trans in transactions:
+                if trans.transaction_type == TransactionType.INCOME:
+                    balance += Decimal(str(trans.amount)) if trans.amount else Decimal("0")
+                elif trans.transaction_type == TransactionType.EXPENSE:
+                    balance -= Decimal(str(trans.amount)) if trans.amount else Decimal("0")
+                elif trans.transaction_type == TransactionType.TRANSFER:
+                    # Transfer уменьшает баланс счета отправления
+                    balance -= Decimal(str(trans.amount)) if trans.amount else Decimal("0")
+            
+            # Get shared budget name if applicable
+            shared_budget_name = None
+            if account.shared_budget_id:
+                from app.models.shared_budget import SharedBudget
+                shared_budget = db.query(SharedBudget).filter(SharedBudget.id == account.shared_budget_id).first()
+                shared_budget_name = shared_budget.name if shared_budget else None
+            
+            result.append({
+                "id": account.id,
+                "name": account.name,
+                "type": account.account_type.value if account.account_type else "cash",
+                "currency": account.currency or "USD",
+                "balance": float(balance),
+                "initial_balance": float(account.initial_balance) if account.initial_balance else 0.0,
+                "is_active": account.is_active if account.is_active is not None else True,
+                "description": account.description,
+                "created_at": account.created_at.isoformat() if account.created_at else None,
+                "shared_budget_id": account.shared_budget_id,
+                "shared_budget_name": shared_budget_name,
+                "is_shared": account.shared_budget_id is not None
+            })
+        except Exception as e:
+            logger.error(f"Error serializing account {account.id}: {e}", exc_info=True)
+            # Skip this account if there's an error
+            continue
     
     return result
 
@@ -118,33 +126,38 @@ async def get_balance(
     account_balances = []
     
     for account in accounts:
-        # Calculate balance - filter transactions by both account and user for security
-        transactions = db.query(Transaction).filter(
-            Transaction.account_id == account.id,
-            Transaction.user_id == current_user.id
-        ).all()
-        balance = Decimal(str(account.initial_balance))
-        for trans in transactions:
-            if trans.transaction_type == TransactionType.INCOME:
-                balance += Decimal(str(trans.amount))
-            elif trans.transaction_type == TransactionType.EXPENSE:
-                balance -= Decimal(str(trans.amount))
-            elif trans.transaction_type == TransactionType.TRANSFER:
-                # Transfer уменьшает баланс счета отправления
-                balance -= Decimal(str(trans.amount))
-        
-        # For simplicity, assume same currency for now
-        total_balance += balance
-        account_balances.append({
-            "id": account.id,
-            "name": account.name,
-            "balance": float(balance),
-            "currency": account.currency
-        })
+        try:
+            # Calculate balance - filter transactions by both account and user for security
+            transactions = db.query(Transaction).filter(
+                Transaction.account_id == account.id,
+                Transaction.user_id == current_user.id
+            ).all()
+            balance = Decimal(str(account.initial_balance)) if account.initial_balance else Decimal("0")
+            for trans in transactions:
+                if trans.transaction_type == TransactionType.INCOME:
+                    balance += Decimal(str(trans.amount)) if trans.amount else Decimal("0")
+                elif trans.transaction_type == TransactionType.EXPENSE:
+                    balance -= Decimal(str(trans.amount)) if trans.amount else Decimal("0")
+                elif trans.transaction_type == TransactionType.TRANSFER:
+                    # Transfer уменьшает баланс счета отправления
+                    balance -= Decimal(str(trans.amount)) if trans.amount else Decimal("0")
+            
+            # For simplicity, assume same currency for now
+            total_balance += balance
+            account_balances.append({
+                "id": account.id,
+                "name": account.name,
+                "balance": float(balance),
+                "currency": account.currency or "USD"
+            })
+        except Exception as e:
+            logger.error(f"Error calculating balance for account {account.id}: {e}", exc_info=True)
+            # Skip this account if there's an error
+            continue
     
     return {
         "total": float(total_balance),
-        "currency": current_user.default_currency,
+        "currency": current_user.default_currency or "USD",
         "accounts": account_balances
     }
 
