@@ -417,13 +417,6 @@ export function Layout() {
             >
               <span className="text-xl">{theme === 'dark' ? '🌙' : '☀️'}</span>
             </button>
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="btn-icon w-10 h-10 bg-telegram-hover dark:bg-telegram-dark-hover hover:bg-telegram-border dark:hover:bg-telegram-dark-border"
-              aria-label={t.nav.settings}
-            >
-              <span className="text-xl">{mobileMenuOpen ? '✕' : '☰'}</span>
-            </button>
           </div>
         </header>
 
@@ -528,9 +521,9 @@ export function Layout() {
 
       {/* Mobile Bottom Navigation - только в Mini App на мобильных */}
       {isMiniApp && (
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-telegram-surface dark:bg-telegram-dark-surface border-t border-telegram-border dark:border-telegram-dark-border px-2 py-2 safe-area-inset-bottom">
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-telegram-surface dark:bg-telegram-dark-surface border-t border-telegram-border dark:border-telegram-dark-border px-2 py-2 safe-area-inset-bottom z-10">
           <div className="flex items-center justify-around">
-            {/* Дашборд, Транзакции, Счета, Отчёты (вместо Категорий) */}
+            {/* Дашборд, Транзакции, Счета, Отчёты */}
             {navItems.filter(item => 
               item.path === '/' || 
               item.path === '/transactions' || 
@@ -544,8 +537,8 @@ export function Layout() {
                   to={item.path}
                   className={`flex flex-col items-center gap-1 px-3 py-2 rounded-telegram min-w-[60px] transition-all ${
                     isActive 
-                      ? 'text-telegram-primary' 
-                      : 'text-telegram-textSecondary'
+                      ? 'text-telegram-primary dark:text-telegram-dark-primary' 
+                      : 'text-telegram-textSecondary dark:text-telegram-dark-textSecondary'
                   }`}
                 >
                   <span className="text-xl">{item.icon}</span>
@@ -553,17 +546,63 @@ export function Layout() {
                 </Link>
               )
             })}
-            <Link
-              to="/profile"
+            {/* Кнопка Меню - открывает боковое меню со всеми пунктами */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className={`flex flex-col items-center gap-1 px-3 py-2 rounded-telegram min-w-[60px] transition-all ${
-                location.pathname === '/profile' 
-                  ? 'text-telegram-primary' 
-                  : 'text-telegram-textSecondary'
+                mobileMenuOpen 
+                  ? 'text-telegram-primary dark:text-telegram-dark-primary bg-telegram-primary/10 dark:bg-telegram-dark-primary/10' 
+                  : 'text-telegram-textSecondary dark:text-telegram-dark-textSecondary'
               }`}
+              aria-label="Меню"
             >
-              <span className="text-xl">⚙️</span>
-              <span className="text-[10px] font-medium">Профиль</span>
-            </Link>
+              <span className="text-xl">{mobileMenuOpen ? '✕' : '☰'}</span>
+              <span className="text-[10px] font-medium">Меню</span>
+            </button>
+          </div>
+        </nav>
+      )}
+      
+      {/* Mobile Bottom Navigation - для всех мобильных устройств (не только Mini App) */}
+      {!isMiniApp && (
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-telegram-surface dark:bg-telegram-dark-surface border-t border-telegram-border dark:border-telegram-dark-border px-2 py-2 safe-area-inset-bottom z-10 shadow-lg">
+          <div className="flex items-center justify-around">
+            {/* Дашборд, Транзакции, Счета, Отчёты */}
+            {navItems.filter(item => 
+              item.path === '/' || 
+              item.path === '/transactions' || 
+              item.path === '/accounts' || 
+              item.path === '/reports'
+            ).map((item) => {
+              const isActive = location.pathname === item.path
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`flex flex-col items-center gap-1 px-3 py-2 rounded-telegram min-w-[60px] transition-all ${
+                    isActive 
+                      ? 'text-telegram-primary dark:text-telegram-dark-primary' 
+                      : 'text-telegram-textSecondary dark:text-telegram-dark-textSecondary'
+                  }`}
+                >
+                  <span className="text-xl">{item.icon}</span>
+                  <span className="text-[10px] font-medium">{item.label}</span>
+                </Link>
+              )
+            })}
+            {/* Кнопка Меню - открывает боковое меню со всеми пунктами */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-telegram min-w-[60px] transition-all ${
+                mobileMenuOpen 
+                  ? 'text-telegram-primary dark:text-telegram-dark-primary bg-telegram-primary/10 dark:bg-telegram-dark-primary/10' 
+                  : 'text-telegram-textSecondary dark:text-telegram-dark-textSecondary'
+              }`}
+              aria-label="Меню"
+            >
+              <span className="text-xl">{mobileMenuOpen ? '✕' : '☰'}</span>
+              <span className="text-[10px] font-medium">Меню</span>
+            </button>
           </div>
         </nav>
       )}
