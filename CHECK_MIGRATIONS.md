@@ -43,7 +43,7 @@ railway run python backend/check_migrations.py
    python check_migrations.py
    ```
 
-### Вариант 3: Прямое подключение к БД (если есть доступ)
+### Вариант 4: Прямое подключение к БД (если есть доступ)
 
 ```bash
 # Используя psql
