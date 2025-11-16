@@ -99,31 +99,55 @@ async def get_analytics(
     net_flow = total_income - total_expense
     
     # Expenses by category
+    # Get all category IDs first, then fetch categories using raw SQL to avoid enum issues
+    category_ids = set()
+    for row in transactions_data:
+        trans_type = row[2].lower() if row[2] else ''
+        category_id = row[5]
+        if trans_type == 'expense' and category_id:
+            category_ids.add(category_id)
+    
+    # Fetch categories using raw SQL
+    categories_map = {}
+    if category_ids:
+        placeholders = ','.join([f':cat_{i}' for i in range(len(category_ids))])
+        cat_params = {f"cat_{i}": cat_id for i, cat_id in enumerate(category_ids)}
+        cat_sql = f"""
+            SELECT id, name, icon, color
+            FROM categories
+            WHERE id IN ({placeholders}) AND is_active = true
+        """
+        cat_result = db.execute(sa_text(cat_sql), cat_params)
+        for cat_row in cat_result:
+            categories_map[cat_row[0]] = {
+                "name": cat_row[1],
+                "icon": cat_row[2] or "📦",
+                "color": cat_row[3] or "#607D8B"
+            }
+    
     expenses_by_category = {}
     for row in transactions_data:
         trans_type = row[2].lower() if row[2] else ''
         category_id = row[5]
         
-        if trans_type == 'expense' and category_id:
-            category = db.query(Category).filter(Category.id == category_id).first()
-            if category and category.is_active:  # Only count active categories
-                cat_name = category.name
-                cat_icon = category.icon or "📦"
-                # Use amount_in_default_currency if available, otherwise use amount
-                # Convert Decimal to float for proper summation
-                try:
-                    amount_value = float(row[9]) if row[9] is not None else float(row[3])
-                except (ValueError, TypeError, IndexError):
-                    amount_value = float(row[3]) if row[3] else 0.0
-                
-                if cat_name not in expenses_by_category:
-                    expenses_by_category[cat_name] = {
-                        "name": cat_name,
-                        "icon": cat_icon,
-                        "amount": 0.0,
-                        "color": category.color or "#607D8B"
-                    }
-                expenses_by_category[cat_name]["amount"] += amount_value
+        if trans_type == 'expense' and category_id and category_id in categories_map:
+            cat_info = categories_map[category_id]
+            cat_name = cat_info["name"]
+            # Use amount_in_default_currency if available, otherwise use amount
+            # Convert Decimal to float for proper summation
+            try:
+                amount_value = float(row[9]) if row[9] is not None else float(row[3])
+            except (ValueError, TypeError, IndexError):
+                amount_value = float(row[3]) if row[3] else 0.0
+            
+            if cat_name not in expenses_by_category:
+                expenses_by_category[cat_name] = {
+                    "name": cat_name,
+                    "icon": cat_info["icon"],
+                    "amount": 0.0,
+                    "color": cat_info["color"]
+                }
+            expenses_by_category[cat_name]["amount"] += amount_value
     
     # Goals information
     active_goals = db.query(Goal).filter(
@@ -160,31 +184,54 @@ async def get_analytics(
     )[:10]
     
     # Income by category
+    # Reuse categories_map, add income category IDs
+    income_category_ids = set()
+    for row in transactions_data:
+        trans_type = row[2].lower() if row[2] else ''
+        category_id = row[5]
+        if trans_type == 'income' and category_id and category_id not in category_ids:
+            income_category_ids.add(category_id)
+    
+    # Fetch income categories if needed
+    if income_category_ids:
+        placeholders = ','.join([f':icat_{i}' for i in range(len(income_category_ids))])
+        icat_params = {f"icat_{i}": cat_id for i, cat_id in enumerate(income_category_ids)}
+        icat_sql = f"""
+            SELECT id, name, icon, color
+            FROM categories
+            WHERE id IN ({placeholders}) AND is_active = true
+        """
+        icat_result = db.execute(sa_text(icat_sql), icat_params)
+        for cat_row in icat_result:
+            categories_map[cat_row[0]] = {
+                "name": cat_row[1],
+                "icon": cat_row[2] or "💰",
+                "color": cat_row[3] or "#4CAF50"
+            }
+    
     income_by_category = {}
     for row in transactions_data:
         trans_type = row[2].lower() if row[2] else ''
         category_id = row[5]
         
-        if trans_type == 'income' and category_id:
-            category = db.query(Category).filter(Category.id == category_id).first()
-            if category and category.is_active:  # Only count active categories
-                cat_name = category.name
-                cat_icon = category.icon or "💰"
-                # Use amount_in_default_currency if available, otherwise use amount
-                # Convert Decimal to float for proper summation
-                try:
-                    amount_value = float(row[9]) if row[9] is not None else float(row[3])
-                except (ValueError, TypeError, IndexError):
-                    amount_value = float(row[3]) if row[3] else 0.0
-                
-                if cat_name not in income_by_category:
-                    income_by_category[cat_name] = {
-                        "name": cat_name,
-                        "icon": cat_icon,
-                        "amount": 0.0,
-                        "color": category.color or "#4CAF50"
-                    }
-                income_by_category[cat_name]["amount"] += amount_value
+        if trans_type == 'income' and category_id and category_id in categories_map:
+            cat_info = categories_map[category_id]
+            cat_name = cat_info["name"]
+            # Use amount_in_default_currency if available, otherwise use amount
+            # Convert Decimal to float for proper summation
+            try:
+                amount_value = float(row[9]) if row[9] is not None else float(row[3])
+            except (ValueError, TypeError, IndexError):
+                amount_value = float(row[3]) if row[3] else 0.0
+            
+            if cat_name not in income_by_category:
+                income_by_category[cat_name] = {
+                    "name": cat_name,
+                    "icon": cat_info["icon"],
+                    "amount": 0.0,
+                    "color": cat_info["color"]
+                }
+            income_by_category[cat_name]["amount"] += amount_value
     
     top_income_categories = sorted(
         income_by_category.values(),

@@ -445,23 +445,9 @@ async def create_transaction(
                 detail="Source and destination accounts must be different"
             )
         
-        # Create transaction for destination account (income)
-        # Use lowercase string value directly to ensure correct case in database
-        # Create without transaction_type first, then set it explicitly
-        to_transaction = Transaction(
-            user_id=current_user.id,
-            account_id=transaction_data.to_account_id,
-            amount=transaction_data.amount,
-            currency=transaction_data.currency or account.currency,
-            description=f"Перевод из {account.name}" + (f": {transaction_data.description}" if transaction_data.description else ""),
-            transaction_date=transaction_data.transaction_date or datetime.utcnow()
-        )
-        # Explicitly set transaction_type as lowercase string after object creation
-        # This ensures TypeDecorator processes it correctly
-        to_transaction.transaction_type = "income"
-        # Force update __dict__ to ensure SQLAlchemy uses the string value
-        to_transaction.__dict__['transaction_type'] = "income"
-        db.add(to_transaction)
+        # For transfer, we'll create destination transaction using raw SQL after committing source
+        # This avoids enum issues with SQLAlchemy ORM
+        to_transaction = True  # Flag to indicate we need to create destination transaction
     
     # Validate shared_budget_id if provided
     shared_budget = None
@@ -576,12 +562,34 @@ async def create_transaction(
     # Для transfer также нужно обновить баланс получателя
     if transaction_data.transaction_type == "transfer" and to_transaction:
         try:
-            # Commit both transactions together
-            # Both transactions already have lowercase transaction_type values from __init__
+            # Use raw SQL to insert both transactions to avoid enum issues
+            # First commit the source transaction (transfer)
             db.commit()
             db.refresh(transaction)
-            db.refresh(to_transaction)
-            logger.info(f"Transfer created: source transaction {transaction.id}, destination transaction {to_transaction.id}")
+            
+            # Then insert destination transaction using raw SQL
+            from sqlalchemy import text as sa_text
+            to_transaction_sql = """
+                INSERT INTO transactions 
+                (user_id, account_id, transaction_type, amount, currency, description, transaction_date)
+                VALUES 
+                (:user_id, :account_id, :transaction_type, :amount, :currency, :description, :transaction_date)
+                RETURNING id
+            """
+            to_params = {
+                "user_id": current_user.id,
+                "account_id": transaction_data.to_account_id,
+                "transaction_type": "income",  # lowercase
+                "amount": transaction_data.amount,
+                "currency": transaction_data.currency or account.currency,
+                "description": f"Перевод из {account.name}" + (f": {transaction_data.description}" if transaction_data.description else ""),
+                "transaction_date": transaction_data.transaction_date or datetime.utcnow()
+            }
+            result = db.execute(sa_text(to_transaction_sql), to_params)
+            to_transaction_id = result.scalar()
+            
+            db.commit()
+            logger.info(f"Transfer created: source transaction {transaction.id}, destination transaction {to_transaction_id}")
         except Exception as e:
             logger.error(f"Error creating transfer transactions: {e}", exc_info=True)
             db.rollback()
