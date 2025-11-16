@@ -35,7 +35,8 @@ class Transaction(Base):
     account_id = Column(Integer, ForeignKey("accounts.id"), nullable=False)
     
     # Transaction details
-    transaction_type = Column(Enum(TransactionType), nullable=False)
+    # Use native_enum=False to ensure SQLAlchemy uses enum values ("income") instead of names ("INCOME")
+    transaction_type = Column(Enum(TransactionType, native_enum=False), nullable=False)
     amount = Column(Numeric(15, 2), nullable=False)
     currency = Column(String(3), nullable=False)
     

@@ -446,11 +446,11 @@ async def create_transaction(
             )
         
         # Create transaction for destination account (income)
-        # Use TransactionType enum with value to ensure correct case
+        # Use TransactionType enum value to ensure correct case in database
         to_transaction = Transaction(
             user_id=current_user.id,
             account_id=transaction_data.to_account_id,
-            transaction_type=TransactionType("income"),  # Use lowercase value
+            transaction_type=TransactionType.INCOME,  # This will use the value "income"
             amount=transaction_data.amount,
             currency=transaction_data.currency or account.currency,
             description=f"Перевод из {account.name}" + (f": {transaction_data.description}" if transaction_data.description else ""),
