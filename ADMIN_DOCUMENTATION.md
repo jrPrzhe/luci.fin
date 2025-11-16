@@ -1046,3 +1046,4 @@ User A                    User B
 - Модели данных: `backend/app/models/`
 - API эндпоинты: `backend/app/api/v1/`
 
+

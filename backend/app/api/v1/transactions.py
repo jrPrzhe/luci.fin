@@ -456,6 +456,8 @@ async def create_transaction(
             description=f"Перевод из {account.name}" + (f": {transaction_data.description}" if transaction_data.description else ""),
             transaction_date=transaction_data.transaction_date or datetime.utcnow()
         )
+        # Force set transaction_type as lowercase string to ensure correct value
+        object.__setattr__(to_transaction, 'transaction_type', "income")
         db.add(to_transaction)
     
     # Validate shared_budget_id if provided
@@ -542,6 +544,14 @@ async def create_transaction(
     # Ensure transaction_type is lowercase to match enum values in DB
     # Use string value directly to ensure correct case in database
     transaction_type_value = transaction_data.transaction_type.lower()
+    
+    # Validate transaction_type
+    if transaction_type_value not in ["income", "expense", "transfer"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid transaction_type: {transaction_data.transaction_type}. Must be 'income', 'expense', or 'transfer'"
+        )
+    
     transaction = Transaction(
         user_id=current_user.id,
         account_id=final_account_id,  # Use goal's account if goal is specified
@@ -556,11 +566,19 @@ async def create_transaction(
         goal_id=transaction_data.goal_id
     )
     
+    # Force set transaction_type as lowercase string to ensure correct value
+    # This bypasses any enum conversion that might happen
+    object.__setattr__(transaction, 'transaction_type', transaction_type_value)
+    
     db.add(transaction)
     
     # Для transfer также нужно обновить баланс получателя
     if transaction_data.transaction_type == "transfer" and to_transaction:
         try:
+            # Ensure both transactions have lowercase string values before commit
+            # Force set the attribute directly to ensure lowercase (bypass SQLAlchemy's attribute handling)
+            object.__setattr__(transaction, 'transaction_type', transaction_type_value)
+            object.__setattr__(to_transaction, 'transaction_type', "income")
             db.commit()  # Коммитим обе транзакции вместе
             db.refresh(transaction)
             db.refresh(to_transaction)

@@ -17,23 +17,32 @@ class TransactionTypeEnum(TypeDecorator):
     cache_ok = True
     
     def __init__(self):
+        # Use create_type=False since the enum type already exists in the database
         super().__init__(TransactionType, name='transactiontype', create_type=False)
     
     def process_bind_param(self, value, dialect):
         if value is None:
             return None
-        # If it's an enum, use its value; if it's a string, ensure it's lowercase
+        # If it's an enum, use its value (which is lowercase)
         if isinstance(value, TransactionType):
             return value.value
-        # If it's a string, ensure it's lowercase and return as-is
+        # If it's a string, ensure it's lowercase
         if isinstance(value, str):
             return value.lower()
-        return value
+        # If it's somehow the enum name (uppercase string), convert to lowercase
+        if hasattr(value, 'upper'):
+            str_value = str(value)
+            if str_value.upper() in ['INCOME', 'EXPENSE', 'TRANSFER']:
+                return str_value.lower()
+        # Fallback: convert to string and lowercase
+        return str(value).lower() if value else None
     
     def process_result_value(self, value, dialect):
         if value is None:
             return None
         # Convert string value back to enum
+        if isinstance(value, str):
+            return TransactionType(value.lower())
         return TransactionType(value)
 
 

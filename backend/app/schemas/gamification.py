@@ -61,3 +61,4 @@ class GamificationStatusResponse(BaseModel):
     recent_achievements: List[AchievementResponse]
     next_level_xp: int
 
+

@@ -12,7 +12,7 @@ router = APIRouter()
 
 @router.get("/", response_model=List[CategoryResponse])
 async def get_categories(
-    transaction_type: Optional[TransactionType] = None,
+    transaction_type: Optional[str] = None,  # Accept string instead of enum to avoid parsing issues
     favorites_only: Optional[bool] = False,
     shared_budget_id: Optional[int] = None,  # Get categories for shared budget
     include_shared: Optional[bool] = True,  # Include shared budget categories
@@ -78,22 +78,39 @@ async def get_categories(
         query = user_categories_query
     
     if transaction_type:
-        query = query.filter(
-            (Category.transaction_type == transaction_type) | 
-            (Category.transaction_type == TransactionType.BOTH)
-        )
+        # Convert string to enum value (lowercase) for comparison
+        transaction_type_lower = transaction_type.lower()
+        try:
+            # Try to convert to enum
+            trans_type_enum = TransactionType(transaction_type_lower)
+            query = query.filter(
+                (Category.transaction_type == trans_type_enum) | 
+                (Category.transaction_type == TransactionType.BOTH)
+            )
+        except ValueError:
+            # If invalid transaction type, return empty list
+            return []
     
     if favorites_only:
         query = query.filter(Category.is_favorite == True)
     
-    categories = query.filter(Category.is_active == True).order_by(
-        Category.shared_budget_id.is_(None).desc(),  # Personal categories first
-        Category.is_favorite.desc(),
-        Category.is_system.desc(),
-        Category.name
-    ).all()
-    
-    return categories
+    try:
+        categories = query.filter(Category.is_active == True).order_by(
+            Category.shared_budget_id.is_(None).desc(),  # Personal categories first
+            Category.is_favorite.desc(),
+            Category.is_system.desc(),
+            Category.name
+        ).all()
+        
+        return categories
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error fetching categories: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching categories: {str(e)}"
+        )
 
 
 @router.get("/{category_id}", response_model=CategoryResponse)

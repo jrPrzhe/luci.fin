@@ -83,3 +83,4 @@ exec python scripts/send_daily_reminders.py 2>&1
 bash /app/run_reminders.sh
 ```
 
+

@@ -185,3 +185,4 @@ class UserAchievement(Base):
     def __repr__(self):
         return f"<UserAchievement(id={self.id}, achievement_id={self.achievement_id}, unlocked_at={self.unlocked_at})>"
 
+

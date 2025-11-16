@@ -79,3 +79,4 @@ print('Gamification tables:', gamification_tables)
 - `achievements`
 - `user_achievements`
 
+
