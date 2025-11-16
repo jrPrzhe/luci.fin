@@ -599,7 +599,7 @@ export function Transactions() {
             {/* Кнопка применения фильтров */}
             <div className="pt-4 border-t border-telegram-border dark:border-telegram-dark-border">
               <button
-                onClick={loadData}
+                onClick={() => loadData(true)}
                 className="w-full btn-primary py-3 text-base font-medium"
               >
                 🔍 Применить фильтры
