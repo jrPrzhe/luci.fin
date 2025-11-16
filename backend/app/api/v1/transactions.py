@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import text as sa_text
 from typing import List, Optional
 from datetime import datetime
 from pydantic import BaseModel
@@ -87,14 +88,45 @@ async def get_transactions(
     
     logger.info(f"Getting transactions for user_id={current_user.id}, limit={limit}, offset={offset}, account_id={account_id}")
     
-    # Base query: user's own transactions
-    from sqlalchemy import or_
+    # Get shared account IDs if needed (for filter_type)
+    shared_account_ids = []
+    if not account_id:
+        from app.models.shared_budget import SharedBudgetMember
+        budget_memberships = db.query(SharedBudgetMember).filter(
+            SharedBudgetMember.user_id == current_user.id
+        ).all()
+        budget_ids = [m.shared_budget_id for m in budget_memberships]
+        
+        if budget_ids:
+            shared_accounts = db.query(Account).filter(
+                Account.shared_budget_id.in_(budget_ids)
+            ).all()
+            shared_account_ids = [a.id for a in shared_accounts]
     
+    # Use raw SQL to avoid enum conversion issues
+    # Build SQL query based on filters
+    sql_query = """
+        SELECT 
+            t.id, t.account_id, t.transaction_type::text, t.amount, t.currency,
+            t.category_id, t.description, t.shared_budget_id, t.goal_id,
+            t.transaction_date, t.to_account_id, t.created_at, t.updated_at, t.user_id,
+            a.shared_budget_id as account_shared_budget_id,
+            c.name as category_name, c.icon as category_icon,
+            g.name as goal_name
+        FROM transactions t
+        LEFT JOIN accounts a ON t.account_id = a.id
+        LEFT JOIN categories c ON t.category_id = c.id
+        LEFT JOIN goals g ON t.goal_id = g.id
+        WHERE 1=1
+    """
+    
+    params = {}
+    
+    # Add filters to SQL query
     if account_id:
-        # Get transactions for specific account
+        # Check if account is shared and user has access
         account = db.query(Account).filter(Account.id == account_id).first()
         if account and account.shared_budget_id:
-            # Shared account: get all transactions (from all members)
             from app.models.shared_budget import SharedBudgetMember
             membership = db.query(SharedBudgetMember).filter(
                 SharedBudgetMember.shared_budget_id == account.shared_budget_id,
@@ -102,141 +134,106 @@ async def get_transactions(
             ).first()
             if membership:
                 # User has access, get all transactions for this account
-                query = db.query(Transaction).filter(Transaction.account_id == account_id)
+                sql_query += " AND t.account_id = :account_id"
+                params["account_id"] = account_id
             else:
-                query = db.query(Transaction).filter(
-                    Transaction.account_id == account_id,
-                    Transaction.user_id == current_user.id
-                )
+                # User doesn't have access, only their own transactions
+                sql_query += " AND t.account_id = :account_id AND t.user_id = :user_id"
+                params["account_id"] = account_id
+                params["user_id"] = current_user.id
         else:
             # Personal account: only user's transactions
-            query = db.query(Transaction).filter(
-                Transaction.account_id == account_id,
-                Transaction.user_id == current_user.id
-            )
-    else:
-        # Get user's transactions + transactions from shared accounts user has access to
-        from app.models.shared_budget import SharedBudgetMember
-        budget_memberships = db.query(SharedBudgetMember).filter(
-            SharedBudgetMember.user_id == current_user.id
-        ).all()
-        budget_ids = [m.shared_budget_id for m in budget_memberships]
-        shared_account_ids = []
-        
-        if budget_ids:
-            shared_accounts = db.query(Account).filter(
-                Account.shared_budget_id.in_(budget_ids)
-            ).all()
-            shared_account_ids = [a.id for a in shared_accounts]
-        
-        # Apply filter before building query
-        if filter_type == "own":
-            # Only user's own transactions
-            query = db.query(Transaction).filter(Transaction.user_id == current_user.id)
-        elif filter_type == "shared":
-            # Only shared account transactions (all transactions from shared accounts)
-            if shared_account_ids:
-                query = db.query(Transaction).filter(Transaction.account_id.in_(shared_account_ids))
-            else:
-                # No shared accounts, return empty
-                query = db.query(Transaction).filter(Transaction.id == -1)  # Impossible condition
+            sql_query += " AND t.account_id = :account_id AND t.user_id = :user_id"
+            params["account_id"] = account_id
+            params["user_id"] = current_user.id
+    elif filter_type == "own":
+        sql_query += " AND t.user_id = :user_id"
+        params["user_id"] = current_user.id
+    elif filter_type == "shared":
+        if shared_account_ids:
+            # Use parameterized query for safety
+            placeholders = ','.join([f':shared_acc_{i}' for i in range(len(shared_account_ids))])
+            sql_query += f" AND t.account_id IN ({placeholders})"
+            for i, acc_id in enumerate(shared_account_ids):
+                params[f"shared_acc_{i}"] = acc_id
         else:
-            # All transactions: user's + shared account transactions
-            if shared_account_ids:
-                query = db.query(Transaction).filter(
-                    or_(
-                        Transaction.user_id == current_user.id,
-                        Transaction.account_id.in_(shared_account_ids)
-                    )
-                )
-            else:
-                query = db.query(Transaction).filter(Transaction.user_id == current_user.id)
+            sql_query += " AND 1=0"  # No results
+    else:
+        # All transactions
+        if shared_account_ids:
+            # Use parameterized query for safety
+            placeholders = ','.join([f':shared_acc_{i}' for i in range(len(shared_account_ids))])
+            sql_query += f" AND (t.user_id = :user_id OR t.account_id IN ({placeholders}))"
+            params["user_id"] = current_user.id
+            for i, acc_id in enumerate(shared_account_ids):
+                params[f"shared_acc_{i}"] = acc_id
+        else:
+            sql_query += " AND t.user_id = :user_id"
+            params["user_id"] = current_user.id
     
-    # Apply transaction type filter
     if transaction_type:
-        query = query.filter(Transaction.transaction_type == transaction_type)
+        sql_query += " AND LOWER(t.transaction_type::text) = :transaction_type"
+        params["transaction_type"] = transaction_type.lower()
     
-    # Apply date filters
     if start_date:
         try:
-            from datetime import datetime
-            # Handle different date formats
             if 'T' in start_date:
                 start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
             else:
                 start_dt = datetime.fromisoformat(start_date + 'T00:00:00')
-            query = query.filter(Transaction.transaction_date >= start_dt)
-            logger.info(f"Applied start_date filter: {start_dt}")
+            sql_query += " AND t.transaction_date >= :start_date"
+            params["start_date"] = start_dt
         except (ValueError, AttributeError) as e:
             logger.warning(f"Invalid start_date format: {start_date}, error: {e}")
     
     if end_date:
         try:
-            from datetime import datetime
-            # Handle different date formats
             if 'T' in end_date:
                 end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
             else:
                 end_dt = datetime.fromisoformat(end_date + 'T23:59:59')
-            query = query.filter(Transaction.transaction_date <= end_dt)
-            logger.info(f"Applied end_date filter: {end_dt}")
+            sql_query += " AND t.transaction_date <= :end_date"
+            params["end_date"] = end_dt
         except (ValueError, AttributeError) as e:
             logger.warning(f"Invalid end_date format: {end_date}, error: {e}")
     
-    # Используем joinedload для предзагрузки связей (исправление N+1 проблемы)
-    from sqlalchemy.orm import joinedload
-    transactions = query.options(
-        joinedload(Transaction.account),
-        joinedload(Transaction.category),
-        joinedload(Transaction.goal)
-    ).order_by(Transaction.transaction_date.desc()).limit(limit).offset(offset).all()
+    sql_query += " ORDER BY t.transaction_date DESC LIMIT :limit OFFSET :offset"
+    params["limit"] = limit
+    params["offset"] = offset
     
-    logger.info(f"Found {len(transactions)} transactions for user {current_user.id}, filter={filter_type}")
+    # Execute raw SQL query
+    result_rows = db.execute(sa_text(sql_query), params).fetchall()
     
-    # Build response with additional info
+    logger.info(f"Found {len(result_rows)} transactions for user {current_user.id}, filter={filter_type}")
+    
+    # Build response from raw SQL results
     result = []
-    for t in transactions:
+    for row in result_rows:
         try:
-            # Safely build transaction dict
             trans_dict = {
-                "id": t.id,
-                "account_id": t.account_id,
-                "transaction_type": t.transaction_type.value if t.transaction_type else None,
-                "amount": float(t.amount) if t.amount else 0.0,
-                "currency": t.currency or "USD",
-                "category_id": t.category_id,
-                "description": t.description,
-                "shared_budget_id": t.shared_budget_id,
-                "goal_id": t.goal_id,
-                "transaction_date": t.transaction_date,
-                "to_account_id": t.to_account_id,
-                "created_at": t.created_at,
-                "updated_at": t.updated_at,
-                "user_id": t.user_id,
+                "id": row[0],
+                "account_id": row[1],
+                "transaction_type": row[2].lower() if row[2] else None,  # Convert to lowercase
+                "amount": float(row[3]) if row[3] else 0.0,
+                "currency": row[4] or "USD",
+                "category_id": row[5],
+                "description": row[6],
+                "shared_budget_id": row[7],
+                "goal_id": row[8],
+                "transaction_date": row[9],
+                "to_account_id": row[10],
+                "created_at": row[11],
+                "updated_at": row[12],
+                "user_id": row[13],
+                "is_shared": row[14] is not None if row[14] is not None else False,
+                "category_name": row[15],
+                "category_icon": row[16],
+                "goal_name": row[17],
             }
-            
-            # Check if transaction is from shared account (используем предзагруженный account)
-            is_shared = t.account.shared_budget_id is not None if t.account else False
-            trans_dict['is_shared'] = is_shared
-            
-            # Add category info if exists (используем предзагруженную category)
-            if t.category:
-                trans_dict['category_name'] = t.category.name
-                trans_dict['category_icon'] = t.category.icon
-            else:
-                trans_dict['category_name'] = None
-                trans_dict['category_icon'] = None
-            
-            # Add goal info if exists (используем предзагруженный goal)
-            if t.goal:
-                trans_dict['goal_name'] = t.goal.name
-            else:
-                trans_dict['goal_name'] = None
             
             result.append(TransactionResponse(**trans_dict))
         except Exception as e:
-            logger.error(f"Error serializing transaction {t.id}: {e}", exc_info=True)
-            # Skip this transaction if there's an error
+            logger.error(f"Error serializing transaction {row[0] if row else 'unknown'}: {e}", exc_info=True)
             continue
     
     return result

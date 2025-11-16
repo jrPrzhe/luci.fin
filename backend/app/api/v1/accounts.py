@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import text as sa_text
 from typing import List, Optional
 from pydantic import BaseModel
 from app.core.database import get_db
@@ -60,27 +61,40 @@ async def get_accounts(
             # Calculate current balance
             # For shared accounts, count ALL transactions (from all members)
             # For personal accounts, count only user's transactions
+            # Use raw SQL to avoid enum conversion issues
             if account.shared_budget_id:
                 # Shared account: count all transactions
-                transactions = db.query(Transaction).filter(
-                    Transaction.account_id == account.id
-                ).all()
+                result = db.execute(
+                    sa_text("""
+                        SELECT transaction_type::text, amount 
+                        FROM transactions 
+                        WHERE account_id = :account_id
+                    """),
+                    {"account_id": account.id}
+                )
             else:
                 # Personal account: count only user's transactions
-                transactions = db.query(Transaction).filter(
-                    Transaction.account_id == account.id,
-                    Transaction.user_id == current_user.id
-                ).all()
+                result = db.execute(
+                    sa_text("""
+                        SELECT transaction_type::text, amount 
+                        FROM transactions 
+                        WHERE account_id = :account_id AND user_id = :user_id
+                    """),
+                    {"account_id": account.id, "user_id": current_user.id}
+                )
             
             balance = Decimal(str(account.initial_balance)) if account.initial_balance else Decimal("0")
-            for trans in transactions:
-                if trans.transaction_type == TransactionType.INCOME:
-                    balance += Decimal(str(trans.amount)) if trans.amount else Decimal("0")
-                elif trans.transaction_type == TransactionType.EXPENSE:
-                    balance -= Decimal(str(trans.amount)) if trans.amount else Decimal("0")
-                elif trans.transaction_type == TransactionType.TRANSFER:
+            for row in result:
+                trans_type = row[0].lower()  # Convert to lowercase for comparison
+                amount = Decimal(str(row[1])) if row[1] else Decimal("0")
+                
+                if trans_type == 'income':
+                    balance += amount
+                elif trans_type == 'expense':
+                    balance -= amount
+                elif trans_type == 'transfer':
                     # Transfer уменьшает баланс счета отправления
-                    balance -= Decimal(str(trans.amount)) if trans.amount else Decimal("0")
+                    balance -= amount
             
             # Get shared budget name if applicable
             shared_budget_name = None
@@ -128,19 +142,28 @@ async def get_balance(
     for account in accounts:
         try:
             # Calculate balance - filter transactions by both account and user for security
-            transactions = db.query(Transaction).filter(
-                Transaction.account_id == account.id,
-                Transaction.user_id == current_user.id
-            ).all()
+            # Use raw SQL to avoid enum conversion issues
+            result = db.execute(
+                sa_text("""
+                    SELECT transaction_type::text, amount 
+                    FROM transactions 
+                    WHERE account_id = :account_id AND user_id = :user_id
+                """),
+                {"account_id": account.id, "user_id": current_user.id}
+            )
+            
             balance = Decimal(str(account.initial_balance)) if account.initial_balance else Decimal("0")
-            for trans in transactions:
-                if trans.transaction_type == TransactionType.INCOME:
-                    balance += Decimal(str(trans.amount)) if trans.amount else Decimal("0")
-                elif trans.transaction_type == TransactionType.EXPENSE:
-                    balance -= Decimal(str(trans.amount)) if trans.amount else Decimal("0")
-                elif trans.transaction_type == TransactionType.TRANSFER:
+            for row in result:
+                trans_type = row[0].lower()  # Convert to lowercase for comparison
+                amount = Decimal(str(row[1])) if row[1] else Decimal("0")
+                
+                if trans_type == 'income':
+                    balance += amount
+                elif trans_type == 'expense':
+                    balance -= amount
+                elif trans_type == 'transfer':
                     # Transfer уменьшает баланс счета отправления
-                    balance -= Decimal(str(trans.amount)) if trans.amount else Decimal("0")
+                    balance -= amount
             
             # For simplicity, assume same currency for now
             total_balance += balance
