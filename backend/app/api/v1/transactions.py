@@ -722,10 +722,55 @@ async def create_transaction(
     
     logger.info(f"Transaction created: id={transaction.id}, user_id={transaction.user_id}, account_id={transaction.account_id}, goal_id={transaction_data.goal_id}")
     
-    response = TransactionResponse.model_validate(transaction)
-    # Добавляем информацию о геймификации в ответ (через dict для совместимости)
-    response_dict = response.model_dump()
-    response_dict["gamification"] = gamification_info
+    # Build response manually to ensure transaction_type is lowercase string
+    # Get category and goal names if needed
+    category_name = None
+    category_icon = None
+    if transaction.category_id:
+        from sqlalchemy import text as sa_text
+        cat_sql = "SELECT name, icon FROM categories WHERE id = :cat_id"
+        cat_result = db.execute(sa_text(cat_sql), {"cat_id": transaction.category_id}).first()
+        if cat_result:
+            category_name = cat_result[0]
+            category_icon = cat_result[1]
+    
+    goal_name = None
+    if transaction.goal_id:
+        goal_sql = "SELECT name FROM goals WHERE id = :goal_id"
+        goal_result = db.execute(sa_text(goal_sql), {"goal_id": transaction.goal_id}).first()
+        if goal_result:
+            goal_name = goal_result[0]
+    
+    # Ensure transaction_type is lowercase string
+    trans_type_str = transaction.transaction_type
+    if isinstance(trans_type_str, TransactionType):
+        trans_type_str = trans_type_str.value
+    elif isinstance(trans_type_str, str):
+        trans_type_str = trans_type_str.lower()
+    else:
+        trans_type_str = str(trans_type_str).lower() if trans_type_str else None
+    
+    response_dict = {
+        "id": transaction.id,
+        "account_id": transaction.account_id,
+        "transaction_type": trans_type_str,
+        "amount": float(transaction.amount),
+        "currency": transaction.currency,
+        "category_id": transaction.category_id,
+        "category_name": category_name,
+        "category_icon": category_icon,
+        "description": transaction.description,
+        "shared_budget_id": transaction.shared_budget_id,
+        "goal_id": transaction.goal_id,
+        "goal_name": goal_name,
+        "transaction_date": transaction.transaction_date,
+        "to_account_id": transaction.to_account_id,
+        "created_at": transaction.created_at,
+        "updated_at": transaction.updated_at,
+        "user_id": transaction.user_id,
+        "is_shared": transaction.account.shared_budget_id is not None if transaction.account else False,
+        "gamification": gamification_info
+    }
     
     return response_dict
 
