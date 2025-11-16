@@ -469,14 +469,25 @@ async def ask_lucy(
         
         transactions_data = []
         for t in transactions:
-            trans_type = t.transaction_type.value if hasattr(t.transaction_type, 'value') else str(t.transaction_type)
-            transactions_data.append({
-                'transaction_type': trans_type,
-                'amount': float(t.amount),
-                'description': t.description,
-                'category_name': t.category.name if t.category else None,
-                'transaction_date': t.transaction_date.isoformat() if t.transaction_date else ''
-            })
+            try:
+                # Безопасное получение типа транзакции
+                if hasattr(t.transaction_type, 'value'):
+                    trans_type = t.transaction_type.value
+                elif isinstance(t.transaction_type, str):
+                    trans_type = t.transaction_type
+                else:
+                    trans_type = str(t.transaction_type)
+                
+                transactions_data.append({
+                    'transaction_type': trans_type,
+                    'amount': float(t.amount) if t.amount else 0.0,
+                    'description': t.description if t.description else None,
+                    'category_name': t.category.name if t.category and hasattr(t.category, 'name') else None,
+                    'transaction_date': t.transaction_date.isoformat() if t.transaction_date else ''
+                })
+            except Exception as trans_error:
+                logger.warning(f"Error processing transaction {t.id}: {trans_error}")
+                continue
         
         income_total = sum(t.get('amount', 0) for t in transactions_data if t.get('transaction_type') == 'income')
         expense_total = sum(t.get('amount', 0) for t in transactions_data if t.get('transaction_type') == 'expense')
@@ -547,12 +558,16 @@ async def ask_lucy(
     
     if not assistant.client:
         # Fallback ответ
+        logger.warning("AI client not configured, returning fallback answer")
         return AskLucyResponse(
             answer="ИИ-ассистент не настроен. Добавьте GOOGLE_AI_API_KEY в настройки.",
             quest_completed=False
         )
     
     try:
+        logger.info(f"Processing question for user {current_user.id}: {sanitized_question[:100]}")
+        logger.debug(f"System prompt length: {len(system_prompt)}")
+        
         import asyncio
         loop = asyncio.get_event_loop()
         response = await loop.run_in_executor(
@@ -560,6 +575,8 @@ async def ask_lucy(
             assistant.client.generate_content,
             system_prompt
         )
+        
+        logger.info("AI response received")
         
         answer = response.text if hasattr(response, 'text') else str(response)
         # Очищаем ответ
@@ -569,39 +586,50 @@ async def ask_lucy(
         if len(answer) > 500:
             answer = answer[:497] + "..."
         
+        logger.info(f"Answer generated, length: {len(answer)}")
+        
         # Проверяем и завершаем квест "Спроси Люсю"
         quest_completed = False
-        from app.models.gamification import QuestType, QuestStatus, UserDailyQuest
-        from datetime import datetime, timezone
-        
-        today = datetime.now(timezone.utc).date()
-        quest = db.query(UserDailyQuest).filter(
-            UserDailyQuest.profile_id == profile.id,
-            UserDailyQuest.quest_type == QuestType.ASK_LUCY,
-            UserDailyQuest.quest_date == today,
-            UserDailyQuest.status == QuestStatus.PENDING
-        ).first()
-        
-        if quest:
-            # Помечаем квест как выполненный
-            quest.status = QuestStatus.COMPLETED
-            quest.completed_at = datetime.now(timezone.utc)
-            quest.progress = 100
+        try:
+            from app.models.gamification import QuestType, QuestStatus, UserDailyQuest
+            from datetime import datetime, timezone
             
-            # Начисляем XP
-            from app.api.v1.gamification import add_xp
-            add_xp(profile, quest.xp_reward, db)
-            profile.total_quests_completed += 1
-            db.commit()
-            quest_completed = True
+            today = datetime.now(timezone.utc).date()
+            quest = db.query(UserDailyQuest).filter(
+                UserDailyQuest.profile_id == profile.id,
+                UserDailyQuest.quest_type == QuestType.ASK_LUCY,
+                UserDailyQuest.quest_date == today,
+                UserDailyQuest.status == QuestStatus.PENDING
+            ).first()
+            
+            if quest:
+                logger.info(f"Quest found, completing quest {quest.id}")
+                # Помечаем квест как выполненный
+                quest.status = QuestStatus.COMPLETED
+                quest.completed_at = datetime.now(timezone.utc)
+                quest.progress = 100
+                
+                # Начисляем XP
+                from app.api.v1.gamification import add_xp
+                add_xp(profile, quest.xp_reward, db)
+                profile.total_quests_completed += 1
+                db.commit()
+                quest_completed = True
+                logger.info(f"Quest {quest.id} completed, XP awarded")
+        except Exception as quest_error:
+            logger.warning(f"Error completing quest: {quest_error}", exc_info=True)
+            # Не прерываем выполнение, если ошибка с квестом
         
+        logger.info(f"Returning answer to user {current_user.id}")
         return AskLucyResponse(
             answer=answer,
             quest_completed=quest_completed
         )
         
     except Exception as e:
-        logger.error(f"AI ask-lucy error: {e}")
+        logger.error(f"AI ask-lucy error: {e}", exc_info=True)
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
         return AskLucyResponse(
             answer="Извините, произошла ошибка при обработке вопроса. Попробуйте переформулировать вопрос о вашем бюджете.",
             quest_completed=False

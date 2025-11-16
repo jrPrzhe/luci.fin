@@ -4,14 +4,12 @@ import sys
 import requests
 import base64
 import json
+import httpx
 from datetime import datetime, timezone
 from decouple import config
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler, CallbackQueryHandler
 from typing import Dict, Optional, TYPE_CHECKING
-
-if TYPE_CHECKING:
-    import httpx
 
 # Configure logging
 logging.basicConfig(
@@ -1306,6 +1304,7 @@ async def lucy_question_received(update: Update, context: ContextTypes.DEFAULT_T
     
     try:
         # Send question to API
+        logger.info(f"Sending question to API for user {telegram_id}: {question[:100]}")
         response = await make_authenticated_request(
             "POST",
             f"{BACKEND_URL}/api/v1/ai/ask-lucy",
@@ -1314,27 +1313,62 @@ async def lucy_question_received(update: Update, context: ContextTypes.DEFAULT_T
             timeout=30.0
         )
         
+        logger.info(f"API response status: {response.status_code}")
+        
         if response.status_code == 200:
-            data = response.json()
-            answer = data.get("answer", "Извините, не удалось получить ответ.")
-            quest_completed = data.get("quest_completed", False)
-            
-            # Format response
-            response_text = f"💬 *Люся:*\n\n{answer}\n"
-            
-            if quest_completed:
-                response_text += "\n✅ *Квест выполнен!* Вы получили XP за задание 'Спроси Люсю'."
-            
-            await thinking_msg.edit_text(response_text, parse_mode='Markdown')
+            try:
+                data = response.json()
+                answer = data.get("answer", "Извините, не удалось получить ответ.")
+                quest_completed = data.get("quest_completed", False)
+                
+                logger.info(f"Answer received, length: {len(answer)}, quest_completed: {quest_completed}")
+                
+                # Format response
+                response_text = f"💬 *Люся:*\n\n{answer}\n"
+                
+                if quest_completed:
+                    response_text += "\n✅ *Квест выполнен!* Вы получили XP за задание 'Спроси Люсю'."
+                
+                await thinking_msg.edit_text(response_text, parse_mode='Markdown')
+            except Exception as json_error:
+                logger.error(f"Error parsing response JSON: {json_error}")
+                logger.error(f"Response text: {response.text[:500]}")
+                await thinking_msg.edit_text("❌ Ошибка при обработке ответа от сервера. Попробуйте позже.")
         elif response.status_code == 400:
-            error_data = response.json()
-            error_msg = error_data.get("detail", "Неверный запрос.")
-            await thinking_msg.edit_text(f"❌ {error_msg}")
+            try:
+                error_data = response.json()
+                error_msg = error_data.get("detail", "Неверный запрос.")
+                logger.warning(f"API returned 400: {error_msg}")
+                await thinking_msg.edit_text(f"❌ {error_msg}")
+            except:
+                logger.error(f"Error parsing 400 response: {response.text[:500]}")
+                await thinking_msg.edit_text("❌ Неверный запрос. Попробуйте переформулировать вопрос.")
+        elif response.status_code == 401:
+            logger.error("Unauthorized - token issue")
+            await thinking_msg.edit_text("❌ Ошибка авторизации. Попробуйте позже.")
+        elif response.status_code == 500:
+            logger.error(f"Server error: {response.text[:500]}")
+            await thinking_msg.edit_text("❌ Ошибка на сервере. Попробуйте позже или обратитесь в поддержку.")
         else:
+            logger.error(f"Unexpected status code {response.status_code}: {response.text[:500]}")
             await thinking_msg.edit_text("❌ Произошла ошибка при обработке вопроса. Попробуйте позже.")
             
+    except httpx.TimeoutException:
+        logger.error("Request timeout")
+        try:
+            await thinking_msg.edit_text("❌ Превышено время ожидания ответа. Попробуйте позже.")
+        except:
+            await update.message.reply_text("❌ Превышено время ожидания ответа. Попробуйте позже.")
+    except httpx.RequestError as e:
+        logger.error(f"Request error: {e}", exc_info=True)
+        try:
+            await thinking_msg.edit_text("❌ Ошибка подключения к серверу. Проверьте интернет-соединение.")
+        except:
+            await update.message.reply_text("❌ Ошибка подключения к серверу.")
     except Exception as e:
         logger.error(f"Error asking Lucy: {e}", exc_info=True)
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
         try:
             await thinking_msg.edit_text("❌ Произошла ошибка при обработке вопроса. Попробуйте позже.")
         except:
