@@ -446,11 +446,11 @@ async def create_transaction(
             )
         
         # Create transaction for destination account (income)
-        # Use TransactionType enum value to ensure correct case in database
+        # Use string value directly to ensure correct case in database
         to_transaction = Transaction(
             user_id=current_user.id,
             account_id=transaction_data.to_account_id,
-            transaction_type=TransactionType.INCOME,  # This will use the value "income"
+            transaction_type="income",  # Use string value directly (lowercase)
             amount=transaction_data.amount,
             currency=transaction_data.currency or account.currency,
             description=f"Перевод из {account.name}" + (f": {transaction_data.description}" if transaction_data.description else ""),
@@ -540,11 +540,12 @@ async def create_transaction(
         )
     
     # Ensure transaction_type is lowercase to match enum values in DB
+    # Use string value directly to ensure correct case in database
     transaction_type_value = transaction_data.transaction_type.lower()
     transaction = Transaction(
         user_id=current_user.id,
         account_id=final_account_id,  # Use goal's account if goal is specified
-        transaction_type=TransactionType(transaction_type_value),  # Use lowercase value
+        transaction_type=transaction_type_value,  # Use string value directly (lowercase)
         amount=transaction_data.amount,
         currency=transaction_data.currency or final_account.currency,
         category_id=transaction_data.category_id,

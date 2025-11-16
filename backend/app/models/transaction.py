@@ -22,9 +22,12 @@ class TransactionTypeEnum(TypeDecorator):
     def process_bind_param(self, value, dialect):
         if value is None:
             return None
-        # If it's an enum, use its value; if it's a string, use it directly
+        # If it's an enum, use its value; if it's a string, ensure it's lowercase
         if isinstance(value, TransactionType):
             return value.value
+        # If it's a string, ensure it's lowercase and return as-is
+        if isinstance(value, str):
+            return value.lower()
         return value
     
     def process_result_value(self, value, dialect):
