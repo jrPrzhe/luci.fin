@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
 
 interface Account {
@@ -37,6 +38,7 @@ const accountTypeIcons: Record<string, string> = {
 }
 
 export function Accounts() {
+  const navigate = useNavigate()
   const [accounts, setAccounts] = useState<Account[]>([])
   const [sharedBudgets, setSharedBudgets] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -214,36 +216,47 @@ export function Accounts() {
                 )}
               </div>
 
-              <div className="flex justify-between items-center mt-3 pt-3 border-t border-telegram-border dark:border-telegram-dark-border">
-                <div className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-                  {account.created_at && (
-                    <div>Создан: {formatDate(account.created_at)}</div>
-                  )}
-                  {account.initial_balance !== account.balance && (
-                    <div>
-                      Начальный баланс: {formatBalance(account.initial_balance, account.currency)}
-                    </div>
+              <div className="flex flex-col gap-2 mt-3 pt-3 border-t border-telegram-border dark:border-telegram-dark-border">
+                <button
+                  onClick={() => {
+                    navigate('/transactions', { state: { accountId: account.id } })
+                  }}
+                  className="w-full btn-secondary text-sm py-2"
+                >
+                  📋 История транзакций
+                </button>
+                
+                <div className="flex justify-between items-center">
+                  <div className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+                    {account.created_at && (
+                      <div>Создан: {formatDate(account.created_at)}</div>
+                    )}
+                    {account.initial_balance !== account.balance && (
+                      <div>
+                        Начальный баланс: {formatBalance(account.initial_balance, account.currency)}
+                      </div>
+                    )}
+                  </div>
+                  {!account.is_shared && (
+                    <button
+                      onClick={async () => {
+                        if (!confirm('Вы уверены, что хотите удалить этот счёт?')) {
+                          return
+                        }
+                        try {
+                          await api.deleteAccount(account.id)
+                          await loadAccounts()
+                        } catch (err: any) {
+                          setError(err.message || 'Ошибка удаления счёта')
+                        }
+                      }}
+                      className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 px-2 py-1 text-sm"
+                      title="Удалить счёт"
+                    >
+                      🗑️
+                    </button>
                   )}
                 </div>
-                {!account.is_shared && (
-                  <button
-                    onClick={async () => {
-                      if (!confirm('Вы уверены, что хотите удалить этот счёт?')) {
-                        return
-                      }
-                      try {
-                        await api.deleteAccount(account.id)
-                        await loadAccounts()
-                      } catch (err: any) {
-                        setError(err.message || 'Ошибка удаления счёта')
-                      }
-                    }}
-                    className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 px-2 py-1 text-sm"
-                    title="Удалить счёт"
-                  >
-                    🗑️
-                  </button>
-                )}
               </div>
             </div>
           ))}

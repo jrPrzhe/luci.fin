@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import { api } from '../services/api'
 
 interface Transaction {
@@ -38,6 +39,7 @@ interface Category {
 }
 
 export function Transactions() {
+  const location = useLocation()
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
   const [categories, setCategories] = useState<Category[]>([])
@@ -52,6 +54,7 @@ export function Transactions() {
   const [customEndDate, setCustomEndDate] = useState('')
   const [showDateFilter, setShowDateFilter] = useState(false)
   const [filtersExpanded, setFiltersExpanded] = useState(false)
+  const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null)
 
   const [goals, setGoals] = useState<any[]>([])
   const [hasMore, setHasMore] = useState(true)
@@ -134,10 +137,13 @@ export function Transactions() {
       const limit = 25
       const offset = reset ? 0 : transactions.length
       
+      // Use selectedAccountId if set (from navigation from Accounts page)
+      const accountIdParam = selectedAccountId || undefined
+      
       const batch = await api.getTransactions(
         limit, 
         offset, 
-        undefined, 
+        accountIdParam, 
         filterParam, 
         transactionTypeParam, 
         startDate, 
@@ -170,9 +176,24 @@ export function Transactions() {
     await loadData(false)
   }
 
+  // Check if we came from Accounts page with accountId
+  useEffect(() => {
+    const state = location.state as { accountId?: number } | null
+    if (state?.accountId) {
+      setSelectedAccountId(state.accountId)
+      // Clear state to avoid re-applying on re-render
+      window.history.replaceState({}, document.title)
+      // Load data with the account filter
+      loadData(true)
+    }
+  }, [location.state])
+
   // Load data only on initial mount
   useEffect(() => {
-    loadData()
+    // Only load if we didn't come from Accounts page (which will trigger loadData in the effect above)
+    if (!location.state || !(location.state as { accountId?: number }).accountId) {
+      loadData()
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -371,6 +392,29 @@ export function Transactions() {
       {error && (
         <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-telegram mb-4">
           {error}
+        </div>
+      )}
+
+      {/* Show selected account filter if set */}
+      {selectedAccountId && (
+        <div className="card p-3 mb-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span>📋</span>
+              <span className="text-sm text-telegram-text dark:text-telegram-dark-text">
+                Показаны транзакции по счету: <strong>{getAccountName(selectedAccountId)}</strong>
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                setSelectedAccountId(null)
+                loadData(true)
+              }}
+              className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 px-2 py-1"
+            >
+              ✕ Сбросить
+            </button>
+          </div>
         </div>
       )}
 
