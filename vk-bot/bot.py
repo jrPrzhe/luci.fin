@@ -300,8 +300,30 @@ async def start_handler(message: Message):
             t("start.important", lang)
         )
         
-        await message.answer(message_text)
-        logger.info(f"Sent start message to user {message.from_id}")
+        # Create keyboard with buttons (localized)
+        keyboard = Keyboard(one_time=False)
+        
+        # First row: Balance and Transactions
+        keyboard.add(Text(t("buttons.balance", lang), payload=json.dumps({"command": "balance"})))
+        keyboard.add(Text(t("buttons.transactions", lang), payload=json.dumps({"command": "transactions"})))
+        keyboard.row()
+        
+        # Second row: Add Expense and Add Income
+        keyboard.add(Text(t("buttons.expense", lang), payload=json.dumps({"command": "expense"})))
+        keyboard.add(Text(t("buttons.income", lang), payload=json.dumps({"command": "income"})))
+        keyboard.row()
+        
+        # Third row: Report and Goal
+        keyboard.add(Text(t("buttons.report", lang), payload=json.dumps({"command": "report"})))
+        keyboard.add(Text(t("buttons.goal", lang), payload=json.dumps({"command": "goal"})))
+        keyboard.row()
+        
+        # Fourth row: Help and Language
+        keyboard.add(Text(t("buttons.help", lang), payload=json.dumps({"command": "help"})))
+        keyboard.add(Text(t("buttons.language", lang), payload=json.dumps({"command": "language"})))
+        
+        await message.answer(message_text, keyboard=keyboard)
+        logger.info(f"Sent start message with keyboard to user {message.from_id}")
     except Exception as e:
         logger.error(f"Error in start_handler: {e}", exc_info=True)
         await message.answer("❌ Ошибка при обработке команды. Попробуйте позже.")
@@ -435,17 +457,94 @@ async def transactions_handler(message: Message):
         await message.answer(t("transactions.error", "ru"))
 
 
-# Debug handler - log all messages that don't match commands
+# Handler for button clicks (payload messages) and text commands
 # This should be last to not interfere with command handlers
 @bot.on.message()
-async def debug_handler(message: Message):
-    """Debug handler to log all incoming messages that don't match commands"""
+async def button_handler(message: Message):
+    """Handle button clicks and text commands"""
     text = message.text or ""
-    # Only log if it's not a command (doesn't start with /)
+    payload = message.payload
+    
+    # Handle button clicks (payload messages)
+    if payload:
+        try:
+            # In vkbottle, payload can be a string (JSON) or already parsed dict
+            if isinstance(payload, str):
+                try:
+                    payload_data = json.loads(payload)
+                except json.JSONDecodeError:
+                    # If it's not valid JSON, try to use it as-is
+                    logger.warning(f"Invalid JSON payload: {payload}")
+                    payload_data = {"command": payload}
+            else:
+                payload_data = payload
+            
+            command = payload_data.get("command")
+            logger.info(f"Received button click: {command} from user {message.from_id}")
+            
+            if command == "balance":
+                await balance_handler(message)
+                return
+            elif command == "transactions":
+                await transactions_handler(message)
+                return
+            elif command == "expense":
+                vk_id = str(message.from_id)
+                lang = await get_user_language(vk_id)
+                await message.answer(t("expense.title", lang) + "\n" + t("expense.select_account", lang))
+                return
+            elif command == "income":
+                vk_id = str(message.from_id)
+                lang = await get_user_language(vk_id)
+                await message.answer(t("income.title", lang) + "\n" + t("income.select_account", lang))
+                return
+            elif command == "report":
+                vk_id = str(message.from_id)
+                lang = await get_user_language(vk_id)
+                await message.answer(t("report.generating", lang))
+                return
+            elif command == "goal":
+                vk_id = str(message.from_id)
+                lang = await get_user_language(vk_id)
+                await message.answer(t("goal.enter_info", lang))
+                return
+            elif command == "help":
+                await help_handler(message)
+                return
+            elif command == "language":
+                vk_id = str(message.from_id)
+                lang = await get_user_language(vk_id)
+                await message.answer(t("language.select", lang))
+                return
+        except Exception as e:
+            logger.error(f"Error handling button payload: {e}", exc_info=True)
+            vk_id = str(message.from_id)
+            lang = await get_user_language(vk_id)
+            await message.answer(t("common.error", lang))
+            return
+    
+    # Handle text commands that don't match CommandRule
+    # Check if it's a known command without /
+    text_lower = text.lower().strip()
+    if text_lower in ["баланс", "balance"]:
+        await balance_handler(message)
+        return
+    elif text_lower in ["транзакции", "transactions"]:
+        await transactions_handler(message)
+        return
+    elif text_lower in ["помощь", "справка", "help"]:
+        await help_handler(message)
+        return
+    elif text_lower in ["начать", "старт", "start"]:
+        await start_handler(message)
+        return
+    
+    # Only log and respond to unknown non-command messages
     if not text.startswith("/") and text.strip():
-        logger.info(f"Received non-command message from {message.from_id}: {text[:100]}")
-        # Send help message for unknown commands
-        await message.answer("Я не понимаю эту команду. Используйте /help для списка команд.")
+        logger.info(f"Received unknown message from {message.from_id}: {text[:100]}")
+        vk_id = str(message.from_id)
+        lang = await get_user_language(vk_id)
+        await message.answer(t("common.unknown_command", lang))
 
 
 if __name__ == "__main__":

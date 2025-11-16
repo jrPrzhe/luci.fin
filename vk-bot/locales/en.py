@@ -51,6 +51,17 @@ en = {
         "processing": "Processing...",
         "success": "✅ Success",
         "failed": "❌ Failed",
+        "unknown_command": "I don't understand this command. Use /help for a list of commands.",
+    },
+    "buttons": {
+        "balance": "💰 Balance",
+        "transactions": "📝 Transactions",
+        "expense": "💸 Expense",
+        "income": "💰 Income",
+        "report": "📊 Report",
+        "goal": "🎯 Goal",
+        "help": "❓ Help",
+        "language": "🌍 Language",
     },
     "auth": {
         "failed": "❌ Failed to authenticate. Please register first.",
