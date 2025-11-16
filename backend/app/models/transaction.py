@@ -118,25 +118,37 @@ class Transaction(Base):
     
     def __init__(self, **kwargs):
         # Ensure transaction_type is always lowercase string before setting
+        # This runs BEFORE SQLAlchemy processes the value
         if 'transaction_type' in kwargs:
             value = kwargs['transaction_type']
             if isinstance(value, TransactionType):
-                kwargs['transaction_type'] = value.value
+                kwargs['transaction_type'] = value.value  # Use lowercase string value
             elif isinstance(value, str):
-                kwargs['transaction_type'] = value.lower()
+                kwargs['transaction_type'] = value.lower()  # Ensure lowercase
+            else:
+                # Convert any other type to lowercase string
+                kwargs['transaction_type'] = str(value).lower() if value else None
         super().__init__(**kwargs)
+        # After super().__init__, ensure value is still lowercase string in __dict__
+        if 'transaction_type' in self.__dict__:
+            current_value = self.__dict__['transaction_type']
+            if isinstance(current_value, TransactionType):
+                self.__dict__['transaction_type'] = current_value.value
+            elif isinstance(current_value, str):
+                self.__dict__['transaction_type'] = current_value.lower()
     
     @validates('transaction_type')
     def validate_transaction_type(self, key, value):
         """Ensure transaction_type is always lowercase string"""
         if value is None:
             return None
-        # Convert to lowercase string
+        # Convert to lowercase string - NEVER return enum, always return string
         if isinstance(value, TransactionType):
-            return value.value
+            return value.value  # Return lowercase string value
         elif isinstance(value, str):
-            return value.lower()
-        return value
+            return value.lower()  # Ensure lowercase
+        # For any other type, convert to string and lowercase
+        return str(value).lower() if value else None
     
     def __repr__(self):
         return f"<Transaction(id={self.id}, type={self.transaction_type}, amount={self.amount})>"

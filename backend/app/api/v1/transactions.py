@@ -456,9 +456,16 @@ async def create_transaction(
             description=f"Перевод из {account.name}" + (f": {transaction_data.description}" if transaction_data.description else ""),
             transaction_date=transaction_data.transaction_date or datetime.utcnow()
         )
-        # Force set transaction_type as lowercase string to ensure correct value
-        object.__setattr__(to_transaction, 'transaction_type', "income")
+        # Force set transaction_type as lowercase string before adding to session
+        to_transaction.__dict__['transaction_type'] = "income"
+        setattr(to_transaction, 'transaction_type', "income")
         db.add(to_transaction)
+        
+        # After adding to session, ensure value is still lowercase using SQLAlchemy inspect
+        from sqlalchemy import inspect as sa_inspect
+        to_insp = sa_inspect(to_transaction)
+        if hasattr(to_insp, 'attrs') and 'transaction_type' in to_insp.attrs:
+            to_insp.attrs.transaction_type.value = "income"
     
     # Validate shared_budget_id if provided
     shared_budget = None
@@ -566,22 +573,35 @@ async def create_transaction(
         goal_id=transaction_data.goal_id
     )
     
-    # Force set transaction_type as lowercase string to ensure correct value
-    # This bypasses any enum conversion that might happen
-    object.__setattr__(transaction, 'transaction_type', transaction_type_value)
+    # Force set transaction_type as lowercase string before adding to session
+    # Use both __dict__ and setattr to ensure value is set correctly
+    transaction.__dict__['transaction_type'] = transaction_type_value
+    setattr(transaction, 'transaction_type', transaction_type_value)
     
     db.add(transaction)
+    
+    # After adding to session, ensure value is still lowercase using SQLAlchemy inspect
+    from sqlalchemy import inspect as sa_inspect
+    insp = sa_inspect(transaction)
+    if hasattr(insp, 'attrs') and 'transaction_type' in insp.attrs:
+        insp.attrs.transaction_type.value = transaction_type_value
     
     # Для transfer также нужно обновить баланс получателя
     if transaction_data.transaction_type == "transfer" and to_transaction:
         try:
-            # Ensure both transactions have lowercase string values before commit
-            # Force set the attribute directly to ensure lowercase (bypass SQLAlchemy's attribute handling)
-            object.__setattr__(transaction, 'transaction_type', transaction_type_value)
-            object.__setattr__(to_transaction, 'transaction_type', "income")
-            db.commit()  # Коммитим обе транзакции вместе
+            # For transfers, commit transactions separately to avoid bulk insert issues
+            # First commit the source transaction (transfer)
+            transaction.__dict__['transaction_type'] = transaction_type_value
+            db.flush()  # Flush to ensure TypeDecorator processes the value
+            db.commit()
             db.refresh(transaction)
+            
+            # Then commit the destination transaction (income)
+            to_transaction.__dict__['transaction_type'] = "income"
+            db.flush()  # Flush to ensure TypeDecorator processes the value
+            db.commit()
             db.refresh(to_transaction)
+            
             logger.info(f"Transfer created: source transaction {transaction.id}, destination transaction {to_transaction.id}")
         except Exception as e:
             logger.error(f"Error creating transfer transactions: {e}", exc_info=True)

@@ -3,6 +3,10 @@
 ## ✅ Что было исправлено
 
 1. **Создание транзакций** - исправлена проблема с enum (INCOME/EXPENSE/TRANSFER → income/expense/transfer)
+   - Улучшен `TransactionTypeEnum` TypeDecorator для правильной конвертации
+   - Добавлена установка значения через `__dict__`, `setattr` и SQLAlchemy inspect API
+   - Для переводов используются отдельные коммиты вместо bulk insert
+   - Улучшены `__init__` и `@validates` методы в модели Transaction
 2. **Эндпоинт категорий** - исправлена обработка параметра transaction_type
 3. **TypeDecorator** - улучшена конвертация enum значений в lowercase
 
