@@ -107,6 +107,16 @@ class Transaction(Base):
     shared_budget = relationship("SharedBudget", back_populates="transactions")
     goal = relationship("Goal", backref="transactions")
     
+    def __init__(self, **kwargs):
+        # Ensure transaction_type is always lowercase string before setting
+        if 'transaction_type' in kwargs:
+            value = kwargs['transaction_type']
+            if isinstance(value, TransactionType):
+                kwargs['transaction_type'] = value.value
+            elif isinstance(value, str):
+                kwargs['transaction_type'] = value.lower()
+        super().__init__(**kwargs)
+    
     @validates('transaction_type')
     def validate_transaction_type(self, key, value):
         """Ensure transaction_type is always lowercase string"""
