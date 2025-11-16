@@ -644,8 +644,19 @@ async def create_transaction(
         transaction.__dict__['transaction_type'] = transaction_type_value
         
         db.add(transaction)
-        db.commit()
-        db.refresh(transaction)
+        try:
+            db.commit()
+            db.refresh(transaction)
+            # Ensure account relationship is loaded
+            if not hasattr(transaction, 'account') or transaction.account is None:
+                transaction.account = final_account
+        except Exception as e:
+            logger.error(f"Error committing transaction: {e}", exc_info=True)
+            db.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to create transaction: {str(e)}"
+            )
     
     # If transaction is on goal's account, sync goal with account balance
     if goal_account_id:
@@ -769,11 +780,16 @@ async def create_transaction(
     logger.info(f"Transaction created: id={transaction.id}, user_id={transaction.user_id}, account_id={transaction.account_id}, goal_id={transaction_data.goal_id}")
     
     # Build response manually to ensure transaction_type is lowercase string
+    # Get account info using raw SQL to avoid relationship loading issues
+    from sqlalchemy import text as sa_text
+    account_sql = "SELECT shared_budget_id FROM accounts WHERE id = :account_id"
+    account_result = db.execute(sa_text(account_sql), {"account_id": transaction.account_id}).first()
+    is_shared = account_result[0] is not None if account_result else False
+    
     # Get category and goal names if needed
     category_name = None
     category_icon = None
     if transaction.category_id:
-        from sqlalchemy import text as sa_text
         cat_sql = "SELECT name, icon FROM categories WHERE id = :cat_id"
         cat_result = db.execute(sa_text(cat_sql), {"cat_id": transaction.category_id}).first()
         if cat_result:
@@ -814,7 +830,7 @@ async def create_transaction(
         "created_at": transaction.created_at,
         "updated_at": transaction.updated_at,
         "user_id": transaction.user_id,
-        "is_shared": (transaction.account.shared_budget_id is not None) if (hasattr(transaction, 'account') and transaction.account) else False,
+        "is_shared": is_shared,
         "gamification": gamification_info
     }
     
