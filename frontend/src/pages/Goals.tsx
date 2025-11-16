@@ -86,15 +86,35 @@ export function Goals() {
               return (
                 <div
                   key={goal.id}
-                  onClick={() => setSelectedGoal(goal)}
-                  className="relative bg-gradient-to-br from-telegram-surface dark:from-telegram-dark-surface to-telegram-surface/80 dark:to-telegram-dark-surface/80 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer border border-telegram-border dark:border-telegram-dark-border transform hover:scale-[1.02]"
+                  className="relative bg-gradient-to-br from-telegram-surface dark:from-telegram-dark-surface to-telegram-surface/80 dark:to-telegram-dark-surface/80 rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 border border-telegram-border dark:border-telegram-dark-border transform hover:scale-[1.02]"
                 >
-                  {/* Game Level Badge */}
-                  <div className="absolute top-4 right-4">
+                  {/* Game Level Badge and Delete Button */}
+                  <div className="absolute top-4 right-4 flex items-center gap-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (confirm('Вы уверены, что хотите удалить эту цель?')) {
+                          api.deleteGoal(goal.id).then(() => {
+                            queryClient.invalidateQueries({ queryKey: ['goals'] })
+                          }).catch((err: any) => {
+                            alert(err.message || 'Ошибка при удалении цели')
+                          })
+                        }
+                      }}
+                      className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 p-1 hover:bg-red-50 dark:hover:bg-red-900/30 rounded"
+                      title="Удалить цель"
+                    >
+                      🗑️
+                    </button>
                     <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold px-3 py-1 rounded-full">
                       Уровень {Math.floor(goal.progress_percentage / 25) + 1}
                     </div>
                   </div>
+                  
+                  <div
+                    onClick={() => setSelectedGoal(goal)}
+                    className="cursor-pointer"
+                  >
 
                   {/* Goal Name */}
                   <h3 className="text-xl font-bold text-telegram-text dark:text-telegram-dark-text mb-2 pr-20">
@@ -160,6 +180,7 @@ export function Goals() {
                   {goal.progress_percentage >= 75 && (
                     <div className="absolute top-2 left-2 text-2xl animate-pulse">✨</div>
                   )}
+                  </div>
                 </div>
               )
             })}

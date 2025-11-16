@@ -237,25 +237,23 @@ export function Accounts() {
                       </div>
                     )}
                   </div>
-                  {!account.is_shared && (
-                    <button
-                      onClick={async () => {
-                        if (!confirm('Вы уверены, что хотите удалить этот счёт?')) {
-                          return
-                        }
-                        try {
-                          await api.deleteAccount(account.id)
-                          await loadAccounts()
-                        } catch (err: any) {
-                          setError(err.message || 'Ошибка удаления счёта')
-                        }
-                      }}
-                      className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 px-2 py-1 text-sm"
-                      title="Удалить счёт"
-                    >
-                      🗑️
-                    </button>
-                  )}
+                  <button
+                    onClick={async () => {
+                      if (!confirm('Вы уверены, что хотите удалить этот счёт?')) {
+                        return
+                      }
+                      try {
+                        await api.deleteAccount(account.id)
+                        await loadAccounts()
+                      } catch (err: any) {
+                        setError(err.message || 'Ошибка удаления счёта')
+                      }
+                    }}
+                    className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 px-2 py-1 text-sm"
+                    title="Удалить счёт"
+                  >
+                    🗑️
+                  </button>
                 </div>
               </div>
             </div>
