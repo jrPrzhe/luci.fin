@@ -9,6 +9,7 @@ import { Garland } from './Garland'
 import { useNewYearTheme } from '../contexts/NewYearContext'
 import { useTheme } from '../hooks/useTheme'
 import { useI18n } from '../contexts/I18nContext'
+import { QuestNotifications } from './QuestNotifications'
 
 export function Layout() {
   const navigate = useNavigate()
@@ -22,7 +23,7 @@ export function Layout() {
   const isMiniApp = isTelegramWebApp()
   const { isEnabled: newYearEnabled } = useNewYearTheme()
   const { theme, toggleTheme } = useTheme()
-  const { language, setLanguage, t } = useI18n()
+  const { t } = useI18n()
 
   // Предзагрузка изображений для Stories при монтировании компонента
   useEffect(() => {
@@ -384,31 +385,8 @@ export function Layout() {
                       </h1>
           </div>
           <div className="flex items-center gap-2">
-            {/* Language Toggle */}
-            <div className="flex gap-1 bg-telegram-hover dark:bg-telegram-dark-hover rounded-telegram p-1">
-              <button
-                onClick={() => setLanguage('ru')}
-                className={`px-2 py-1 rounded-telegram text-xs font-medium transition-colors ${
-                  language === 'ru'
-                    ? 'bg-telegram-primary text-white dark:bg-telegram-dark-primary'
-                    : 'text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text'
-                }`}
-                title="Русский"
-              >
-                🇷🇺
-              </button>
-              <button
-                onClick={() => setLanguage('en')}
-                className={`px-2 py-1 rounded-telegram text-xs font-medium transition-colors ${
-                  language === 'en'
-                    ? 'bg-telegram-primary text-white dark:bg-telegram-dark-primary'
-                    : 'text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text'
-                }`}
-                title="English"
-              >
-                🇬🇧
-              </button>
-            </div>
+            {/* Quest Notifications */}
+            <QuestNotifications variant="header" />
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}

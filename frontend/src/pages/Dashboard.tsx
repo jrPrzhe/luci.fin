@@ -7,6 +7,7 @@ import { GamificationStatus } from '../components/GamificationStatus'
 import { DailyQuestsCompact } from '../components/DailyQuestsCompact'
 import { AchievementModal } from '../components/AchievementModal'
 import { LevelUpModal } from '../components/LevelUpModal'
+import { QuestNotifications } from '../components/QuestNotifications'
 
 interface Account {
   id: number
@@ -348,13 +349,21 @@ export function Dashboard() {
   return (
     <div className="min-h-screen animate-fade-in w-full">
       {/* Header - скрыт на мобильных, так как есть в Layout */}
-      <div className="mb-4 md:mb-6 hidden md:block">
-        <h1 className="text-2xl font-semibold text-telegram-text dark:text-telegram-dark-text mb-1">
-          {t.dashboard.title}
-        </h1>
-        <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-          {t.dashboard.subtitle}
-        </p>
+      <div className="mb-4 md:mb-6 hidden md:flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-telegram-text dark:text-telegram-dark-text mb-1">
+            {t.dashboard.title}
+          </h1>
+          <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+            {t.dashboard.subtitle}
+          </p>
+        </div>
+        <QuestNotifications variant="dashboard" />
+      </div>
+      
+      {/* Mobile: иконка уведомлений в верхнем правом углу */}
+      <div className="mb-4 md:hidden flex justify-end">
+        <QuestNotifications variant="dashboard" />
       </div>
 
       {/* Balance Card - Hero */}
