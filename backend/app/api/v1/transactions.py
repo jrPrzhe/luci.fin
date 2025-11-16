@@ -625,33 +625,60 @@ async def create_transaction(
                 detail=f"Failed to create transfer: {str(e)}"
             )
     else:
-        # For non-transfer transactions, use ORM but ensure transaction_type is lowercase
-        transaction = Transaction(
-            user_id=current_user.id,
-            account_id=final_account_id,  # Use goal's account if goal is specified
-            transaction_type=transaction_type_value,  # Use lowercase string value
-            amount=transaction_data.amount,
-            currency=transaction_data.currency or final_account.currency,
-            category_id=transaction_data.category_id,
-            description=transaction_data.description,
-            transaction_date=transaction_data.transaction_date or datetime.utcnow(),
-            to_account_id=None,
-            shared_budget_id=transaction_data.shared_budget_id,
-            goal_id=transaction_data.goal_id
-        )
-        
-        # Force transaction_type to be lowercase string in __dict__
-        transaction.__dict__['transaction_type'] = transaction_type_value
-        
-        db.add(transaction)
+        # For non-transfer transactions, use raw SQL to avoid enum issues
         try:
+            from sqlalchemy import text as sa_text
+            
+            # Insert transaction using raw SQL with lowercase transaction_type
+            transaction_sql = """
+                INSERT INTO transactions 
+                (user_id, account_id, transaction_type, amount, currency, category_id, description, transaction_date, shared_budget_id, goal_id)
+                VALUES 
+                (:user_id, :account_id, :transaction_type, :amount, :currency, :category_id, :description, :transaction_date, :shared_budget_id, :goal_id)
+                RETURNING id, created_at, updated_at
+            """
+            transaction_params = {
+                "user_id": current_user.id,
+                "account_id": final_account_id,
+                "transaction_type": transaction_type_value,  # lowercase
+                "amount": transaction_data.amount,
+                "currency": transaction_data.currency or final_account.currency,
+                "category_id": transaction_data.category_id,
+                "description": transaction_data.description,
+                "transaction_date": transaction_data.transaction_date or datetime.utcnow(),
+                "shared_budget_id": transaction_data.shared_budget_id,
+                "goal_id": transaction_data.goal_id
+            }
+            result = db.execute(sa_text(transaction_sql), transaction_params)
+            row = result.first()
+            transaction_id = row[0]
+            transaction_created_at = row[1]
+            transaction_updated_at = row[2]
+            
             db.commit()
-            db.refresh(transaction)
-            # Ensure account relationship is loaded
-            if not hasattr(transaction, 'account') or transaction.account is None:
-                transaction.account = final_account
+            
+            # Create Transaction object for response
+            transaction = Transaction(
+                id=transaction_id,
+                user_id=current_user.id,
+                account_id=final_account_id,
+                transaction_type=transaction_type_value,
+                amount=transaction_data.amount,
+                currency=transaction_data.currency or final_account.currency,
+                category_id=transaction_data.category_id,
+                description=transaction_data.description,
+                transaction_date=transaction_data.transaction_date or datetime.utcnow(),
+                to_account_id=None,
+                shared_budget_id=transaction_data.shared_budget_id,
+                goal_id=transaction_data.goal_id,
+                created_at=transaction_created_at,
+                updated_at=transaction_updated_at
+            )
+            transaction.account = final_account  # Set for is_shared check
+            
+            logger.info(f"Transaction created: id={transaction_id}, type={transaction_type_value}")
         except Exception as e:
-            logger.error(f"Error committing transaction: {e}", exc_info=True)
+            logger.error(f"Error creating transaction: {e}", exc_info=True)
             db.rollback()
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
