@@ -204,7 +204,25 @@ export function Goals() {
                   <h3 className="text-xl font-bold text-telegram-text dark:text-telegram-dark-text">
                     {goal.name}
                   </h3>
-                  <span className="text-3xl">🎉</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        if (confirm('Вы уверены, что хотите удалить эту цель?')) {
+                          api.deleteGoal(goal.id).then(() => {
+                            queryClient.invalidateQueries({ queryKey: ['goals'] })
+                          }).catch((err: any) => {
+                            alert(err.message || 'Ошибка при удалении цели')
+                          })
+                        }
+                      }}
+                      className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 p-1 hover:bg-red-50 dark:hover:bg-red-900/30 rounded"
+                      title="Удалить цель"
+                    >
+                      🗑️
+                    </button>
+                    <span className="text-3xl">🎉</span>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2 text-green-600 dark:text-green-400 font-semibold">
                   <span>✅ Достигнуто</span>
