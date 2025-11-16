@@ -9,14 +9,16 @@ class AIAssistant:
     def __init__(self):
         if settings.GOOGLE_AI_API_KEY:
             genai.configure(api_key=settings.GOOGLE_AI_API_KEY)
+            import logging
+            logger = logging.getLogger(__name__)
+            
             # Пробуем использовать доступные модели Gemini
-            # Для v1beta API правильные имена моделей:
-            # - models/gemini-pro (старая модель, но работает)
-            # - models/gemini-1.5-pro-latest (новая модель)
-            # - models/gemini-1.5-flash-latest (быстрая модель)
-            # Но GenerativeModel принимает имя без префикса "models/"
+            # Для новой версии google-generativeai (>=0.8.0) доступны новые модели
+            # Для старой версии (0.3.0) работает только gemini-pro
             models_to_try = [
-                'gemini-pro',  # Стандартная модель, должна работать
+                'gemini-1.5-flash',  # Быстрая модель (для новой версии API)
+                'gemini-1.5-pro',   # Мощная модель (для новой версии API)
+                'gemini-pro',        # Стандартная модель (fallback для старой версии)
             ]
             
             self.client = None
@@ -24,20 +26,15 @@ class AIAssistant:
                 try:
                     # Создаем модель - это не делает запрос, только инициализирует
                     self.client = genai.GenerativeModel(model_name)
-                    import logging
-                    logger = logging.getLogger(__name__)
                     logger.info(f"Using Gemini model: {model_name}")
                     break
                 except Exception as e:
-                    import logging
-                    logger = logging.getLogger(__name__)
                     logger.warning(f"Model {model_name} not available: {e}")
                     continue
             
             if not self.client:
-                import logging
-                logger = logging.getLogger(__name__)
                 logger.error("No available Gemini models found. AI features will be disabled.")
+                logger.error("Consider updating google-generativeai package to latest version")
         else:
             self.client = None
     
