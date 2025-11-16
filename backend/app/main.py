@@ -374,6 +374,85 @@ async def health_check():
     return {"status": "healthy"}
 
 
+@app.get("/api/v1/check-migrations")
+async def check_migrations():
+    """Check database migrations and enum status"""
+    from sqlalchemy import text
+    from app.core.database import engine
+    
+    result = {
+        "alembic_version": None,
+        "enum_values": [],
+        "sample_transactions": [],
+        "status": "ok"
+    }
+    
+    try:
+        with engine.connect() as conn:
+            # Check alembic version
+            try:
+                version_result = conn.execute(text("SELECT version_num FROM alembic_version"))
+                version = version_result.fetchone()
+                if version:
+                    result["alembic_version"] = version[0]
+                else:
+                    result["alembic_version"] = "No version found"
+            except Exception as e:
+                result["alembic_version"] = f"Error: {str(e)}"
+            
+            # Check transactiontype enum values
+            try:
+                enum_result = conn.execute(text("""
+                    SELECT enumlabel 
+                    FROM pg_enum 
+                    WHERE enumtypid = (SELECT oid FROM pg_type WHERE typname = 'transactiontype')
+                    ORDER BY enumsortorder
+                """))
+                enum_values = enum_result.fetchall()
+                result["enum_values"] = [row[0] for row in enum_values]
+            except Exception as e:
+                result["enum_values"] = [f"Error: {str(e)}"]
+            
+            # Check sample transactions
+            try:
+                trans_result = conn.execute(text("""
+                    SELECT id, transaction_type::text, amount, description 
+                    FROM transactions 
+                    ORDER BY id DESC 
+                    LIMIT 5
+                """))
+                transactions = trans_result.fetchall()
+                result["sample_transactions"] = [
+                    {
+                        "id": row[0],
+                        "transaction_type": row[1],
+                        "amount": float(row[2]) if row[2] else 0,
+                        "description": row[3][:50] if row[3] else None
+                    }
+                    for row in transactions
+                ]
+            except Exception as e:
+                result["sample_transactions"] = [f"Error: {str(e)}"]
+        
+        # Check if enum values are in correct case
+        if result["enum_values"]:
+            has_uppercase = any(v.isupper() for v in result["enum_values"] if isinstance(v, str))
+            if has_uppercase:
+                result["status"] = "warning"
+                result["message"] = "Enum values are in uppercase. Migration 9fae3a73c9e6 needs to be applied."
+            else:
+                result["status"] = "ok"
+                result["message"] = "Enum values are in lowercase (correct)."
+        
+    except Exception as e:
+        result["status"] = "error"
+        result["error"] = str(e)
+        import traceback
+        result["traceback"] = traceback.format_exc()
+    
+    return result
+
+
 # Import and include routers
 print("[STARTUP] Importing routers...", file=sys.stderr, flush=True)
 try:

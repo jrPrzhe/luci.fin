@@ -2,7 +2,27 @@
 
 ## Как проверить, какие миграции применены
 
-### Вариант 1: Через Railway CLI
+### Вариант 1: Через API endpoint (РЕКОМЕНДУЕТСЯ)
+
+После деплоя откройте в браузере или через curl:
+
+```
+https://ВАШ_БЭКЕНД_URL/api/v1/check-migrations
+```
+
+Или через curl:
+```bash
+curl https://ВАШ_БЭКЕНД_URL/api/v1/check-migrations
+```
+
+Endpoint вернет JSON с информацией:
+- `alembic_version` - текущая версия миграции
+- `enum_values` - значения enum transactiontype
+- `sample_transactions` - примеры транзакций
+- `status` - статус (ok/warning/error)
+- `message` - сообщение о состоянии
+
+### Вариант 2: Через Railway CLI
 
 ```bash
 # Подключитесь к Railway
@@ -12,11 +32,11 @@ railway link
 railway run python backend/check_migrations.py
 ```
 
-### Вариант 2: Через Railway Dashboard
+### Вариант 3: Через Railway Dashboard (если доступен Console)
 
 1. Откройте Backend сервис в Railway
 2. Перейдите в **Deployments** → последний деплой
-3. Откройте **Shell/Console**
+3. Откройте **Shell/Console** (если доступен)
 4. Выполните:
    ```bash
    cd backend
