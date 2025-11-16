@@ -374,7 +374,7 @@ export function Dashboard() {
             💰
           </div>
         </div>
-        <div className="flex gap-2 md:gap-4 text-xs md:text-sm">
+        <div className="flex gap-2 md:gap-4 text-xs md:text-sm mb-3 md:mb-4">
           <div className="flex-1 bg-white/10 rounded-telegram p-2 md:p-3 backdrop-blur-sm">
             <p className="opacity-80 mb-1">{t.dashboard.income}</p>
             {monthlyStatsLoading ? (
@@ -395,6 +395,46 @@ export function Dashboard() {
               </p>
             )}
           </div>
+        </div>
+        
+        {/* Quick Actions - внутри блока баланса */}
+        <div className="grid grid-cols-4 gap-2 md:gap-3 pt-2 md:pt-3 border-t border-white/20">
+          <button 
+            onClick={() => handleQuickAction('expense')}
+            className="flex flex-col items-center gap-1 md:gap-1.5 p-2 md:p-3 rounded-telegram bg-white/10 hover:bg-white/20 active:scale-[0.98] transition-all group"
+          >
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white/20 flex items-center justify-center text-lg md:text-xl group-active:bg-white/30 transition-colors">
+              ➖
+            </div>
+            <span className="text-xs font-medium text-white/90">{t.dashboard.quickActions.expense}</span>
+          </button>
+          <button 
+            onClick={() => handleQuickAction('income')}
+            className="flex flex-col items-center gap-1 md:gap-1.5 p-2 md:p-3 rounded-telegram bg-white/10 hover:bg-white/20 active:scale-[0.98] transition-all group"
+          >
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white/20 flex items-center justify-center text-lg md:text-xl group-active:bg-white/30 transition-colors">
+              ➕
+            </div>
+            <span className="text-xs font-medium text-white/90">{t.dashboard.quickActions.income}</span>
+          </button>
+          <button 
+            onClick={() => handleQuickAction('transfer')}
+            className="flex flex-col items-center gap-1 md:gap-1.5 p-2 md:p-3 rounded-telegram bg-white/10 hover:bg-white/20 active:scale-[0.98] transition-all group"
+          >
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white/20 flex items-center justify-center text-lg md:text-xl group-active:bg-white/30 transition-colors">
+              🔄
+            </div>
+            <span className="text-xs font-medium text-white/90">{t.dashboard.quickActions.transfer}</span>
+          </button>
+          <button 
+            onClick={() => navigate('/categories')}
+            className="flex flex-col items-center gap-1 md:gap-1.5 p-2 md:p-3 rounded-telegram bg-white/10 hover:bg-white/20 active:scale-[0.98] transition-all group"
+          >
+            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white/20 flex items-center justify-center text-lg md:text-xl group-active:bg-white/30 transition-colors">
+              📦
+            </div>
+            <span className="text-xs font-medium text-white/90">{t.dashboard.quickActions.categories}</span>
+          </button>
         </div>
       </div>
 
@@ -426,46 +466,6 @@ export function Dashboard() {
           onClose={() => setLevelUp(null)}
         />
       )}
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-4 gap-2 md:gap-3 mb-4 md:mb-6">
-        <button 
-          onClick={() => handleQuickAction('expense')}
-          className="card-compact flex flex-col items-center gap-1.5 md:gap-2 p-3 md:p-4 group active:scale-[0.98] transition-transform"
-        >
-          <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-telegram-danger/10 flex items-center justify-center text-xl md:text-2xl group-active:bg-telegram-danger/20 transition-colors">
-            ➖
-          </div>
-          <span className="text-xs md:text-sm font-medium text-telegram-text dark:text-telegram-dark-text">{t.dashboard.quickActions.expense}</span>
-        </button>
-        <button 
-          onClick={() => handleQuickAction('income')}
-          className="card-compact flex flex-col items-center gap-1.5 md:gap-2 p-3 md:p-4 group active:scale-[0.98] transition-transform"
-        >
-          <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-telegram-success/10 dark:bg-telegram-success/20 flex items-center justify-center text-xl md:text-2xl group-active:bg-telegram-success/20 dark:group-active:bg-telegram-success/30 transition-colors">
-            ➕
-          </div>
-          <span className="text-xs md:text-sm font-medium text-telegram-text dark:text-telegram-dark-text">{t.dashboard.quickActions.income}</span>
-        </button>
-        <button 
-          onClick={() => handleQuickAction('transfer')}
-          className="card-compact flex flex-col items-center gap-1.5 md:gap-2 p-3 md:p-4 group active:scale-[0.98] transition-transform"
-        >
-          <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-telegram-primaryLight/20 dark:bg-telegram-dark-primaryLight/20 flex items-center justify-center text-xl md:text-2xl group-active:bg-telegram-primaryLight/30 dark:group-active:bg-telegram-dark-primaryLight/30 transition-colors">
-            🔄
-          </div>
-          <span className="text-xs md:text-sm font-medium text-telegram-text dark:text-telegram-dark-text">{t.dashboard.quickActions.transfer}</span>
-        </button>
-        <button 
-          onClick={() => navigate('/categories')}
-          className="card-compact flex flex-col items-center gap-1.5 md:gap-2 p-3 md:p-4 group active:scale-[0.98] transition-transform"
-        >
-          <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-telegram-primary/10 dark:bg-telegram-primary/20 flex items-center justify-center text-xl md:text-2xl group-active:bg-telegram-primary/20 dark:group-active:bg-telegram-primary/30 transition-colors">
-            📦
-          </div>
-          <span className="text-xs md:text-sm font-medium text-telegram-text dark:text-telegram-dark-text">{t.dashboard.quickActions.categories}</span>
-        </button>
-      </div>
 
       {/* Quick Form Modal */}
       {showQuickForm && quickFormType && (
