@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy import cast, String, or_, func
 from typing import List, Optional
 from app.core.database import get_db
 from app.api.v1.auth import get_current_user
@@ -20,7 +21,6 @@ async def get_categories(
     db: Session = Depends(get_db)
 ):
     """Get user's categories and optionally shared budget categories"""
-    from sqlalchemy import or_
     from app.models.shared_budget import SharedBudgetMember
     
     # Base query for user's own categories
@@ -81,11 +81,15 @@ async def get_categories(
         # Convert string to enum value (lowercase) for comparison
         transaction_type_lower = transaction_type.lower()
         try:
-            # Try to convert to enum
+            # Validate transaction type
             trans_type_enum = TransactionType(transaction_type_lower)
+            # Use cast to text and compare as lowercase string to avoid enum comparison issues
+            # The database enum has lowercase values, so we compare as text
             query = query.filter(
-                (Category.transaction_type == trans_type_enum) | 
-                (Category.transaction_type == TransactionType.BOTH)
+                or_(
+                    func.lower(cast(Category.transaction_type, String)) == transaction_type_lower,
+                    func.lower(cast(Category.transaction_type, String)) == 'both'
+                )
             )
         except ValueError:
             # If invalid transaction type, return empty list

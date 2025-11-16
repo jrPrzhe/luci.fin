@@ -40,8 +40,19 @@ class TransactionTypeEnum(TypeDecorator):
         if value is None:
             return None
         # Convert string value back to enum
+        # Handle both uppercase (from old DB) and lowercase (from new DB) values
         if isinstance(value, str):
-            return TransactionType(value.lower())
+            value_lower = value.lower()
+            # Map uppercase database values to lowercase enum values
+            if value_lower == 'income':
+                return TransactionType.INCOME
+            elif value_lower == 'expense':
+                return TransactionType.EXPENSE
+            elif value_lower == 'transfer':
+                return TransactionType.TRANSFER
+            else:
+                # Try to create enum directly (will raise ValueError if invalid)
+                return TransactionType(value_lower)
         return TransactionType(value)
 
 

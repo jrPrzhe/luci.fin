@@ -446,18 +446,16 @@ async def create_transaction(
             )
         
         # Create transaction for destination account (income)
-        # Use string value directly to ensure correct case in database
+        # Use lowercase string value directly to ensure correct case in database
         to_transaction = Transaction(
             user_id=current_user.id,
             account_id=transaction_data.to_account_id,
-            transaction_type="income",  # Use string value directly (lowercase)
+            transaction_type="income",  # Use lowercase string value
             amount=transaction_data.amount,
             currency=transaction_data.currency or account.currency,
             description=f"Перевод из {account.name}" + (f": {transaction_data.description}" if transaction_data.description else ""),
             transaction_date=transaction_data.transaction_date or datetime.utcnow()
         )
-        # Force set transaction_type as lowercase string before adding to session
-        to_transaction.__dict__['transaction_type'] = "income"
         db.add(to_transaction)
     
     # Validate shared_budget_id if provided
@@ -552,10 +550,12 @@ async def create_transaction(
             detail=f"Invalid transaction_type: {transaction_data.transaction_type}. Must be 'income', 'expense', or 'transfer'"
         )
     
+    # Create transaction with lowercase transaction_type string value
+    # The Transaction model's __init__ and validates methods will ensure it stays lowercase
     transaction = Transaction(
         user_id=current_user.id,
         account_id=final_account_id,  # Use goal's account if goal is specified
-        transaction_type=transaction_type_value,  # Use string value directly (lowercase)
+        transaction_type=transaction_type_value,  # Use lowercase string value
         amount=transaction_data.amount,
         currency=transaction_data.currency or final_account.currency,
         category_id=transaction_data.category_id,
@@ -566,18 +566,13 @@ async def create_transaction(
         goal_id=transaction_data.goal_id
     )
     
-    # Force set transaction_type as lowercase string before adding to session
-    transaction.__dict__['transaction_type'] = transaction_type_value
-    
     db.add(transaction)
     
     # Для transfer также нужно обновить баланс получателя
     if transaction_data.transaction_type == "transfer" and to_transaction:
         try:
-            # Ensure both transactions have lowercase string values
-            transaction.__dict__['transaction_type'] = transaction_type_value
-            to_transaction.__dict__['transaction_type'] = "income"
             # Commit both transactions together
+            # Both transactions already have lowercase transaction_type values from __init__
             db.commit()
             db.refresh(transaction)
             db.refresh(to_transaction)
