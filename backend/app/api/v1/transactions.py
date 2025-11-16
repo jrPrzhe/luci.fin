@@ -541,40 +541,44 @@ async def create_transaction(
             detail=f"Invalid transaction_type: {transaction_data.transaction_type}. Must be 'income', 'expense', or 'transfer'"
         )
     
-    # Create transaction with lowercase transaction_type string value
-    # The Transaction model's __init__ and validates methods will ensure it stays lowercase
-    transaction = Transaction(
-        user_id=current_user.id,
-        account_id=final_account_id,  # Use goal's account if goal is specified
-        transaction_type=transaction_type_value,  # Use lowercase string value
-        amount=transaction_data.amount,
-        currency=transaction_data.currency or final_account.currency,
-        category_id=transaction_data.category_id,
-        description=transaction_data.description,
-        transaction_date=transaction_data.transaction_date or datetime.utcnow(),
-        to_account_id=transaction_data.to_account_id if transaction_data.transaction_type == "transfer" else None,
-        shared_budget_id=transaction_data.shared_budget_id,
-        goal_id=transaction_data.goal_id
-    )
-    
-    db.add(transaction)
-    
-    # Для transfer также нужно обновить баланс получателя
+    # For transfers, use raw SQL to avoid enum issues completely
     if transaction_data.transaction_type == "transfer" and to_transaction:
         try:
-            # Use raw SQL to insert both transactions to avoid enum issues
-            # First commit the source transaction (transfer)
-            db.commit()
-            db.refresh(transaction)
-            
-            # Then insert destination transaction using raw SQL
             from sqlalchemy import text as sa_text
+            
+            # Insert source transaction (transfer) using raw SQL
+            source_transaction_sql = """
+                INSERT INTO transactions 
+                (user_id, account_id, transaction_type, amount, currency, description, transaction_date, to_account_id, shared_budget_id, goal_id)
+                VALUES 
+                (:user_id, :account_id, :transaction_type, :amount, :currency, :description, :transaction_date, :to_account_id, :shared_budget_id, :goal_id)
+                RETURNING id, created_at, updated_at
+            """
+            source_params = {
+                "user_id": current_user.id,
+                "account_id": final_account_id,
+                "transaction_type": "transfer",  # lowercase
+                "amount": transaction_data.amount,
+                "currency": transaction_data.currency or final_account.currency,
+                "description": transaction_data.description,
+                "transaction_date": transaction_data.transaction_date or datetime.utcnow(),
+                "to_account_id": transaction_data.to_account_id,
+                "shared_budget_id": transaction_data.shared_budget_id,
+                "goal_id": transaction_data.goal_id
+            }
+            source_result = db.execute(sa_text(source_transaction_sql), source_params)
+            source_row = source_result.first()
+            source_transaction_id = source_row[0]
+            source_created_at = source_row[1]
+            source_updated_at = source_row[2]
+            
+            # Insert destination transaction (income) using raw SQL
             to_transaction_sql = """
                 INSERT INTO transactions 
-                (user_id, account_id, transaction_type, amount, currency, description, transaction_date)
+                (user_id, account_id, transaction_type, amount, currency, description, transaction_date, shared_budget_id, goal_id)
                 VALUES 
-                (:user_id, :account_id, :transaction_type, :amount, :currency, :description, :transaction_date)
-                RETURNING id
+                (:user_id, :account_id, :transaction_type, :amount, :currency, :description, :transaction_date, :shared_budget_id, :goal_id)
+                RETURNING id, created_at, updated_at
             """
             to_params = {
                 "user_id": current_user.id,
@@ -583,13 +587,36 @@ async def create_transaction(
                 "amount": transaction_data.amount,
                 "currency": transaction_data.currency or account.currency,
                 "description": f"Перевод из {account.name}" + (f": {transaction_data.description}" if transaction_data.description else ""),
-                "transaction_date": transaction_data.transaction_date or datetime.utcnow()
+                "transaction_date": transaction_data.transaction_date or datetime.utcnow(),
+                "shared_budget_id": transaction_data.shared_budget_id,
+                "goal_id": transaction_data.goal_id
             }
-            result = db.execute(sa_text(to_transaction_sql), to_params)
-            to_transaction_id = result.scalar()
+            to_result = db.execute(sa_text(to_transaction_sql), to_params)
+            to_row = to_result.first()
+            to_transaction_id = to_row[0]
             
             db.commit()
-            logger.info(f"Transfer created: source transaction {transaction.id}, destination transaction {to_transaction_id}")
+            
+            # Create Transaction object for response (source transaction)
+            transaction = Transaction(
+                id=source_transaction_id,
+                user_id=current_user.id,
+                account_id=final_account_id,
+                transaction_type="transfer",
+                amount=transaction_data.amount,
+                currency=transaction_data.currency or final_account.currency,
+                category_id=None,
+                description=transaction_data.description,
+                transaction_date=transaction_data.transaction_date or datetime.utcnow(),
+                to_account_id=transaction_data.to_account_id,
+                shared_budget_id=transaction_data.shared_budget_id,
+                goal_id=transaction_data.goal_id,
+                created_at=source_created_at,
+                updated_at=source_updated_at
+            )
+            transaction.account = final_account  # Set for is_shared check
+            
+            logger.info(f"Transfer created: source transaction {source_transaction_id}, destination transaction {to_transaction_id}")
         except Exception as e:
             logger.error(f"Error creating transfer transactions: {e}", exc_info=True)
             db.rollback()
@@ -598,6 +625,25 @@ async def create_transaction(
                 detail=f"Failed to create transfer: {str(e)}"
             )
     else:
+        # For non-transfer transactions, use ORM but ensure transaction_type is lowercase
+        transaction = Transaction(
+            user_id=current_user.id,
+            account_id=final_account_id,  # Use goal's account if goal is specified
+            transaction_type=transaction_type_value,  # Use lowercase string value
+            amount=transaction_data.amount,
+            currency=transaction_data.currency or final_account.currency,
+            category_id=transaction_data.category_id,
+            description=transaction_data.description,
+            transaction_date=transaction_data.transaction_date or datetime.utcnow(),
+            to_account_id=None,
+            shared_budget_id=transaction_data.shared_budget_id,
+            goal_id=transaction_data.goal_id
+        )
+        
+        # Force transaction_type to be lowercase string in __dict__
+        transaction.__dict__['transaction_type'] = transaction_type_value
+        
+        db.add(transaction)
         db.commit()
         db.refresh(transaction)
     
@@ -768,7 +814,7 @@ async def create_transaction(
         "created_at": transaction.created_at,
         "updated_at": transaction.updated_at,
         "user_id": transaction.user_id,
-        "is_shared": transaction.account.shared_budget_id is not None if transaction.account else False,
+        "is_shared": (transaction.account.shared_budget_id is not None) if (hasattr(transaction, 'account') and transaction.account) else False,
         "gamification": gamification_info
     }
     
