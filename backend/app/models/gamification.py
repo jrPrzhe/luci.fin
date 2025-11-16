@@ -12,6 +12,7 @@ class QuestType(str, enum.Enum):
     REVIEW_TRANSACTIONS = "review_transactions"  # Просмотреть транзакции
     CHECK_BALANCE = "check_balance"  # Проверить баланс
     SAVE_MONEY = "save_money"  # Сэкономить определенную сумму
+    ASK_LUCY = "ask_lucy"  # Спросить Люсю о бюджете
     CUSTOM = "custom"  # Персональный квест от ИИ
 
 

@@ -45,6 +45,7 @@ logger.info(f"Backend URL configured: {BACKEND_URL}")
 # Conversation states
 WAITING_AMOUNT, WAITING_DESCRIPTION, WAITING_ACCOUNT, WAITING_CATEGORY = range(4)
 WAITING_GOAL_INFO, WAITING_GOAL_CONFIRMATION = range(4, 6)
+WAITING_LUCY_QUESTION = 6
 
 # Store user tokens
 user_tokens: Dict[int, str] = {}
@@ -325,6 +326,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         t("start.add_income", lang) +
         t("start.report", lang) +
         t("start.goal", lang) +
+        t("start.ask_lucy", lang) +
         t("start.help", lang) +
         t("start.language", lang) +
         t("start.important", lang)
@@ -351,13 +353,15 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         t("help.add_income", lang) +
         t("help.report", lang) +
         t("help.goal", lang) +
+        t("help.ask_lucy", lang) +
         t("help.language", lang) +
         t("help.cancel", lang) +
         t("help.help", lang) +
         t("help.usage", lang) +
         t("help.usage_expense", lang) +
         t("help.usage_report", lang) +
-        t("help.usage_goal", lang)
+        t("help.usage_goal", lang) +
+        t("help.usage_ask_lucy", lang)
     )
     
     await update.message.reply_text(help_text, parse_mode='Markdown')
@@ -1242,6 +1246,103 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 
+async def ask_lucy_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle /ask_lucy command - start asking Lucy about budget"""
+    telegram_id = str(update.effective_user.id)
+    
+    # Get token
+    try:
+        token = await get_user_token(telegram_id)
+        if not token or len(token) < 50 or '.' not in token:
+            raise Exception("Invalid token format")
+    except Exception as e:
+        logger.error(f"Error getting token in ask_lucy_command: {e}")
+        user_id = int(telegram_id)
+        if user_id in user_tokens:
+            del user_tokens[user_id]
+        lang = await get_user_language(telegram_id)
+        await update.message.reply_text(t("auth.failed", lang))
+        return ConversationHandler.END
+    
+    # Get user language
+    lang = await get_user_language(telegram_id)
+    
+    await update.message.reply_text(
+        "💬 Задайте вопрос Люсе о вашем бюджете, финансах или транзакциях.\n\n"
+        "Например:\n"
+        "• На что я трачу больше всего?\n"
+        "• Как мне сэкономить деньги?\n"
+        "• Сколько я потратил в этом месяце?\n\n"
+        "Используйте /cancel для отмены."
+    )
+    
+    return WAITING_LUCY_QUESTION
+
+
+async def lucy_question_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle user's question to Lucy"""
+    telegram_id = str(update.effective_user.id)
+    question = update.message.text.strip()
+    
+    # Get token
+    try:
+        token = await get_user_token(telegram_id)
+        if not token or len(token) < 50 or '.' not in token:
+            raise Exception("Invalid token format")
+    except Exception as e:
+        logger.error(f"Error getting token in lucy_question_received: {e}")
+        user_id = int(telegram_id)
+        if user_id in user_tokens:
+            del user_tokens[user_id]
+        lang = await get_user_language(telegram_id)
+        await update.message.reply_text(t("auth.failed", lang))
+        return ConversationHandler.END
+    
+    # Get user language
+    lang = await get_user_language(telegram_id)
+    
+    # Send "thinking" message
+    thinking_msg = await update.message.reply_text("🤔 Люся думает...")
+    
+    try:
+        # Send question to API
+        response = await make_authenticated_request(
+            "POST",
+            f"{BACKEND_URL}/api/v1/ai/ask-lucy",
+            telegram_id,
+            json_data={"question": question},
+            timeout=30.0
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            answer = data.get("answer", "Извините, не удалось получить ответ.")
+            quest_completed = data.get("quest_completed", False)
+            
+            # Format response
+            response_text = f"💬 *Люся:*\n\n{answer}\n"
+            
+            if quest_completed:
+                response_text += "\n✅ *Квест выполнен!* Вы получили XP за задание 'Спроси Люсю'."
+            
+            await thinking_msg.edit_text(response_text, parse_mode='Markdown')
+        elif response.status_code == 400:
+            error_data = response.json()
+            error_msg = error_data.get("detail", "Неверный запрос.")
+            await thinking_msg.edit_text(f"❌ {error_msg}")
+        else:
+            await thinking_msg.edit_text("❌ Произошла ошибка при обработке вопроса. Попробуйте позже.")
+            
+    except Exception as e:
+        logger.error(f"Error asking Lucy: {e}", exc_info=True)
+        try:
+            await thinking_msg.edit_text("❌ Произошла ошибка при обработке вопроса. Попробуйте позже.")
+        except:
+            await update.message.reply_text("❌ Произошла ошибка при обработке вопроса. Попробуйте позже.")
+    
+    return ConversationHandler.END
+
+
 async def goal_command_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /цель command - start goal creation"""
     telegram_id = str(update.effective_user.id)
@@ -1556,6 +1657,18 @@ def main():
     application.add_handler(CommandHandler("report", report_command))
     application.add_handler(CommandHandler("language", language_command))
     application.add_handler(CallbackQueryHandler(language_callback, pattern="^lang_"))
+    
+    # Ask Lucy conversation handler
+    ask_lucy_handler = ConversationHandler(
+        entry_points=[CommandHandler("ask_lucy", ask_lucy_command)],
+        states={
+            WAITING_LUCY_QUESTION: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, lucy_question_received),
+            ],
+        },
+        fallbacks=[CommandHandler("cancel", cancel)],
+    )
+    application.add_handler(ask_lucy_handler)
     
     # Goal creation conversation handler
     goal_handler = ConversationHandler(
