@@ -164,10 +164,11 @@ export function Transactions() {
     }
   }
 
+  // Load data only on initial mount
   useEffect(() => {
     loadData()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterType, transactionTypeFilter, dateFilter, customStartDate, customEndDate])
+  }, [])
 
   const loadCategories = async (transactionType: 'income' | 'expense' | 'transfer') => {
     if (transactionType === 'transfer') {
@@ -587,6 +588,16 @@ export function Transactions() {
                   </div>
                 </div>
               )}
+            </div>
+            
+            {/* Кнопка применения фильтров */}
+            <div className="pt-4 border-t border-telegram-border dark:border-telegram-dark-border">
+              <button
+                onClick={loadData}
+                className="w-full btn-primary py-3 text-base font-medium"
+              >
+                🔍 Применить фильтры
+              </button>
             </div>
           </div>
         )}
