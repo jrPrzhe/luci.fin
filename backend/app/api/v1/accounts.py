@@ -64,7 +64,7 @@ async def get_accounts(
             # Use raw SQL to avoid enum conversion issues
             if account.shared_budget_id:
                 # Shared account: count all transactions
-                result = db.execute(
+                transactions_result = db.execute(
                     sa_text("""
                         SELECT transaction_type::text, amount 
                         FROM transactions 
@@ -74,7 +74,7 @@ async def get_accounts(
                 )
             else:
                 # Personal account: count only user's transactions
-                result = db.execute(
+                transactions_result = db.execute(
                     sa_text("""
                         SELECT transaction_type::text, amount 
                         FROM transactions 
@@ -84,7 +84,7 @@ async def get_accounts(
                 )
             
             balance = Decimal(str(account.initial_balance)) if account.initial_balance else Decimal("0")
-            for row in result:
+            for row in transactions_result:
                 trans_type = row[0].lower()  # Convert to lowercase for comparison
                 amount = Decimal(str(row[1])) if row[1] else Decimal("0")
                 
@@ -143,7 +143,7 @@ async def get_balance(
         try:
             # Calculate balance - filter transactions by both account and user for security
             # Use raw SQL to avoid enum conversion issues
-            result = db.execute(
+            transactions_result = db.execute(
                 sa_text("""
                     SELECT transaction_type::text, amount 
                     FROM transactions 
@@ -153,7 +153,7 @@ async def get_balance(
             )
             
             balance = Decimal(str(account.initial_balance)) if account.initial_balance else Decimal("0")
-            for row in result:
+            for row in transactions_result:
                 trans_type = row[0].lower()  # Convert to lowercase for comparison
                 amount = Decimal(str(row[1])) if row[1] else Decimal("0")
                 

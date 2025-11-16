@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from sqlalchemy import func, extract, and_, or_
+from sqlalchemy import func, extract, and_, or_, text as sa_text
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 from app.core.database import get_db
@@ -57,35 +57,64 @@ async def get_analytics(
     
     all_account_ids = account_ids + shared_account_ids
     
-    # Get transactions in period
-    transactions_query = db.query(Transaction).filter(
-        Transaction.account_id.in_(all_account_ids) if all_account_ids else Transaction.id == -1,
-        Transaction.transaction_date >= start_date,
-        Transaction.transaction_date <= end_date
-    )
-    
-    transactions = transactions_query.all()
+    # Get transactions in period using raw SQL to avoid enum issues
+    if not all_account_ids:
+        transactions_data = []
+    else:
+        placeholders = ','.join([f':acc_{i}' for i in range(len(all_account_ids))])
+        params = {f"acc_{i}": acc_id for i, acc_id in enumerate(all_account_ids)}
+        params["start_date"] = start_date
+        params["end_date"] = end_date
+        
+        sql_query = f"""
+            SELECT 
+                id, account_id, transaction_type::text, amount, currency,
+                category_id, description, goal_id, transaction_date,
+                amount_in_default_currency
+            FROM transactions
+            WHERE account_id IN ({placeholders})
+            AND transaction_date >= :start_date
+            AND transaction_date <= :end_date
+        """
+        
+        result = db.execute(sa_text(sql_query), params)
+        transactions_data = result.fetchall()
     
     # Calculate totals - convert Decimal to float for consistency
-    total_income = float(sum(float(t.amount) for t in transactions if t.transaction_type == TransactionType.INCOME))
-    total_expense = float(sum(float(t.amount) for t in transactions if t.transaction_type == TransactionType.EXPENSE))
-    total_transfer = float(sum(float(t.amount) for t in transactions if t.transaction_type == TransactionType.TRANSFER))
+    total_income = 0.0
+    total_expense = 0.0
+    total_transfer = 0.0
+    
+    for row in transactions_data:
+        trans_type = row[2].lower() if row[2] else ''
+        amount = float(row[3]) if row[3] else 0.0
+        
+        if trans_type == 'income':
+            total_income += amount
+        elif trans_type == 'expense':
+            total_expense += amount
+        elif trans_type == 'transfer':
+            total_transfer += amount
+    
     net_flow = total_income - total_expense
     
     # Expenses by category
     expenses_by_category = {}
-    for trans in transactions:
-        if trans.transaction_type == TransactionType.EXPENSE and trans.category_id:
-            category = db.query(Category).filter(Category.id == trans.category_id).first()
+    for row in transactions_data:
+        trans_type = row[2].lower() if row[2] else ''
+        category_id = row[5]
+        
+        if trans_type == 'expense' and category_id:
+            category = db.query(Category).filter(Category.id == category_id).first()
             if category and category.is_active:  # Only count active categories
                 cat_name = category.name
                 cat_icon = category.icon or "📦"
                 # Use amount_in_default_currency if available, otherwise use amount
                 # Convert Decimal to float for proper summation
                 try:
-                    amount_value = float(trans.amount_in_default_currency) if trans.amount_in_default_currency is not None else float(trans.amount)
-                except (ValueError, TypeError):
-                    amount_value = float(trans.amount)
+                    amount_value = float(row[9]) if row[9] is not None else float(row[3])
+                except (ValueError, TypeError, IndexError):
+                    amount_value = float(row[3]) if row[3] else 0.0
                 
                 if cat_name not in expenses_by_category:
                     expenses_by_category[cat_name] = {
@@ -105,8 +134,12 @@ async def get_analytics(
     goals_info = []
     for goal in active_goals:
         # Get transactions related to this goal
-        goal_transactions = [t for t in transactions if t.goal_id == goal.id]
-        goal_income = sum(float(t.amount) for t in goal_transactions if t.transaction_type == TransactionType.INCOME)
+        goal_income = 0.0
+        for row in transactions_data:
+            if row[7] == goal.id:  # goal_id
+                trans_type = row[2].lower() if row[2] else ''
+                if trans_type == 'income':
+                    goal_income += float(row[3]) if row[3] else 0.0
         
         goals_info.append({
             "id": goal.id,
@@ -128,18 +161,21 @@ async def get_analytics(
     
     # Income by category
     income_by_category = {}
-    for trans in transactions:
-        if trans.transaction_type == TransactionType.INCOME and trans.category_id:
-            category = db.query(Category).filter(Category.id == trans.category_id).first()
+    for row in transactions_data:
+        trans_type = row[2].lower() if row[2] else ''
+        category_id = row[5]
+        
+        if trans_type == 'income' and category_id:
+            category = db.query(Category).filter(Category.id == category_id).first()
             if category and category.is_active:  # Only count active categories
                 cat_name = category.name
                 cat_icon = category.icon or "💰"
                 # Use amount_in_default_currency if available, otherwise use amount
                 # Convert Decimal to float for proper summation
                 try:
-                    amount_value = float(trans.amount_in_default_currency) if trans.amount_in_default_currency is not None else float(trans.amount)
-                except (ValueError, TypeError):
-                    amount_value = float(trans.amount)
+                    amount_value = float(row[9]) if row[9] is not None else float(row[3])
+                except (ValueError, TypeError, IndexError):
+                    amount_value = float(row[3]) if row[3] else 0.0
                 
                 if cat_name not in income_by_category:
                     income_by_category[cat_name] = {
@@ -158,15 +194,20 @@ async def get_analytics(
     
     # Daily flow (for line chart)
     daily_flow = {}
-    for trans in transactions:
-        date_key = trans.transaction_date.date().isoformat()
-        if date_key not in daily_flow:
-            daily_flow[date_key] = {"date": date_key, "income": 0, "expense": 0}
+    for row in transactions_data:
+        trans_type = row[2].lower() if row[2] else ''
+        transaction_date = row[8]  # transaction_date
+        amount = float(row[3]) if row[3] else 0.0
         
-        if trans.transaction_type == TransactionType.INCOME:
-            daily_flow[date_key]["income"] += float(trans.amount)
-        elif trans.transaction_type == TransactionType.EXPENSE:
-            daily_flow[date_key]["expense"] += float(trans.amount)
+        if transaction_date:
+            date_key = transaction_date.date().isoformat() if hasattr(transaction_date, 'date') else str(transaction_date)[:10]
+            if date_key not in daily_flow:
+                daily_flow[date_key] = {"date": date_key, "income": 0, "expense": 0}
+            
+            if trans_type == 'income':
+                daily_flow[date_key]["income"] += amount
+            elif trans_type == 'expense':
+                daily_flow[date_key]["expense"] += amount
     
     # Sort by date
     daily_flow_list = sorted(daily_flow.values(), key=lambda x: x["date"])
@@ -179,14 +220,36 @@ async def get_analytics(
         month_start = (end_date.replace(day=1) - timedelta(days=32*i)).replace(day=1)
         month_end = (month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
         
-        month_transactions = db.query(Transaction).filter(
-            Transaction.account_id.in_(all_account_ids) if all_account_ids else Transaction.id == -1,
-            Transaction.transaction_date >= month_start,
-            Transaction.transaction_date <= month_end
-        ).all()
+        # Get month transactions using raw SQL
+        if not all_account_ids:
+            month_transactions_data = []
+        else:
+            placeholders = ','.join([f':macc_{i}' for i in range(len(all_account_ids))])
+            month_params = {f"macc_{i}": acc_id for i, acc_id in enumerate(all_account_ids)}
+            month_params["month_start"] = month_start
+            month_params["month_end"] = month_end
+            
+            month_sql = f"""
+                SELECT transaction_type::text, amount
+                FROM transactions
+                WHERE account_id IN ({placeholders})
+                AND transaction_date >= :month_start
+                AND transaction_date <= :month_end
+            """
+            
+            month_result = db.execute(sa_text(month_sql), month_params)
+            month_transactions_data = month_result.fetchall()
         
-        month_income = float(sum(float(t.amount) for t in month_transactions if t.transaction_type == TransactionType.INCOME))
-        month_expense = float(sum(float(t.amount) for t in month_transactions if t.transaction_type == TransactionType.EXPENSE))
+        month_income = 0.0
+        month_expense = 0.0
+        for row in month_transactions_data:
+            trans_type = row[0].lower() if row[0] else ''
+            amount = float(row[1]) if row[1] else 0.0
+            
+            if trans_type == 'income':
+                month_income += amount
+            elif trans_type == 'expense':
+                month_expense += amount
         
         monthly_data.append({
             "month": month_start.strftime("%B %Y"),
@@ -233,9 +296,9 @@ async def get_analytics(
             "type": "info"
         })
     
-    if len(transactions) > 0:
-        expense_transactions = [t for t in transactions if t.transaction_type == TransactionType.EXPENSE]
-        avg_transaction = total_expense / len(expense_transactions) if len(expense_transactions) > 0 else 0.0
+    if len(transactions_data) > 0:
+        expense_count = sum(1 for row in transactions_data if row[2] and row[2].lower() == 'expense')
+        avg_transaction = total_expense / expense_count if expense_count > 0 else 0.0
         facts.append({
             "icon": "💳",
             "text": f"Средний чек: {avg_transaction:,.0f} {current_user.default_currency}",
@@ -269,7 +332,7 @@ async def get_analytics(
         "daily_flow": daily_flow_list,
         "monthly_comparison": monthly_data,
         "facts": facts,
-        "transaction_count": len(transactions),
+        "transaction_count": len(transactions_data),
         "goals": goals_info
     }
 
