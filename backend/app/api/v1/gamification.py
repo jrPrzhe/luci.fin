@@ -83,34 +83,60 @@ def check_level_up(profile: UserGamificationProfile, db: Session) -> bool:
 
 def update_streak(profile: UserGamificationProfile, transaction_date: datetime, db: Session) -> bool:
     """Обновить страйк. Возвращает True, если страйк был сброшен."""
+    # Нормализуем transaction_date к UTC datetime
+    if isinstance(transaction_date, datetime):
+        if transaction_date.tzinfo is None:
+            # Если нет timezone, считаем что это UTC
+            transaction_date = transaction_date.replace(tzinfo=timezone.utc)
+        else:
+            # Конвертируем в UTC
+            transaction_date = transaction_date.astimezone(timezone.utc)
+    else:
+        # Если это date, создаем datetime в UTC
+        transaction_date = datetime.combine(transaction_date, datetime.min.time()).replace(tzinfo=timezone.utc)
+    
+    # Получаем дату в UTC
+    current_date_utc = transaction_date.date()
+    
     if not profile.last_entry_date:
         # Первая транзакция
         profile.streak_days = 1
-        profile.last_entry_date = transaction_date.date()
+        # Сохраняем как datetime в UTC (начало дня)
+        profile.last_entry_date = datetime.combine(current_date_utc, datetime.min.time()).replace(tzinfo=timezone.utc)
         db.commit()
         return False
     
-    last_date = profile.last_entry_date
-    if isinstance(last_date, datetime):
-        last_date = last_date.date()
-    
-    current_date = transaction_date.date() if isinstance(transaction_date, datetime) else transaction_date
+    # Получаем дату последней транзакции
+    last_entry = profile.last_entry_date
+    if isinstance(last_entry, datetime):
+        # Если есть timezone, конвертируем в UTC
+        if last_entry.tzinfo is not None:
+            last_entry = last_entry.astimezone(timezone.utc)
+        else:
+            # Если нет timezone, считаем что это UTC
+            last_entry = last_entry.replace(tzinfo=timezone.utc)
+        last_date = last_entry.date()
+    else:
+        # Если это date объект (не должно быть, но на всякий случай)
+        last_date = last_entry if hasattr(last_entry, 'year') else current_date_utc
     
     # Проверяем, был ли пропущен день
-    if current_date == last_date:
+    if current_date_utc == last_date:
         # Транзакция в тот же день - не обновляем страйк
         return False
-    elif current_date == last_date + timedelta(days=1):
+    elif current_date_utc == last_date + timedelta(days=1):
         # Следующий день - увеличиваем страйк
         profile.streak_days += 1
-        profile.last_entry_date = current_date
+        # Обновляем last_entry_date на новый день (начало дня в UTC)
+        profile.last_entry_date = datetime.combine(current_date_utc, datetime.min.time()).replace(tzinfo=timezone.utc)
         db.commit()
         return False
     else:
         # Пропущен день - сбрасываем страйк
         was_broken = profile.streak_days > 0
         profile.streak_days = 1
-        profile.last_entry_date = current_date
+        # Обновляем last_entry_date на текущий день (начало дня в UTC)
+        profile.last_entry_date = datetime.combine(current_date_utc, datetime.min.time()).replace(tzinfo=timezone.utc)
         # Уменьшаем сердце за пропуск
         profile.heart_level = max(0, profile.heart_level - HEART_DECAY_PER_DAY)
         db.commit()

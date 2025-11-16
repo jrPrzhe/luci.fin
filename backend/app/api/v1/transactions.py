@@ -710,7 +710,9 @@ async def create_transaction(
             from app.models.gamification import QuestType, QuestStatus, UserDailyQuest
             
             profile = get_or_create_profile(current_user.id, db)
-            transaction_date = transaction.transaction_date or datetime.utcnow()
+            # Используем datetime.now(timezone.utc) вместо устаревшего datetime.utcnow()
+            from datetime import timezone
+            transaction_date = transaction.transaction_date or datetime.now(timezone.utc)
             
             # Проверяем, была ли это первая транзакция за день
             was_streak_broken = update_streak(profile, transaction_date, db)
@@ -727,7 +729,6 @@ async def create_transaction(
             
             # Обновляем квесты
             # Используем текущую дату UTC для поиска квестов (квесты создаются на текущую дату)
-            from datetime import timezone
             today_utc = datetime.now(timezone.utc).date()
             
             # Также проверяем дату транзакции (на случай если транзакция создана на другую дату)
