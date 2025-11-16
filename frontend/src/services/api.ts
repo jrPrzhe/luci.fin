@@ -318,13 +318,13 @@ class ApiClient {
     })
   }
 
-  async updateUser(userData: {
+  updateUser = async (userData: {
     first_name?: string
     last_name?: string
     timezone?: string
     default_currency?: string
     language?: string
-  }) {
+  }) => {
     return this.request<any>('/api/v1/auth/me', {
       method: 'PUT',
       body: JSON.stringify(userData),
