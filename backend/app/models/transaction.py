@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Numeric, Boolean, ForeignKey, DateTime, Enum, Text
+from sqlalchemy import Column, Integer, String, Numeric, Boolean, ForeignKey, DateTime, Enum, Text, TypeDecorator
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 import enum
@@ -9,6 +9,29 @@ class TransactionType(str, enum.Enum):
     INCOME = "income"
     EXPENSE = "expense"
     TRANSFER = "transfer"
+
+
+class TransactionTypeEnum(TypeDecorator):
+    """Custom type decorator to ensure enum values are used instead of names"""
+    impl = Enum
+    cache_ok = True
+    
+    def __init__(self):
+        super().__init__(TransactionType, name='transactiontype', create_type=False)
+    
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        # If it's an enum, use its value; if it's a string, use it directly
+        if isinstance(value, TransactionType):
+            return value.value
+        return value
+    
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        # Convert string value back to enum
+        return TransactionType(value)
 
 
 class TransactionFrequency(str, enum.Enum):
@@ -35,8 +58,8 @@ class Transaction(Base):
     account_id = Column(Integer, ForeignKey("accounts.id"), nullable=False)
     
     # Transaction details
-    # Use native_enum=False to ensure SQLAlchemy uses enum values ("income") instead of names ("INCOME")
-    transaction_type = Column(Enum(TransactionType, native_enum=False), nullable=False)
+    # Use custom TypeDecorator to ensure enum values ("income") are used instead of names ("INCOME")
+    transaction_type = Column(TransactionTypeEnum(), nullable=False)
     amount = Column(Numeric(15, 2), nullable=False)
     currency = Column(String(3), nullable=False)
     
