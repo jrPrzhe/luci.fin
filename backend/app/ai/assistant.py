@@ -9,16 +9,35 @@ class AIAssistant:
     def __init__(self):
         if settings.GOOGLE_AI_API_KEY:
             genai.configure(api_key=settings.GOOGLE_AI_API_KEY)
-            # Используем актуальную модель Gemini 1.5 Flash (быстрая и бесплатная)
-            # Альтернатива: 'gemini-1.5-pro' для более сложных задач
-            try:
-                self.client = genai.GenerativeModel('gemini-1.5-flash')
-            except Exception as e:
-                # Fallback на gemini-pro если flash не доступен
+            # Пробуем использовать доступные модели Gemini
+            # Для v1beta API правильные имена моделей:
+            # - models/gemini-pro (старая модель, но работает)
+            # - models/gemini-1.5-pro-latest (новая модель)
+            # - models/gemini-1.5-flash-latest (быстрая модель)
+            # Но GenerativeModel принимает имя без префикса "models/"
+            models_to_try = [
+                'gemini-pro',  # Стандартная модель, должна работать
+            ]
+            
+            self.client = None
+            for model_name in models_to_try:
                 try:
-                    self.client = genai.GenerativeModel('gemini-pro')
-                except:
-                    self.client = None
+                    # Создаем модель - это не делает запрос, только инициализирует
+                    self.client = genai.GenerativeModel(model_name)
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.info(f"Using Gemini model: {model_name}")
+                    break
+                except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.warning(f"Model {model_name} not available: {e}")
+                    continue
+            
+            if not self.client:
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error("No available Gemini models found. AI features will be disabled.")
         else:
             self.client = None
     

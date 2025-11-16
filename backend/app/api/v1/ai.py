@@ -482,9 +482,12 @@ async def ask_lucy(
                 
                 balance = Decimal(str(account.initial_balance)) if account.initial_balance else Decimal("0")
                 for row in transactions_result:
-                    trans_type = row[0].lower()
+                    # Конвертируем в lowercase и обрабатываем как uppercase значения из БД
+                    trans_type_raw = row[0] if row[0] else ''
+                    trans_type = str(trans_type_raw).lower().strip()
                     amount = Decimal(str(row[1])) if row[1] else Decimal("0")
                     
+                    # Обрабатываем как lowercase значения (income, expense, transfer)
                     if trans_type == 'income':
                         balance += amount
                     elif trans_type == 'expense':
@@ -514,12 +517,30 @@ async def ask_lucy(
         for t in transactions:
             try:
                 # Безопасное получение типа транзакции
+                # Enum возвращает значение в lowercase (income, expense, transfer)
                 if hasattr(t.transaction_type, 'value'):
+                    trans_type = t.transaction_type.value  # Уже lowercase: 'income', 'expense', 'transfer'
+                elif isinstance(t.transaction_type, TransactionType):
                     trans_type = t.transaction_type.value
                 elif isinstance(t.transaction_type, str):
-                    trans_type = t.transaction_type
+                    # Если строка, конвертируем в lowercase
+                    trans_type = t.transaction_type.lower().strip()
                 else:
-                    trans_type = str(t.transaction_type)
+                    trans_type = str(t.transaction_type).lower().strip()
+                
+                # Убеждаемся что это валидное значение
+                if trans_type not in ['income', 'expense', 'transfer']:
+                    # Пробуем конвертировать из uppercase
+                    trans_type_upper = trans_type.upper()
+                    if trans_type_upper == 'INCOME':
+                        trans_type = 'income'
+                    elif trans_type_upper == 'EXPENSE':
+                        trans_type = 'expense'
+                    elif trans_type_upper == 'TRANSFER':
+                        trans_type = 'transfer'
+                    else:
+                        logger.warning(f"Unknown transaction type: {trans_type}, skipping transaction {t.id}")
+                        continue
                 
                 transactions_data.append({
                     'transaction_type': trans_type,
@@ -529,7 +550,7 @@ async def ask_lucy(
                     'transaction_date': t.transaction_date.isoformat() if t.transaction_date else ''
                 })
             except Exception as trans_error:
-                logger.warning(f"Error processing transaction {t.id}: {trans_error}")
+                logger.warning(f"Error processing transaction {t.id}: {trans_error}", exc_info=True)
                 continue
         
         income_total = sum(t.get('amount', 0) for t in transactions_data if t.get('transaction_type') == 'income')
