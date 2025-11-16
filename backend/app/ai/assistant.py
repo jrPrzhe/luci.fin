@@ -9,7 +9,16 @@ class AIAssistant:
     def __init__(self):
         if settings.GOOGLE_AI_API_KEY:
             genai.configure(api_key=settings.GOOGLE_AI_API_KEY)
-            self.client = genai.GenerativeModel('gemini-pro')
+            # Используем актуальную модель Gemini 1.5 Flash (быстрая и бесплатная)
+            # Альтернатива: 'gemini-1.5-pro' для более сложных задач
+            try:
+                self.client = genai.GenerativeModel('gemini-1.5-flash')
+            except Exception as e:
+                # Fallback на gemini-pro если flash не доступен
+                try:
+                    self.client = genai.GenerativeModel('gemini-pro')
+                except:
+                    self.client = None
         else:
             self.client = None
     

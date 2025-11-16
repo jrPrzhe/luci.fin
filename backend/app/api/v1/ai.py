@@ -456,11 +456,54 @@ async def ask_lucy(
     # Получаем данные пользователя для контекста (прямые запросы к БД)
     try:
         from app.models.account import Account
-        from app.models.transaction import Transaction
+        from app.models.transaction import Transaction, TransactionType
+        from decimal import Decimal
+        from sqlalchemy import text as sa_text
         
-        accounts = db.query(Account).filter(Account.user_id == current_user.id).all()
-        accounts_data = [{"id": a.id, "name": a.name, "balance": float(a.balance), "currency": a.currency} for a in accounts]
-        balance = sum(float(a.balance) for a in accounts)
+        accounts = db.query(Account).filter(
+            Account.user_id == current_user.id,
+            Account.is_archived == False
+        ).all()
+        
+        accounts_data = []
+        total_balance = Decimal("0")
+        
+        for account in accounts:
+            try:
+                # Вычисляем баланс из initial_balance + транзакции (как в accounts.py)
+                transactions_result = db.execute(
+                    sa_text("""
+                        SELECT transaction_type::text, amount 
+                        FROM transactions 
+                        WHERE account_id = :account_id AND user_id = :user_id
+                    """),
+                    {"account_id": account.id, "user_id": current_user.id}
+                )
+                
+                balance = Decimal(str(account.initial_balance)) if account.initial_balance else Decimal("0")
+                for row in transactions_result:
+                    trans_type = row[0].lower()
+                    amount = Decimal(str(row[1])) if row[1] else Decimal("0")
+                    
+                    if trans_type == 'income':
+                        balance += amount
+                    elif trans_type == 'expense':
+                        balance -= amount
+                    elif trans_type == 'transfer':
+                        balance -= amount  # Transfer уменьшает баланс счета отправления
+                
+                total_balance += balance
+                accounts_data.append({
+                    "id": account.id,
+                    "name": account.name,
+                    "balance": float(balance),
+                    "currency": account.currency or "RUB"
+                })
+            except Exception as acc_error:
+                logger.warning(f"Error calculating balance for account {account.id}: {acc_error}")
+                continue
+        
+        balance = float(total_balance)
         currency = accounts[0].currency if accounts else 'RUB'
         
         transactions = db.query(Transaction).filter(
