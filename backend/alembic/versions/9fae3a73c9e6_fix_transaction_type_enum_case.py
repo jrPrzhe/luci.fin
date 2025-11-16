@@ -7,6 +7,7 @@ Create Date: 2025-11-16 15:14:19.122303
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import text as sa_text
 
 
 # revision identifiers, used by Alembic.
@@ -17,33 +18,29 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Проверяем, какой enum сейчас в БД и исправляем, если нужно
-    # Если enum все еще в верхнем регистре, конвертируем в нижний
+    # Check enum case and fix if needed
+    # If enum is still uppercase, convert to lowercase
     
-    op.execute("""
+    # Use raw SQL execution with proper encoding
+    sql = """
         DO $$
         DECLARE
             enum_exists boolean;
             enum_values text[];
         BEGIN
-            -- Проверяем, существует ли enum transactiontype
             SELECT EXISTS (
                 SELECT 1 FROM pg_type WHERE typname = 'transactiontype'
             ) INTO enum_exists;
             
             IF enum_exists THEN
-                -- Получаем все значения enum
                 SELECT array_agg(enumlabel::text ORDER BY enumsortorder)
                 INTO enum_values
                 FROM pg_enum
                 WHERE enumtypid = (SELECT oid FROM pg_type WHERE typname = 'transactiontype');
                 
-                -- Если enum содержит значения в верхнем регистре, исправляем
                 IF 'INCOME' = ANY(enum_values) OR 'EXPENSE' = ANY(enum_values) OR 'TRANSFER' = ANY(enum_values) THEN
-                    -- Создаем новый enum с правильными значениями
                     CREATE TYPE transactiontype_fixed AS ENUM ('income', 'expense', 'transfer', 'both');
                     
-                    -- Конвертируем данные в transactions
                     ALTER TABLE transactions 
                     ALTER COLUMN transaction_type 
                     TYPE transactiontype_fixed 
@@ -57,7 +54,6 @@ def upgrade() -> None:
                         ELSE 'expense'::transactiontype_fixed
                     END;
                     
-                    -- Конвертируем данные в categories, если колонка существует
                     IF EXISTS (
                         SELECT 1 FROM information_schema.columns 
                         WHERE table_name = 'categories' 
@@ -77,30 +73,25 @@ def upgrade() -> None:
                         END;
                     END IF;
                     
-                    -- Удаляем старый enum
                     DROP TYPE transactiontype CASCADE;
-                    
-                    -- Переименовываем новый enum
                     ALTER TYPE transactiontype_fixed RENAME TO transactiontype;
                 END IF;
             END IF;
         END $$;
-    """)
+    """
+    op.execute(sa_text(sql))
 
 
 def downgrade() -> None:
-    # Возвращаем enum в верхний регистр (если нужно)
-    op.execute("""
+    # Revert enum to uppercase if needed
+    sql = """
         DO $$
         BEGIN
-            -- Проверяем, существует ли enum transactiontype
             IF EXISTS (
                 SELECT 1 FROM pg_type WHERE typname = 'transactiontype'
             ) THEN
-                -- Создаем enum с верхним регистром
                 CREATE TYPE transactiontype_upper AS ENUM ('INCOME', 'EXPENSE', 'TRANSFER', 'BOTH');
                 
-                -- Конвертируем данные в transactions
                 ALTER TABLE transactions 
                 ALTER COLUMN transaction_type 
                 TYPE transactiontype_upper 
@@ -114,7 +105,6 @@ def downgrade() -> None:
                     ELSE 'EXPENSE'::transactiontype_upper
                 END;
                 
-                -- Конвертируем данные в categories, если колонка существует
                 IF EXISTS (
                     SELECT 1 FROM information_schema.columns 
                     WHERE table_name = 'categories' 
@@ -134,11 +124,9 @@ def downgrade() -> None:
                     END;
                 END IF;
                 
-                -- Удаляем старый enum
                 DROP TYPE transactiontype CASCADE;
-                
-                -- Переименовываем новый enum
                 ALTER TYPE transactiontype_upper RENAME TO transactiontype;
             END IF;
         END $$;
-    """)
+    """
+    op.execute(sa_text(sql))

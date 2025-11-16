@@ -1,6 +1,6 @@
-from sqlalchemy import Column, Integer, String, Numeric, Boolean, ForeignKey, DateTime, Enum, Text, TypeDecorator, event
+from sqlalchemy import Column, Integer, String, Numeric, Boolean, ForeignKey, DateTime, Enum, Text, TypeDecorator
+from sqlalchemy.orm import relationship, validates
 from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
 import enum
 from app.core.database import Base
 
@@ -107,25 +107,20 @@ class Transaction(Base):
     shared_budget = relationship("SharedBudget", back_populates="transactions")
     goal = relationship("Goal", backref="transactions")
     
+    @validates('transaction_type')
+    def validate_transaction_type(self, key, value):
+        """Ensure transaction_type is always lowercase string"""
+        if value is None:
+            return None
+        # Convert to lowercase string
+        if isinstance(value, TransactionType):
+            return value.value
+        elif isinstance(value, str):
+            return value.lower()
+        return value
+    
     def __repr__(self):
         return f"<Transaction(id={self.id}, type={self.transaction_type}, amount={self.amount})>"
-
-
-# Event listener to ensure transaction_type is always lowercase string
-@event.listens_for(Transaction, 'before_insert', propagate=True)
-@event.listens_for(Transaction, 'before_update', propagate=True)
-def receive_before_insert(mapper, connection, target):
-    """Ensure transaction_type is always lowercase string before insert/update"""
-    if hasattr(target, 'transaction_type') and target.transaction_type is not None:
-        current_value = target.transaction_type
-        # Convert to lowercase string if needed
-        if isinstance(current_value, TransactionType):
-            # Use enum value (lowercase string)
-            object.__setattr__(target, 'transaction_type', current_value.value)
-        elif isinstance(current_value, str):
-            # Ensure lowercase
-            if current_value != current_value.lower():
-                object.__setattr__(target, 'transaction_type', current_value.lower())
 
 
 # Association table for transaction tags
