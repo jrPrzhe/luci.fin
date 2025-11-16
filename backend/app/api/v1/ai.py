@@ -509,24 +509,31 @@ async def ask_lucy(
         balance = float(total_balance)
         currency = accounts[0].currency if accounts else 'RUB'
         
-        transactions = db.query(Transaction).filter(
-            Transaction.user_id == current_user.id
-        ).order_by(Transaction.transaction_date.desc()).limit(30).all()
+        # Используем прямой SQL запрос чтобы избежать проблем с enum конвертацией
+        transactions_result = db.execute(
+            sa_text("""
+                SELECT 
+                    t.id,
+                    t.transaction_type::text,
+                    t.amount,
+                    t.description,
+                    t.transaction_date,
+                    c.name as category_name
+                FROM transactions t
+                LEFT JOIN categories c ON t.category_id = c.id
+                WHERE t.user_id = :user_id
+                ORDER BY t.transaction_date DESC
+                LIMIT 30
+            """),
+            {"user_id": current_user.id}
+        )
         
         transactions_data = []
-        for t in transactions:
+        for row in transactions_result:
             try:
-                # Безопасное получение типа транзакции
-                # Enum возвращает значение в lowercase (income, expense, transfer)
-                if hasattr(t.transaction_type, 'value'):
-                    trans_type = t.transaction_type.value  # Уже lowercase: 'income', 'expense', 'transfer'
-                elif isinstance(t.transaction_type, TransactionType):
-                    trans_type = t.transaction_type.value
-                elif isinstance(t.transaction_type, str):
-                    # Если строка, конвертируем в lowercase
-                    trans_type = t.transaction_type.lower().strip()
-                else:
-                    trans_type = str(t.transaction_type).lower().strip()
+                # Получаем тип транзакции из SQL (может быть в любом регистре)
+                trans_type_raw = row[1] if row[1] else ''
+                trans_type = str(trans_type_raw).lower().strip()
                 
                 # Убеждаемся что это валидное значение
                 if trans_type not in ['income', 'expense', 'transfer']:
@@ -539,18 +546,18 @@ async def ask_lucy(
                     elif trans_type_upper == 'TRANSFER':
                         trans_type = 'transfer'
                     else:
-                        logger.warning(f"Unknown transaction type: {trans_type}, skipping transaction {t.id}")
+                        logger.warning(f"Unknown transaction type: {trans_type_raw}, skipping")
                         continue
                 
                 transactions_data.append({
                     'transaction_type': trans_type,
-                    'amount': float(t.amount) if t.amount else 0.0,
-                    'description': t.description if t.description else None,
-                    'category_name': t.category.name if t.category and hasattr(t.category, 'name') else None,
-                    'transaction_date': t.transaction_date.isoformat() if t.transaction_date else ''
+                    'amount': float(row[2]) if row[2] else 0.0,
+                    'description': row[3] if row[3] else None,
+                    'category_name': row[5] if row[5] else None,
+                    'transaction_date': row[4].isoformat() if row[4] else ''
                 })
             except Exception as trans_error:
-                logger.warning(f"Error processing transaction {t.id}: {trans_error}", exc_info=True)
+                logger.warning(f"Error processing transaction row: {trans_error}", exc_info=True)
                 continue
         
         income_total = sum(t.get('amount', 0) for t in transactions_data if t.get('transaction_type') == 'income')

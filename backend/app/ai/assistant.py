@@ -13,12 +13,10 @@ class AIAssistant:
             logger = logging.getLogger(__name__)
             
             # Пробуем использовать доступные модели Gemini
-            # Для новой версии google-generativeai (>=0.8.0) доступны новые модели
-            # Для старой версии (0.3.0) работает только gemini-pro
+            # Для v1beta API работает только gemini-pro
+            # Новые модели (gemini-1.5-flash, gemini-1.5-pro) требуют v1 API
             models_to_try = [
-                'gemini-1.5-flash',  # Быстрая модель (для новой версии API)
-                'gemini-1.5-pro',   # Мощная модель (для новой версии API)
-                'gemini-pro',        # Стандартная модель (fallback для старой версии)
+                'gemini-pro',  # Единственная модель, работающая с v1beta API
             ]
             
             self.client = None
