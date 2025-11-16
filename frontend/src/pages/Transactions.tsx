@@ -54,6 +54,8 @@ export function Transactions() {
   const [filtersExpanded, setFiltersExpanded] = useState(false)
 
   const [goals, setGoals] = useState<any[]>([])
+  const [hasMore, setHasMore] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   // Form state
   const [formData, setFormData] = useState({
@@ -112,9 +114,15 @@ export function Transactions() {
     }
   }
 
-  const loadData = async () => {
+  const loadData = async (reset: boolean = true) => {
     try {
-      setLoading(true)
+      if (reset) {
+        setLoading(true)
+        setTransactions([])
+      } else {
+        setLoadingMore(true)
+      }
+      
       // Load goals in background (don't block transactions loading)
       loadGoals().catch(err => console.error('Failed to load goals:', err))
       
@@ -122,46 +130,44 @@ export function Transactions() {
       const transactionTypeParam = transactionTypeFilter === 'all' ? undefined : transactionTypeFilter
       const { startDate, endDate } = getDateRange()
       
-      // Загружаем все транзакции (без лимита или с очень большим лимитом)
-      // Используем пагинацию для больших объемов данных
-      let allTransactions: any[] = []
-      let offset = 0
-      const batchSize = 1000
-      let hasMore = true
+      // Загружаем только 25 транзакций за раз
+      const limit = 25
+      const offset = reset ? 0 : transactions.length
       
-      while (hasMore) {
-        const batch = await api.getTransactions(
-          batchSize, 
-          offset, 
-          undefined, 
-          filterParam, 
-          transactionTypeParam, 
-          startDate, 
-          endDate
-        )
-        
-        if (batch.length === 0) {
-          hasMore = false
-        } else {
-          allTransactions = allTransactions.concat(batch)
-          offset += batchSize
-          
-          // Если получили меньше чем batchSize, значит это последняя страница
-          if (batch.length < batchSize) {
-            hasMore = false
-          }
-        }
+      const batch = await api.getTransactions(
+        limit, 
+        offset, 
+        undefined, 
+        filterParam, 
+        transactionTypeParam, 
+        startDate, 
+        endDate
+      )
+      
+      // Если получили меньше чем limit, значит это последняя страница
+      setHasMore(batch.length === limit)
+      
+      if (reset) {
+        setTransactions(batch)
+      } else {
+        setTransactions([...transactions, ...batch])
       }
       
-      const accountsData = await api.getAccounts()
-      
-      setTransactions(allTransactions)
-      setAccounts(accountsData)
+      // Загружаем счета только при первой загрузке
+      if (reset && accounts.length === 0) {
+        const accountsData = await api.getAccounts()
+        setAccounts(accountsData)
+      }
     } catch (err: any) {
       setError(err.message || 'Ошибка загрузки данных')
     } finally {
       setLoading(false)
+      setLoadingMore(false)
     }
+  }
+
+  const loadMore = async () => {
+    await loadData(false)
   }
 
   // Load data only on initial mount
@@ -878,8 +884,36 @@ export function Transactions() {
               </div>
             </div>
           ))}
+          
+          {/* Кнопка загрузки дополнительных транзакций */}
+          {hasMore && (
+            <div className="flex justify-center pt-4">
+              <button
+                onClick={loadMore}
+                disabled={loadingMore}
+                className="btn-secondary px-6 py-3 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loadingMore ? (
+                  <>
+                    <span className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></span>
+                    Загрузка...
+                  </>
+                ) : (
+                  '📄 Загрузить еще'
+                )}
+              </button>
+            </div>
+          )}
+          
+          {/* Индикатор что все транзакции загружены */}
+          {!hasMore && transactions.length > 0 && (
+            <div className="text-center py-4 text-telegram-textSecondary dark:text-telegram-dark-textSecondary text-sm">
+              Показано {transactions.length} транзакций
+            </div>
+          )}
         </div>
       )}
     </div>
   )
 }
+
