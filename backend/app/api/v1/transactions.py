@@ -447,15 +447,20 @@ async def create_transaction(
         
         # Create transaction for destination account (income)
         # Use lowercase string value directly to ensure correct case in database
+        # Create without transaction_type first, then set it explicitly
         to_transaction = Transaction(
             user_id=current_user.id,
             account_id=transaction_data.to_account_id,
-            transaction_type="income",  # Use lowercase string value
             amount=transaction_data.amount,
             currency=transaction_data.currency or account.currency,
             description=f"Перевод из {account.name}" + (f": {transaction_data.description}" if transaction_data.description else ""),
             transaction_date=transaction_data.transaction_date or datetime.utcnow()
         )
+        # Explicitly set transaction_type as lowercase string after object creation
+        # This ensures TypeDecorator processes it correctly
+        to_transaction.transaction_type = "income"
+        # Force update __dict__ to ensure SQLAlchemy uses the string value
+        to_transaction.__dict__['transaction_type'] = "income"
         db.add(to_transaction)
     
     # Validate shared_budget_id if provided

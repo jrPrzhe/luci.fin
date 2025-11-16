@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from sqlalchemy import cast, String, or_, func
+from sqlalchemy import text as sa_text
 from typing import List, Optional
 from app.core.database import get_db
 from app.api.v1.auth import get_current_user
@@ -21,13 +21,23 @@ async def get_categories(
     db: Session = Depends(get_db)
 ):
     """Get user's categories and optionally shared budget categories"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
     from app.models.shared_budget import SharedBudgetMember
     
-    # Base query for user's own categories
-    user_categories_query = db.query(Category).filter(
-        Category.user_id == current_user.id,
-        Category.shared_budget_id.is_(None)  # Only personal categories
-    )
+    # Use raw SQL to avoid enum comparison issues
+    # Build SQL query
+    sql_query = """
+        SELECT 
+            id, user_id, shared_budget_id, name, transaction_type::text, parent_id,
+            icon, color, is_system, is_active, is_favorite, budget_limit,
+            created_at, updated_at
+        FROM categories
+        WHERE 1=1
+    """
+    
+    params = {}
     
     # If filtering by specific shared budget
     if shared_budget_id:
@@ -49,10 +59,11 @@ async def get_categories(
         ).all()
         member_user_ids = [m.user_id for m in budget_members]
         
-        query = db.query(Category).filter(
-            Category.shared_budget_id == shared_budget_id,
-            Category.user_id.in_(member_user_ids)
-        )
+        placeholders = ','.join([f':member_{i}' for i in range(len(member_user_ids))])
+        sql_query += f" AND shared_budget_id = :shared_budget_id AND user_id IN ({placeholders})"
+        params["shared_budget_id"] = shared_budget_id
+        for i, user_id in enumerate(member_user_ids):
+            params[f"member_{i}"] = user_id
     elif include_shared:
         # Get user's categories + categories from shared budgets user is member of
         budget_memberships = db.query(SharedBudgetMember).filter(
@@ -62,54 +73,70 @@ async def get_categories(
         
         if budget_ids:
             # Combine user's personal categories with shared budget categories
-            query = db.query(Category).filter(
-                or_(
-                    # User's personal categories
-                    (Category.user_id == current_user.id) & (Category.shared_budget_id.is_(None)),
-                    # Shared budget categories
-                    Category.shared_budget_id.in_(budget_ids)
-                )
-            )
+            placeholders = ','.join([f':budget_{i}' for i in range(len(budget_ids))])
+            sql_query += f" AND ((user_id = :user_id AND shared_budget_id IS NULL) OR shared_budget_id IN ({placeholders}))"
+            params["user_id"] = current_user.id
+            for i, budget_id in enumerate(budget_ids):
+                params[f"budget_{i}"] = budget_id
         else:
             # No shared budgets, only personal categories
-            query = user_categories_query
+            sql_query += " AND user_id = :user_id AND shared_budget_id IS NULL"
+            params["user_id"] = current_user.id
     else:
         # Only personal categories
-        query = user_categories_query
+        sql_query += " AND user_id = :user_id AND shared_budget_id IS NULL"
+        params["user_id"] = current_user.id
     
     if transaction_type:
-        # Convert string to enum value (lowercase) for comparison
+        # Convert string to lowercase for comparison
         transaction_type_lower = transaction_type.lower()
         try:
             # Validate transaction type
-            trans_type_enum = TransactionType(transaction_type_lower)
-            # Use cast to text and compare as lowercase string to avoid enum comparison issues
-            # The database enum has lowercase values, so we compare as text
-            query = query.filter(
-                or_(
-                    func.lower(cast(Category.transaction_type, String)) == transaction_type_lower,
-                    func.lower(cast(Category.transaction_type, String)) == 'both'
-                )
-            )
+            TransactionType(transaction_type_lower)
+            # Use raw SQL text comparison to avoid enum issues
+            sql_query += " AND (LOWER(transaction_type::text) = :transaction_type OR LOWER(transaction_type::text) = 'both')"
+            params["transaction_type"] = transaction_type_lower
         except ValueError:
             # If invalid transaction type, return empty list
             return []
     
     if favorites_only:
-        query = query.filter(Category.is_favorite == True)
+        sql_query += " AND is_favorite = true"
+    
+    sql_query += " AND is_active = true"
+    sql_query += " ORDER BY shared_budget_id IS NULL DESC, is_favorite DESC, is_system DESC, name"
     
     try:
-        categories = query.filter(Category.is_active == True).order_by(
-            Category.shared_budget_id.is_(None).desc(),  # Personal categories first
-            Category.is_favorite.desc(),
-            Category.is_system.desc(),
-            Category.name
-        ).all()
+        # Execute raw SQL query
+        result_rows = db.execute(sa_text(sql_query), params).fetchall()
+        
+        # Build response from raw SQL results
+        categories = []
+        for row in result_rows:
+            try:
+                cat_dict = {
+                    "id": row[0],
+                    "user_id": row[1],
+                    "shared_budget_id": row[2],
+                    "name": row[3],
+                    "transaction_type": TransactionType(row[4].lower()) if row[4] else TransactionType.BOTH,  # Convert to enum
+                    "parent_id": row[5],
+                    "icon": row[6],
+                    "color": row[7],
+                    "is_system": row[8],
+                    "is_active": row[9],
+                    "is_favorite": row[10],
+                    "budget_limit": float(row[11]) if row[11] else None,
+                    "created_at": row[12],
+                    "updated_at": row[13],
+                }
+                categories.append(CategoryResponse(**cat_dict))
+            except Exception as e:
+                logger.error(f"Error serializing category {row[0] if row else 'unknown'}: {e}", exc_info=True)
+                continue
         
         return categories
     except Exception as e:
-        import logging
-        logger = logging.getLogger(__name__)
         logger.error(f"Error fetching categories: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
