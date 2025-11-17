@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
+import { useToast } from '../contexts/ToastContext'
 
 interface Account {
   id: number
@@ -39,11 +40,11 @@ const accountTypeIcons: Record<string, string> = {
 
 export function Accounts() {
   const navigate = useNavigate()
+  const { showError, showSuccess } = useToast()
   const [accounts, setAccounts] = useState<Account[]>([])
   const [sharedBudgets, setSharedBudgets] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [error, setError] = useState('')
 
   // Form state
   const [formData, setFormData] = useState({
@@ -85,10 +86,9 @@ export function Accounts() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
 
     if (!formData.name.trim()) {
-      setError('Название счёта обязательно')
+      showError('Название счёта обязательно')
       return
     }
 
@@ -113,8 +113,9 @@ export function Accounts() {
       })
       setShowForm(false)
       await loadAccounts()
+      showSuccess('Счёт создан')
     } catch (err: any) {
-      setError(err.message || 'Ошибка создания счёта')
+      showError(err.message || 'Ошибка создания счёта')
     }
   }
 
@@ -245,8 +246,9 @@ export function Accounts() {
                       try {
                         await api.deleteAccount(account.id)
                         await loadAccounts()
+                        showSuccess('Счёт удалён')
                       } catch (err: any) {
-                        setError(err.message || 'Ошибка удаления счёта')
+                        showError(err.message || 'Ошибка удаления счёта')
                       }
                     }}
                     className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 px-2 py-1 text-sm"

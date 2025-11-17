@@ -1125,7 +1125,9 @@ async def delete_transaction(
         
         # If it's a transfer, also delete the corresponding income transaction
         to_transaction = None
-        if transaction.transaction_type == TransactionType.TRANSFER and transaction.to_account_id:
+        # Compare using string value to avoid enum issues
+        transaction_type_str = transaction.transaction_type.value if isinstance(transaction.transaction_type, TransactionType) else str(transaction.transaction_type).lower()
+        if transaction_type_str == 'transfer' and transaction.to_account_id:
             try:
                 # Check if user has access to destination account
                 to_account = db.query(Account).filter(Account.id == transaction.to_account_id).first()
@@ -1144,9 +1146,10 @@ async def delete_transaction(
                 
                 if has_access_to_dest:
                     # Find the corresponding income transaction (without user_id filter for shared accounts)
+                    # Use string comparison to avoid enum issues
                     to_transaction = db.query(Transaction).filter(
                         Transaction.account_id == transaction.to_account_id,
-                        Transaction.transaction_type == TransactionType.INCOME,
+                        Transaction.transaction_type == 'income',  # Use string value instead of enum
                         Transaction.amount == transaction.amount,
                         Transaction.transaction_date == transaction.transaction_date
                     ).first()

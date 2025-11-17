@@ -5,14 +5,14 @@ import { api } from '../services/api'
 import { useTheme } from '../hooks/useTheme'
 import { useNewYearTheme } from '../contexts/NewYearContext'
 import { useI18n } from '../contexts/I18nContext'
+import { useToast } from '../contexts/ToastContext'
 
 export function Profile() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const { showError, showSuccess } = useToast()
   const [firstName, setFirstName] = useState('')
   const [defaultCurrency, setDefaultCurrency] = useState('RUB')
-  const [successMessage, setSuccessMessage] = useState('')
-  const [errorMessage, setErrorMessage] = useState('')
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const { theme, toggleTheme } = useTheme()
   const { isEnabled: newYearEnabled, toggle: toggleNewYear } = useNewYearTheme()
@@ -69,20 +69,15 @@ export function Profile() {
     mutationFn: api.updateUser,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['currentUser'] })
-      setSuccessMessage(t.profile.saved)
-      setErrorMessage('')
-      setTimeout(() => setSuccessMessage(''), 3000)
+      showSuccess(t.profile.saved)
     },
     onError: (error: any) => {
-      setErrorMessage(error.message || t.errors.serverError)
-      setSuccessMessage('')
+      showError(error.message || t.errors.serverError)
     },
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSuccessMessage('')
-    setErrorMessage('')
 
     updateMutation.mutate({
       default_currency: defaultCurrency,
@@ -97,14 +92,11 @@ export function Profile() {
       queryClient.invalidateQueries({ queryKey: ['transactions'] })
       queryClient.invalidateQueries({ queryKey: ['categories'] })
       queryClient.invalidateQueries({ queryKey: ['balance'] })
-      setSuccessMessage(t.profile.saved)
-      setErrorMessage('')
+      showSuccess(t.profile.saved)
       setShowResetConfirm(false)
-      setTimeout(() => setSuccessMessage(''), 5000)
     },
     onError: (error: any) => {
-      setErrorMessage(error.message || t.errors.serverError)
-      setSuccessMessage('')
+      showError(error.message || t.errors.serverError)
       setShowResetConfirm(false)
     },
   })
@@ -131,17 +123,6 @@ export function Profile() {
       </h1>
       
       <div className="card p-4 md:p-5 space-y-4 md:space-y-6">
-        {successMessage && (
-          <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 px-4 py-3 rounded-telegram text-sm">
-            {successMessage}
-          </div>
-        )}
-        
-        {errorMessage && (
-          <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-telegram text-sm">
-            {errorMessage}
-          </div>
-        )}
 
         <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
           {/* Telegram Username (readonly, если есть) */}

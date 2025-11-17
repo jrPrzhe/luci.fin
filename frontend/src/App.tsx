@@ -23,6 +23,7 @@ import { isVKWebApp, getVKLaunchParams, getVKUserId, initVKWebApp, getVKUser } f
 import { api } from './services/api'
 import { NewYearProvider } from './contexts/NewYearContext'
 import { I18nProvider } from './contexts/I18nContext'
+import { ToastProvider } from './contexts/ToastContext'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -437,7 +438,8 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <I18nProvider>
         <NewYearProvider>
-          <Router>
+          <ToastProvider>
+            <Router>
             <TelegramAuthHandler />
             <VKAuthHandler />
             <Routes>
@@ -461,6 +463,7 @@ function App() {
             </Route>
           </Routes>
         </Router>
+          </ToastProvider>
         </NewYearProvider>
       </I18nProvider>
     </QueryClientProvider>

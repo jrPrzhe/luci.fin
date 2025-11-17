@@ -1,20 +1,20 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { api } from '../services/api'
+import { useToast } from '../contexts/ToastContext'
 
 export function Register() {
+  const { showError } = useToast()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [error, setError] = useState('')
   const navigate = useNavigate()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
     
     if (password !== confirmPassword) {
-      setError('Пароли не совпадают')
+      showError('Пароли не совпадают')
       return
     }
     
@@ -28,7 +28,7 @@ export function Register() {
       // Проверяем онбординг - Layout перенаправит на онбординг если нужно
       navigate('/')
     } catch (err: any) {
-      setError(err.message || 'Ошибка регистрации')
+      showError(err.message || 'Ошибка регистрации')
     }
   }
 
@@ -51,11 +51,6 @@ export function Register() {
         {/* Register Form */}
         <div className="card">
           <form onSubmit={handleSubmit} className="space-y-5">
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-telegram text-sm animate-slide-up">
-                {error}
-              </div>
-            )}
             
             <div>
               <label className="block text-sm font-medium text-telegram-text mb-2">

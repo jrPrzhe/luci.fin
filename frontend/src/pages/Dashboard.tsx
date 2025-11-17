@@ -6,6 +6,7 @@ import { useI18n } from '../contexts/I18nContext'
 import { AchievementModal } from '../components/AchievementModal'
 import { LevelUpModal } from '../components/LevelUpModal'
 import { UserStatsCard } from '../components/UserStatsCard'
+import { useToast } from '../contexts/ToastContext'
 
 interface Account {
   id: number
@@ -28,13 +29,13 @@ export function Dashboard() {
   const { t } = useI18n()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const { showError, showSuccess } = useToast()
   const [showQuickForm, setShowQuickForm] = useState(false)
   const [quickFormStep, setQuickFormStep] = useState<'category' | 'form'>('category')
   const [quickFormType, setQuickFormType] = useState<'income' | 'expense' | 'transfer' | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
   const [categoriesLoading, setCategoriesLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState('')
   const [newAchievement, setNewAchievement] = useState<any>(null)
   const [levelUp, setLevelUp] = useState<number | null>(null)
 
@@ -227,20 +228,19 @@ export function Dashboard() {
 
   const handleQuickSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
 
     if (!quickFormData.account_id) {
-      setError(t.dashboard.form.selectAccount)
+      showError(t.dashboard.form.selectAccount)
       return
     }
 
     if (!quickFormData.amount || parseFloat(quickFormData.amount) <= 0) {
-      setError(t.errors.required)
+      showError(t.errors.required)
       return
     }
 
     if (quickFormType === 'transfer' && !quickFormData.to_account_id) {
-      setError(t.dashboard.form.toAccount)
+      showError(t.dashboard.form.toAccount)
       return
     }
 
@@ -249,7 +249,7 @@ export function Dashboard() {
     try {
       const account = (accounts as Account[]).find(a => a.id === parseInt(quickFormData.account_id))
       if (!account) {
-        setError(t.errors.notFound)
+        showError(t.errors.notFound)
         setSubmitting(false)
         return
       }
@@ -326,8 +326,9 @@ export function Dashboard() {
         queryClient.refetchQueries({ queryKey: ['goals'], type: 'active' }),
       ]).catch(console.error) // Don't block UI on refetch errors
       
+      showSuccess(t.dashboard.quickActions[quickFormType || 'expense'] + ' добавлено')
     } catch (err: any) {
-      setError(err.message || t.errors.serverError)
+      showError(err.message || t.errors.serverError)
       setSubmitting(false)
     } finally {
       // Reset submitting after a short delay to allow form to close
@@ -499,19 +500,12 @@ export function Dashboard() {
                   setShowQuickForm(false)
                   setQuickFormType(null)
                   setQuickFormStep('category')
-                  setError('')
                 }}
                 className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text text-xl"
               >
                 ✕
               </button>
             </div>
-
-            {error && (
-              <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-3 py-2 rounded-telegram mb-4 text-sm">
-                {error}
-              </div>
-            )}
 
             {/* Category Selection Step */}
             {quickFormStep === 'category' && quickFormType !== 'transfer' && (

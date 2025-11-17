@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
+import { useToast } from '../contexts/ToastContext'
 
 interface ImportSource {
   id: string
@@ -10,12 +11,11 @@ interface ImportSource {
 
 export function Import() {
   const navigate = useNavigate()
+  const { showError, showSuccess } = useToast()
   const [sources, setSources] = useState<ImportSource[]>([])
   const [selectedSource, setSelectedSource] = useState<string>('')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isUploading, setIsUploading] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
   const [importResult, setImportResult] = useState<{
     accounts_imported: number
     transactions_imported: number
@@ -37,7 +37,7 @@ export function Import() {
         setSelectedSource(response[0].id)
       }
     } catch (err: any) {
-      setError('Ошибка при загрузке списка источников: ' + (err.message || 'Неизвестная ошибка'))
+      showError('Ошибка при загрузке списка источников: ' + (err.message || 'Неизвестная ошибка'))
     }
   }
 
@@ -46,9 +46,8 @@ export function Import() {
     if (file) {
       if (file.name.endsWith('.db')) {
         setSelectedFile(file)
-        setError('')
       } else {
-        setError('Пожалуйста, выберите файл с расширением .db')
+        showError('Пожалуйста, выберите файл с расширением .db')
         setSelectedFile(null)
       }
     }
@@ -56,18 +55,16 @@ export function Import() {
 
   const handleImport = async () => {
     if (!selectedSource) {
-      setError('Пожалуйста, выберите источник импорта')
+      showError('Пожалуйста, выберите источник импорта')
       return
     }
 
     if (!selectedFile) {
-      setError('Пожалуйста, выберите файл для импорта')
+      showError('Пожалуйста, выберите файл для импорта')
       return
     }
 
     setIsUploading(true)
-    setError('')
-    setSuccess('')
     setImportResult(null)
     setElapsedTime(0)
     const startTime = Date.now()
@@ -75,13 +72,14 @@ export function Import() {
 
     try {
       const result = await api.importData(selectedSource, selectedFile)
-      setSuccess('Импорт завершен успешно!')
       setImportResult({
         accounts_imported: result.accounts_imported || 0,
         transactions_imported: result.transactions_imported,
         categories_imported: result.categories_imported,
         categories_created: result.categories_created
       })
+      
+      showSuccess(`Импорт завершен! Импортировано: ${result.accounts_imported || 0} счетов, ${result.transactions_imported} транзакций, ${result.categories_imported} категорий`)
       
       // Очищаем выбор файла
       setSelectedFile(null)
@@ -90,7 +88,7 @@ export function Import() {
         fileInput.value = ''
       }
     } catch (err: any) {
-      setError(err.message || 'Ошибка при импорте данных')
+      showError(err.message || 'Ошибка при импорте данных')
     } finally {
       setIsUploading(false)
       setImportStartTime(null)
@@ -207,27 +205,6 @@ export function Import() {
           </div>
         )}
 
-        {/* Сообщения об ошибках */}
-        {error && !isUploading && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-telegram text-sm">
-            {error}
-          </div>
-        )}
-
-        {/* Сообщения об успехе */}
-        {success && !isUploading && (
-          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-telegram text-sm">
-            {success}
-            {importResult && (
-              <div className="mt-2 space-y-1">
-                <p>Импортировано счетов: {importResult.accounts_imported}</p>
-                <p>Импортировано транзакций: {importResult.transactions_imported}</p>
-                <p>Найдено категорий: {importResult.categories_imported}</p>
-                <p>Создано новых категорий: {importResult.categories_created}</p>
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Кнопка импорта */}
         <button

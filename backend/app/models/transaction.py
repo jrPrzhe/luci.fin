@@ -18,7 +18,8 @@ class TransactionTypeEnum(TypeDecorator):
     
     def __init__(self):
         # Use create_type=False since the enum type already exists in the database
-        super().__init__(TransactionType, name='transactiontype', create_type=False)
+        # But we need to handle both uppercase (DB) and lowercase (code) values
+        super().__init__(TransactionType, name='transactiontype', create_type=False, values_callable=lambda x: [e.value for e in TransactionType])
     
     def process_bind_param(self, value, dialect):
         if value is None:
@@ -42,18 +43,67 @@ class TransactionTypeEnum(TypeDecorator):
         # Convert string value back to enum
         # Handle both uppercase (from old DB) and lowercase (from new DB) values
         if isinstance(value, str):
+            # First try to match by lowercase (our enum values)
             value_lower = value.lower()
-            # Map uppercase database values to lowercase enum values
             if value_lower == 'income':
                 return TransactionType.INCOME
             elif value_lower == 'expense':
                 return TransactionType.EXPENSE
             elif value_lower == 'transfer':
                 return TransactionType.TRANSFER
-            else:
-                # Try to create enum directly (will raise ValueError if invalid)
+            # If lowercase doesn't work, try uppercase (database enum names)
+            value_upper = value.upper()
+            if value_upper == 'INCOME':
+                return TransactionType.INCOME
+            elif value_upper == 'EXPENSE':
+                return TransactionType.EXPENSE
+            elif value_upper == 'TRANSFER':
+                return TransactionType.TRANSFER
+            # Last resort: try to create enum directly
+            try:
                 return TransactionType(value_lower)
-        return TransactionType(value)
+            except ValueError:
+                # If still fails, try uppercase
+                try:
+                    # Map uppercase to lowercase enum value
+                    if value_upper == 'INCOME':
+                        return TransactionType.INCOME
+                    elif value_upper == 'EXPENSE':
+                        return TransactionType.EXPENSE
+                    elif value_upper == 'TRANSFER':
+                        return TransactionType.TRANSFER
+                except:
+                    pass
+                raise ValueError(f"Invalid transaction type: {value}")
+        # If value is already an enum, return it
+        if isinstance(value, TransactionType):
+            return value
+        # Try to convert to enum
+        value_str = str(value)
+        value_lower = value_str.lower()
+        value_upper = value_str.upper()
+        
+        # Try lowercase first
+        if value_lower == 'income':
+            return TransactionType.INCOME
+        elif value_lower == 'expense':
+            return TransactionType.EXPENSE
+        elif value_lower == 'transfer':
+            return TransactionType.TRANSFER
+        
+        # Try uppercase
+        if value_upper == 'INCOME':
+            return TransactionType.INCOME
+        elif value_upper == 'EXPENSE':
+            return TransactionType.EXPENSE
+        elif value_upper == 'TRANSFER':
+            return TransactionType.TRANSFER
+        
+        # Last resort
+        try:
+            return TransactionType(value_lower)
+        except ValueError:
+            raise ValueError(f"Invalid transaction type: {value}")
 
 
 class TransactionFrequency(str, enum.Enum):

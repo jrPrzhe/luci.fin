@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { api } from '../services/api'
+import { useToast } from '../contexts/ToastContext'
 
 interface Transaction {
   id: number
@@ -40,13 +41,13 @@ interface Category {
 
 export function Transactions() {
   const location = useLocation()
+  const { showError, showSuccess } = useToast()
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
-  const [error, setError] = useState('')
   const [filterType, setFilterType] = useState<'all' | 'own' | 'shared'>('all')
   const [transactionTypeFilter, setTransactionTypeFilter] = useState<'all' | 'income' | 'expense' | 'transfer'>('all')
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month' | 'year' | 'custom'>('all')
@@ -165,7 +166,7 @@ export function Transactions() {
         setAccounts(accountsData)
       }
     } catch (err: any) {
-      setError(err.message || 'Ошибка загрузки данных')
+      showError(err.message || 'Ошибка загрузки данных')
     } finally {
       setLoading(false)
       setLoadingMore(false)
@@ -212,7 +213,6 @@ export function Transactions() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
 
     try {
       const submitData: any = {
@@ -226,7 +226,7 @@ export function Transactions() {
 
       if (formData.transaction_type === 'transfer') {
         if (!formData.to_account_id) {
-          setError('Выберите счет получателя для перевода')
+          showError('Выберите счет получателя для перевода')
           return
         }
         submitData.to_account_id = parseInt(formData.to_account_id)
@@ -250,8 +250,9 @@ export function Transactions() {
       await loadData()
       await loadGoals()  // Reload goals to update progress
       setShowForm(false)
+      showSuccess(editingTransaction ? 'Транзакция обновлена' : 'Транзакция добавлена')
     } catch (err: any) {
-      setError(err.message || 'Ошибка сохранения транзакции')
+      showError(err.message || 'Ошибка сохранения транзакции')
     }
   }
 
@@ -280,8 +281,9 @@ export function Transactions() {
     try {
       await api.deleteTransaction(id)
       await loadData()
+      showSuccess('Транзакция удалена')
     } catch (err: any) {
-      setError(err.message || 'Ошибка удаления транзакции')
+      showError(err.message || 'Ошибка удаления транзакции')
     }
   }
 
@@ -389,11 +391,6 @@ export function Transactions() {
         </button>
       </div>
 
-      {error && (
-        <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-telegram mb-4">
-          {error}
-        </div>
-      )}
 
       {/* Show selected account filter if set */}
       {selectedAccountId && (

@@ -3,12 +3,13 @@ import { useNavigate, Link } from 'react-router-dom'
 import { api } from '../services/api'
 import { isTelegramWebApp, getInitData } from '../utils/telegram'
 import { isVKWebApp, getVKLaunchParams, initVKWebApp, getVKUser } from '../utils/vk'
+import { useToast } from '../contexts/ToastContext'
 
 export function Login() {
+  const { showError } = useToast()
   const [authMethod, setAuthMethod] = useState<'select' | 'telegram' | 'vk' | 'email'>('select')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const navigate = useNavigate()
   
@@ -28,7 +29,6 @@ export function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
     setIsLoading(true)
     
            try {
@@ -41,25 +41,24 @@ export function Login() {
              // Проверяем онбординг - Layout перенаправит на онбординг если нужно
              navigate('/')
     } catch (err: any) {
-      setError(err.message || 'Неверный email или пароль')
+      showError(err.message || 'Неверный email или пароль')
     } finally {
       setIsLoading(false)
     }
   }
 
   const handleTelegramLogin = async () => {
-    setError('')
     setIsLoading(true)
 
     if (!isTelegramWebApp()) {
-      setError('Telegram авторизация доступна только в Telegram Mini App')
+      showError('Telegram авторизация доступна только в Telegram Mini App')
       setIsLoading(false)
       return
     }
 
     const initData = getInitData()
     if (!initData || initData.length === 0) {
-      setError('Не удалось получить данные Telegram. Убедитесь, что открыто через Telegram Mini App.')
+      showError('Не удалось получить данные Telegram. Убедитесь, что открыто через Telegram Mini App.')
       setIsLoading(false)
       return
     }
@@ -82,7 +81,7 @@ export function Login() {
           expected: response.access_token,
           saved: savedToken
         })
-        setError('Ошибка сохранения токена авторизации')
+        showError('Ошибка сохранения токена авторизации')
         setIsLoading(false)
         return
       }
@@ -95,17 +94,16 @@ export function Login() {
       // Проверяем онбординг - Layout перенаправит на онбординг если нужно
       navigate('/')
     } catch (err: any) {
-      setError(`Ошибка авторизации через Telegram: ${err.message || 'Неизвестная ошибка'}`)
+      showError(`Ошибка авторизации через Telegram: ${err.message || 'Неизвестная ошибка'}`)
       setIsLoading(false)
     }
   }
 
   const handleVKLogin = async () => {
-    setError('')
     setIsLoading(true)
 
     if (!isVKWebApp()) {
-      setError('VK авторизация доступна только в VK Mini App')
+      showError('VK авторизация доступна только в VK Mini App')
       setIsLoading(false)
       return
     }
@@ -115,7 +113,7 @@ export function Login() {
 
     const launchParams = await getVKLaunchParams()
     if (!launchParams || launchParams.length === 0) {
-      setError('Не удалось получить данные VK. Убедитесь, что открыто через VK Mini App.')
+      showError('Не удалось получить данные VK. Убедитесь, что открыто через VK Mini App.')
       setIsLoading(false)
       return
     }
@@ -152,7 +150,7 @@ export function Login() {
           expected: response.access_token,
           saved: savedToken
         })
-        setError('Ошибка сохранения токена авторизации')
+        showError('Ошибка сохранения токена авторизации')
         setIsLoading(false)
         return
       }
@@ -165,7 +163,7 @@ export function Login() {
       // Проверяем онбординг - Layout перенаправит на онбординг если нужно
       navigate('/')
     } catch (err: any) {
-      setError(`Ошибка авторизации через VK: ${err.message || 'Неизвестная ошибка'}`)
+      showError(`Ошибка авторизации через VK: ${err.message || 'Неизвестная ошибка'}`)
       setIsLoading(false)
     }
   }
