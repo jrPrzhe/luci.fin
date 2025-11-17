@@ -754,6 +754,28 @@ async def login_vk(
         
         logger.info(f"VK user name: first_name='{first_name}', last_name='{last_name}'")
         
+        # Get VK language from launch params (vk_language)
+        vk_language = params.get('vk_language', '').lower()
+        if vk_language:
+            # Map VK language codes to app languages
+            # VK uses language codes like 'ru', 'en', 'uk', 'kk', 'be', etc.
+            if vk_language.startswith('ru'):
+                app_language = 'ru'
+                default_currency = 'RUB'
+            elif vk_language.startswith('en'):
+                app_language = 'en'
+                default_currency = 'USD'
+            else:
+                # For other languages (uk, kk, be, etc.), default to Russian/RUB
+                app_language = 'ru'
+                default_currency = 'RUB'
+        else:
+            # No vk_language in params, use default (Russian/RUB)
+            app_language = 'ru'
+            default_currency = 'RUB'
+        
+        logger.info(f"VK language: vk_language='{vk_language}', app_language='{app_language}', default_currency='{default_currency}'")
+        
         # Find or create user by vk_id (exact match)
         user = db.query(User).filter(User.vk_id == vk_id).first()
         
@@ -847,7 +869,8 @@ async def login_vk(
                 is_active=True,
                 is_verified=True,  # VK users are considered verified
                 is_admin=is_admin,
-                default_currency="RUB",  # Default currency for VK users
+                default_currency=default_currency,  # Set currency based on VK language
+                language=app_language,  # Set language based on VK language
             )
             db.add(user)
             db.flush()  # Flush to get user.id
@@ -860,6 +883,13 @@ async def login_vk(
                 updated = True
             if last_name and user.last_name != last_name:
                 user.last_name = last_name
+                updated = True
+            # Update language and currency based on VK language
+            if app_language and user.language != app_language:
+                user.language = app_language
+                updated = True
+            if default_currency and user.default_currency != default_currency:
+                user.default_currency = default_currency
                 updated = True
         
         user.last_login = datetime.utcnow()
