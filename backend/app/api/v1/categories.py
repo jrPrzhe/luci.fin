@@ -301,41 +301,46 @@ async def create_category(
             )
             
             # CRITICAL FIX: Force transaction_type to be lowercase string
-            # SQLAlchemy's TypeDecorator should handle this, but we ensure it's correct
-            # Set directly in __dict__ to bypass any property setters or conversions
-            db_category.__dict__['transaction_type'] = transaction_type_value
+            # Get the TypeDecorator instance from the column
+            from app.models.category import TransactionTypeEnum
+            type_decorator = TransactionTypeEnum()
             
-            # Verify it's set correctly
-            logger.info(f"Set transaction_type in __dict__: {db_category.__dict__.get('transaction_type')}")
+            # Manually call process_bind_param to ensure correct conversion
+            # This bypasses any SQLAlchemy internal conversion that might use enum name
+            transaction_type_for_db = type_decorator.process_bind_param(transaction_type_value, None)
             
-            # Also set via attribute to trigger TypeDecorator if needed
-            # But ensure it's a string, not enum
-            if isinstance(transaction_type_value, str):
-                # Direct assignment - TypeDecorator.process_bind_param will be called
-                db_category.transaction_type = transaction_type_value
-            else:
-                # Convert to string first
-                db_category.transaction_type = str(transaction_type_value).lower()
+            logger.error(f"CONVERTED: {transaction_type_value} -> {transaction_type_for_db}, type={type(transaction_type_for_db)}")
             
-            # Final verification - check what will be sent to DB
-            # Access the attribute value that TypeDecorator will process
-            final_check = db_category.transaction_type
-            if isinstance(final_check, TransactionType):
-                # If somehow it's still an enum, force conversion
-                logger.warning(f"transaction_type is still enum {final_check}, converting to {final_check.value}")
-                db_category.__dict__['transaction_type'] = final_check.value
-                db_category.transaction_type = final_check.value
-            elif isinstance(final_check, str) and final_check != final_check.lower():
-                # If it's uppercase, convert
-                logger.warning(f"transaction_type is uppercase '{final_check}', converting to lowercase")
-                db_category.__dict__['transaction_type'] = final_check.lower()
-                db_category.transaction_type = final_check.lower()
+            # Set the converted value directly in __dict__ and via attribute
+            # Use object.__setattr__ to bypass any property setters
+            object.__setattr__(db_category, 'transaction_type', transaction_type_for_db)
+            db_category.__dict__['transaction_type'] = transaction_type_for_db
             
-            # Log final value
-            final_value = db_category.__dict__.get('transaction_type') or getattr(db_category, 'transaction_type', None)
-            logger.info(f"Final transaction_type before commit: {final_value}, type: {type(final_value)}")
+            # Also try setting via SQLAlchemy attribute system
+            try:
+                from sqlalchemy import inspect as sa_inspect
+                insp = sa_inspect(db_category)
+                if 'transaction_type' in insp.attrs:
+                    insp.attrs.transaction_type.set_value(db_category, transaction_type_for_db)
+            except Exception as e:
+                logger.error(f"Failed to set via inspection API: {e}")
+            
+            logger.error(f"BEFORE ADD: transaction_type={db_category.transaction_type}, type={type(db_category.transaction_type)}")
+            logger.error(f"BEFORE ADD: __dict__={db_category.__dict__.get('transaction_type')}")
             
             db.add(db_category)
+            
+            # Force set again after add (before flush)
+            # Access the internal state and set directly
+            try:
+                insp = sa_inspect(db_category)
+                if 'transaction_type' in insp.attrs:
+                    insp.attrs.transaction_type.set_value(db_category, transaction_type_for_db)
+            except:
+                pass
+            
+            logger.error(f"AFTER ADD: transaction_type={db_category.transaction_type}, type={type(db_category.transaction_type)}")
+            
             db.commit()
             db.refresh(db_category)
             
