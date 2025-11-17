@@ -23,7 +23,7 @@ export function Layout() {
   const isMiniApp = isTelegramWebApp()
   const { isEnabled: newYearEnabled } = useNewYearTheme()
   const { theme, toggleTheme } = useTheme()
-  const { t } = useI18n()
+  const { t, language, setLanguage } = useI18n()
 
   // Предзагрузка изображений для Stories при монтировании компонента
   useEffect(() => {

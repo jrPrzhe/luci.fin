@@ -274,7 +274,9 @@ def create_inline_keyboard(buttons: list, one_time: bool = False):
 @bot.on.message(CommandRule("start", ["начать", "старт"]))
 async def start_handler(message: Message):
     """Handle /start command"""
-    logger.info(f"Received /start command from user {message.from_id}")
+    logger.info(f"✅ Received /start command from user {message.from_id}")
+    logger.info(f"   Message text: '{message.text}'")
+    logger.info(f"   Message payload: {message.payload}")
     vk_id = str(message.from_id)
     try:
         user_info = await bot.api.users.get(message.from_id)
@@ -464,6 +466,7 @@ async def button_handler(message: Message):
     """Handle button clicks and text commands"""
     text = message.text or ""
     payload = message.payload
+    logger.info(f"📨 Received message from {message.from_id}: text='{text[:50]}', payload={payload}")
     
     # Handle button clicks (payload messages)
     if payload:
@@ -548,11 +551,19 @@ async def button_handler(message: Message):
 
 
 if __name__ == "__main__":
+    logger.info("=" * 60)
     logger.info("Starting VK bot...")
+    logger.info("=" * 60)
+    logger.info(f"VK_BOT_TOKEN: {'✅ Set' if VK_BOT_TOKEN else '❌ NOT SET'}")
+    logger.info(f"BACKEND_URL: {BACKEND_URL}")
+    logger.info(f"VK_GROUP_ID: {VK_GROUP_ID if GROUP_ID else 'Not set'}")
+    logger.info("=" * 60)
     logger.info("Bot is ready to receive messages!")
     logger.info("Make sure Long Poll API is enabled in your VK community settings:")
     logger.info("  - Community Settings -> Work with API -> Long Poll API -> Enable")
     logger.info("  - Enable 'Incoming messages' event type")
+    logger.info("=" * 60)
+    
     try:
         bot.run_forever()
     except KeyboardInterrupt:
