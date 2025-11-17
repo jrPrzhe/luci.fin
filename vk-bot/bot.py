@@ -9,7 +9,7 @@ from typing import Dict, Optional
 from vkbottle import Bot
 from vkbottle.bot import Message
 from vkbottle.dispatch.rules.base import CommandRule
-from vkbottle import Keyboard, Text
+from vkbottle import Keyboard, Text, OpenLink
 import httpx
 
 # Configure logging
@@ -323,6 +323,10 @@ async def start_handler(message: Message):
         # Fourth row: Help and Language
         keyboard.add(Text(t("buttons.help", lang), payload=json.dumps({"command": "help"})))
         keyboard.add(Text(t("buttons.language", lang), payload=json.dumps({"command": "language"})))
+        keyboard.row()
+        
+        # Fifth row: Application button
+        keyboard.add(OpenLink("https://vk.com/app54321962_144352158", t("buttons.app", lang)))
         
         await message.answer(message_text, keyboard=keyboard)
         logger.info(f"Sent start message with keyboard to user {message.from_id}")

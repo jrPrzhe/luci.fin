@@ -172,77 +172,126 @@ async def create_category(
     db: Session = Depends(get_db)
 ):
     """Create a new category"""
-    # Check if shared_budget_id is provided and user is member
-    shared_budget_id = None
-    if category.shared_budget_id:
-        from app.models.shared_budget import SharedBudgetMember
-        membership = db.query(SharedBudgetMember).filter(
-            SharedBudgetMember.shared_budget_id == category.shared_budget_id,
-            SharedBudgetMember.user_id == current_user.id
-        ).first()
-        if not membership:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You don't have access to this shared budget"
-            )
-        shared_budget_id = category.shared_budget_id
+    import logging
+    logger = logging.getLogger(__name__)
     
-    # Check if parent category exists and belongs to user/shared budget
-    if category.parent_id:
-        parent = db.query(Category).filter(
-            Category.id == category.parent_id
-        ).first()
-        if not parent:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Parent category not found"
+    try:
+        # Check if shared_budget_id is provided and user is member
+        shared_budget_id = None
+        if category.shared_budget_id:
+            try:
+                from app.models.shared_budget import SharedBudgetMember
+                membership = db.query(SharedBudgetMember).filter(
+                    SharedBudgetMember.shared_budget_id == category.shared_budget_id,
+                    SharedBudgetMember.user_id == current_user.id
+                ).first()
+                if not membership:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="You don't have access to this shared budget"
+                    )
+                shared_budget_id = category.shared_budget_id
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.error(f"Error checking shared budget membership: {e}", exc_info=True)
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Error checking shared budget access"
+                )
+        
+        # Check if parent category exists and belongs to user/shared budget
+        if category.parent_id:
+            try:
+                parent = db.query(Category).filter(
+                    Category.id == category.parent_id
+                ).first()
+                if not parent:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="Parent category not found"
+                    )
+                # Check access to parent category
+                if parent.shared_budget_id != shared_budget_id:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Parent category must belong to the same shared budget"
+                    )
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.error(f"Error checking parent category: {e}", exc_info=True)
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Error checking parent category"
+                )
+        
+        # Check if category name already exists for this user/shared budget
+        try:
+            existing_query = db.query(Category).filter(
+                Category.name == category.name,
+                Category.is_active == True
             )
-        # Check access to parent category
-        if parent.shared_budget_id != shared_budget_id:
+            if shared_budget_id:
+                existing_query = existing_query.filter(Category.shared_budget_id == shared_budget_id)
+            else:
+                existing_query = existing_query.filter(
+                    Category.user_id == current_user.id,
+                    Category.shared_budget_id.is_(None)
+                )
+            
+            existing = existing_query.first()
+            if existing:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Category with this name already exists"
+                )
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Error checking existing category: {e}", exc_info=True)
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Parent category must belong to the same shared budget"
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Error checking category name"
             )
-    
-    # Check if category name already exists for this user/shared budget
-    existing_query = db.query(Category).filter(
-        Category.name == category.name,
-        Category.is_active == True
-    )
-    if shared_budget_id:
-        existing_query = existing_query.filter(Category.shared_budget_id == shared_budget_id)
-    else:
-        existing_query = existing_query.filter(
-            Category.user_id == current_user.id,
-            Category.shared_budget_id.is_(None)
-        )
-    
-    existing = existing_query.first()
-    if existing:
+        
+        # Create category
+        try:
+            db_category = Category(
+                user_id=current_user.id,
+                shared_budget_id=shared_budget_id,
+                name=category.name,
+                transaction_type=category.transaction_type,
+                icon=category.icon,
+                color=category.color,
+                parent_id=category.parent_id,
+                budget_limit=category.budget_limit,
+                is_favorite=category.is_favorite or False,
+                is_system=False,
+                is_active=True
+            )
+            
+            db.add(db_category)
+            db.commit()
+            db.refresh(db_category)
+            
+            return db_category
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error creating category: {e}", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to create category: {str(e)}"
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Unexpected error in create_category: {e}", exc_info=True)
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Category with this name already exists"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while creating the category"
         )
-    
-    db_category = Category(
-        user_id=current_user.id,
-        shared_budget_id=shared_budget_id,
-        name=category.name,
-        transaction_type=category.transaction_type,
-        icon=category.icon,
-        color=category.color,
-        parent_id=category.parent_id,
-        budget_limit=category.budget_limit,
-        is_favorite=category.is_favorite or False,
-        is_system=False,
-        is_active=True
-    )
-    
-    db.add(db_category)
-    db.commit()
-    db.refresh(db_category)
-    
-    return db_category
 
 
 @router.put("/{category_id}", response_model=CategoryResponse)

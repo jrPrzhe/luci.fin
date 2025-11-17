@@ -941,8 +941,40 @@ async def login_vk(
                     ))
                 
                 db.add_all(categories)
-                db.commit()
-                logger.info(f"Default account and categories created for user {user.id}")
+                try:
+                    db.commit()
+                    logger.info(f"Default account and categories created for user {user.id}")
+                except Exception as e:
+                    logger.error(f"Failed to commit default account/categories: {e}", exc_info=True)
+                    db.rollback()
+                    # Try to create categories separately if account creation succeeded
+                    try:
+                        # Check if account was created
+                        account_exists = db.query(Account).filter(Account.user_id == user.id).first()
+                        if account_exists:
+                            # Try to create categories again
+                            categories_retry = []
+                            for cat_data in DEFAULT_EXPENSE_CATEGORIES + DEFAULT_INCOME_CATEGORIES:
+                                name = str(cat_data["name"]).encode('utf-8').decode('utf-8')
+                                icon = str(cat_data["icon"]).encode('utf-8').decode('utf-8')
+                                
+                                categories_retry.append(Category(
+                                    user_id=user.id,
+                                    name=name,
+                                    transaction_type=cat_data["transaction_type"],
+                                    icon=icon,
+                                    color=cat_data["color"],
+                                    is_system=True,
+                                    is_active=True,
+                                    is_favorite=cat_data.get("is_favorite", False)
+                                ))
+                            
+                            db.add_all(categories_retry)
+                            db.commit()
+                            logger.info(f"Categories created separately for user {user.id}")
+                    except Exception as e2:
+                        logger.error(f"Failed to create categories separately: {e2}", exc_info=True)
+                        db.rollback()
             except Exception as e:
                 logger.error(f"Failed to create default account/categories: {e}", exc_info=True)
                 db.rollback()

@@ -62,6 +62,7 @@ en = {
         "goal": "🎯 Goal",
         "help": "❓ Help",
         "language": "🌍 Language",
+        "app": "📱 App",
     },
     "auth": {
         "failed": "❌ Failed to authenticate. Please register first.",
