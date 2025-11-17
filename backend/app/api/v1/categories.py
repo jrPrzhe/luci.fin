@@ -257,22 +257,27 @@ async def create_category(
         
         # Create category
         try:
-            # Ensure transaction_type is properly converted to enum value (lowercase)
-            # Handle both enum instance and string values
+            # Ensure transaction_type is properly converted to lowercase string
+            # TypeDecorator will handle the conversion, but we ensure lowercase string for safety
             if isinstance(category.transaction_type, TransactionType):
-                transaction_type_value = category.transaction_type
+                # Get the lowercase value from enum
+                transaction_type_value = category.transaction_type.value
             elif isinstance(category.transaction_type, str):
-                # Convert string to enum, ensuring lowercase
-                transaction_type_value = TransactionType(category.transaction_type.lower())
+                # Convert string to lowercase
+                transaction_type_value = category.transaction_type.lower()
             else:
-                # Fallback: try to convert to enum
-                transaction_type_value = TransactionType(str(category.transaction_type).lower())
+                # Fallback: convert to lowercase string
+                transaction_type_value = str(category.transaction_type).lower()
+            
+            # Validate the value is one of the allowed values
+            if transaction_type_value not in ['income', 'expense', 'both']:
+                raise ValueError(f"Invalid transaction_type: {transaction_type_value}")
             
             db_category = Category(
                 user_id=current_user.id,
                 shared_budget_id=shared_budget_id,
                 name=category.name,
-                transaction_type=transaction_type_value,
+                transaction_type=transaction_type_value,  # Pass lowercase string
                 icon=category.icon,
                 color=category.color,
                 parent_id=category.parent_id,
@@ -387,13 +392,24 @@ async def update_category(
     # Handle transaction_type conversion if present
     if 'transaction_type' in update_data:
         transaction_type_value = update_data['transaction_type']
-        # Ensure it's properly converted to enum
+        # Ensure it's properly converted to lowercase string
+        # TypeDecorator will handle the conversion, but we ensure lowercase string for safety
         if isinstance(transaction_type_value, TransactionType):
-            update_data['transaction_type'] = transaction_type_value
+            # Get the lowercase value from enum
+            update_data['transaction_type'] = transaction_type_value.value
         elif isinstance(transaction_type_value, str):
-            update_data['transaction_type'] = TransactionType(transaction_type_value.lower())
+            # Convert string to lowercase
+            update_data['transaction_type'] = transaction_type_value.lower()
         else:
-            update_data['transaction_type'] = TransactionType(str(transaction_type_value).lower())
+            # Fallback: convert to lowercase string
+            update_data['transaction_type'] = str(transaction_type_value).lower()
+        
+        # Validate the value is one of the allowed values
+        if update_data['transaction_type'] not in ['income', 'expense', 'both']:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Неверный тип транзакции. Используйте: income, expense или both"
+            )
     
     for field, value in update_data.items():
         setattr(category, field, value)
