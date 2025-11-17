@@ -1,5 +1,5 @@
-from pydantic import BaseModel, Field
-from typing import Optional
+from pydantic import BaseModel, Field, field_validator
+from typing import Optional, Union
 from datetime import datetime
 from app.models.category import TransactionType
 
@@ -11,6 +11,25 @@ class CategoryBase(BaseModel):
     color: Optional[str] = Field(None, max_length=7, description="HEX color code")
     parent_id: Optional[int] = Field(None, description="Parent category ID for subcategories")
     budget_limit: Optional[float] = Field(None, description="Monthly budget limit")
+    
+    @field_validator('transaction_type', mode='before')
+    @classmethod
+    def validate_transaction_type(cls, v):
+        """Convert transaction_type to lowercase enum value"""
+        if isinstance(v, TransactionType):
+            return v
+        if isinstance(v, str):
+            # Convert to lowercase and validate
+            v_lower = v.lower()
+            try:
+                return TransactionType(v_lower)
+            except ValueError:
+                raise ValueError(f"Invalid transaction_type: {v}. Must be one of: income, expense, both")
+        # Try to convert to string and then to enum
+        try:
+            return TransactionType(str(v).lower())
+        except (ValueError, AttributeError):
+            raise ValueError(f"Invalid transaction_type: {v}. Must be one of: income, expense, both")
 
 
 class CategoryCreate(CategoryBase):
@@ -27,6 +46,27 @@ class CategoryUpdate(BaseModel):
     is_favorite: Optional[bool] = None
     is_active: Optional[bool] = None
     budget_limit: Optional[float] = None
+    
+    @field_validator('transaction_type', mode='before')
+    @classmethod
+    def validate_transaction_type(cls, v):
+        """Convert transaction_type to lowercase enum value"""
+        if v is None:
+            return None
+        if isinstance(v, TransactionType):
+            return v
+        if isinstance(v, str):
+            # Convert to lowercase and validate
+            v_lower = v.lower()
+            try:
+                return TransactionType(v_lower)
+            except ValueError:
+                raise ValueError(f"Invalid transaction_type: {v}. Must be one of: income, expense, both")
+        # Try to convert to string and then to enum
+        try:
+            return TransactionType(str(v).lower())
+        except (ValueError, AttributeError):
+            raise ValueError(f"Invalid transaction_type: {v}. Must be one of: income, expense, both")
 
 
 class CategoryResponse(CategoryBase):

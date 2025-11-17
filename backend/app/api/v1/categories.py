@@ -383,6 +383,18 @@ async def update_category(
     
     # Update fields
     update_data = category_update.model_dump(exclude_unset=True)
+    
+    # Handle transaction_type conversion if present
+    if 'transaction_type' in update_data:
+        transaction_type_value = update_data['transaction_type']
+        # Ensure it's properly converted to enum
+        if isinstance(transaction_type_value, TransactionType):
+            update_data['transaction_type'] = transaction_type_value
+        elif isinstance(transaction_type_value, str):
+            update_data['transaction_type'] = TransactionType(transaction_type_value.lower())
+        else:
+            update_data['transaction_type'] = TransactionType(str(transaction_type_value).lower())
+    
     for field, value in update_data.items():
         setattr(category, field, value)
     
