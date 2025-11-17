@@ -43,6 +43,31 @@ export function Onboarding({ onComplete }: { onComplete?: () => void }) {
       emoji: '🎯',
     },
     {
+      title: t.onboarding.step1,
+      description: t.onboarding.step1Desc,
+      emoji: '💳',
+    },
+    {
+      title: t.onboarding.step2,
+      description: t.onboarding.step2Desc,
+      emoji: '📦',
+    },
+    {
+      title: t.onboarding.step3,
+      description: t.onboarding.step3Desc,
+      emoji: '💸',
+    },
+    {
+      title: t.onboarding.step4,
+      description: t.onboarding.step4Desc,
+      emoji: '📈',
+    },
+    {
+      title: t.onboarding.step5,
+      description: t.onboarding.step5Desc,
+      emoji: '📊',
+    },
+    {
       title: t.onboarding.ready,
       description: t.onboarding.readyDesc,
       emoji: '🚀',

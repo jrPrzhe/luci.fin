@@ -1,45 +1,71 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useI18n } from '../contexts/I18nContext'
 
 interface InfoPage {
   title: string
   description: string
   image: string
+  content?: string[]
 }
 
-const infoPages: InfoPage[] = [
-  {
-    title: 'Что мы делаем? 📊',
-    description: 'Учет всех транзакций: доходы, расходы и переводы между счетами. Создавайте категории, добавляйте счета и отслеживайте баланс в реальном времени. Всё для удобного контроля ваших финансов!',
-    image: '/1.png',
-  },
-  {
-    title: 'Как мы помогаем? 💡',
-    description: 'Категоризация расходов помогает понять, куда уходят деньги. Совместные бюджеты с семьей для общего учета. Быстрый ввод через карточки категорий. Аналитика и отчеты для планирования бюджета.',
-    image: '/2.png',
-  },
-  {
-    title: 'Для чего это нужно? 🎯',
-    description: 'Чтобы понимать, куда уходят деньги, планировать бюджет, экономить и достигать финансовых целей. Финансовая свобода начинается с учета! Контролируйте свои финансы и принимайте обоснованные решения.',
-    image: '/3.png',
-  },
-  {
-    title: 'Начните с малого 🚀',
-    description: 'Добавьте первый счет, создайте транзакцию и выберите категорию. Чем больше данных вы внесете, тем точнее будет анализ ваших финансов. Мы поможем вам разобраться!',
-    image: '/4.png',
-  },
-  {
-    title: 'Люся всегда рядом 👋',
-    description: 'Я ваш виртуальный помощник! Я помогу вам разобраться с приложением и подскажу, как лучше организовать учет финансов. Если возникнут вопросы - я всегда здесь!',
-    image: '/5.png',
-  },
-]
-
-
 export function About() {
+  const { t } = useI18n()
   const [currentPage, setCurrentPage] = useState(0)
   const [imageKey, setImageKey] = useState(0)
   const navigate = useNavigate()
+
+  const infoPages: InfoPage[] = [
+    {
+      title: t.help.gettingStarted,
+      description: t.help.gettingStartedDesc,
+      image: '/1.png',
+      content: t.help.quickStartSteps,
+    },
+    {
+      title: t.help.accounts,
+      description: t.help.accountsDesc,
+      image: '/2.png',
+      content: [
+        t.help.accountTypesDesc,
+        ...t.help.accountTypesList,
+      ],
+    },
+    {
+      title: t.help.transactions,
+      description: t.help.transactionsDesc,
+      image: '/3.png',
+      content: [
+        t.help.transactionTypesDesc,
+        ...t.help.transactionTypesList,
+      ],
+    },
+    {
+      title: t.help.categories,
+      description: t.help.categoriesDesc,
+      image: '/4.png',
+      content: [
+        t.help.categoryTipsDesc,
+        ...t.help.categoryTipsList,
+      ],
+    },
+    {
+      title: t.help.goals,
+      description: t.help.goalsDesc,
+      image: '/5.png',
+      content: [
+        t.help.goalTipsDesc,
+        ...t.help.goalTipsList,
+      ],
+    },
+    {
+      title: t.help.navigation,
+      description: t.help.navigationDesc,
+      image: '/1.png',
+      content: t.help.navigationList,
+    },
+  ]
+
   const isLastPage = currentPage === infoPages.length - 1
 
   // Обновляем key изображения при смене слайда
@@ -70,13 +96,18 @@ export function About() {
       <div className="flex items-center gap-3 mb-6">
         <button
           onClick={() => navigate('/profile')}
-          className="text-telegram-textSecondary hover:text-telegram-text transition-colors text-xl"
+          className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text transition-colors text-xl"
         >
           ←
         </button>
-        <h1 className="text-xl md:text-2xl font-semibold text-telegram-text">
-          О приложении
-        </h1>
+        <div>
+          <h1 className="text-xl md:text-2xl font-semibold text-telegram-text dark:text-telegram-dark-text">
+            {t.help.title}
+          </h1>
+          <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+            {t.help.subtitle}
+          </p>
+        </div>
       </div>
 
       <div className="card p-6 md:p-8">
@@ -105,12 +136,29 @@ export function About() {
 
         {/* Content */}
         <div className="text-center mb-6">
-          <h2 className="text-xl md:text-2xl font-bold text-telegram-text mb-4">
+          <h2 className="text-xl md:text-2xl font-bold text-telegram-text dark:text-telegram-dark-text mb-4">
             {currentPageData.title}
           </h2>
-          <p className="text-base md:text-lg text-telegram-textSecondary leading-relaxed">
+          <p className="text-base md:text-lg text-telegram-textSecondary dark:text-telegram-dark-textSecondary leading-relaxed mb-4">
             {currentPageData.description}
           </p>
+          
+          {/* Additional Content List */}
+          {currentPageData.content && currentPageData.content.length > 0 && (
+            <div className="mt-6 text-left">
+              <ul className="space-y-2">
+                {currentPageData.content.map((item, index) => (
+                  <li 
+                    key={index}
+                    className="text-sm md:text-base text-telegram-textSecondary dark:text-telegram-dark-textSecondary flex items-start gap-2"
+                  >
+                    <span className="text-telegram-primary dark:text-telegram-dark-primary mt-1">•</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
 
         {/* Progress Dots */}
@@ -121,10 +169,10 @@ export function About() {
               onClick={() => setCurrentPage(index)}
               className={`h-2 rounded-full transition-all ${
                 index === currentPage
-                  ? 'bg-telegram-primary w-8'
-                  : 'bg-telegram-border w-2'
+                  ? 'bg-telegram-primary dark:bg-telegram-dark-primary w-8'
+                  : 'bg-telegram-border dark:bg-telegram-dark-border w-2'
               }`}
-              aria-label={`Страница ${index + 1}`}
+              aria-label={`${t.common.page} ${index + 1}`}
             />
           ))}
         </div>
@@ -135,17 +183,16 @@ export function About() {
             onClick={handlePrev}
             className="btn-secondary flex-1"
           >
-            ← Назад
+            ← {t.common.back}
           </button>
           <button
             onClick={handleNext}
             className="btn-primary flex-1"
           >
-            {isLastPage ? 'В начало' : 'Далее →'}
+            {isLastPage ? t.common.close : `${t.common.next} →`}
           </button>
         </div>
       </div>
     </div>
   )
 }
-
