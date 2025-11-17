@@ -16,12 +16,6 @@ export function Import() {
   const [selectedSource, setSelectedSource] = useState<string>('')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isUploading, setIsUploading] = useState(false)
-  const [importResult, setImportResult] = useState<{
-    accounts_imported: number
-    transactions_imported: number
-    categories_imported: number
-    categories_created: number
-  } | null>(null)
   const [importStartTime, setImportStartTime] = useState<number | null>(null)
   const [elapsedTime, setElapsedTime] = useState(0)
 

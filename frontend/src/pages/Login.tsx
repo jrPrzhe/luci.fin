@@ -192,7 +192,7 @@ export function Login() {
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-telegram-primary mb-4"></div>
           <p className="text-telegram-textSecondary">
-            {isTelegram ? 'Авторизация через Telegram...' : 'Авторизация через VK...'}
+            Загрузка...
           </p>
         </div>
       </div>
@@ -231,11 +231,6 @@ export function Login() {
               </p>
             </div>
 
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-3 md:px-4 py-2 md:py-3 rounded-telegram text-xs md:text-sm">
-                {error}
-              </div>
-            )}
 
             {/* Platform-specific Login Button (Primary) */}
             {isTelegram && (
@@ -356,7 +351,6 @@ export function Login() {
               <button
                 onClick={() => {
                   setAuthMethod('select')
-                  setError('')
                   setEmail('')
                   setPassword('')
                 }}
@@ -370,11 +364,6 @@ export function Login() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4 md:space-y-5">
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-3 md:px-4 py-2 md:py-3 rounded-telegram text-xs md:text-sm animate-slide-up">
-                  {error}
-                </div>
-              )}
               
               <div>
                 <label className="block text-xs md:text-sm font-medium text-telegram-text mb-2">

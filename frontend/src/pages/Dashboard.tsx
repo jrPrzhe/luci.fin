@@ -141,8 +141,6 @@ export function Dashboard() {
   const loadCategories = async (transactionType: 'income' | 'expense'): Promise<void> => {
     console.log(`[loadCategories] Starting to load categories for ${transactionType}`)
     try {
-      setError('')
-      
       // Call API with Promise.race for timeout
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => {
@@ -171,7 +169,7 @@ export function Dashboard() {
       console.log(`[loadCategories] Successfully loaded categories`)
     } catch (err: any) {
       console.error('[loadCategories] Error loading categories:', err)
-      setError(err.message || 'Ошибка загрузки категорий')
+      showError(err.message || 'Ошибка загрузки категорий')
       setCategories([])
       throw err // Re-throw to handle in calling function
     }
@@ -180,7 +178,6 @@ export function Dashboard() {
   const handleQuickAction = async (type: 'income' | 'expense' | 'transfer') => {
     console.log(`[handleQuickAction] Starting for type: ${type}`)
     setQuickFormType(type)
-    setError('')
     
     // Reset categories first
     setCategories([])
@@ -208,7 +205,7 @@ export function Dashboard() {
         console.log(`[handleQuickAction] Categories loaded successfully`)
       } catch (err: any) {
         console.error('[handleQuickAction] Error loading categories:', err)
-        setError(err.message || t.errors.networkError)
+        showError(err.message || t.errors.networkError)
       } finally {
         // Always reset loading state
         console.log(`[handleQuickAction] Setting categoriesLoading = false`)
@@ -476,7 +473,6 @@ export function Dashboard() {
                       setShowQuickForm(false)
                       setQuickFormType(null)
                       setQuickFormStep('category')
-                      setError('')
                     }}
                     className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text text-lg mr-2"
                   >
@@ -748,7 +744,6 @@ export function Dashboard() {
                       setShowQuickForm(false)
                       setQuickFormType(null)
                       setQuickFormStep('category')
-                      setError('')
                       setSubmitting(false)
                     }}
                     className="btn-secondary"

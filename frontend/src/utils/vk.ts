@@ -124,6 +124,39 @@ export function getVKUserId(): number | null {
 }
 
 /**
+ * Get VK language from launch params
+ * Returns language code (e.g., 'ru', 'en') based on vk_language parameter
+ * Maps VK language codes to app-supported languages
+ */
+export function getVKLanguage(): string | null {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  const urlParams = new URLSearchParams(window.location.search)
+  const vkLanguage = urlParams.get('vk_language')
+  
+  if (!vkLanguage) {
+    return null
+  }
+
+  // VK language codes mapping to app-supported languages
+  // VK uses ISO 639-1 codes (ru, en, uk, kk, etc.)
+  // Map to supported languages in the app (ru, en)
+  const languageMap: Record<string, string> = {
+    'ru': 'ru',
+    'en': 'en',
+    'uk': 'ru', // Ukrainian -> Russian (closest match)
+    'kk': 'ru', // Kazakh -> Russian
+    'be': 'ru', // Belarusian -> Russian
+    // Add more mappings if needed
+  }
+
+  const normalizedLang = vkLanguage.toLowerCase().split('-')[0] // Take only language part (ru-RU -> ru)
+  return languageMap[normalizedLang] || 'ru' // Default to Russian if unknown
+}
+
+/**
  * Get VK user data (if available)
  */
 export function getVKUser(): VKUser | null {

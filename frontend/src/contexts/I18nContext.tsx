@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useRef, ReactNode } fro
 import { ru } from '../locales/ru'
 import { en } from '../locales/en'
 import { api } from '../services/api'
+import { isVKWebApp, getVKLanguage } from '../utils/vk'
 
 type Language = 'ru' | 'en'
 
@@ -29,6 +30,20 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const loadLanguage = async () => {
       try {
+        // If in VK Mini App, prioritize vk_language from launch params
+        if (isVKWebApp()) {
+          const vkLang = getVKLanguage()
+          if (vkLang && (vkLang === 'ru' || vkLang === 'en')) {
+            setLanguageState(vkLang as Language)
+            languageRef.current = vkLang as Language
+            localStorage.setItem('language', vkLang)
+            setIsLoading(false)
+            // Update user profile with VK language if logged in
+            checkProfileLanguage(vkLang as Language)
+            return
+          }
+        }
+
         // First check localStorage
         const savedLang = localStorage.getItem('language') as Language | null
         if (savedLang && (savedLang === 'ru' || savedLang === 'en')) {

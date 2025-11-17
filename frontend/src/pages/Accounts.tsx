@@ -78,7 +78,7 @@ export function Accounts() {
       const accountsData = await api.getAccounts()
       setAccounts(accountsData)
     } catch (err: any) {
-      setError(err.message || 'Ошибка загрузки счетов')
+      showError(err.message || 'Ошибка загрузки счетов')
     } finally {
       setLoading(false)
     }
@@ -159,11 +159,6 @@ export function Accounts() {
         </button>
       </div>
 
-      {error && !showForm && (
-        <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300">
-          {error}
-        </div>
-      )}
 
       {accounts.length === 0 ? (
         <div className="text-center py-12">
@@ -271,7 +266,6 @@ export function Accounts() {
             // Close modal when clicking outside
             if (e.target === e.currentTarget) {
               setShowForm(false)
-              setError('')
               setFormData({
                 name: '',
                 account_type: 'cash',
@@ -293,7 +287,6 @@ export function Accounts() {
                 <button
                   onClick={() => {
                     setShowForm(false)
-                    setError('')
                     setFormData({
                       name: '',
                       account_type: 'cash',
@@ -308,12 +301,6 @@ export function Accounts() {
                   ×
                 </button>
               </div>
-
-              {error && (
-                <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm">
-                  {error}
-                </div>
-              )}
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
@@ -436,7 +423,6 @@ export function Accounts() {
                     type="button"
                     onClick={() => {
                       setShowForm(false)
-                      setError('')
                       setFormData({
                         name: '',
                         account_type: 'cash',

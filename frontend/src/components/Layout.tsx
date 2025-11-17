@@ -1,6 +1,7 @@
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { isTelegramWebApp } from '../utils/telegram'
+import { isVKWebApp } from '../utils/vk'
 import { api } from '../services/api'
 import { Welcome } from './Welcome'
 import { Stories } from './Stories'
@@ -21,6 +22,7 @@ export function Layout() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(false)
   const [showStories, setShowStories] = useState(false)
   const isMiniApp = isTelegramWebApp()
+  const isVK = isVKWebApp()
   const { isEnabled: newYearEnabled } = useNewYearTheme()
   const { theme, toggleTheme } = useTheme()
   const { t, language, setLanguage } = useI18n()
@@ -356,12 +358,15 @@ export function Layout() {
               }`}></div>
             </div>
           </button>
-          <button
-            onClick={handleLogout}
-            className="w-full btn-secondary text-telegram-danger dark:text-telegram-dark-danger hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-telegram-danger dark:hover:text-red-300 text-sm py-2"
-          >
-            {t.common.logout}
-          </button>
+          {/* Hide logout button in VK Mini App - users authorize via vk_user_id */}
+          {!isVK && (
+            <button
+              onClick={handleLogout}
+              className="w-full btn-secondary text-telegram-danger dark:text-telegram-dark-danger hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-telegram-danger dark:hover:text-red-300 text-sm py-2"
+            >
+              {t.common.logout}
+            </button>
+          )}
         </div>
       </aside>
 
@@ -480,12 +485,15 @@ export function Layout() {
                   </button>
                 </div>
               </div>
-              <button
-                onClick={handleLogout}
-                className="w-full btn-secondary text-telegram-danger dark:text-telegram-dark-danger hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-telegram-danger dark:hover:text-red-300 text-sm py-2"
-              >
-                {t.common.logout}
-              </button>
+              {/* Hide logout button in VK Mini App - users authorize via vk_user_id */}
+              {!isVK && (
+                <button
+                  onClick={handleLogout}
+                  className="w-full btn-secondary text-telegram-danger dark:text-telegram-dark-danger hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-telegram-danger dark:hover:text-red-300 text-sm py-2"
+                >
+                  {t.common.logout}
+                </button>
+              )}
             </div>
           </div>
         </div>
