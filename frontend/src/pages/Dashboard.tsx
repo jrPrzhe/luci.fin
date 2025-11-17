@@ -3,10 +3,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
 import { useI18n } from '../contexts/I18nContext'
-import { GamificationStatus } from '../components/GamificationStatus'
 import { AchievementModal } from '../components/AchievementModal'
 import { LevelUpModal } from '../components/LevelUpModal'
-import { QuestNotifications } from '../components/QuestNotifications'
 import { UserStatsCard } from '../components/UserStatsCard'
 
 interface Account {
@@ -358,12 +356,6 @@ export function Dashboard() {
             {t.dashboard.subtitle}
           </p>
         </div>
-        <QuestNotifications variant="dashboard" />
-      </div>
-      
-      {/* Mobile: иконка уведомлений в верхнем правом углу */}
-      <div className="mb-4 md:hidden flex justify-end">
-        <QuestNotifications variant="dashboard" />
       </div>
 
       {/* Balance Card - Hero */}
@@ -450,11 +442,6 @@ export function Dashboard() {
       {/* User Stats Card - Level, Streak, Hearts */}
       <div className="mb-4 md:mb-6">
         <UserStatsCard />
-      </div>
-
-      {/* Gamification Status */}
-      <div className="mb-4 md:mb-6">
-        <GamificationStatus />
       </div>
 
       {/* Achievement Modal */}
