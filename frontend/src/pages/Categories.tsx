@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api } from '../services/api'
+import { useToast } from '../contexts/ToastContext'
 
 interface Category {
   id: number
@@ -20,11 +21,11 @@ export function Categories() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
-  const [error, setError] = useState('')
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all')
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
   const [isTogglingAll, setIsTogglingAll] = useState(false)
   const [isEditingMode, setIsEditingMode] = useState(false)
+  const { showError, showSuccess } = useToast()
 
   const [formData, setFormData] = useState({
     name: '',
@@ -45,7 +46,7 @@ export function Categories() {
       const cats = await api.getCategories(transactionType, showFavoritesOnly)
       setCategories(cats)
     } catch (err: any) {
-      setError(err.message || 'Ошибка загрузки категорий')
+      showError(err.message || 'Ошибка загрузки категорий')
     } finally {
       setLoading(false)
     }
@@ -53,23 +54,37 @@ export function Categories() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
 
     if (!formData.name.trim()) {
-      setError('Название категории обязательно')
+      showError('Название категории обязательно')
       return
     }
 
     try {
       if (editingCategory) {
         await api.updateCategory(editingCategory.id, formData)
+        showSuccess('Категория успешно обновлена')
       } else {
         await api.createCategory(formData)
+        showSuccess('Категория успешно создана')
       }
       resetForm()
       await loadCategories()
     } catch (err: any) {
-      setError(err.message || 'Ошибка сохранения категории')
+      // Extract user-friendly error message
+      let errorMessage = err.message || 'Ошибка сохранения категории'
+      // Remove technical details if present
+      if (errorMessage.includes('Failed to create category:')) {
+        errorMessage = errorMessage.replace('Failed to create category:', '').trim()
+      }
+      if (errorMessage.includes('(psycopg2.errors.')) {
+        // Extract meaningful part before technical error
+        const parts = errorMessage.split('(psycopg2.errors.')
+        if (parts.length > 0) {
+          errorMessage = parts[0].trim() || 'Ошибка при создании категории'
+        }
+      }
+      showError(errorMessage)
     }
   }
 
@@ -92,9 +107,10 @@ export function Categories() {
 
     try {
       await api.deleteCategory(id)
+      showSuccess('Категория успешно удалена')
       await loadCategories()
     } catch (err: any) {
-      setError(err.message || 'Ошибка удаления категории')
+      showError(err.message || 'Ошибка удаления категории')
     }
   }
 
@@ -103,14 +119,13 @@ export function Categories() {
       await api.setCategoryFavorite(id, !currentFavorite)
       await loadCategories()
     } catch (err: any) {
-      setError(err.message || 'Ошибка изменения статуса категории')
+      showError(err.message || 'Ошибка изменения статуса категории')
     }
   }
 
   const handleToggleAllFavorites = async () => {
     try {
       setIsTogglingAll(true)
-      setError('')
       
       // Применяем фильтры к текущему списку категорий
       let visibleCategories = categories.filter(cat => {
@@ -126,7 +141,7 @@ export function Categories() {
       }
       
       if (visibleCategories.length === 0) {
-        setError('Нет категорий для изменения')
+        showError('Нет категорий для изменения')
         return
       }
       
@@ -140,9 +155,10 @@ export function Categories() {
       )
       
       await Promise.all(promises)
+      showSuccess(`Статус избранного изменен для ${visibleCategories.length} категорий`)
       await loadCategories()
     } catch (err: any) {
-      setError(err.message || 'Ошибка изменения статуса категорий')
+      showError(err.message || 'Ошибка изменения статуса категорий')
     } finally {
       setIsTogglingAll(false)
     }
@@ -158,7 +174,6 @@ export function Categories() {
     })
     setEditingCategory(null)
     setShowForm(false)
-    setError('')
   }
 
   const getTransactionTypeLabel = (type: string) => {
@@ -237,11 +252,6 @@ export function Categories() {
         </div>
       </div>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-telegram mb-4">
-          {error}
-        </div>
-      )}
 
       {/* Filters */}
       <div className="flex gap-2 mb-4 flex-wrap items-center">

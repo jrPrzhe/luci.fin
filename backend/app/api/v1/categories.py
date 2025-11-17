@@ -257,11 +257,22 @@ async def create_category(
         
         # Create category
         try:
+            # Ensure transaction_type is properly converted to enum value (lowercase)
+            # Handle both enum instance and string values
+            if isinstance(category.transaction_type, TransactionType):
+                transaction_type_value = category.transaction_type
+            elif isinstance(category.transaction_type, str):
+                # Convert string to enum, ensuring lowercase
+                transaction_type_value = TransactionType(category.transaction_type.lower())
+            else:
+                # Fallback: try to convert to enum
+                transaction_type_value = TransactionType(str(category.transaction_type).lower())
+            
             db_category = Category(
                 user_id=current_user.id,
                 shared_budget_id=shared_budget_id,
                 name=category.name,
-                transaction_type=category.transaction_type,
+                transaction_type=transaction_type_value,
                 icon=category.icon,
                 color=category.color,
                 parent_id=category.parent_id,
@@ -276,12 +287,28 @@ async def create_category(
             db.refresh(db_category)
             
             return db_category
+        except ValueError as e:
+            db.rollback()
+            logger.error(f"Invalid transaction_type value: {e}", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Неверный тип транзакции. Используйте: income, expense или both"
+            )
         except Exception as e:
             db.rollback()
             logger.error(f"Error creating category: {e}", exc_info=True)
+            # Extract user-friendly error message
+            error_msg = str(e)
+            if "invalid input value for enum" in error_msg.lower():
+                error_msg = "Неверный тип транзакции. Используйте: income, expense или both"
+            elif "duplicate key" in error_msg.lower() or "unique constraint" in error_msg.lower():
+                error_msg = "Категория с таким именем уже существует"
+            else:
+                # Keep technical details for debugging but show user-friendly message
+                error_msg = "Ошибка при создании категории. Попробуйте еще раз."
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to create category: {str(e)}"
+                detail=error_msg
             )
     except HTTPException:
         raise
