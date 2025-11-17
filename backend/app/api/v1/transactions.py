@@ -271,59 +271,69 @@ def _update_account_balance(account_id: int, user_id: int, db: Session):
 
 def _sync_goal_with_account(account_id: int, user_id: int, db: Session):
     """Synchronize goal current_amount with account balance"""
-    # Find goal linked to this account
-    goal = db.query(Goal).filter(
-        Goal.account_id == account_id,
-        Goal.user_id == user_id
-    ).first()
-    
-    if not goal:
-        return
-    
-    # Calculate account balance
-    account = db.query(Account).filter(Account.id == account_id).first()
-    if not account:
-        return
-    
-    transactions = db.query(Transaction).filter(
-        Transaction.account_id == account_id,
-        Transaction.user_id == user_id
-    ).all()
-    
-    balance = Decimal(str(account.initial_balance))
-    for trans in transactions:
-        if trans.transaction_type == TransactionType.INCOME:
-            balance += Decimal(str(trans.amount))
-        elif trans.transaction_type == TransactionType.EXPENSE:
-            balance -= Decimal(str(trans.amount))
-        elif trans.transaction_type == TransactionType.TRANSFER:
-            # For transfer, decrease from source account
-            balance -= Decimal(str(trans.amount))
-    
-    # Update goal current_amount and progress
-    # Ensure current_amount is not negative
-    goal.current_amount = max(Decimal(0), balance)
-    if goal.target_amount > 0:
-        # Calculate progress percentage (ensure it's between 0 and 100)
-        progress = int((goal.current_amount / goal.target_amount) * 100)
-        goal.progress_percentage = max(0, min(100, progress))
+    try:
+        # Find goal linked to this account
+        goal = db.query(Goal).filter(
+            Goal.account_id == account_id,
+            Goal.user_id == user_id
+        ).first()
         
-        # Check if goal is completed
-        was_active = goal.status == GoalStatus.ACTIVE
-        if goal.current_amount >= goal.target_amount and was_active:
-            goal.status = GoalStatus.COMPLETED
-            goal.progress_percentage = 100
+        if not goal:
+            return
+        
+        # Calculate account balance
+        account = db.query(Account).filter(Account.id == account_id).first()
+        if not account:
+            return
+        
+        transactions = db.query(Transaction).filter(
+            Transaction.account_id == account_id,
+            Transaction.user_id == user_id
+        ).all()
+        
+        balance = Decimal(str(account.initial_balance)) if account.initial_balance else Decimal(0)
+        for trans in transactions:
+            try:
+                if trans.transaction_type == TransactionType.INCOME:
+                    balance += Decimal(str(trans.amount)) if trans.amount else Decimal(0)
+                elif trans.transaction_type == TransactionType.EXPENSE:
+                    balance -= Decimal(str(trans.amount)) if trans.amount else Decimal(0)
+                elif trans.transaction_type == TransactionType.TRANSFER:
+                    # For transfer, decrease from source account
+                    balance -= Decimal(str(trans.amount)) if trans.amount else Decimal(0)
+            except Exception as e:
+                logger.error(f"Error processing transaction {trans.id} in balance calculation: {e}")
+                continue
+        
+        # Update goal current_amount and progress
+        # Ensure current_amount is not negative
+        goal.current_amount = max(Decimal(0), balance)
+        if goal.target_amount and goal.target_amount > 0:
+            try:
+                # Calculate progress percentage (ensure it's between 0 and 100)
+                progress = int((goal.current_amount / goal.target_amount) * 100)
+                goal.progress_percentage = max(0, min(100, progress))
+            except (ZeroDivisionError, TypeError) as e:
+                logger.error(f"Error calculating goal progress: {e}")
+                goal.progress_percentage = 0
             
-            # Send Telegram notification if user has telegram_id
-            from app.models.user import User
-            user = db.query(User).filter(User.id == user_id).first()
-            if user and user.telegram_id:
+            # Check if goal is completed
+            was_active = goal.status == GoalStatus.ACTIVE
+            if goal.current_amount >= goal.target_amount and was_active:
+                goal.status = GoalStatus.COMPLETED
+                goal.progress_percentage = 100
+                
+                # Send Telegram notification if user has telegram_id
                 try:
-                    from app.core.config import settings
-                    import httpx
-                    
-                    if settings.TELEGRAM_BOT_TOKEN:
-                        message = f"""🎉 Поздравляем! Цель достигнута!
+                    from app.models.user import User
+                    user = db.query(User).filter(User.id == user_id).first()
+                    if user and user.telegram_id:
+                        try:
+                            from app.core.config import settings
+                            import httpx
+                            
+                            if settings.TELEGRAM_BOT_TOKEN:
+                                message = f"""🎉 Поздравляем! Цель достигнута!
 
 ✅ Вы успешно достигли цели: {goal.name}
 
@@ -331,31 +341,43 @@ def _sync_goal_with_account(account_id: int, user_id: int, db: Session):
 🎯 Цель: {float(goal.target_amount):,.2f} {goal.currency}
 
 Продолжайте в том же духе! 🚀"""
-                        url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendMessage"
-                        payload = {
-                            "chat_id": user.telegram_id,
-                            "text": message
-                        }
-                        
-                        # Send notification in background (don't wait)
-                        try:
-                            import threading
-                            def send_notification():
+                                url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendMessage"
+                                payload = {
+                                    "chat_id": user.telegram_id,
+                                    "text": message
+                                }
+                                
+                                # Send notification in background (don't wait)
                                 try:
-                                    with httpx.Client(timeout=10.0) as client:
-                                        client.post(url, json=payload)
+                                    import threading
+                                    def send_notification():
+                                        try:
+                                            with httpx.Client(timeout=10.0) as client:
+                                                client.post(url, json=payload)
+                                        except Exception as e:
+                                            logger.error(f"Failed to send goal completion notification: {e}")
+                                    
+                                    thread = threading.Thread(target=send_notification)
+                                    thread.daemon = True
+                                    thread.start()
                                 except Exception as e:
-                                    logger.error(f"Failed to send goal completion notification: {e}")
-                            
-                            thread = threading.Thread(target=send_notification)
-                            thread.daemon = True
-                            thread.start()
+                                    logger.error(f"Error sending goal completion notification: {e}")
                         except Exception as e:
-                            logger.error(f"Error sending goal completion notification: {e}")
+                            logger.error(f"Error preparing goal completion notification: {e}")
                 except Exception as e:
-                    logger.error(f"Error preparing goal completion notification: {e}")
-    
-    db.commit()
+                    logger.error(f"Error querying user for goal notification: {e}")
+        
+        # Commit the goal update
+        try:
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error committing goal sync for account {account_id}: {e}")
+            raise
+    except Exception as e:
+        logger.error(f"Error in _sync_goal_with_account for account {account_id}: {e}", exc_info=True)
+        # Re-raise to let the caller handle it
+        raise
 
 
 @router.post("/", response_model=TransactionResponse, status_code=status.HTTP_201_CREATED)
@@ -873,98 +895,130 @@ async def update_transaction(
     db: Session = Depends(get_db)
 ):
     """Update a transaction"""
-    transaction = db.query(Transaction).filter(
-        Transaction.id == transaction_id,
-        Transaction.user_id == current_user.id
-    ).first()
-    
-    if not transaction:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Transaction not found"
-        )
-    
-    # Store old values for balance recalculation
-    old_account_id = transaction.account_id
-    old_type = transaction.transaction_type
-    old_amount = transaction.amount
-    
-    # Update fields
-    if transaction_data.account_id is not None:
-        account = db.query(Account).filter(
-            Account.id == transaction_data.account_id,
-            Account.user_id == current_user.id
+    try:
+        transaction = db.query(Transaction).filter(
+            Transaction.id == transaction_id,
+            Transaction.user_id == current_user.id
         ).first()
-        if not account:
+        
+        if not transaction:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Account not found"
+                detail="Transaction not found"
             )
-        transaction.account_id = transaction_data.account_id
-    
-    if transaction_data.transaction_type is not None:
-        if transaction_data.transaction_type not in ["income", "expense", "transfer"]:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Transaction type must be 'income', 'expense', or 'transfer'"
-            )
-        transaction.transaction_type = TransactionType(transaction_data.transaction_type)
-    
-    if transaction_data.amount is not None:
-        transaction.amount = transaction_data.amount
-    
-    if transaction_data.goal_id is not None:
-        # Handle goal changes
-        if transaction_data.goal_id == 0:
-            # Remove goal
-            transaction.goal_id = None
-        else:
-            # Add/change goal
-            goal = db.query(Goal).filter(
-                Goal.id == transaction_data.goal_id,
-                Goal.user_id == current_user.id
+        
+        # Store old values for balance recalculation
+        old_account_id = transaction.account_id
+        old_type = transaction.transaction_type
+        old_amount = transaction.amount
+        
+        # Update fields
+        if transaction_data.account_id is not None:
+            account = db.query(Account).filter(
+                Account.id == transaction_data.account_id,
+                Account.user_id == current_user.id
             ).first()
-            if goal and goal.status == GoalStatus.ACTIVE:
-                transaction.goal_id = transaction_data.goal_id
-    
-    if transaction_data.currency is not None:
-        transaction.currency = transaction_data.currency
-    
-    if transaction_data.category_id is not None:
-        transaction.category_id = transaction_data.category_id
-    
-    if transaction_data.description is not None:
-        transaction.description = transaction_data.description
-    
-    if transaction_data.transaction_date is not None:
-        transaction.transaction_date = transaction_data.transaction_date
-    
-    if transaction_data.to_account_id is not None:
-        transaction.to_account_id = transaction_data.to_account_id
-    
-    db.commit()
-    db.refresh(transaction)
-    
-    # Sync goals with account balances if transaction affects goal accounts
-    account_ids_to_sync = set()
-    
-    # Old account (if changed)
-    if old_account_id:
-        goal = db.query(Goal).filter(Goal.account_id == old_account_id).first()
-        if goal and goal.user_id == current_user.id:
-            account_ids_to_sync.add(old_account_id)
-    
-    # New account (current)
-    if transaction.account_id:
-        goal = db.query(Goal).filter(Goal.account_id == transaction.account_id).first()
-        if goal and goal.user_id == current_user.id:
-            account_ids_to_sync.add(transaction.account_id)
-    
-    # Sync all affected goal accounts
-    for account_id in account_ids_to_sync:
-        _sync_goal_with_account(account_id, current_user.id, db)
-    
-    return TransactionResponse.model_validate(transaction)
+            if not account:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Account not found"
+                )
+            transaction.account_id = transaction_data.account_id
+        
+        if transaction_data.transaction_type is not None:
+            if transaction_data.transaction_type not in ["income", "expense", "transfer"]:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Transaction type must be 'income', 'expense', or 'transfer'"
+                )
+            transaction.transaction_type = TransactionType(transaction_data.transaction_type)
+        
+        if transaction_data.amount is not None:
+            transaction.amount = transaction_data.amount
+        
+        if transaction_data.goal_id is not None:
+            # Handle goal changes
+            if transaction_data.goal_id == 0:
+                # Remove goal
+                transaction.goal_id = None
+            else:
+                # Add/change goal
+                try:
+                    goal = db.query(Goal).filter(
+                        Goal.id == transaction_data.goal_id,
+                        Goal.user_id == current_user.id
+                    ).first()
+                    if goal and goal.status == GoalStatus.ACTIVE:
+                        transaction.goal_id = transaction_data.goal_id
+                except Exception as e:
+                    logger.error(f"Error checking goal {transaction_data.goal_id}: {e}")
+        
+        if transaction_data.currency is not None:
+            transaction.currency = transaction_data.currency
+        
+        if transaction_data.category_id is not None:
+            transaction.category_id = transaction_data.category_id
+        
+        if transaction_data.description is not None:
+            transaction.description = transaction_data.description
+        
+        if transaction_data.transaction_date is not None:
+            transaction.transaction_date = transaction_data.transaction_date
+        
+        if transaction_data.to_account_id is not None:
+            transaction.to_account_id = transaction_data.to_account_id
+        
+        # Commit the update
+        try:
+            db.commit()
+            db.refresh(transaction)
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error committing transaction update: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to update transaction"
+            )
+        
+        # Sync goals with account balances if transaction affects goal accounts
+        account_ids_to_sync = set()
+        
+        # Old account (if changed)
+        if old_account_id:
+            try:
+                goal = db.query(Goal).filter(Goal.account_id == old_account_id).first()
+                if goal and goal.user_id == current_user.id:
+                    account_ids_to_sync.add(old_account_id)
+            except Exception as e:
+                logger.error(f"Error checking goal for old account {old_account_id}: {e}")
+        
+        # New account (current)
+        if transaction.account_id:
+            try:
+                goal = db.query(Goal).filter(Goal.account_id == transaction.account_id).first()
+                if goal and goal.user_id == current_user.id:
+                    account_ids_to_sync.add(transaction.account_id)
+            except Exception as e:
+                logger.error(f"Error checking goal for account {transaction.account_id}: {e}")
+        
+        # Sync all affected goal accounts
+        for account_id in account_ids_to_sync:
+            try:
+                _sync_goal_with_account(account_id, current_user.id, db)
+            except Exception as e:
+                logger.error(f"Error syncing goal for account {account_id}: {e}")
+                # Don't fail the update if goal sync fails
+        
+        return TransactionResponse.model_validate(transaction)
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Unexpected error updating transaction {transaction_id}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while updating the transaction"
+        )
 
 
 @router.delete("/{transaction_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -974,46 +1028,81 @@ async def delete_transaction(
     db: Session = Depends(get_db)
 ):
     """Delete a transaction"""
-    transaction = db.query(Transaction).filter(
-        Transaction.id == transaction_id,
-        Transaction.user_id == current_user.id
-    ).first()
-    
-    if not transaction:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Transaction not found"
-        )
-    
-    # Store account IDs that might need goal syncing
-    account_ids_to_sync = set()
-    if transaction.account_id:
-        goal = db.query(Goal).filter(Goal.account_id == transaction.account_id).first()
-        if goal and goal.user_id == current_user.id:
-            account_ids_to_sync.add(transaction.account_id)
-    
-    # If it's a transfer, also delete the corresponding income transaction
-    if transaction.transaction_type == TransactionType.TRANSFER and transaction.to_account_id:
-        to_transaction = db.query(Transaction).filter(
-            Transaction.user_id == current_user.id,
-            Transaction.account_id == transaction.to_account_id,
-            Transaction.transaction_type == TransactionType.INCOME,
-            Transaction.amount == transaction.amount,
-            Transaction.transaction_date == transaction.transaction_date
+    try:
+        transaction = db.query(Transaction).filter(
+            Transaction.id == transaction_id,
+            Transaction.user_id == current_user.id
         ).first()
-        if to_transaction:
-            # Check if destination account is a goal account
-            goal = db.query(Goal).filter(Goal.account_id == transaction.to_account_id).first()
-            if goal and goal.user_id == current_user.id:
-                account_ids_to_sync.add(transaction.to_account_id)
-            db.delete(to_transaction)
-    
-    db.delete(transaction)
-    db.commit()
-    
-    # Sync goals with account balances
-    for account_id in account_ids_to_sync:
-        _sync_goal_with_account(account_id, current_user.id, db)
-    
-    return None
+        
+        if not transaction:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Transaction not found"
+            )
+        
+        # Store account IDs that might need goal syncing
+        account_ids_to_sync = set()
+        if transaction.account_id:
+            try:
+                goal = db.query(Goal).filter(Goal.account_id == transaction.account_id).first()
+                if goal and goal.user_id == current_user.id:
+                    account_ids_to_sync.add(transaction.account_id)
+            except Exception as e:
+                logger.error(f"Error checking goal for account {transaction.account_id}: {e}")
+        
+        # If it's a transfer, also delete the corresponding income transaction
+        to_transaction = None
+        if transaction.transaction_type == TransactionType.TRANSFER and transaction.to_account_id:
+            try:
+                to_transaction = db.query(Transaction).filter(
+                    Transaction.user_id == current_user.id,
+                    Transaction.account_id == transaction.to_account_id,
+                    Transaction.transaction_type == TransactionType.INCOME,
+                    Transaction.amount == transaction.amount,
+                    Transaction.transaction_date == transaction.transaction_date
+                ).first()
+                if to_transaction:
+                    # Check if destination account is a goal account
+                    try:
+                        goal = db.query(Goal).filter(Goal.account_id == transaction.to_account_id).first()
+                        if goal and goal.user_id == current_user.id:
+                            account_ids_to_sync.add(transaction.to_account_id)
+                    except Exception as e:
+                        logger.error(f"Error checking goal for to_account {transaction.to_account_id}: {e}")
+                    db.delete(to_transaction)
+            except Exception as e:
+                logger.error(f"Error finding/deleting transfer destination transaction: {e}")
+        
+        # Delete the main transaction
+        db.delete(transaction)
+        
+        # Commit the deletion
+        try:
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error committing transaction deletion: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to delete transaction"
+            )
+        
+        # Sync goals with account balances (after successful deletion)
+        for account_id in account_ids_to_sync:
+            try:
+                _sync_goal_with_account(account_id, current_user.id, db)
+            except Exception as e:
+                logger.error(f"Error syncing goal for account {account_id}: {e}")
+                # Don't fail the deletion if goal sync fails
+        
+        return None
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Unexpected error deleting transaction {transaction_id}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while deleting the transaction"
+        )
 
