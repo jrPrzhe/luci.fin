@@ -329,19 +329,6 @@ export function Profile() {
             </div>
             <span className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">→</span>
           </button>
-          <button
-            onClick={() => navigate('/about')}
-            className="w-full flex items-center justify-between p-3 rounded-telegram hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors text-left"
-          >
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">📚</span>
-              <div>
-                <p className="font-medium text-telegram-text dark:text-telegram-dark-text">{t.profile.about}</p>
-                <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{t.profile.aboutDesc}</p>
-              </div>
-            </div>
-            <span className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">→</span>
-          </button>
         </div>
       </div>
 

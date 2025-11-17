@@ -246,6 +246,7 @@ export function Layout() {
     { path: '/shared-budgets', label: t.nav.budgets, icon: '👥' },
     { path: '/reports', label: t.nav.reports, icon: '📈' },
     { path: '/profile', label: t.nav.profile, icon: '⚙️' },
+    { path: '/about', label: t.profile.about, icon: '📚' },
   ]
 
   return (

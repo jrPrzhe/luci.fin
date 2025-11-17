@@ -896,16 +896,42 @@ async def update_transaction(
 ):
     """Update a transaction"""
     try:
+        # First, try to find transaction by user_id
         transaction = db.query(Transaction).filter(
             Transaction.id == transaction_id,
             Transaction.user_id == current_user.id
         ).first()
         
+        # If not found, check if it's a shared transaction
         if not transaction:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Transaction not found"
-            )
+            transaction = db.query(Transaction).filter(
+                Transaction.id == transaction_id
+            ).first()
+            
+            if transaction:
+                # Check if user has access through shared budget
+                account = db.query(Account).filter(Account.id == transaction.account_id).first()
+                if account and account.shared_budget_id:
+                    from app.models.shared_budget import SharedBudgetMember
+                    membership = db.query(SharedBudgetMember).filter(
+                        SharedBudgetMember.shared_budget_id == account.shared_budget_id,
+                        SharedBudgetMember.user_id == current_user.id
+                    ).first()
+                    if not membership:
+                        raise HTTPException(
+                            status_code=status.HTTP_403_FORBIDDEN,
+                            detail="You don't have access to this transaction"
+                        )
+                else:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="Transaction not found"
+                    )
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Transaction not found"
+                )
         
         # Store old values for balance recalculation
         old_account_id = transaction.account_id
@@ -914,15 +940,36 @@ async def update_transaction(
         
         # Update fields
         if transaction_data.account_id is not None:
+            # Check if user has access to the account (own or shared)
             account = db.query(Account).filter(
-                Account.id == transaction_data.account_id,
-                Account.user_id == current_user.id
+                Account.id == transaction_data.account_id
             ).first()
+            
             if not account:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
                     detail="Account not found"
                 )
+            
+            # Check access: own account or shared budget member
+            has_access = False
+            if account.user_id == current_user.id:
+                has_access = True
+            elif account.shared_budget_id:
+                from app.models.shared_budget import SharedBudgetMember
+                membership = db.query(SharedBudgetMember).filter(
+                    SharedBudgetMember.shared_budget_id == account.shared_budget_id,
+                    SharedBudgetMember.user_id == current_user.id
+                ).first()
+                if membership:
+                    has_access = True
+            
+            if not has_access:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="You don't have access to this account"
+                )
+            
             transaction.account_id = transaction_data.account_id
         
         if transaction_data.transaction_type is not None:
@@ -1029,16 +1076,42 @@ async def delete_transaction(
 ):
     """Delete a transaction"""
     try:
+        # First, try to find transaction by user_id
         transaction = db.query(Transaction).filter(
             Transaction.id == transaction_id,
             Transaction.user_id == current_user.id
         ).first()
         
+        # If not found, check if it's a shared transaction
         if not transaction:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Transaction not found"
-            )
+            transaction = db.query(Transaction).filter(
+                Transaction.id == transaction_id
+            ).first()
+            
+            if transaction:
+                # Check if user has access through shared budget
+                account = db.query(Account).filter(Account.id == transaction.account_id).first()
+                if account and account.shared_budget_id:
+                    from app.models.shared_budget import SharedBudgetMember
+                    membership = db.query(SharedBudgetMember).filter(
+                        SharedBudgetMember.shared_budget_id == account.shared_budget_id,
+                        SharedBudgetMember.user_id == current_user.id
+                    ).first()
+                    if not membership:
+                        raise HTTPException(
+                            status_code=status.HTTP_403_FORBIDDEN,
+                            detail="You don't have access to this transaction"
+                        )
+                else:
+                    raise HTTPException(
+                        status_code=status.HTTP_404_NOT_FOUND,
+                        detail="Transaction not found"
+                    )
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Transaction not found"
+                )
         
         # Store account IDs that might need goal syncing
         account_ids_to_sync = set()
@@ -1054,22 +1127,39 @@ async def delete_transaction(
         to_transaction = None
         if transaction.transaction_type == TransactionType.TRANSFER and transaction.to_account_id:
             try:
-                to_transaction = db.query(Transaction).filter(
-                    Transaction.user_id == current_user.id,
-                    Transaction.account_id == transaction.to_account_id,
-                    Transaction.transaction_type == TransactionType.INCOME,
-                    Transaction.amount == transaction.amount,
-                    Transaction.transaction_date == transaction.transaction_date
-                ).first()
-                if to_transaction:
-                    # Check if destination account is a goal account
-                    try:
-                        goal = db.query(Goal).filter(Goal.account_id == transaction.to_account_id).first()
-                        if goal and goal.user_id == current_user.id:
-                            account_ids_to_sync.add(transaction.to_account_id)
-                    except Exception as e:
-                        logger.error(f"Error checking goal for to_account {transaction.to_account_id}: {e}")
-                    db.delete(to_transaction)
+                # Check if user has access to destination account
+                to_account = db.query(Account).filter(Account.id == transaction.to_account_id).first()
+                has_access_to_dest = False
+                if to_account:
+                    if to_account.user_id == current_user.id:
+                        has_access_to_dest = True
+                    elif to_account.shared_budget_id:
+                        from app.models.shared_budget import SharedBudgetMember
+                        membership = db.query(SharedBudgetMember).filter(
+                            SharedBudgetMember.shared_budget_id == to_account.shared_budget_id,
+                            SharedBudgetMember.user_id == current_user.id
+                        ).first()
+                        if membership:
+                            has_access_to_dest = True
+                
+                if has_access_to_dest:
+                    # Find the corresponding income transaction (without user_id filter for shared accounts)
+                    to_transaction = db.query(Transaction).filter(
+                        Transaction.account_id == transaction.to_account_id,
+                        Transaction.transaction_type == TransactionType.INCOME,
+                        Transaction.amount == transaction.amount,
+                        Transaction.transaction_date == transaction.transaction_date
+                    ).first()
+                    
+                    if to_transaction:
+                        # Check if destination account is a goal account
+                        try:
+                            goal = db.query(Goal).filter(Goal.account_id == transaction.to_account_id).first()
+                            if goal and goal.user_id == current_user.id:
+                                account_ids_to_sync.add(transaction.to_account_id)
+                        except Exception as e:
+                            logger.error(f"Error checking goal for to_account {transaction.to_account_id}: {e}")
+                        db.delete(to_transaction)
             except Exception as e:
                 logger.error(f"Error finding/deleting transfer destination transaction: {e}")
         
