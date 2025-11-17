@@ -13,12 +13,13 @@ class TransactionType(str, enum.Enum):
 
 class TransactionTypeEnum(TypeDecorator):
     """Custom type decorator to ensure enum values are used instead of names"""
-    impl = Enum
+    impl = String  # Use String as base type, not Enum, to have full control
     cache_ok = True
     
     def __init__(self):
-        # Use create_type=False since the enum type already exists in the database
-        super().__init__(TransactionType, name='transactiontype', create_type=False)
+        # Don't use Enum at all - use String and handle conversion manually
+        # This ensures we always send lowercase strings to DB
+        super().__init__(length=20)  # String with max length
     
     def process_bind_param(self, value, dialect):
         if value is None:
