@@ -69,7 +69,7 @@ export function Quests() {
   return (
     <div className="quests-page p-4 md:p-6">
       <h1 className="text-2xl font-bold mb-4 text-telegram-text dark:text-telegram-dark-text">
-        Ежедневный ритуал
+        Задания
       </h1>
 
       {activeQuests.length > 0 && (
@@ -180,5 +180,6 @@ export function Quests() {
     </div>
   )
 }
+
 
 

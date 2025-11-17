@@ -4,10 +4,10 @@ import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
 import { useI18n } from '../contexts/I18nContext'
 import { GamificationStatus } from '../components/GamificationStatus'
-import { DailyQuestsCompact } from '../components/DailyQuestsCompact'
 import { AchievementModal } from '../components/AchievementModal'
 import { LevelUpModal } from '../components/LevelUpModal'
 import { QuestNotifications } from '../components/QuestNotifications'
+import { UserStatsCard } from '../components/UserStatsCard'
 
 interface Account {
   id: number
@@ -447,14 +447,14 @@ export function Dashboard() {
         </div>
       </div>
 
+      {/* User Stats Card - Level, Streak, Hearts */}
+      <div className="mb-4 md:mb-6">
+        <UserStatsCard />
+      </div>
+
       {/* Gamification Status */}
       <div className="mb-4 md:mb-6">
         <GamificationStatus />
-      </div>
-
-      {/* Daily Quests - Compact */}
-      <div className="mb-4 md:mb-6">
-        <DailyQuestsCompact />
       </div>
 
       {/* Achievement Modal */}
