@@ -258,26 +258,39 @@ async def create_category(
         # Create category
         try:
             # Ensure transaction_type is properly converted to lowercase string
-            # TypeDecorator will handle the conversion, but we ensure lowercase string for safety
-            if isinstance(category.transaction_type, TransactionType):
-                # Get the lowercase value from enum
-                transaction_type_value = category.transaction_type.value
-            elif isinstance(category.transaction_type, str):
+            # Extract from Pydantic model and convert to lowercase string
+            transaction_type_raw = category.transaction_type
+            
+            # Log for debugging
+            logger.info(f"Raw transaction_type: {transaction_type_raw}, type: {type(transaction_type_raw)}")
+            
+            # Convert to lowercase string - IMPORTANT: always pass string to SQLAlchemy model
+            if isinstance(transaction_type_raw, TransactionType):
+                # Get the lowercase value from enum (e.g., TransactionType.EXPENSE.value = "expense")
+                transaction_type_value = transaction_type_raw.value
+                logger.info(f"Converted enum {transaction_type_raw} to value: {transaction_type_value}")
+            elif isinstance(transaction_type_raw, str):
                 # Convert string to lowercase
-                transaction_type_value = category.transaction_type.lower()
+                transaction_type_value = transaction_type_raw.lower()
+                logger.info(f"Converted string '{transaction_type_raw}' to lowercase: {transaction_type_value}")
             else:
-                # Fallback: convert to lowercase string
-                transaction_type_value = str(category.transaction_type).lower()
+                # Fallback: convert to string and then to lowercase
+                transaction_type_value = str(transaction_type_raw).lower()
+                logger.info(f"Converted {type(transaction_type_raw)} '{transaction_type_raw}' to lowercase: {transaction_type_value}")
+            
+            # Log the final value
+            logger.info(f"Final transaction_type_value: {transaction_type_value}, type: {type(transaction_type_value)}")
             
             # Validate the value is one of the allowed values
             if transaction_type_value not in ['income', 'expense', 'both']:
-                raise ValueError(f"Invalid transaction_type: {transaction_type_value}")
+                raise ValueError(f"Invalid transaction_type: {transaction_type_value}. Must be one of: income, expense, both")
             
+            # Create category with lowercase string for transaction_type
             db_category = Category(
                 user_id=current_user.id,
                 shared_budget_id=shared_budget_id,
                 name=category.name,
-                transaction_type=transaction_type_value,  # Pass lowercase string
+                transaction_type=transaction_type_value,  # Pass lowercase string directly
                 icon=category.icon,
                 color=category.color,
                 parent_id=category.parent_id,
@@ -286,6 +299,17 @@ async def create_category(
                 is_system=False,
                 is_active=True
             )
+            
+            # Log before commit - check what SQLAlchemy sees
+            logger.info(f"Creating category with transaction_type: {db_category.transaction_type}, type: {type(db_category.transaction_type)}")
+            
+            # Force conversion - ensure it's a string in lowercase
+            # Access the attribute to see what SQLAlchemy will use
+            import inspect
+            for attr_name, attr_value in inspect.getmembers(db_category):
+                if attr_name == 'transaction_type':
+                    logger.info(f"Category.transaction_type attribute: {attr_value}, type: {type(attr_value)}")
+                    break
             
             db.add(db_category)
             db.commit()

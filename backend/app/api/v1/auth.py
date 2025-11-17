@@ -868,8 +868,13 @@ async def login_vk(
         
         logger.info(f"User processed: id={user.id}, vk_id={user.vk_id}, is_new={is_new_user}")
         
-        # Create default account and categories for new users
-        if is_new_user:
+        # Check if user has categories (for both new and existing users)
+        from app.models.category import Category
+        category_count = db.query(Category).filter(Category.user_id == user.id).count()
+        has_categories = category_count > 0
+        
+        # Create default account and categories for new users or users without categories
+        if is_new_user or not has_categories:
             try:
                 from app.models.account import Account, AccountType
                 from app.models.category import Category, TransactionType
