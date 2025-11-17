@@ -300,16 +300,40 @@ async def create_category(
                 is_active=True
             )
             
-            # Log before commit - check what SQLAlchemy sees
-            logger.info(f"Creating category with transaction_type: {db_category.transaction_type}, type: {type(db_category.transaction_type)}")
+            # CRITICAL FIX: Force transaction_type to be lowercase string
+            # SQLAlchemy's TypeDecorator should handle this, but we ensure it's correct
+            # Set directly in __dict__ to bypass any property setters or conversions
+            db_category.__dict__['transaction_type'] = transaction_type_value
             
-            # Force conversion - ensure it's a string in lowercase
-            # Access the attribute to see what SQLAlchemy will use
-            import inspect
-            for attr_name, attr_value in inspect.getmembers(db_category):
-                if attr_name == 'transaction_type':
-                    logger.info(f"Category.transaction_type attribute: {attr_value}, type: {type(attr_value)}")
-                    break
+            # Verify it's set correctly
+            logger.info(f"Set transaction_type in __dict__: {db_category.__dict__.get('transaction_type')}")
+            
+            # Also set via attribute to trigger TypeDecorator if needed
+            # But ensure it's a string, not enum
+            if isinstance(transaction_type_value, str):
+                # Direct assignment - TypeDecorator.process_bind_param will be called
+                db_category.transaction_type = transaction_type_value
+            else:
+                # Convert to string first
+                db_category.transaction_type = str(transaction_type_value).lower()
+            
+            # Final verification - check what will be sent to DB
+            # Access the attribute value that TypeDecorator will process
+            final_check = db_category.transaction_type
+            if isinstance(final_check, TransactionType):
+                # If somehow it's still an enum, force conversion
+                logger.warning(f"transaction_type is still enum {final_check}, converting to {final_check.value}")
+                db_category.__dict__['transaction_type'] = final_check.value
+                db_category.transaction_type = final_check.value
+            elif isinstance(final_check, str) and final_check != final_check.lower():
+                # If it's uppercase, convert
+                logger.warning(f"transaction_type is uppercase '{final_check}', converting to lowercase")
+                db_category.__dict__['transaction_type'] = final_check.lower()
+                db_category.transaction_type = final_check.lower()
+            
+            # Log final value
+            final_value = db_category.__dict__.get('transaction_type') or getattr(db_category, 'transaction_type', None)
+            logger.info(f"Final transaction_type before commit: {final_value}, type: {type(final_value)}")
             
             db.add(db_category)
             db.commit()

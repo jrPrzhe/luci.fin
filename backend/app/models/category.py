@@ -23,15 +23,45 @@ class TransactionTypeEnum(TypeDecorator):
     def process_bind_param(self, value, dialect):
         if value is None:
             return None
+        
+        # CRITICAL: Always return lowercase string, never enum or uppercase
         # If it's an enum, use its value (which is lowercase)
         if isinstance(value, TransactionType):
-            return value.value
+            result = value.value  # This should be "expense", "income", or "both"
+            # Double-check it's lowercase
+            if isinstance(result, str):
+                result = result.lower()
+            return result
+        
         # If it's a string, ensure it's lowercase
         if isinstance(value, str):
-            return value.lower()
+            result = value.lower()
+            # Validate it's one of the allowed values
+            if result not in ['income', 'expense', 'both']:
+                # Try to map common variations
+                result_upper = result.upper()
+                if result_upper == 'INCOME':
+                    return 'income'
+                elif result_upper == 'EXPENSE':
+                    return 'expense'
+                elif result_upper == 'BOTH':
+                    return 'both'
+            return result
+        
         # Fallback: convert to string and lowercase
         try:
-            return str(value).lower()
+            result = str(value).lower()
+            # Validate
+            if result not in ['income', 'expense', 'both']:
+                # Try uppercase mapping
+                result_upper = result.upper()
+                if result_upper == 'INCOME':
+                    return 'income'
+                elif result_upper == 'EXPENSE':
+                    return 'expense'
+                elif result_upper == 'BOTH':
+                    return 'both'
+            return result
         except Exception:
             return None
     
