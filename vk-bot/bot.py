@@ -556,7 +556,7 @@ if __name__ == "__main__":
     logger.info("=" * 60)
     logger.info(f"VK_BOT_TOKEN: {'✅ Set' if VK_BOT_TOKEN else '❌ NOT SET'}")
     logger.info(f"BACKEND_URL: {BACKEND_URL}")
-    logger.info(f"VK_GROUP_ID: {VK_GROUP_ID if GROUP_ID else 'Not set'}")
+    logger.info(f"VK_GROUP_ID: {GROUP_ID if GROUP_ID else 'Not set'}")
     logger.info("=" * 60)
     logger.info("Bot is ready to receive messages!")
     logger.info("Make sure Long Poll API is enabled in your VK community settings:")
