@@ -59,19 +59,12 @@ export function Import() {
     }
 
     setIsUploading(true)
-    setImportResult(null)
     setElapsedTime(0)
     const startTime = Date.now()
     setImportStartTime(startTime)
 
     try {
       const result = await api.importData(selectedSource, selectedFile)
-      setImportResult({
-        accounts_imported: result.accounts_imported || 0,
-        transactions_imported: result.transactions_imported,
-        categories_imported: result.categories_imported,
-        categories_created: result.categories_created
-      })
       
       showSuccess(`Импорт завершен! Импортировано: ${result.accounts_imported || 0} счетов, ${result.transactions_imported} транзакций, ${result.categories_imported} категорий`)
       
