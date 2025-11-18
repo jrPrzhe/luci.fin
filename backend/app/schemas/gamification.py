@@ -62,3 +62,7 @@ class GamificationStatusResponse(BaseModel):
     next_level_xp: int
 
 
+
+
+
+

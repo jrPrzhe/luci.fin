@@ -79,3 +79,7 @@ POST https://your-backend.railway.app/api/v1/gamification/send-daily-reminders/p
 Если логов нет - проблема в настройках команды или переменных окружения.
 
 
+
+
+
+

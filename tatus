@@ -1,0 +1,20 @@
+[33m3cb4e1a0[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Hotfix: Simplify enum handling, remove SQLAlchemy inspect API
+[33m55bf6cb7[m Fix enum bulk insert issue - use separate commits for transfers
+[33m3cc9f691[m Fix enum issues for transactions and categories
+[33mc1358ecf[m Fix: Add __init__ to Transaction model to ensure transaction_type is always lowercase
+[33m660abcab[m Fix: Use @validates decorator instead of event listener and fix migration encoding issue
+[33m8f75e7e9[m Add event listener to ensure transaction_type is always lowercase before save
+[33m8b8c04d0[m Fix numbering in migration check instructions
+[33m4322c48e[m Add API endpoint to check migrations status via browser
+[33m1a4bce90[m Add script and instructions to check database migrations
+[33m300242bb[m Fix: Use string values directly for transaction_type and improve TypeDecorator to handle strings
+[33m4b79448b[m Fix: Add custom TypeDecorator to use enum values instead of names for transaction_type
+[33md58e4cdb[m Fix: Configure SQLAlchemy Enum to use values instead of names for transaction_type
+[33mc711c3cb[m Fix: Use lowercase transaction_type values when creating transactions to match enum in database
+[33m12806894[m Fix: Resolve variable name conflict in accounts endpoint and use raw SQL in reports to avoid enum issues
+[33mfa1ec9e7[m Fix: Use raw SQL to avoid enum case mismatch errors in transactions and accounts endpoints
+[33mb5ff227d[m Fix: Add error handling and safe serialization for transactions and accounts endpoints to prevent 500 errors
+[33m4f2bf449[m Fix: Add missing VK utils implementation to fix deployment build error
+[33me8b93515[m Fix enum migration: handle both transactions and categories tables
+[33m4f736c31[m Fix migration: set correct down_revision to resolve multiple heads
+[33mb6db26e0[m Add instructions for fixing transfer enum issue

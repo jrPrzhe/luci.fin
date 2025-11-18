@@ -841,6 +841,43 @@ class ApiClient {
       body: JSON.stringify({ event, user_data: userData }),
     })
   }
+
+  // Analytics tracking
+  async trackEvent(
+    eventType: string,
+    eventName: string,
+    metadata?: Record<string, any>
+  ): Promise<void> {
+    try {
+      await this.request('/api/v1/analytics/track', {
+        method: 'POST',
+        body: JSON.stringify({
+          event_type: eventType,
+          event_name: eventName,
+          platform: this.detectPlatform(),
+          metadata: metadata || {},
+        }),
+      })
+    } catch (error) {
+      // Не логируем ошибки аналитики, чтобы не засорять консоль
+      console.debug('Failed to track analytics event:', error)
+    }
+  }
+
+  private detectPlatform(): string {
+    // Определяем платформу
+    if (typeof window !== 'undefined') {
+      const url = window.location.href
+      if (url.includes('vk.com') || url.includes('vk.ru')) {
+        return 'vk_miniapp'
+      }
+      // Проверяем наличие Telegram WebApp
+      if ((window as any).Telegram?.WebApp) {
+        return 'telegram_miniapp'
+      }
+    }
+    return 'web'
+  }
 }
 
 export const api = new ApiClient(API_URL)

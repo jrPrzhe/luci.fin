@@ -1,5 +1,6 @@
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
 import { useState, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { isTelegramWebApp } from '../utils/telegram'
 import { isVKWebApp } from '../utils/vk'
 import { api } from '../services/api'
@@ -26,6 +27,13 @@ export function Layout() {
   const { isEnabled: newYearEnabled } = useNewYearTheme()
   const { theme, toggleTheme } = useTheme()
   const { t, language, setLanguage } = useI18n()
+
+  // Получаем данные пользователя для проверки админ-статуса
+  const { data: user } = useQuery({
+    queryKey: ['currentUser'],
+    queryFn: () => api.getCurrentUser(),
+    enabled: isAuthorized === true,
+  })
 
   // Предзагрузка изображений для Stories при монтировании компонента
   useEffect(() => {
@@ -249,6 +257,7 @@ export function Layout() {
     { path: '/reports', label: t.nav.reports, icon: '📈' },
     { path: '/profile', label: t.nav.profile, icon: '⚙️' },
     { path: '/about', label: t.profile.about, icon: '📚' },
+    ...(user?.is_admin ? [{ path: '/analytics', label: 'Аналитика', icon: '📊' }] : []),
   ]
 
   return (

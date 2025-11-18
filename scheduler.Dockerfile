@@ -30,3 +30,7 @@ ENV PYTHONPATH=/app
 CMD ["python", "backend/scripts/send_daily_reminders.py"]
 
 
+
+
+
+

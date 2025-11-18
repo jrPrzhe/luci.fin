@@ -88,6 +88,15 @@ export function Login() {
       
       console.log('[Login] Token saved successfully, length:', savedToken.length)
       
+      // Отслеживаем успешный логин
+      try {
+        await api.trackEvent('miniapp_action', 'vk_login_success', {
+          userId: response.user?.id
+        })
+      } catch (error) {
+        // Игнорируем ошибки аналитики
+      }
+      
       // Помечаем, что пользователь только что вошел
       sessionStorage.setItem('justLoggedIn', 'true')
       
@@ -156,6 +165,15 @@ export function Login() {
       }
       
       console.log('[Login] Token saved successfully, length:', savedToken.length)
+      
+      // Отслеживаем успешный логин
+      try {
+        await api.trackEvent('miniapp_action', 'vk_login_success', {
+          userId: response.user?.id
+        })
+      } catch (error) {
+        // Игнорируем ошибки аналитики
+      }
       
       // Помечаем, что пользователь только что вошел
       sessionStorage.setItem('justLoggedIn', 'true')

@@ -149,6 +149,30 @@ async def get_user_token(vk_id: str, force_refresh: bool = False) -> str:
             raise
 
 
+async def track_analytics_event(
+    vk_id: str,
+    event_type: str,
+    event_name: str,
+    metadata: Optional[dict] = None
+):
+    """Отследить событие аналитики"""
+    try:
+        async with httpx.AsyncClient() as client:
+            await client.post(
+                f"{BACKEND_URL}/api/v1/analytics/track",
+                json={
+                    "event_type": event_type,
+                    "event_name": event_name,
+                    "platform": "vk_bot",
+                    "metadata": metadata or {}
+                },
+                timeout=2.0  # Короткий таймаут, чтобы не блокировать основной поток
+            )
+    except Exception as e:
+        # Не логируем ошибки аналитики, чтобы не засорять логи
+        logger.debug(f"Failed to track analytics event: {e}")
+
+
 async def make_authenticated_request(
     method: str,
     url: str,
@@ -278,6 +302,14 @@ async def start_handler(message: Message):
     logger.info(f"   Message text: '{message.text}'")
     logger.info(f"   Message payload: {message.payload}")
     vk_id = str(message.from_id)
+    
+    # Отслеживаем событие
+    await track_analytics_event(
+        vk_id=vk_id,
+        event_type="bot_click",
+        event_name="start",
+        metadata={"command": "start", "payload": message.payload}
+    )
     try:
         user_info = await bot.api.users.get(message.from_id)
         user_name = user_info[0].first_name if user_info else "Пользователь"
@@ -339,6 +371,15 @@ async def start_handler(message: Message):
 async def help_handler(message: Message):
     """Handle /help command"""
     vk_id = str(message.from_id)
+    
+    # Отслеживаем событие
+    await track_analytics_event(
+        vk_id=vk_id,
+        event_type="bot_click",
+        event_name="help",
+        metadata={"command": "help"}
+    )
+    
     lang = await get_user_language(vk_id)
     
     help_text = (
@@ -367,6 +408,15 @@ async def balance_handler(message: Message):
     """Handle /balance command"""
     try:
         vk_id = str(message.from_id)
+        
+        # Отслеживаем событие
+        await track_analytics_event(
+            vk_id=vk_id,
+            event_type="bot_click",
+            event_name="balance",
+            metadata={"command": "balance"}
+        )
+        
         lang = await get_user_language(vk_id)
         
         try:
@@ -412,6 +462,15 @@ async def transactions_handler(message: Message):
     """Handle /transactions command"""
     try:
         vk_id = str(message.from_id)
+        
+        # Отслеживаем событие
+        await track_analytics_event(
+            vk_id=vk_id,
+            event_type="bot_click",
+            event_name="transactions",
+            metadata={"command": "transactions"}
+        )
+        
         lang = await get_user_language(vk_id)
         
         try:
@@ -489,6 +548,16 @@ async def button_handler(message: Message):
             command = payload_data.get("command")
             logger.info(f"Received button click: {command} from user {message.from_id}")
             
+            vk_id = str(message.from_id)
+            
+            # Отслеживаем клик по кнопке
+            await track_analytics_event(
+                vk_id=vk_id,
+                event_type="bot_click",
+                event_name=f"button_{command}",
+                metadata={"command": command, "source": "button"}
+            )
+            
             if command == "balance":
                 await balance_handler(message)
                 return
@@ -496,22 +565,18 @@ async def button_handler(message: Message):
                 await transactions_handler(message)
                 return
             elif command == "expense":
-                vk_id = str(message.from_id)
                 lang = await get_user_language(vk_id)
                 await message.answer(t("expense.title", lang) + "\n" + t("expense.select_account", lang))
                 return
             elif command == "income":
-                vk_id = str(message.from_id)
                 lang = await get_user_language(vk_id)
                 await message.answer(t("income.title", lang) + "\n" + t("income.select_account", lang))
                 return
             elif command == "report":
-                vk_id = str(message.from_id)
                 lang = await get_user_language(vk_id)
                 await message.answer(t("report.generating", lang))
                 return
             elif command == "goal":
-                vk_id = str(message.from_id)
                 lang = await get_user_language(vk_id)
                 await message.answer(t("goal.enter_info", lang))
                 return
@@ -519,7 +584,6 @@ async def button_handler(message: Message):
                 await help_handler(message)
                 return
             elif command == "language":
-                vk_id = str(message.from_id)
                 lang = await get_user_language(vk_id)
                 await message.answer(t("language.select", lang))
                 return

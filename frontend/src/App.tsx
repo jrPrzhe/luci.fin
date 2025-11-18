@@ -18,6 +18,7 @@ import { Register } from './pages/Register'
 import { Statistics } from './pages/Statistics'
 import { Achievements } from './pages/Achievements'
 import { Quests } from './pages/Quests'
+import { Analytics } from './pages/Analytics'
 import { isTelegramWebApp, getInitData, getTelegramUser } from './utils/telegram'
 import { isVKWebApp, getVKLaunchParams, getVKUserId, initVKWebApp, getVKUser } from './utils/vk'
 import { api } from './services/api'
@@ -255,6 +256,16 @@ function VKAuthHandler() {
         // Инициализируем VK Bridge
         await initVKWebApp()
 
+        // Отслеживаем открытие мини-приложения
+        try {
+          await api.trackEvent('miniapp_open', 'vk_miniapp_launch', {
+            path: location.pathname,
+            hasToken: !!localStorage.getItem('token')
+          })
+        } catch (error) {
+          // Игнорируем ошибки аналитики
+        }
+
         // Если уже есть токен, проверяем его валидность
         const token = localStorage.getItem('token')
         if (token) {
@@ -456,6 +467,7 @@ function App() {
               <Route path="shared-budgets" element={<SharedBudgets />} />
               <Route path="profile" element={<Profile />} />
               <Route path="statistics" element={<Statistics />} />
+              <Route path="analytics" element={<Analytics />} />
               <Route path="import" element={<Import />} />
               <Route path="about" element={<About />} />
               <Route path="achievements" element={<Achievements />} />

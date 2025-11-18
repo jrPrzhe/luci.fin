@@ -112,3 +112,7 @@ UPDATE users SET is_admin = 1 WHERE email = 'test@example.com';
 
 
 
+
+
+
+

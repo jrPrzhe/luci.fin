@@ -84,3 +84,7 @@ profile.last_entry_date = datetime.combine(current_date_utc, datetime.min.time()
 - `backend/app/api/v1/gamification.py` - функция `update_streak()`
 - `backend/app/api/v1/transactions.py` - использование `datetime.now(timezone.utc)`
 
+
+
+
+

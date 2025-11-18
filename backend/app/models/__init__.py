@@ -8,6 +8,7 @@ from app.models.invitation import Invitation
 from app.models.report import Report
 from app.models.goal import Goal
 from app.models.notification import Notification
+from app.models.analytics import AnalyticsEvent
 from app.models.gamification import (
     UserGamificationProfile,
     DailyQuest,
@@ -31,6 +32,7 @@ __all__ = [
     "Report",
     "Goal",
     "Notification",
+    "AnalyticsEvent",
     "UserGamificationProfile",
     "DailyQuest",
     "UserDailyQuest",
