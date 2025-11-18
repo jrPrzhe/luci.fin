@@ -4,10 +4,13 @@ from sqlalchemy import func, and_, or_
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel
+import logging
 from app.core.database import get_db
 from app.models.analytics import AnalyticsEvent
 from app.models.user import User
 from app.api.v1.auth import get_current_user, get_current_admin
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -117,16 +120,29 @@ async def get_analytics_stats(
     # Парсим даты
     if start_date:
         try:
-            start_datetime = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
-        except:
+            # Поддерживаем формат YYYY-MM-DD и ISO формат
+            if 'T' in start_date or '+' in start_date or 'Z' in start_date:
+                start_datetime = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+            else:
+                # Формат YYYY-MM-DD
+                start_datetime = datetime.strptime(start_date, '%Y-%m-%d')
+        except Exception as e:
+            logger.warning(f"Failed to parse start_date '{start_date}': {e}")
             start_datetime = datetime.utcnow() - timedelta(days=7)
     else:
         start_datetime = datetime.utcnow() - timedelta(days=7)
     
     if end_date:
         try:
-            end_datetime = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
-        except:
+            # Поддерживаем формат YYYY-MM-DD и ISO формат
+            if 'T' in end_date or '+' in end_date or 'Z' in end_date:
+                end_datetime = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+            else:
+                # Формат YYYY-MM-DD - добавляем время конца дня
+                end_datetime = datetime.strptime(end_date, '%Y-%m-%d')
+                end_datetime = end_datetime.replace(hour=23, minute=59, second=59)
+        except Exception as e:
+            logger.warning(f"Failed to parse end_date '{end_date}': {e}")
             end_datetime = datetime.utcnow()
     else:
         end_datetime = datetime.utcnow()
