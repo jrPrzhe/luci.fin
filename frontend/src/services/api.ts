@@ -237,8 +237,14 @@ class ApiClient {
 
       // Check if response has content
       const contentType = response.headers.get('content-type')
+      const text = await response.text().catch(() => '')
+      
+      // Check if it's HTML (backend error page or frontend fallback)
+      if (text.includes('<!DOCTYPE') || text.includes('<html')) {
+        throw new Error(`Backend вернул HTML вместо JSON. Возможно, сервис недоступен или endpoint не существует. Статус: ${response.status}`)
+      }
+      
       if (contentType && contentType.includes('application/json')) {
-        const text = await response.text()
         if (!text || text.trim() === '') {
           // Empty response - return appropriate default based on endpoint
           const endpoint = url.toLowerCase()
@@ -250,7 +256,11 @@ class ApiClient {
         try {
           return JSON.parse(text)
         } catch (e) {
-          // Invalid JSON - return empty object
+          // Invalid JSON - throw error for critical endpoints
+          const endpoint = url.toLowerCase()
+          if (endpoint.includes('/analytics') || endpoint.includes('/admin')) {
+            throw new Error(`Неверный формат JSON от сервера: ${text.substring(0, 100)}`)
+          }
           return {} as T
         }
       }

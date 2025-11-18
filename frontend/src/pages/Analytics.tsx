@@ -55,13 +55,24 @@ export function Analytics() {
       try {
         return await api.request<AnalyticsStats>(`/api/v1/analytics/stats?${params.toString()}`)
       } catch (err: any) {
-        if (err.message?.includes('403') || err.message?.includes('Admin access required')) {
+        const errorMessage = err.message || String(err)
+        
+        // Проверяем на HTML ответ (признак того, что backend не отвечает)
+        if (errorMessage.includes('<!DOCTYPE') || errorMessage.includes('<html')) {
+          throw new Error('Backend недоступен. Проверьте статус сервиса в Railway.')
+        }
+        
+        if (errorMessage.includes('403') || errorMessage.includes('Admin access required') || errorMessage.includes('Forbidden')) {
           throw new Error('Доступ запрещен. Требуются права администратора.')
         }
-        if (err.message?.includes('401') || err.message?.includes('Not authenticated')) {
+        if (errorMessage.includes('401') || errorMessage.includes('Not authenticated') || errorMessage.includes('Unauthorized')) {
           throw new Error('Необходима авторизация. Пожалуйста, войдите снова.')
         }
-        throw new Error(err.message || 'Ошибка загрузки статистики')
+        if (errorMessage.includes('timeout') || errorMessage.includes('Failed to fetch')) {
+          throw new Error('Не удалось подключиться к серверу. Проверьте подключение к интернету.')
+        }
+        
+        throw new Error(errorMessage || 'Ошибка загрузки статистики')
       }
     },
     retry: false,
