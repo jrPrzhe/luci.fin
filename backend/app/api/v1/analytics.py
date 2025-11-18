@@ -117,31 +117,39 @@ async def get_analytics_stats(
     Получить статистику аналитики.
     Доступно только администраторам.
     """
-    # Парсим даты
-    if start_date:
+    # Парсим даты с улучшенной обработкой ошибок
+    if start_date and start_date.strip():
         try:
+            start_date = start_date.strip()
             # Поддерживаем формат YYYY-MM-DD и ISO формат
             if 'T' in start_date or '+' in start_date or 'Z' in start_date:
+                # ISO формат с временем
                 start_datetime = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
-            else:
+            elif len(start_date) == 10 and start_date.count('-') == 2:
                 # Формат YYYY-MM-DD
                 start_datetime = datetime.strptime(start_date, '%Y-%m-%d')
-        except Exception as e:
+            else:
+                raise ValueError(f"Invalid date format: {start_date}")
+        except (ValueError, TypeError) as e:
             logger.warning(f"Failed to parse start_date '{start_date}': {e}")
             start_datetime = datetime.utcnow() - timedelta(days=7)
     else:
         start_datetime = datetime.utcnow() - timedelta(days=7)
     
-    if end_date:
+    if end_date and end_date.strip():
         try:
+            end_date = end_date.strip()
             # Поддерживаем формат YYYY-MM-DD и ISO формат
             if 'T' in end_date or '+' in end_date or 'Z' in end_date:
+                # ISO формат с временем
                 end_datetime = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
-            else:
+            elif len(end_date) == 10 and end_date.count('-') == 2:
                 # Формат YYYY-MM-DD - добавляем время конца дня
                 end_datetime = datetime.strptime(end_date, '%Y-%m-%d')
                 end_datetime = end_datetime.replace(hour=23, minute=59, second=59)
-        except Exception as e:
+            else:
+                raise ValueError(f"Invalid date format: {end_date}")
+        except (ValueError, TypeError) as e:
             logger.warning(f"Failed to parse end_date '{end_date}': {e}")
             end_datetime = datetime.utcnow()
     else:
