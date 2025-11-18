@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useToast } from '../contexts/ToastContext'
+import { api } from '../services/api'
 
 interface AnalyticsStats {
   total_events: number
@@ -51,43 +52,17 @@ export function Analytics() {
       if (endDate) params.append('end_date', endDate)
       if (platform) params.append('platform', platform)
       
-      const token = localStorage.getItem('token')
-      if (!token) {
-        throw new Error('Необходима авторизация')
-      }
-      
-      const response = await fetch(`/api/v1/analytics/stats?${params.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      })
-      
-      // Проверяем Content-Type перед парсингом JSON
-      const contentType = response.headers.get('content-type')
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text()
-        if (response.status === 401) {
-          throw new Error('Необходима авторизация. Пожалуйста, войдите снова.')
-        }
-        if (response.status === 403) {
+      try {
+        return await api.request<AnalyticsStats>(`/api/v1/analytics/stats?${params.toString()}`)
+      } catch (err: any) {
+        if (err.message?.includes('403') || err.message?.includes('Admin access required')) {
           throw new Error('Доступ запрещен. Требуются права администратора.')
         }
-        throw new Error(`Ошибка сервера: ${response.status}. ${text.substring(0, 100)}`)
-      }
-      
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Неизвестная ошибка' }))
-        if (response.status === 403) {
-          throw new Error('Доступ запрещен. Требуются права администратора.')
-        }
-        if (response.status === 401) {
+        if (err.message?.includes('401') || err.message?.includes('Not authenticated')) {
           throw new Error('Необходима авторизация. Пожалуйста, войдите снова.')
         }
-        throw new Error(errorData.detail || 'Ошибка загрузки статистики')
+        throw new Error(err.message || 'Ошибка загрузки статистики')
       }
-      
-      return response.json()
     },
     retry: false,
   })
