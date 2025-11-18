@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { api } from '../services/api'
 import { useToast } from '../contexts/ToastContext'
 
 interface AnalyticsStats {
