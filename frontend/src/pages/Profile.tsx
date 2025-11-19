@@ -71,8 +71,9 @@ export function Profile() {
       queryClient.invalidateQueries({ queryKey: ['currentUser'] })
       showSuccess(t.profile.saved)
     },
-    onError: (error: any) => {
-      showError(error.message || t.errors.serverError)
+    onError: async (error: any) => {
+      const { translateError } = await import('../utils/errorMessages')
+      showError(translateError(error))
     },
   })
 
@@ -95,8 +96,9 @@ export function Profile() {
       showSuccess(t.profile.saved)
       setShowResetConfirm(false)
     },
-    onError: (error: any) => {
-      showError(error.message || t.errors.serverError)
+    onError: async (error: any) => {
+      const { translateError } = await import('../utils/errorMessages')
+      showError(translateError(error))
       setShowResetConfirm(false)
     },
   })

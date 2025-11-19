@@ -140,7 +140,7 @@ async def get_goal(
     if not goal:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Goal not found"
+            detail="Цель не найдена"
         )
     
     # Update progress
@@ -220,7 +220,7 @@ async def update_goal(
     if not goal:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Goal not found"
+            detail="Цель не найдена"
         )
     
     # Update fields
@@ -242,7 +242,7 @@ async def update_goal(
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid status"
+                detail="Неверный статус"
             )
     if goal_update.roadmap is not None:
         goal.roadmap = goal_update.roadmap
@@ -277,7 +277,7 @@ async def delete_goal(
     if not goal:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Goal not found"
+            detail="Цель не найдена"
         )
     
     db.delete(goal)
@@ -302,13 +302,13 @@ async def add_progress_to_goal(
     if not goal:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Goal not found"
+            detail="Цель не найдена"
         )
     
     if goal.status != GoalStatus.ACTIVE:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Can only add progress to active goals"
+            detail="Можно добавлять прогресс только к активным целям"
         )
     
     goal.current_amount += amount
@@ -570,7 +570,7 @@ async def delete_goal(
     if not goal:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Goal not found"
+            detail="Цель не найдена"
         )
     
     # If goal has an associated account, handle it
@@ -616,7 +616,7 @@ async def check_goal_progress_endpoint(
     if not goal:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Goal not found"
+            detail="Цель не найдена"
         )
     
     await check_goal_progress(goal, db)

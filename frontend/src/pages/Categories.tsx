@@ -48,7 +48,8 @@ export function Categories() {
       const cats = await api.getCategories(transactionType, showFavoritesOnly)
       setCategories(cats)
     } catch (err: any) {
-      showError(err.message || 'Ошибка загрузки категорий')
+      const { translateError } = await import('../utils/errorMessages')
+      showError(translateError(err))
     } finally {
       setLoading(false)
     }
@@ -73,20 +74,8 @@ export function Categories() {
       resetForm()
       await loadCategories()
     } catch (err: any) {
-      // Extract user-friendly error message
-      let errorMessage = err.message || 'Ошибка сохранения категории'
-      // Remove technical details if present
-      if (errorMessage.includes('Failed to create category:')) {
-        errorMessage = errorMessage.replace('Failed to create category:', '').trim()
-      }
-      if (errorMessage.includes('(psycopg2.errors.')) {
-        // Extract meaningful part before technical error
-        const parts = errorMessage.split('(psycopg2.errors.')
-        if (parts.length > 0) {
-          errorMessage = parts[0].trim() || 'Ошибка при создании категории'
-        }
-      }
-      showError(errorMessage)
+      const { translateError } = await import('../utils/errorMessages')
+      showError(translateError(err))
     }
   }
 
@@ -112,7 +101,8 @@ export function Categories() {
       showSuccess('Категория успешно удалена')
       await loadCategories()
     } catch (err: any) {
-      showError(err.message || 'Ошибка удаления категории')
+      const { translateError } = await import('../utils/errorMessages')
+      showError(translateError(err))
     }
   }
 
@@ -121,7 +111,8 @@ export function Categories() {
       await api.setCategoryFavorite(id, !currentFavorite)
       await loadCategories()
     } catch (err: any) {
-      showError(err.message || 'Ошибка изменения статуса категории')
+      const { translateError } = await import('../utils/errorMessages')
+      showError(translateError(err))
     }
   }
 

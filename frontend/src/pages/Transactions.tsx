@@ -261,18 +261,8 @@ export function Transactions() {
       setShowForm(false)
       showSuccess(editingTransaction ? 'Транзакция обновлена' : 'Транзакция добавлена')
     } catch (err: any) {
-      // Улучшенная обработка ошибок
-      let errorMessage = err.message || 'Ошибка сохранения транзакции'
-      
-      // Проверяем специфичные ошибки базы данных
-      if (errorMessage.includes('Сумма слишком большая') || 
-          errorMessage.includes('numeric') || 
-          errorMessage.includes('overflow') ||
-          errorMessage.includes('value too large') ||
-          errorMessage.includes('out of range')) {
-        errorMessage = 'Сумма слишком большая. Максимальная сумма: 9 999 999 999 999.99'
-      }
-      
+      const { translateError } = await import('../utils/errorMessages')
+      const errorMessage = translateError(err)
       showError(errorMessage)
     }
   }

@@ -28,7 +28,8 @@ export function Register() {
       // Проверяем онбординг - Layout перенаправит на онбординг если нужно
       navigate('/')
     } catch (err: any) {
-      showError(err.message || 'Ошибка регистрации')
+      const { translateError } = await import('../utils/errorMessages')
+      showError(translateError(err))
     }
   }
 

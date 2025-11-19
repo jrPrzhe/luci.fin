@@ -398,7 +398,7 @@ async def create_transaction(
     if not account:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Account not found"
+            detail="Счет не найден"
         )
     
     # Check access: either owner or member of shared budget
@@ -416,14 +416,14 @@ async def create_transaction(
     if not has_access:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You don't have access to this account"
+            detail="У вас нет доступа к этому счету"
         )
     
     # Validate transaction type
     if transaction_data.transaction_type not in ["income", "expense", "transfer"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Transaction type must be 'income', 'expense', or 'transfer'"
+            detail="Тип транзакции должен быть 'income', 'expense' или 'transfer'"
         )
     
     # Validate amount: check for NUMERIC(15, 2) constraint
@@ -435,7 +435,7 @@ async def create_transaction(
         if amount_decimal <= 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Amount must be greater than 0"
+                detail="Сумма должна быть больше 0"
             )
         
         # Convert to string to check digits
@@ -486,7 +486,7 @@ async def create_transaction(
         if not transaction_data.to_account_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="to_account_id is required for transfer transactions"
+                detail="Необходимо указать счет получателя для перевода"
             )
         
         to_account = db.query(Account).filter(Account.id == transaction_data.to_account_id).first()
@@ -494,7 +494,7 @@ async def create_transaction(
         if not to_account:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Destination account not found"
+                detail="Счет получателя не найден"
             )
         
         # Check access to destination account
@@ -512,13 +512,13 @@ async def create_transaction(
         if not has_access_to:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="You don't have access to destination account"
+                detail="У вас нет доступа к счету получателя"
             )
         
         if transaction_data.account_id == transaction_data.to_account_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Source and destination accounts must be different"
+                detail="Счета отправителя и получателя должны быть разными"
             )
         
         # For transfer, we'll create destination transaction using raw SQL after committing source
@@ -536,7 +536,7 @@ async def create_transaction(
         if not shared_budget:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Shared budget not found"
+                detail="Общий бюджет не найден"
             )
         
         # Check if user is a member of the shared budget
@@ -548,7 +548,7 @@ async def create_transaction(
         if not membership:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="You don't have access to this shared budget"
+                detail="У вас нет доступа к этому общему бюджету"
             )
     
     # Validate goal_id if provided
@@ -563,13 +563,13 @@ async def create_transaction(
         if not goal:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Goal not found"
+                detail="Цель не найдена"
             )
         
         if goal.status != GoalStatus.ACTIVE:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Can only add progress to active goals"
+                detail="Можно добавлять прогресс только к активным целям"
             )
         
         # If goal has an account, use it for the transaction
@@ -585,7 +585,7 @@ async def create_transaction(
     if not final_account:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Account not found"
+            detail="Счет не найден"
         )
     
     # Check access to final account
@@ -603,7 +603,7 @@ async def create_transaction(
     if not has_access_final:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You don't have access to this account"
+            detail="У вас нет доступа к этому счету"
         )
     
     # Ensure transaction_type is lowercase to match enum values in DB
@@ -1020,7 +1020,7 @@ async def update_transaction(
             if not account:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Account not found"
+                    detail="Счет не найден"
                 )
             
             # Check access: own account or shared budget member
@@ -1039,7 +1039,7 @@ async def update_transaction(
             if not has_access:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail="You don't have access to this account"
+                    detail="У вас нет доступа к этому счету"
                 )
             
             transaction.account_id = transaction_data.account_id
@@ -1048,7 +1048,7 @@ async def update_transaction(
             if transaction_data.transaction_type not in ["income", "expense", "transfer"]:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Transaction type must be 'income', 'expense', or 'transfer'"
+                    detail="Тип транзакции должен быть 'income', 'expense' или 'transfer'"
                 )
             transaction.transaction_type = TransactionType(transaction_data.transaction_type)
         
@@ -1061,7 +1061,7 @@ async def update_transaction(
                 if amount_decimal <= 0:
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="Amount must be greater than 0"
+                        detail="Сумма должна быть больше 0"
                     )
                 
                 # Convert to string to check digits

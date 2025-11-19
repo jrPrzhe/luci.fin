@@ -180,9 +180,9 @@ class ApiClient {
     }
 
     // Add timeout to requests using Promise.race
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('Request timeout')), 10000) // 10 seconds
-    })
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Превышено время ожидания ответа от сервера. Пожалуйста, попробуйте позже.')), 10000) // 10 seconds
+      })
 
     try {
       // Создаем Headers объект для правильной передачи заголовков
@@ -277,8 +277,11 @@ class ApiClient {
           // No refresh token or refresh failed, clear tokens
           this.setToken(null, null)
         }
-        const error = await response.json().catch(() => ({ detail: 'Request failed' }))
-        throw new Error(error.detail || `HTTP error! status: ${response.status}`)
+        const error = await response.json().catch(() => ({ detail: 'Ошибка запроса' }))
+        const errorMessage = error.detail || `HTTP error! status: ${response.status}`
+        // Импортируем функцию перевода ошибок
+        const { translateError } = await import('../utils/errorMessages')
+        throw new Error(translateError(errorMessage))
       }
 
       // Check if response has content
@@ -314,10 +317,10 @@ class ApiClient {
       // No JSON content type - return empty object
       return {} as T
     } catch (error: any) {
-      if (error.message === 'Request timeout') {
-        throw new Error('Request timeout - сервер не отвечает')
-      }
-      throw error
+      // Импортируем функцию перевода ошибок
+      const { translateError } = await import('../utils/errorMessages')
+      const translatedError = translateError(error)
+      throw new Error(translatedError)
     }
   }
 

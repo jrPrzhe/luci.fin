@@ -115,7 +115,8 @@ export function Accounts() {
       await loadAccounts()
       showSuccess('Счёт создан')
     } catch (err: any) {
-      showError(err.message || 'Ошибка создания счёта')
+      const { translateError } = await import('../utils/errorMessages')
+      showError(translateError(err))
     }
   }
 

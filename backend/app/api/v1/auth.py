@@ -29,7 +29,7 @@ def get_current_user(
         logger.warning("No token provided in get_current_user")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated",
+            detail="Не авторизован",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
@@ -48,7 +48,7 @@ def get_current_user(
         
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
+            detail="Неверные учетные данные",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
@@ -67,7 +67,7 @@ def get_current_user(
         logger.warning(f"Invalid user_id format in token: {user_id} (type: {type(user_id)})")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
+            detail="Неверные учетные данные",
         )
     
     logger.info(f"Token decoded successfully, user_id: {user_id}")
@@ -77,7 +77,7 @@ def get_current_user(
         logger.warning(f"User not found for id: {user_id}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
+            detail="Пользователь не найден",
         )
     
     logger.info(f"User found: id={user.id}, email={user.email}, telegram_id={user.telegram_id}")
@@ -91,7 +91,7 @@ def get_current_admin(
     if not current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required"
+            detail="Требуется доступ администратора"
         )
     return current_user
 
@@ -104,7 +104,7 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
+            detail="Email уже зарегистрирован"
         )
     
     # Create new user
@@ -221,14 +221,14 @@ async def login(login_data: LoginRequest, db: Session = Depends(get_db)):
     if not user or not verify_password(login_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
+            detail="Неверный email или пароль",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="User account is inactive"
+            detail="Аккаунт пользователя неактивен"
         )
     
     # Update last login
@@ -367,7 +367,7 @@ async def login_telegram(
             logger.warning("Empty initData received")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Empty initData"
+                detail="Не получены данные Telegram. Убедитесь, что открыто через Telegram Mini App."
             )
         
         # Parse initData - Format: key1=value1&key2=value2&hash=...
@@ -385,7 +385,7 @@ async def login_telegram(
             logger.warning(f"No 'user' param in initData. Available params: {list(params.keys())}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Telegram user data not found in initData"
+                detail="Данные пользователя Telegram не найдены. Убедитесь, что открыто через Telegram Mini App."
             )
         
         # Parse JSON user data
@@ -396,7 +396,7 @@ async def login_telegram(
             logger.error(f"Failed to parse user JSON: {e}, user_str: {user_str[:100]}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid Telegram user data format: {str(e)}"
+                detail=f"Неверный формат данных пользователя Telegram: {str(e)}"
             )
         
         # Normalize telegram_id - ensure consistent format
@@ -407,7 +407,7 @@ async def login_telegram(
             logger.error(f"No telegram_id in user object: {user_obj}")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Telegram user ID not found"
+                detail="ID пользователя Telegram не найден"
             )
         
         logger.info(f"Mini App login - telegram_id: '{telegram_id}' (type: {type(telegram_id)}, length: {len(telegram_id)})")
@@ -670,7 +670,7 @@ async def login_telegram(
         logger.error(f"Telegram auth error: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid Telegram authentication: {str(e)}"
+            detail=f"Ошибка авторизации через Telegram: {str(e)}"
         )
 
 

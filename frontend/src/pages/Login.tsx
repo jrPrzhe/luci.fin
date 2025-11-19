@@ -41,7 +41,8 @@ export function Login() {
              // Проверяем онбординг - Layout перенаправит на онбординг если нужно
              navigate('/')
     } catch (err: any) {
-      showError(err.message || 'Неверный email или пароль')
+      const { translateError } = await import('../utils/errorMessages')
+      showError(translateError(err))
     } finally {
       setIsLoading(false)
     }
@@ -107,7 +108,8 @@ export function Login() {
       // Проверяем онбординг - Layout перенаправит на онбординг если нужно
       navigate('/')
     } catch (err: any) {
-      showError(`Ошибка авторизации через Telegram: ${err.message || 'Неизвестная ошибка'}`)
+      const { translateError } = await import('../utils/errorMessages')
+      showError(translateError(err))
       setIsLoading(false)
     }
   }
@@ -189,7 +191,8 @@ export function Login() {
       // Проверяем онбординг - Layout перенаправит на онбординг если нужно
       navigate('/')
     } catch (err: any) {
-      showError(`Ошибка авторизации через VK: ${err.message || 'Неизвестная ошибка'}`)
+      const { translateError } = await import('../utils/errorMessages')
+      showError(translateError(err))
       setIsLoading(false)
     }
   }

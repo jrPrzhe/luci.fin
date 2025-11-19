@@ -198,7 +198,7 @@ async def create_account(
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid account type. Must be one of: {[e.value for e in AccountType]}"
+            detail=f"Неверный тип счета. Должен быть одним из: {[e.value for e in AccountType]}"
         )
     
     # If shared_budget_id is provided, verify user is a member
@@ -210,7 +210,7 @@ async def create_account(
         if not budget:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Shared budget not found"
+                detail="Общий бюджет не найден"
             )
         
         # Check if user is a member (admin can create accounts)
@@ -222,14 +222,14 @@ async def create_account(
         if not membership:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="You don't have access to this shared budget"
+                detail="У вас нет доступа к этому общему бюджету"
             )
         
         # Only admins can create shared accounts
         if membership.role != MemberRole.ADMIN:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only admins can create shared accounts"
+                detail="Только администраторы могут создавать общие счета"
             )
     
     # Create account
@@ -284,7 +284,7 @@ async def delete_account(
     if not account:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Account not found"
+            detail="Счет не найден"
         )
     
     # Check access: either owner or member of shared budget
@@ -302,7 +302,7 @@ async def delete_account(
     if not has_access:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You don't have access to this account"
+            detail="У вас нет доступа к этому счету"
         )
     
     # For shared accounts, only admins can delete
@@ -316,7 +316,7 @@ async def delete_account(
         if not membership:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only admins can delete shared accounts"
+                detail="Только администраторы могут удалять общие счета"
             )
     
     # Check if account has transactions

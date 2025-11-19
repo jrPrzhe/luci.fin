@@ -90,7 +90,8 @@ export function SharedBudgets() {
       setBudgets(budgetsData)
       setInvitations(invitationsData)
     } catch (err: any) {
-      setError(err.message || 'Ошибка загрузки данных')
+      const { translateError } = await import('../utils/errorMessages')
+      setError(translateError(err))
     } finally {
       setLoading(false)
     }
@@ -106,7 +107,8 @@ export function SharedBudgets() {
       // Filter shared accounts for this budget
       setSharedAccounts(accountsData.filter((acc: any) => acc.shared_budget_id === budgetId))
     } catch (err: any) {
-      setError(err.message || 'Ошибка загрузки участников')
+      const { translateError } = await import('../utils/errorMessages')
+      setError(translateError(err))
     }
   }
 
@@ -134,7 +136,8 @@ export function SharedBudgets() {
       setShowCreateForm(false)
       await loadData()
     } catch (err: any) {
-      setError(err.message || 'Ошибка создания бюджета')
+      const { translateError } = await import('../utils/errorMessages')
+      setError(translateError(err))
     }
   }
 
@@ -144,7 +147,8 @@ export function SharedBudgets() {
       await api.acceptInvitation(token, undefined)
       await loadData()
     } catch (err: any) {
-      setError(err.message || 'Ошибка принятия приглашения')
+      const { translateError } = await import('../utils/errorMessages')
+      setError(translateError(err))
     }
   }
 
@@ -153,7 +157,8 @@ export function SharedBudgets() {
       await api.declineInvitation(invitationId)
       await loadData()
     } catch (err: any) {
-      setError(err.message || 'Ошибка отклонения приглашения')
+      const { translateError } = await import('../utils/errorMessages')
+      setError(translateError(err))
     }
   }
 
@@ -172,7 +177,8 @@ export function SharedBudgets() {
       await loadMembers(budgetId)
       await loadData()
     } catch (err: any) {
-      setError(err.message || 'Ошибка удаления участника')
+      const { translateError } = await import('../utils/errorMessages')
+      setError(translateError(err))
     }
   }
 
@@ -187,7 +193,8 @@ export function SharedBudgets() {
       await loadMembers(budgetId)
       await loadData()
     } catch (err: any) {
-      setError(err.message || 'Ошибка изменения роли')
+      const { translateError } = await import('../utils/errorMessages')
+      setError(translateError(err))
     }
   }
 
@@ -207,7 +214,8 @@ export function SharedBudgets() {
       setError('')
       await loadData()
     } catch (err: any) {
-      setError(err.message || 'Ошибка присоединения к бюджету')
+      const { translateError } = await import('../utils/errorMessages')
+      setError(translateError(err))
     }
   }
 

@@ -31,7 +31,8 @@ export function Import() {
         setSelectedSource(response[0].id)
       }
     } catch (err: any) {
-      showError('Ошибка при загрузке списка источников: ' + (err.message || 'Неизвестная ошибка'))
+      const { translateError } = await import('../utils/errorMessages')
+      showError(translateError(err))
     }
   }
 
@@ -75,7 +76,8 @@ export function Import() {
         fileInput.value = ''
       }
     } catch (err: any) {
-      showError(err.message || 'Ошибка при импорте данных')
+      const { translateError } = await import('../utils/errorMessages')
+      showError(translateError(err))
     } finally {
       setIsUploading(false)
       setImportStartTime(null)

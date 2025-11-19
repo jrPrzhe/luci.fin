@@ -607,7 +607,8 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
       onSuccess()
     } catch (error: any) {
       console.error('Error creating goal:', error)
-      showError(error.message || 'Ошибка при создании цели')
+      const { translateError } = await import('../utils/errorMessages')
+      showError(translateError(error))
     } finally {
       setLoading(false)
     }

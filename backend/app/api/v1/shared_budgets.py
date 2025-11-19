@@ -199,14 +199,14 @@ async def get_shared_budget(
     if not membership:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You don't have access to this budget"
+            detail="У вас нет доступа к этому бюджету"
         )
     
     budget = db.query(SharedBudget).filter(SharedBudget.id == budget_id).first()
     if not budget:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Budget not found"
+            detail="Бюджет не найден"
         )
     
     # Generate invite_code if missing (for old records)
@@ -252,7 +252,7 @@ async def get_budget_members(
     if not membership:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You don't have access to this budget"
+            detail="У вас нет доступа к этому бюджету"
         )
     
     members = db.query(SharedBudgetMember).filter(
@@ -291,14 +291,14 @@ async def get_invite_code(
     if not membership or membership.role != MemberRole.ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins can view invite code"
+            detail="Только администраторы могут просматривать код приглашения"
         )
     
     budget = db.query(SharedBudget).filter(SharedBudget.id == budget_id).first()
     if not budget:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Budget not found"
+            detail="Бюджет не найден"
         )
     
     return {
@@ -323,14 +323,14 @@ async def regenerate_invite_code(
     if not membership or membership.role != MemberRole.ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins can regenerate invite code"
+            detail="Только администраторы могут перегенерировать код приглашения"
         )
     
     budget = db.query(SharedBudget).filter(SharedBudget.id == budget_id).first()
     if not budget:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Budget not found"
+            detail="Бюджет не найден"
         )
     
     # Generate new unique code
@@ -365,14 +365,14 @@ async def invite_member(
     if not membership or membership.role != MemberRole.ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins can invite members"
+            detail="Только администраторы могут приглашать участников"
         )
     
     budget = db.query(SharedBudget).filter(SharedBudget.id == budget_id).first()
     if not budget:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Budget not found"
+            detail="Бюджет не найден"
         )
     
     # Find user by email or telegram_id
@@ -384,7 +384,7 @@ async def invite_member(
     else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Either email or telegram_id must be provided"
+            detail="Необходимо указать email или telegram_id"
         )
     
     # Check if user is already a member
@@ -396,7 +396,7 @@ async def invite_member(
         if existing_member:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="User is already a member of this budget"
+                detail="Пользователь уже является участником этого бюджета"
             )
     
     # Create invitation
@@ -482,7 +482,7 @@ async def accept_invitation(
         if not budget:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Invalid invite code"
+                detail="Неверный код приглашения"
             )
         
         # Check if user is already a member
@@ -511,7 +511,7 @@ async def accept_invitation(
     if not invite_data.token:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Either invite_code or token must be provided"
+            detail="Необходимо указать код приглашения или токен"
         )
     
     invitation = db.query(Invitation).filter(
@@ -522,7 +522,7 @@ async def accept_invitation(
     if not invitation:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Invitation not found or already used"
+            detail="Приглашение не найдено или уже использовано"
         )
     
     # Check expiration
@@ -531,20 +531,20 @@ async def accept_invitation(
         db.commit()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invitation has expired"
+            detail="Приглашение истекло"
         )
     
     # Check if invitation is for this user (by email or telegram_id)
     if invitation.email and current_user.email != invitation.email:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="This invitation is not for your account"
+            detail="Это приглашение не для вашего аккаунта"
         )
     
     if invitation.telegram_id and current_user.telegram_id != invitation.telegram_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="This invitation is not for your account"
+            detail="Это приглашение не для вашего аккаунта"
         )
     
     # Check if user is already a member
@@ -593,20 +593,20 @@ async def decline_invitation(
     if not invitation:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Invitation not found"
+            detail="Приглашение не найдено"
         )
     
     # Check if invitation is for this user
     if invitation.email and current_user.email != invitation.email:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="This invitation is not for your account"
+            detail="Это приглашение не для вашего аккаунта"
         )
     
     if invitation.telegram_id and current_user.telegram_id != invitation.telegram_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="This invitation is not for your account"
+            detail="Это приглашение не для вашего аккаунта"
         )
     
     invitation.status = InvitationStatus.DECLINED
@@ -672,14 +672,14 @@ async def update_shared_budget(
     if not membership:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins can update budget"
+            detail="Только администраторы могут обновлять бюджет"
         )
     
     budget = db.query(SharedBudget).filter(SharedBudget.id == budget_id).first()
     if not budget:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Budget not found"
+            detail="Бюджет не найден"
         )
     
     if budget_data.name is not None:
@@ -736,7 +736,7 @@ async def update_member_role(
     if new_role_str not in ["admin", "member"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="new_role must be 'admin' or 'member'"
+            detail="new_role должен быть 'admin' или 'member'"
         )
     
     new_role = MemberRole.ADMIN if new_role_str == "admin" else MemberRole.MEMBER
@@ -750,7 +750,7 @@ async def update_member_role(
     if not current_membership or current_membership.role != MemberRole.ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins can change member roles"
+            detail="Только администраторы могут изменять роли участников"
         )
     
     # Check if target member exists
@@ -762,7 +762,7 @@ async def update_member_role(
     if not target_membership:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Member not found"
+            detail="Участник не найден"
         )
     
     # Check if trying to change own role (admins can't demote themselves if they're the only admin)
@@ -775,7 +775,7 @@ async def update_member_role(
         if admin_count == 1 and new_role != MemberRole.ADMIN:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot remove the last admin. Promote another member to admin first."
+                detail="Нельзя удалить последнего администратора. Сначала назначьте другого участника администратором."
             )
     
     # Update role
@@ -813,14 +813,14 @@ async def remove_member(
     if not membership:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins can remove members"
+            detail="Только администраторы могут удалять участников"
         )
     
     # Cannot remove yourself
     if user_id == current_user.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot remove yourself"
+            detail="Нельзя удалить самого себя"
         )
     
     member = db.query(SharedBudgetMember).filter(
@@ -831,7 +831,7 @@ async def remove_member(
     if not member:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Member not found"
+            detail="Участник не найден"
         )
     
     db.delete(member)
@@ -856,7 +856,7 @@ async def leave_budget(
     if not membership:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="You are not a member of this budget"
+            detail="Вы не являетесь участником этого бюджета"
         )
     
     # Check if user is the creator/admin and there are other members
@@ -864,7 +864,7 @@ async def leave_budget(
     if not budget:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Budget not found"
+            detail="Бюджет не найден"
         )
     
     # Check if user is the creator
@@ -878,7 +878,7 @@ async def leave_budget(
         if other_members > 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Cannot leave budget as creator while other members exist. Transfer ownership or remove all members first."
+                detail="Нельзя покинуть бюджет как создатель, пока есть другие участники. Сначала передайте права или удалите всех участников."
             )
     
     # Remove membership

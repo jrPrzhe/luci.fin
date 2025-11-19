@@ -188,7 +188,7 @@ async def create_category(
                 if not membership:
                     raise HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN,
-                        detail="You don't have access to this shared budget"
+                        detail="У вас нет доступа к этому общему бюджету"
                     )
                 shared_budget_id = category.shared_budget_id
             except HTTPException:
@@ -197,7 +197,7 @@ async def create_category(
                 logger.error(f"Error checking shared budget membership: {e}", exc_info=True)
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Error checking shared budget access"
+                    detail="Ошибка при проверке доступа к общему бюджету"
                 )
         
         # Check if parent category exists and belongs to user/shared budget
@@ -209,13 +209,13 @@ async def create_category(
                 if not parent:
                     raise HTTPException(
                         status_code=status.HTTP_404_NOT_FOUND,
-                        detail="Parent category not found"
+                        detail="Родительская категория не найдена"
                     )
                 # Check access to parent category
                 if parent.shared_budget_id != shared_budget_id:
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="Parent category must belong to the same shared budget"
+                        detail="Родительская категория должна принадлежать тому же общему бюджету"
                     )
             except HTTPException:
                 raise
@@ -223,7 +223,7 @@ async def create_category(
                 logger.error(f"Error checking parent category: {e}", exc_info=True)
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Error checking parent category"
+                    detail="Ошибка при проверке родительской категории"
                 )
         
         # Check if category name already exists for this user/shared budget
@@ -244,16 +244,16 @@ async def create_category(
             if existing:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Category with this name already exists"
+                    detail="Категория с таким именем уже существует"
                 )
         except HTTPException:
             raise
         except Exception as e:
             logger.error(f"Error checking existing category: {e}", exc_info=True)
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Error checking category name"
-            )
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Ошибка при проверке имени категории"
+                )
         
         # Create category
         try:
@@ -337,7 +337,7 @@ async def create_category(
         logger.error(f"Unexpected error in create_category: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred while creating the category"
+            detail="Произошла ошибка при создании категории"
         )
 
 
@@ -359,7 +359,7 @@ async def update_category(
     if not category:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Category not found or cannot be edited"
+            detail="Категория не найдена или не может быть отредактирована"
         )
     
     # Check access: must be owner or member of shared budget
@@ -371,7 +371,7 @@ async def update_category(
         if not membership:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="You don't have permission to edit this category"
+                detail="У вас нет прав на редактирование этой категории"
             )
     elif category.user_id != current_user.id:
         raise HTTPException(
@@ -398,7 +398,7 @@ async def update_category(
         if existing:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Category with this name already exists"
+                detail="Категория с таким именем уже существует"
             )
     
     # Update fields
@@ -452,7 +452,7 @@ async def delete_category(
     if not category:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Category not found or cannot be deleted"
+            detail="Категория не найдена или не может быть удалена"
         )
     
     # Check access: must be owner or member of shared budget
@@ -464,7 +464,7 @@ async def delete_category(
         if not membership:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="You don't have permission to delete this category"
+                detail="У вас нет прав на удаление этой категории"
             )
     elif category.user_id != current_user.id:
         raise HTTPException(
@@ -517,12 +517,12 @@ async def toggle_favorite(
         if not membership:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="You don't have access to this category"
+                detail="У вас нет доступа к этой категории"
             )
     elif category.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You don't have access to this category"
+            detail="У вас нет доступа к этой категории"
         )
     
     category.is_favorite = favorite.is_favorite
