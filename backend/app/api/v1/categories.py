@@ -250,10 +250,10 @@ async def create_category(
             raise
         except Exception as e:
             logger.error(f"Error checking existing category: {e}", exc_info=True)
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Ошибка при проверке имени категории"
-                )
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Ошибка при проверке имени категории"
+            )
         
         # Create category
         try:
