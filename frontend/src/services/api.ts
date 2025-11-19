@@ -28,7 +28,7 @@ class ApiClient {
     
     // Also try to load from VK Storage asynchronously (for VK users)
     // This is a fallback if localStorage is empty but VK Storage has the token
-    import('../utils/storage').then(({ storageSync, default: storage }) => {
+    import('../utils/storage').then(({ storageSync }) => {
       // Only update if we don't have tokens from localStorage
       if (!this.token && !this.refreshToken) {
         const vkToken = storageSync.getItem('token')
