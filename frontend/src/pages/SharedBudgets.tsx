@@ -278,8 +278,8 @@ export function SharedBudgets() {
     <div className="p-4 md:p-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-telegram-text mb-1">💼 Совместные бюджеты</h1>
-          <p className="text-sm text-telegram-textSecondary">Управляйте общими финансами с друзьями и семьей</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-telegram-text dark:text-telegram-dark-text mb-1">💼 Совместные бюджеты</h1>
+          <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">Управляйте общими финансами с друзьями и семьей</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
           <button
@@ -306,9 +306,9 @@ export function SharedBudgets() {
       {/* Pending Invitations */}
       {invitations.length > 0 && (
         <div className="mb-8">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="text-2xl">📬</span>
-            <h2 className="text-xl font-semibold text-telegram-text">Входящие приглашения</h2>
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-2xl">📬</span>
+              <h2 className="text-xl font-semibold text-telegram-text dark:text-telegram-dark-text">Входящие приглашения</h2>
             <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-semibold">
               {invitations.length}
             </span>
@@ -320,14 +320,14 @@ export function SharedBudgets() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-2xl">🎯</span>
-                      <h3 className="font-semibold text-lg text-telegram-text">
+                      <h3 className="font-semibold text-lg text-telegram-text dark:text-telegram-dark-text">
                         {invitation.shared_budget_name}
                       </h3>
                     </div>
-                    <p className="text-sm text-telegram-textSecondary mb-2">
-                      👤 От: <strong className="text-telegram-text">{invitation.invited_by_name}</strong>
+                    <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-2">
+                      👤 От: <strong className="text-telegram-text dark:text-telegram-dark-text">{invitation.invited_by_name}</strong>
                     </p>
-                    <p className="text-xs text-telegram-textSecondary">
+                    <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
                       📅 {formatDate(invitation.created_at)}
                     </p>
                   </div>
@@ -371,20 +371,20 @@ export function SharedBudgets() {
                     💼
                   </div>
                   <div>
-                    <h2 className="text-2xl md:text-3xl font-bold text-telegram-text mb-1">{selectedBudget.name}</h2>
+                    <h2 className="text-2xl md:text-3xl font-bold text-telegram-text dark:text-telegram-dark-text mb-1">{selectedBudget.name}</h2>
                     {selectedBudget.description && (
-                      <p className="text-telegram-textSecondary">{selectedBudget.description}</p>
+                      <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{selectedBudget.description}</p>
                     )}
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-4 mt-4">
-                  <div className="flex items-center gap-2 px-3 py-1 bg-telegram-primaryLight/20 rounded-full">
+                  <div className="flex items-center gap-2 px-3 py-1 bg-telegram-primaryLight/20 dark:bg-telegram-dark-primary/20 rounded-full">
                     <span>💱</span>
-                    <span className="text-sm font-medium text-telegram-text">{selectedBudget.currency}</span>
+                    <span className="text-sm font-medium text-telegram-text dark:text-telegram-dark-text">{selectedBudget.currency}</span>
                   </div>
-                  <div className="flex items-center gap-2 px-3 py-1 bg-telegram-primaryLight/20 rounded-full">
+                  <div className="flex items-center gap-2 px-3 py-1 bg-telegram-primaryLight/20 dark:bg-telegram-dark-primary/20 rounded-full">
                     <span>👥</span>
-                    <span className="text-sm font-medium text-telegram-text">{selectedBudget.member_count} участников</span>
+                    <span className="text-sm font-medium text-telegram-text dark:text-telegram-dark-text">{selectedBudget.member_count} участников</span>
                   </div>
                 </div>
               </div>
@@ -412,7 +412,7 @@ export function SharedBudgets() {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
               <div className="flex items-center gap-2">
                 <span className="text-2xl">💰</span>
-                <h3 className="text-xl font-semibold text-telegram-text">Совместные счета</h3>
+                <h3 className="text-xl font-semibold text-telegram-text dark:text-telegram-dark-text">Совместные счета</h3>
               </div>
               <button
                 onClick={() => setShowInviteCode(selectedBudget.id)}
@@ -424,18 +424,18 @@ export function SharedBudgets() {
             {sharedAccounts.length === 0 ? (
               <div className="card p-6 text-center bg-gray-50 border-2 border-dashed border-gray-300">
                 <div className="text-4xl mb-3">💳</div>
-                <p className="text-telegram-text font-medium mb-2">Нет совместных счетов</p>
-                <p className="text-sm text-telegram-textSecondary">Создайте счёт в разделе "Счета", выбрав этот бюджет</p>
+                <p className="text-telegram-text dark:text-telegram-dark-text font-medium mb-2">Нет совместных счетов</p>
+                <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">Создайте счёт в разделе "Счета", выбрав этот бюджет</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {sharedAccounts.map((account) => (
                   <div key={account.id} className="card hover:shadow-lg transition-shadow border-l-4 border-l-telegram-primary">
                     <div className="flex items-start justify-between mb-2">
-                      <h4 className="font-semibold text-telegram-text text-lg">{account.name}</h4>
+                      <h4 className="font-semibold text-telegram-text dark:text-telegram-dark-text text-lg">{account.name}</h4>
                       <span className="text-2xl">💵</span>
                     </div>
-                    <p className="text-2xl font-bold text-telegram-primary mb-2">
+                    <p className="text-2xl font-bold text-telegram-primary dark:text-telegram-dark-primary mb-2">
                       {new Intl.NumberFormat('ru-RU', {
                         style: 'currency',
                         currency: account.currency,
@@ -443,7 +443,7 @@ export function SharedBudgets() {
                         maximumFractionDigits: 0,
                       }).format(Math.round(account.balance))}
                     </p>
-                    <p className="text-sm text-telegram-textSecondary">
+                    <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
                       {account.type}
                     </p>
                   </div>
@@ -455,7 +455,7 @@ export function SharedBudgets() {
           <div>
             <div className="flex items-center gap-2 mb-4">
               <span className="text-2xl">👥</span>
-              <h3 className="text-xl font-semibold text-telegram-text">Участники</h3>
+              <h3 className="text-xl font-semibold text-telegram-text dark:text-telegram-dark-text">Участники</h3>
               <span className="px-2 py-1 bg-telegram-primaryLight/20 text-telegram-primary rounded-full text-xs font-semibold">
                 {members.length}
               </span>
@@ -473,13 +473,13 @@ export function SharedBudgets() {
                         {member.user_name?.[0]?.toUpperCase() || member.user_email?.[0]?.toUpperCase() || '👤'}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold text-telegram-text truncate">
+                        <h4 className="font-semibold text-telegram-text dark:text-telegram-dark-text truncate">
                           {member.user_name || member.user_email || `Пользователь #${member.user_id}`}
                         </h4>
-                        <p className="text-sm text-telegram-textSecondary">
+                        <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
                           {member.role === 'admin' ? '👑 Администратор' : '👤 Участник'}
                         </p>
-                        <p className="text-xs text-telegram-textSecondary mt-1">
+                        <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
                           📅 {formatDate(member.joined_at)}
                         </p>
                       </div>
@@ -541,8 +541,8 @@ export function SharedBudgets() {
               <div className="inline-block w-24 h-24 rounded-full bg-gradient-to-br from-telegram-primaryLight/30 to-telegram-primaryLight/10 flex items-center justify-center text-5xl mb-6">
                 💼
               </div>
-              <h3 className="text-xl font-semibold text-telegram-text mb-2">Нет совместных бюджетов</h3>
-              <p className="text-telegram-textSecondary mb-6 max-w-md mx-auto">
+              <h3 className="text-xl font-semibold text-telegram-text dark:text-telegram-dark-text mb-2">Нет совместных бюджетов</h3>
+              <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-6 max-w-md mx-auto">
                 Создайте совместный бюджет, чтобы управлять общими финансами с друзьями или семьей
               </p>
               <button
@@ -566,23 +566,23 @@ export function SharedBudgets() {
                         💼
                       </div>
                       <div className="flex-1">
-                        <h3 className="font-semibold text-lg text-telegram-text mb-1 group-hover:text-telegram-primary transition-colors">
+                        <h3 className="font-semibold text-lg text-telegram-text dark:text-telegram-dark-text mb-1 group-hover:text-telegram-primary dark:group-hover:text-telegram-dark-primary transition-colors">
                           {budget.name}
                         </h3>
                         {budget.description && (
-                          <p className="text-sm text-telegram-textSecondary line-clamp-2">{budget.description}</p>
+                          <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary line-clamp-2">{budget.description}</p>
                         )}
                       </div>
                     </div>
                   </div>
                   
                   <div className="flex items-center justify-between text-sm mb-4">
-                    <div className="flex items-center gap-2 px-3 py-1 bg-telegram-primaryLight/20 rounded-full">
+                    <div className="flex items-center gap-2 px-3 py-1 bg-telegram-primaryLight/20 dark:bg-telegram-dark-primary/20 rounded-full">
                       <span>👥</span>
-                      <span className="font-medium text-telegram-text">{budget.member_count}</span>
-                      <span className="text-telegram-textSecondary">участников</span>
+                      <span className="font-medium text-telegram-text dark:text-telegram-dark-text">{budget.member_count}</span>
+                      <span className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">участников</span>
                     </div>
-                    <div className="px-3 py-1 bg-gray-100 rounded-full font-medium text-telegram-text">
+                    <div className="px-3 py-1 bg-gray-100 dark:bg-telegram-dark-surface rounded-full font-medium text-telegram-text dark:text-telegram-dark-text">
                       {budget.currency}
                     </div>
                   </div>
@@ -659,8 +659,6 @@ export function SharedBudgets() {
                   >
                     <option value="RUB">₽ RUB</option>
                     <option value="USD">$ USD</option>
-                    <option value="EUR">€ EUR</option>
-                    <option value="KZT">₸ KZT</option>
                   </select>
                 </div>
 

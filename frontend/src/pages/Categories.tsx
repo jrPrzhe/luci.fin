@@ -226,14 +226,14 @@ export function Categories() {
   return (
     <div className="p-4 md:p-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-telegram-text">Категории</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-telegram-text dark:text-telegram-dark-text">Категории</h1>
         <div className="flex gap-2">
           <button
             onClick={() => setIsEditingMode(!isEditingMode)}
             className={`px-4 py-2 rounded-telegram transition-all ${
               isEditingMode
                 ? 'bg-telegram-primary text-white'
-                : 'bg-telegram-surface text-telegram-text hover:bg-telegram-hover'
+                : 'bg-telegram-surface dark:bg-telegram-dark-surface text-telegram-text dark:text-telegram-dark-text hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover'
             }`}
           >
             {isEditingMode ? '✓ Редактирование' : '✏️ Редактировать'}
@@ -260,7 +260,7 @@ export function Categories() {
           className={`px-4 py-2 rounded-telegram transition-all ${
             filterType === 'all'
               ? 'bg-telegram-primary text-white'
-              : 'bg-telegram-surface text-telegram-text hover:bg-telegram-hover'
+              : 'bg-telegram-surface dark:bg-telegram-dark-surface text-telegram-text dark:text-telegram-dark-text hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover'
           }`}
         >
           Все
@@ -270,7 +270,7 @@ export function Categories() {
           className={`px-4 py-2 rounded-telegram transition-all ${
             filterType === 'expense'
               ? 'bg-telegram-primary text-white'
-              : 'bg-telegram-surface text-telegram-text hover:bg-telegram-hover'
+              : 'bg-telegram-surface dark:bg-telegram-dark-surface text-telegram-text dark:text-telegram-dark-text hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover'
           }`}
         >
           💸 Расходы
@@ -280,7 +280,7 @@ export function Categories() {
           className={`px-4 py-2 rounded-telegram transition-all ${
             filterType === 'income'
               ? 'bg-telegram-primary text-white'
-              : 'bg-telegram-surface text-telegram-text hover:bg-telegram-hover'
+              : 'bg-telegram-surface dark:bg-telegram-dark-surface text-telegram-text dark:text-telegram-dark-text hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover'
           }`}
         >
           💰 Доходы
@@ -290,7 +290,7 @@ export function Categories() {
           className={`px-4 py-2 rounded-telegram transition-all ${
             showFavoritesOnly
               ? 'bg-telegram-primary text-white'
-              : 'bg-telegram-surface text-telegram-text hover:bg-telegram-hover'
+              : 'bg-telegram-surface dark:bg-telegram-dark-surface text-telegram-text dark:text-telegram-dark-text hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover'
           }`}
         >
           ⭐ Избранные
@@ -320,7 +320,7 @@ export function Categories() {
       {showForm && (
         <div className="card mb-6">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold text-telegram-text">
+            <h2 className="text-xl font-semibold text-telegram-text dark:text-telegram-dark-text">
               {editingCategory ? 'Редактировать категорию' : 'Новая категория'}
             </h2>
             <button
@@ -333,7 +333,7 @@ export function Categories() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-telegram-text mb-2">
+              <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
                 Название
               </label>
               <input
@@ -347,7 +347,7 @@ export function Categories() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-telegram-text mb-2">
+              <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
                 Тип транзакций
               </label>
               <select
@@ -363,7 +363,7 @@ export function Categories() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-telegram-text mb-2">
+              <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
                 Иконка (эмодзи)
               </label>
               <input
@@ -377,7 +377,7 @@ export function Categories() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-telegram-text mb-2">
+              <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
                 Цвет
               </label>
               <input
@@ -396,7 +396,7 @@ export function Categories() {
                 onChange={(e) => setFormData({ ...formData, is_favorite: e.target.checked })}
                 className="w-4 h-4 rounded"
               />
-              <label htmlFor="is_favorite" className="text-sm text-telegram-text">
+              <label htmlFor="is_favorite" className="text-sm text-telegram-text dark:text-telegram-dark-text">
                 ⭐ Добавить в избранные (топ категории)
               </label>
             </div>
@@ -423,8 +423,8 @@ export function Categories() {
           <div className="inline-block w-24 h-24 rounded-full bg-gradient-to-br from-telegram-primaryLight/30 to-telegram-primaryLight/10 flex items-center justify-center text-5xl mb-6">
             📦
           </div>
-          <h3 className="text-xl font-semibold text-telegram-text mb-2">Нет категорий</h3>
-          <p className="text-telegram-textSecondary mb-6">
+          <h3 className="text-xl font-semibold text-telegram-text dark:text-telegram-dark-text mb-2">Нет категорий</h3>
+          <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-6">
             Создайте категорию для удобной организации транзакций
           </p>
           <button onClick={() => setShowForm(true)} className="btn-primary">
@@ -436,7 +436,7 @@ export function Categories() {
           {/* Favorite Categories */}
           {!showFavoritesOnly && favoriteCategories.length > 0 && (
             <div>
-              <h3 className="text-lg font-semibold text-telegram-text mb-3 flex items-center gap-2">
+              <h3 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-3 flex items-center gap-2">
                 ⭐ Избранные категории
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
@@ -459,21 +459,21 @@ export function Categories() {
                       
                       {/* Название категории */}
                       <div className="w-full text-center">
-                        <h4 className="font-semibold text-telegram-text truncate text-sm md:text-base lg:text-lg mb-1">
+                        <h4 className="font-semibold text-telegram-text dark:text-telegram-dark-text truncate text-sm md:text-base lg:text-lg mb-1">
                           {category.name}
                         </h4>
-                        <p className="text-xs md:text-sm text-telegram-textSecondary mb-1">
+                        <p className="text-xs md:text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-1">
                           {getTransactionTypeIcon(category.transaction_type)} {getTransactionTypeLabel(category.transaction_type)}
                         </p>
                         {(category.is_system || category.shared_budget_id) && (
                           <div className="flex items-center justify-center gap-1.5 mt-1">
                             {category.is_system && (
-                              <span className="text-xs text-telegram-textSecondary" title="Базовая категория">
+                              <span className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary" title="Базовая категория">
                                 📋
                               </span>
                             )}
                             {category.shared_budget_id && (
-                              <span className="text-xs text-blue-600" title="Общая категория">
+                              <span className="text-xs text-blue-600 dark:text-blue-400" title="Общая категория">
                                 👥
                               </span>
                             )}
@@ -483,10 +483,10 @@ export function Categories() {
 
                       {/* Кнопки редактирования - внизу карточки */}
                       {isEditingMode && (
-                        <div className="flex items-center justify-center gap-2 w-full pt-2 border-t border-telegram-hover mt-auto">
+                        <div className="flex items-center justify-center gap-2 w-full pt-2 border-t border-telegram-hover dark:border-telegram-dark-hover mt-auto">
                           <button
                             onClick={() => handleToggleFavorite(category.id, category.is_favorite)}
-                            className="p-2 text-yellow-500 hover:text-yellow-600 hover:bg-yellow-50 rounded-full transition-all active:scale-95"
+                            className="p-2 text-yellow-500 hover:text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/30 rounded-full transition-all active:scale-95"
                             title="Убрать из избранного"
                           >
                             <span className="text-base md:text-lg">⭐</span>
@@ -520,7 +520,7 @@ export function Categories() {
           {(!showFavoritesOnly || favoriteCategories.length === 0) && (
             <div>
               {!showFavoritesOnly && favoriteCategories.length > 0 && (
-                <h3 className="text-lg font-semibold text-telegram-text mb-3 flex items-center gap-2">
+                <h3 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-3 flex items-center gap-2">
                   Все категории
                 </h3>
               )}
@@ -544,21 +544,21 @@ export function Categories() {
                       
                       {/* Название категории */}
                       <div className="w-full text-center">
-                        <h4 className="font-semibold text-telegram-text truncate text-sm md:text-base lg:text-lg mb-1">
+                        <h4 className="font-semibold text-telegram-text dark:text-telegram-dark-text truncate text-sm md:text-base lg:text-lg mb-1">
                           {category.name}
                         </h4>
-                        <p className="text-xs md:text-sm text-telegram-textSecondary mb-1">
+                        <p className="text-xs md:text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-1">
                           {getTransactionTypeIcon(category.transaction_type)} {getTransactionTypeLabel(category.transaction_type)}
                         </p>
                         {(category.is_system || category.shared_budget_id) && (
                           <div className="flex items-center justify-center gap-1.5 mt-1">
                             {category.is_system && (
-                              <span className="text-xs text-telegram-textSecondary" title="Базовая категория">
+                              <span className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary" title="Базовая категория">
                                 📋
                               </span>
                             )}
                             {category.shared_budget_id && (
-                              <span className="text-xs text-blue-600" title="Общая категория">
+                              <span className="text-xs text-blue-600 dark:text-blue-400" title="Общая категория">
                                 👥
                               </span>
                             )}
@@ -568,10 +568,10 @@ export function Categories() {
 
                       {/* Кнопки редактирования - внизу карточки */}
                       {isEditingMode && (
-                        <div className="flex items-center justify-center gap-2 w-full pt-2 border-t border-telegram-hover mt-auto">
+                        <div className="flex items-center justify-center gap-2 w-full pt-2 border-t border-telegram-hover dark:border-telegram-dark-hover mt-auto">
                           <button
                             onClick={() => handleToggleFavorite(category.id, category.is_favorite)}
-                            className="p-2 text-telegram-textSecondary hover:text-yellow-500 hover:bg-yellow-50 rounded-full transition-all active:scale-95"
+                            className="p-2 text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-yellow-500 dark:hover:text-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-900/30 rounded-full transition-all active:scale-95"
                             title="Добавить в избранное"
                           >
                             <span className="text-base md:text-lg">⭐</span>

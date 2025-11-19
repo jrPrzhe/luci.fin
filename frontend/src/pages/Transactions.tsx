@@ -810,7 +810,6 @@ export function Transactions() {
               >
                 <option value="RUB">RUB</option>
                 <option value="USD">USD</option>
-                <option value="EUR">EUR</option>
               </select>
             </div>
 

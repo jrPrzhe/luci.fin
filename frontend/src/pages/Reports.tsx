@@ -88,7 +88,7 @@ export function Reports() {
       <div className="min-h-screen p-4 md:p-6 flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-telegram-primary mb-4"></div>
-          <p className="text-telegram-textSecondary">Загрузка аналитики...</p>
+          <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">Загрузка аналитики...</p>
         </div>
       </div>
     )
@@ -128,10 +128,10 @@ export function Reports() {
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white p-3 rounded-lg shadow-lg border border-telegram-border">
-          <p className="font-semibold mb-2">{label}</p>
+        <div className="bg-white dark:bg-telegram-dark-surface p-3 rounded-lg shadow-lg border border-telegram-border dark:border-telegram-dark-border">
+          <p className="font-semibold mb-2 text-telegram-text dark:text-telegram-dark-text">{label}</p>
           {payload.map((entry: any, index: number) => (
-            <p key={index} className="text-sm" style={{ color: entry.color }}>
+            <p key={index} className="text-sm text-telegram-text dark:text-telegram-dark-text" style={{ color: entry.color }}>
               {entry.name}: {formatCurrency(entry.value)}
             </p>
           ))}
@@ -144,7 +144,7 @@ export function Reports() {
   return (
     <div className="min-h-screen p-4 md:p-6 animate-fade-in max-w-7xl mx-auto w-full">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-        <h1 className="text-xl md:text-2xl font-bold text-telegram-text mb-4 md:mb-0">
+        <h1 className="text-xl md:text-2xl font-bold text-telegram-text dark:text-telegram-dark-text mb-4 md:mb-0">
           Финансовая аналитика
         </h1>
         
@@ -191,8 +191,8 @@ export function Reports() {
               <span className="text-xl">💰</span>
             </div>
             <div>
-              <p className="text-sm text-telegram-textSecondary">Доходы</p>
-              <p className="text-xl font-bold text-green-600">
+              <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">Доходы</p>
+              <p className="text-xl font-bold text-green-600 dark:text-green-400">
                 {formatCurrency(analytics.totals.income)}
               </p>
             </div>
@@ -205,8 +205,8 @@ export function Reports() {
               <span className="text-xl">💸</span>
             </div>
             <div>
-              <p className="text-sm text-telegram-textSecondary">Расходы</p>
-              <p className="text-xl font-bold text-red-600">
+              <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">Расходы</p>
+              <p className="text-xl font-bold text-red-600 dark:text-red-400">
                 {formatCurrency(analytics.totals.expense)}
               </p>
             </div>
@@ -221,9 +221,9 @@ export function Reports() {
               <span className="text-xl">📊</span>
             </div>
             <div>
-              <p className="text-sm text-telegram-textSecondary">Итого</p>
+              <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">Итого</p>
               <p className={`text-xl font-bold ${
-                analytics.totals.net >= 0 ? 'text-blue-600' : 'text-orange-600'
+                analytics.totals.net >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'
               }`}>
                 {formatCurrency(analytics.totals.net)}
               </p>
@@ -235,7 +235,7 @@ export function Reports() {
       {/* Goals Section */}
       {analytics.goals && analytics.goals.length > 0 && (
         <div className="card p-5 mb-6">
-          <h2 className="text-lg font-semibold text-telegram-text mb-4 flex items-center gap-2">
+          <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4 flex items-center gap-2">
             <span>🎯</span> Прогресс по целям
           </h2>
           <div className="space-y-4">
@@ -297,7 +297,7 @@ export function Reports() {
       {/* Interesting Facts */}
       {analytics.facts.length > 0 && (
         <div className="card p-5 mb-6">
-          <h2 className="text-lg font-semibold text-telegram-text mb-4 flex items-center gap-2">
+          <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4 flex items-center gap-2">
             <span>💡</span> Интересные факты
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -312,7 +312,7 @@ export function Reports() {
                 }`}
               >
                 <span className="text-2xl">{fact.icon}</span>
-                <p className="text-sm text-telegram-text flex-1">{fact.text}</p>
+                <p className="text-sm text-telegram-text dark:text-telegram-dark-text flex-1">{fact.text}</p>
               </div>
             ))}
           </div>
@@ -322,19 +322,21 @@ export function Reports() {
       {/* Daily Flow Chart */}
       {dailyFlowData.length > 0 && (
         <div className="card p-5 mb-6">
-          <h2 className="text-lg font-semibold text-telegram-text mb-4">
+          <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
             Динамика доходов и расходов
           </h2>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={dailyFlowData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E5E5" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#E5E5E5" className="dark:stroke-telegram-dark-border" />
               <XAxis 
                 dataKey="date" 
                 stroke="#707579"
+                className="dark:stroke-telegram-dark-textSecondary"
                 style={{ fontSize: '12px' }}
               />
               <YAxis 
                 stroke="#707579"
+                className="dark:stroke-telegram-dark-textSecondary"
                 style={{ fontSize: '12px' }}
                 tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
               />
@@ -364,15 +366,16 @@ export function Reports() {
       {/* Monthly Comparison */}
       {monthlyData.length > 0 && (
         <div className="card p-5 mb-6">
-          <h2 className="text-lg font-semibold text-telegram-text mb-4">
+          <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
             Сравнение по месяцам
           </h2>
           <ResponsiveContainer width="100%" height={period === 'year' ? 350 : 300}>
             <BarChart data={monthlyData} margin={{ top: 5, right: 10, left: 0, bottom: period === 'year' ? 60 : 20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E5E5" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#E5E5E5" className="dark:stroke-telegram-dark-border" />
               <XAxis 
                 dataKey="month" 
                 stroke="#707579"
+                className="dark:stroke-telegram-dark-textSecondary"
                 style={{ fontSize: '12px' }}
                 angle={period === 'year' ? -45 : 0}
                 textAnchor={period === 'year' ? 'end' : 'middle'}
@@ -380,6 +383,7 @@ export function Reports() {
               />
               <YAxis 
                 stroke="#707579"
+                className="dark:stroke-telegram-dark-textSecondary"
                 style={{ fontSize: '12px' }}
                 tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
               />
@@ -397,7 +401,7 @@ export function Reports() {
         {/* Top Expense Categories */}
         {analytics.top_expense_categories.length > 0 && (
           <div className="card p-5">
-            <h2 className="text-lg font-semibold text-telegram-text mb-4">
+            <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
               Расходы по категориям
             </h2>
             <ResponsiveContainer width="100%" height={250}>
@@ -420,7 +424,7 @@ export function Reports() {
                 </Pie>
                 <Tooltip 
                   formatter={(value: number) => formatCurrency(value)}
-                  contentStyle={{ borderRadius: '12px', border: '1px solid #E5E5E5' }}
+                  contentStyle={{ borderRadius: '12px', border: '1px solid #E5E5E5', backgroundColor: 'var(--tw-telegram-surface, white)' }}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -428,12 +432,12 @@ export function Reports() {
             {/* Category List */}
             <div className="mt-4 space-y-2">
               {analytics.top_expense_categories.slice(0, 5).map((cat, index) => (
-                <div key={index} className="flex items-center justify-between p-2 rounded-telegram hover:bg-telegram-hover">
+                <div key={index} className="flex items-center justify-between p-2 rounded-telegram hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">{cat.icon}</span>
-                    <span className="text-sm text-telegram-text">{cat.name}</span>
+                    <span className="text-sm text-telegram-text dark:text-telegram-dark-text">{cat.name}</span>
                   </div>
-                  <span className="text-sm font-semibold text-telegram-text">
+                  <span className="text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
                     {formatCurrency(cat.amount)}
                   </span>
                 </div>
@@ -445,7 +449,7 @@ export function Reports() {
         {/* Top Expense Categories Bar Chart */}
         {analytics.top_expense_categories.length > 0 && (
           <div className="card p-5">
-            <h2 className="text-lg font-semibold text-telegram-text mb-4">
+            <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
               Топ категорий расходов
             </h2>
             <ResponsiveContainer width="100%" height={300}>
@@ -457,10 +461,11 @@ export function Reports() {
                 }))}
                 layout="vertical"
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E5E5" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#E5E5E5" className="dark:stroke-telegram-dark-border" />
                 <XAxis 
                   type="number"
                   stroke="#707579"
+                  className="dark:stroke-telegram-dark-textSecondary"
                   style={{ fontSize: '12px' }}
                   tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
                 />
@@ -468,12 +473,13 @@ export function Reports() {
                   type="category" 
                   dataKey="name"
                   stroke="#707579"
+                  className="dark:stroke-telegram-dark-textSecondary"
                   style={{ fontSize: '12px' }}
                   width={120}
                 />
                 <Tooltip 
                   formatter={(value: number) => formatCurrency(value)}
-                  contentStyle={{ borderRadius: '12px', border: '1px solid #E5E5E5' }}
+                  contentStyle={{ borderRadius: '12px', border: '1px solid #E5E5E5', backgroundColor: 'var(--tw-telegram-surface, white)' }}
                 />
                 <Bar 
                   dataKey="amount" 

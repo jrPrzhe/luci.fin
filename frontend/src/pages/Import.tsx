@@ -104,7 +104,7 @@ export function Import() {
         >
           ←
         </button>
-        <h1 className="text-xl md:text-2xl font-semibold text-telegram-text">
+        <h1 className="text-xl md:text-2xl font-semibold text-telegram-text dark:text-telegram-dark-text">
           Импорт данных
         </h1>
       </div>
@@ -112,7 +112,7 @@ export function Import() {
       <div className="card p-4 md:p-5 space-y-4 md:space-y-6">
         {/* Выбор источника */}
         <div>
-          <label className="block text-xs md:text-sm font-medium text-telegram-text mb-2">
+          <label className="block text-xs md:text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
             Выберите приложение
           </label>
           <div className="space-y-2">
@@ -122,14 +122,14 @@ export function Import() {
                 onClick={() => setSelectedSource(source.id)}
                 className={`w-full p-3 rounded-telegram border-2 transition-colors text-left ${
                   selectedSource === source.id
-                    ? 'border-telegram-primary bg-telegram-primary/10'
-                    : 'border-telegram-border hover:bg-telegram-hover'
+                    ? 'border-telegram-primary dark:border-telegram-dark-primary bg-telegram-primary/10 dark:bg-telegram-dark-primary/10'
+                    : 'border-telegram-border dark:border-telegram-dark-border hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover'
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium text-telegram-text">{source.name}</p>
-                    <p className="text-sm text-telegram-textSecondary mt-1">
+                    <p className="font-medium text-telegram-text dark:text-telegram-dark-text">{source.name}</p>
+                    <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
                       {source.description}
                     </p>
                   </div>
@@ -144,7 +144,7 @@ export function Import() {
 
         {/* Выбор файла */}
         <div>
-          <label className="block text-xs md:text-sm font-medium text-telegram-text mb-2">
+          <label className="block text-xs md:text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
             Выберите файл бэкапа
           </label>
           <input
@@ -156,19 +156,19 @@ export function Import() {
           />
           <label
             htmlFor="file-input"
-            className="block w-full p-4 border-2 border-dashed border-telegram-border rounded-telegram hover:border-telegram-primary hover:bg-telegram-hover transition-colors cursor-pointer text-center"
+            className="block w-full p-4 border-2 border-dashed border-telegram-border dark:border-telegram-dark-border rounded-telegram hover:border-telegram-primary dark:hover:border-telegram-dark-primary hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors cursor-pointer text-center"
           >
             {selectedFile ? (
               <div>
-                <p className="text-telegram-text font-medium">{selectedFile.name}</p>
-                <p className="text-sm text-telegram-textSecondary mt-1">
+                <p className="text-telegram-text dark:text-telegram-dark-text font-medium">{selectedFile.name}</p>
+                <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
                   {(selectedFile.size / 1024).toFixed(2)} KB
                 </p>
               </div>
             ) : (
               <div>
-                <p className="text-telegram-text">Нажмите для выбора файла</p>
-                <p className="text-sm text-telegram-textSecondary mt-1">
+                <p className="text-telegram-text dark:text-telegram-dark-text">Нажмите для выбора файла</p>
+                <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
                   Поддерживаются файлы .db
                 </p>
               </div>
