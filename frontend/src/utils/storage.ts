@@ -178,5 +178,8 @@ export const storageSync = {
   },
 }
 
+// Export isVKWebApp for api.ts
+export { isVKWebApp } from './vk'
+
 export default storage
 

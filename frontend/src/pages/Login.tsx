@@ -65,7 +65,8 @@ export function Login() {
 
     try {
       // Try to get current token for account linking
-      const currentToken = localStorage.getItem('token')
+      const { storageSync } = await import('../utils/storage')
+      const currentToken = storageSync.getItem('token')
       const response = await api.loginTelegram(initData, currentToken)
       console.log('[Login] Telegram login response:', {
         hasAccessToken: !!response.access_token,
@@ -74,8 +75,11 @@ export function Login() {
       })
       
       // Tokens are already stored by api.loginTelegram method
+      // Wait a bit for async storage operations
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
       // Проверяем, что токен действительно сохранен
-      const savedToken = localStorage.getItem('token')
+      const savedToken = storageSync.getItem('token') || localStorage.getItem('token')
       if (!savedToken || savedToken !== response.access_token) {
         console.error('[Login] Token was not saved correctly!', {
           expected: response.access_token,
@@ -143,7 +147,8 @@ export function Login() {
 
     try {
       // Try to get current token for account linking
-      const currentToken = localStorage.getItem('token')
+      const { storageSync } = await import('../utils/storage')
+      const currentToken = storageSync.getItem('token')
       const response = await api.loginVK(launchParams, currentToken, firstName, lastName)
       console.log('[Login] VK login response:', {
         hasAccessToken: !!response.access_token,
@@ -152,8 +157,11 @@ export function Login() {
       })
       
       // Tokens are already stored by api.loginVK method
+      // Wait a bit for async storage operations
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
       // Проверяем, что токен действительно сохранен
-      const savedToken = localStorage.getItem('token')
+      const savedToken = storageSync.getItem('token') || localStorage.getItem('token')
       if (!savedToken || savedToken !== response.access_token) {
         console.error('[Login] Token was not saved correctly!', {
           expected: response.access_token,
@@ -186,30 +194,50 @@ export function Login() {
     }
   }
 
-  // Auto-login via Telegram or VK if in Mini App
+  // Auto-login via Telegram or VK if in Mini App (atomic auth)
   useEffect(() => {
-    if (authMethod === 'select') {
-      if (isTelegram && getInitData()) {
-        handleTelegramLogin()
-      } else if (isVK) {
+    // In Telegram Mini App - only Telegram auth, no choice
+    if (isTelegram && !isVK) {
+      if (authMethod === 'select') {
+        const initData = getInitData()
+        if (initData && initData.length > 0) {
+          handleTelegramLogin()
+        } else {
+          showError('Не удалось получить данные Telegram. Убедитесь, что открыто через Telegram Mini App.')
+          setIsLoading(false)
+        }
+      }
+    }
+    // In VK Mini App - only VK auth, no choice
+    else if (isVK && !isTelegram) {
+      if (authMethod === 'select') {
         initVKWebApp().then(async () => {
           const launchParams = await getVKLaunchParams()
           if (launchParams && launchParams.length > 0) {
             handleVKLogin()
+          } else {
+            showError('Не удалось получить данные VK. Убедитесь, что открыто через VK Mini App.')
+            setIsLoading(false)
           }
+        }).catch((error) => {
+          console.error('[Login] Failed to initialize VK:', error)
+          showError('Ошибка инициализации VK Mini App')
+          setIsLoading(false)
         })
       }
     }
+    // In web version - show selection screen
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Show loading state while auto-logging in via Telegram or VK
-  if (authMethod === 'select' && (isTelegram || isVK) && isLoading) {
+  // Don't show selection screen for Mini Apps - they should auto-auth
+  if ((isTelegram || isVK) && (authMethod === 'select' || isLoading)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-telegram-bg p-4">
+      <div className="min-h-screen flex items-center justify-center bg-telegram-bg dark:bg-telegram-dark-bg p-4">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-telegram-primary mb-4"></div>
-          <p className="text-telegram-textSecondary">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-telegram-primary dark:border-telegram-dark-primary mb-4"></div>
+          <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
             Загрузка...
           </p>
         </div>
@@ -237,98 +265,20 @@ export function Login() {
           </div>
         </div>
 
-        {/* Method Selection Screen */}
-        {authMethod === 'select' && (
+        {/* Method Selection Screen - Only for web version */}
+        {authMethod === 'select' && !isTelegram && !isVK && (
           <div className="card p-4 md:p-5 space-y-4">
             <div className="text-center mb-6">
-              <h2 className="text-xl font-semibold text-telegram-text mb-2">
+              <h2 className="text-xl font-semibold text-telegram-text dark:text-telegram-dark-text mb-2">
                 Выберите способ входа
               </h2>
-              <p className="text-sm text-telegram-textSecondary">
+              <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
                 Выберите удобный для вас способ авторизации
               </p>
             </div>
 
-
-            {/* Platform-specific Login Button (Primary) */}
-            {isTelegram && (
-              <button
-                onClick={handleTelegramLogin}
-                disabled={isLoading || !isTelegram}
-                className="w-full flex flex-col items-center justify-center gap-3 p-5 md:p-6 rounded-telegram-lg bg-gradient-to-br from-telegram-primary to-telegram-primaryLight text-white hover:from-telegram-primaryHover hover:to-telegram-primary active:scale-[0.98] transition-all duration-200 shadow-telegram-lg disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-3xl">🔵</span>
-                  <div className="text-left">
-                    <div className="text-lg md:text-xl font-semibold">Войти через Telegram</div>
-                    <div className="text-xs md:text-sm opacity-90">Быстрая авторизация</div>
-                  </div>
-                </div>
-                {!isTelegram && (
-                  <p className="text-xs opacity-75 text-center">
-                    Доступно только в Telegram Mini App
-                  </p>
-                )}
-              </button>
-            )}
-
-            {isVK && (
-              <button
-                onClick={handleVKLogin}
-                disabled={isLoading || !isVK}
-                className="w-full flex flex-col items-center justify-center gap-3 p-5 md:p-6 rounded-telegram-lg bg-gradient-to-br from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 active:scale-[0.98] transition-all duration-200 shadow-telegram-lg disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-3xl">🔷</span>
-                  <div className="text-left">
-                    <div className="text-lg md:text-xl font-semibold">Войти через VK</div>
-                    <div className="text-xs md:text-sm opacity-90">Быстрая авторизация</div>
-                  </div>
-                </div>
-                {!isVK && (
-                  <p className="text-xs opacity-75 text-center">
-                    Доступно только в VK Mini App
-                  </p>
-                )}
-              </button>
-            )}
-
-            {/* Show both buttons if neither platform is detected */}
+            {/* Web version - only email login */}
             {!isTelegram && !isVK && (
-              <>
-                <button
-                  onClick={handleTelegramLogin}
-                  disabled={isLoading}
-                  className="w-full flex flex-col items-center justify-center gap-3 p-5 md:p-6 rounded-telegram-lg bg-gradient-to-br from-telegram-primary to-telegram-primaryLight text-white hover:from-telegram-primaryHover hover:to-telegram-primary active:scale-[0.98] transition-all duration-200 shadow-telegram-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-3xl">🔵</span>
-                    <div className="text-left">
-                      <div className="text-lg md:text-xl font-semibold">Войти через Telegram</div>
-                      <div className="text-xs md:text-sm opacity-90">Быстрая авторизация</div>
-                    </div>
-                  </div>
-                  <p className="text-xs opacity-75 text-center">
-                    Доступно только в Telegram Mini App
-                  </p>
-                </button>
-
-                <button
-                  onClick={handleVKLogin}
-                  disabled={isLoading}
-                  className="w-full flex flex-col items-center justify-center gap-3 p-5 md:p-6 rounded-telegram-lg bg-gradient-to-br from-blue-500 to-blue-600 text-white hover:from-blue-600 hover:to-blue-700 active:scale-[0.98] transition-all duration-200 shadow-telegram-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-3xl">🔷</span>
-                    <div className="text-left">
-                      <div className="text-lg md:text-xl font-semibold">Войти через VK</div>
-                      <div className="text-xs md:text-sm opacity-90">Быстрая авторизация</div>
-                    </div>
-                  </div>
-                  <p className="text-xs opacity-75 text-center">
-                    Доступно только в VK Mini App
-                  </p>
-                </button>
               </>
             )}
 

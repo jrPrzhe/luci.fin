@@ -18,63 +18,78 @@ class ApiClient {
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl
-    // Import storage dynamically to avoid circular dependencies
-    import('../utils/storage').then(({ storageSync }) => {
-      this.token = storageSync.getItem('token')
-      this.refreshToken = storageSync.getItem('refresh_token')
-    }).catch(() => {
-      // Fallback to localStorage if storage module fails
-      if (typeof window !== 'undefined' && window.localStorage) {
-        this.token = localStorage.getItem('token')
-        this.refreshToken = localStorage.getItem('refresh_token')
+    // Use synchronous storage access for token initialization
+    // For VK, we'll use localStorage as fallback for initial load
+    // Storage sync will be used for saving, but initial read must be synchronous
+    if (typeof window !== 'undefined' && window.localStorage) {
+      this.token = localStorage.getItem('token')
+      this.refreshToken = localStorage.getItem('refresh_token')
+    }
+    
+    // Also try to load from VK Storage asynchronously (for VK users)
+    // This is a fallback if localStorage is empty but VK Storage has the token
+    import('../utils/storage').then(({ storageSync, default: storage }) => {
+      // Only update if we don't have tokens from localStorage
+      if (!this.token && !this.refreshToken) {
+        const vkToken = storageSync.getItem('token')
+        const vkRefreshToken = storageSync.getItem('refresh_token')
+        if (vkToken) {
+          this.token = vkToken
+          // Also sync back to localStorage for consistency
+          localStorage.setItem('token', vkToken)
+        }
+        if (vkRefreshToken) {
+          this.refreshToken = vkRefreshToken
+          localStorage.setItem('refresh_token', vkRefreshToken)
+        }
       }
+    }).catch(() => {
+      // Ignore errors, localStorage is our fallback
     })
   }
 
   setToken(token: string | null, refreshToken?: string | null) {
     this.token = token
-    // Import storage dynamically
-    import('../utils/storage').then(({ storageSync, default: storage }) => {
+    
+    // Always save to localStorage first (synchronous)
+    if (typeof window !== 'undefined' && window.localStorage) {
       if (token) {
-        storageSync.setItem('token', token)
-        // Also save async for VK Storage
-        storage.setItem('token', token).catch(console.error)
+        localStorage.setItem('token', token)
       } else {
-        storageSync.removeItem('token')
-        storage.removeItem('token').catch(console.error)
+        localStorage.removeItem('token')
         this.token = null
       }
-
+      
       if (refreshToken !== undefined) {
         this.refreshToken = refreshToken
         if (refreshToken) {
-          storageSync.setItem('refresh_token', refreshToken)
-          storage.setItem('refresh_token', refreshToken).catch(console.error)
+          localStorage.setItem('refresh_token', refreshToken)
         } else {
-          storageSync.removeItem('refresh_token')
-          storage.removeItem('refresh_token').catch(console.error)
+          localStorage.removeItem('refresh_token')
           this.refreshToken = null
         }
       }
-    }).catch(() => {
-      // Fallback to localStorage if storage module fails
-      if (typeof window !== 'undefined' && window.localStorage) {
+    }
+    
+    // Also save to VK Storage if in VK (async, non-blocking)
+    import('../utils/storage').then(({ default: storage, isVKWebApp }) => {
+      if (typeof isVKWebApp === 'function' && isVKWebApp()) {
         if (token) {
-          localStorage.setItem('token', token)
+          storage.setItem('token', token).catch(console.error)
         } else {
-          localStorage.removeItem('token')
-          this.token = null
+          storage.removeItem('token').catch(console.error)
         }
+        
         if (refreshToken !== undefined) {
-          this.refreshToken = refreshToken
           if (refreshToken) {
-            localStorage.setItem('refresh_token', refreshToken)
+            storage.setItem('refresh_token', refreshToken).catch(console.error)
           } else {
-            localStorage.removeItem('refresh_token')
-            this.refreshToken = null
+            storage.removeItem('refresh_token').catch(console.error)
           }
         }
       }
+    }).catch(() => {
+      // Ignore errors, localStorage is our primary storage
     })
   }
 
