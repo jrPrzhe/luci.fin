@@ -43,7 +43,7 @@ interface Invitation {
 }
 
 export function SharedBudgets() {
-  const { showSuccess, showError } = useToast()
+  const { showSuccess } = useToast()
   const [budgets, setBudgets] = useState<SharedBudget[]>([])
   const [invitations, setInvitations] = useState<Invitation[]>([])
   const [loading, setLoading] = useState(true)

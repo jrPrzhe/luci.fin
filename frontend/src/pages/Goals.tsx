@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../services/api'
+import { useToast } from '../contexts/ToastContext'
 
 interface Goal {
   id: number
@@ -18,7 +19,6 @@ interface Goal {
 }
 
 export function Goals() {
-  const { showSuccess, showError } = useToast()
   const queryClient = useQueryClient()
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -538,7 +538,6 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     }
 
     // Validate amount: max 13 digits before decimal point (NUMERIC(15, 2) constraint)
-    const amount = parseFloat(formData.target_amount)
     const amountStr = formData.target_amount.toString()
     const parts = amountStr.split('.')
     const integerPart = parts[0].replace(/[^0-9]/g, '') // Remove any non-digits
