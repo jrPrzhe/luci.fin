@@ -18,33 +18,64 @@ class ApiClient {
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl
-    this.token = localStorage.getItem('token')
-    this.refreshToken = localStorage.getItem('refresh_token')
+    // Import storage dynamically to avoid circular dependencies
+    import('../utils/storage').then(({ storageSync }) => {
+      this.token = storageSync.getItem('token')
+      this.refreshToken = storageSync.getItem('refresh_token')
+    }).catch(() => {
+      // Fallback to localStorage if storage module fails
+      if (typeof window !== 'undefined' && window.localStorage) {
+        this.token = localStorage.getItem('token')
+        this.refreshToken = localStorage.getItem('refresh_token')
+      }
+    })
   }
 
   setToken(token: string | null, refreshToken?: string | null) {
     this.token = token
-    if (token) {
-      localStorage.setItem('token', token)
-      // Убеждаемся, что токен действительно сохранен
-      const savedToken = localStorage.getItem('token')
-      if (savedToken !== token) {
-        console.error('Failed to save token to localStorage')
-      }
-    } else {
-      localStorage.removeItem('token')
-      this.token = null
-    }
-
-    if (refreshToken !== undefined) {
-      this.refreshToken = refreshToken
-      if (refreshToken) {
-        localStorage.setItem('refresh_token', refreshToken)
+    // Import storage dynamically
+    import('../utils/storage').then(({ storageSync, default: storage }) => {
+      if (token) {
+        storageSync.setItem('token', token)
+        // Also save async for VK Storage
+        storage.setItem('token', token).catch(console.error)
       } else {
-        localStorage.removeItem('refresh_token')
-        this.refreshToken = null
+        storageSync.removeItem('token')
+        storage.removeItem('token').catch(console.error)
+        this.token = null
       }
-    }
+
+      if (refreshToken !== undefined) {
+        this.refreshToken = refreshToken
+        if (refreshToken) {
+          storageSync.setItem('refresh_token', refreshToken)
+          storage.setItem('refresh_token', refreshToken).catch(console.error)
+        } else {
+          storageSync.removeItem('refresh_token')
+          storage.removeItem('refresh_token').catch(console.error)
+          this.refreshToken = null
+        }
+      }
+    }).catch(() => {
+      // Fallback to localStorage if storage module fails
+      if (typeof window !== 'undefined' && window.localStorage) {
+        if (token) {
+          localStorage.setItem('token', token)
+        } else {
+          localStorage.removeItem('token')
+          this.token = null
+        }
+        if (refreshToken !== undefined) {
+          this.refreshToken = refreshToken
+          if (refreshToken) {
+            localStorage.setItem('refresh_token', refreshToken)
+          } else {
+            localStorage.removeItem('refresh_token')
+            this.refreshToken = null
+          }
+        }
+      }
+    })
   }
 
   private async refreshAccessToken(): Promise<string | null> {

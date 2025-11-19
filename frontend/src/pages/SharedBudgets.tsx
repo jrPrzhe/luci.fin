@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { api } from '../services/api'
 import { getTelegramWebApp } from '../utils/telegram'
+import { useToast } from '../contexts/ToastContext'
 
 interface SharedBudget {
   id: number
@@ -42,6 +43,7 @@ interface Invitation {
 }
 
 export function SharedBudgets() {
+  const { showSuccess, showError } = useToast()
   const [budgets, setBudgets] = useState<SharedBudget[]>([])
   const [invitations, setInvitations] = useState<Invitation[]>([])
   const [loading, setLoading] = useState(true)
@@ -233,7 +235,7 @@ export function SharedBudgets() {
     if (!webApp) {
       // Not in Telegram, fallback to copying
       copyToClipboard(inviteCode)
-      alert(`Код приглашения: ${inviteCode}\n\nСкопировано в буфер обмена!`)
+      showSuccess(`Код приглашения скопирован: ${inviteCode}`)
       return
     }
 

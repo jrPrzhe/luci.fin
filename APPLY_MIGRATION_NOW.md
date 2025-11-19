@@ -84,3 +84,4 @@ railway run sh -c "cd /app && python backend/run_migrations.py"
 
 **Рекомендация:** Используйте Railway Dashboard Shell - это самый надежный способ! 🎯
 
+

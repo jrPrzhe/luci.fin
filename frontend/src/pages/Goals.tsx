@@ -18,6 +18,7 @@ interface Goal {
 }
 
 export function Goals() {
+  const { showSuccess, showError } = useToast()
   const queryClient = useQueryClient()
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -528,9 +529,21 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     target_date: '',
   })
 
+  const { showError, showSuccess } = useToast()
+
   const handleCreate = async () => {
     if (!formData.name || !formData.target_amount) {
-      alert('Заполните обязательные поля')
+      showError('Заполните обязательные поля')
+      return
+    }
+
+    // Validate amount: max 13 digits before decimal point (NUMERIC(15, 2) constraint)
+    const amount = parseFloat(formData.target_amount)
+    const amountStr = formData.target_amount.toString()
+    const parts = amountStr.split('.')
+    const integerPart = parts[0].replace(/[^0-9]/g, '') // Remove any non-digits
+    if (integerPart.length > 13) {
+      showError('Сумма слишком большая. Максимум 13 цифр перед запятой.')
       return
     }
 
@@ -568,10 +581,11 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
         roadmap: roadmapResponse.roadmap,
       })
 
+      showSuccess('Цель успешно создана')
       onSuccess()
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating goal:', error)
-      alert('Ошибка при создании цели')
+      showError(error.message || 'Ошибка при создании цели')
     } finally {
       setLoading(false)
     }
@@ -632,9 +646,12 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
               onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
               className="w-full px-4 py-2 rounded-lg bg-telegram-hover dark:bg-telegram-dark-hover border border-telegram-border dark:border-telegram-dark-border text-telegram-text dark:text-telegram-dark-text"
             >
-              <option value="RUB">RUB</option>
-              <option value="USD">USD</option>
-              <option value="EUR">EUR</option>
+              <option value="RUB">₽ RUB</option>
+              <option value="USD">$ USD</option>
+              <option value="EUR">€ EUR</option>
+              <option value="KZT">₸ KZT</option>
+              <option value="GBP">£ GBP</option>
+              <option value="CNY">¥ CNY</option>
             </select>
           </div>
 

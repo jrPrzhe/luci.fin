@@ -214,6 +214,15 @@ export function Transactions() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    // Validate amount: max 13 digits before decimal point (NUMERIC(15, 2) constraint)
+    const amountStr = formData.amount.toString()
+    const parts = amountStr.split('.')
+    const integerPart = parts[0].replace(/[^0-9]/g, '') // Remove any non-digits
+    if (integerPart.length > 13) {
+      showError('Сумма слишком большая. Максимум 13 цифр перед запятой.')
+      return
+    }
+
     try {
       const submitData: any = {
         account_id: parseInt(formData.account_id),

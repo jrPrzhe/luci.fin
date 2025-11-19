@@ -120,3 +120,4 @@ def verify_vk_sign(params: dict, secret: str) -> bool:
 
 
 
+

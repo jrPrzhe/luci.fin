@@ -29,7 +29,7 @@ export default {
             primaryHover: '#4AA3F0',
             primaryLight: '#6CC3F2',
             text: '#FFFFFF',
-            textSecondary: '#98989D',
+            textSecondary: '#D1D1D6', // Улучшенная контрастность (было #98989D)
             border: '#38383A',
             hover: '#3A3A3C',
             success: '#4CAF50',

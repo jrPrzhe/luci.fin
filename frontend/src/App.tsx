@@ -363,7 +363,8 @@ function VKAuthHandler() {
             }
             
             // Get current token for account linking (if user is already logged in via Telegram)
-            const currentToken = localStorage.getItem('token')
+            const { storageSync } = await import('./utils/storage')
+            const currentToken = storageSync.getItem('token')
             const response = await api.loginVK(launchParams, currentToken, firstName, lastName)
             console.log('VK auto-login successful:', { 
               userId: response.user?.id,
@@ -374,7 +375,7 @@ function VKAuthHandler() {
             if (mounted) {
               // Tokens are already stored by api.loginVK method
               // Проверяем, что токен действительно сохранен
-              const savedToken = localStorage.getItem('token')
+              const savedToken = storageSync.getItem('token')
               if (!savedToken || savedToken !== response.access_token) {
                 console.error('[VKAuthHandler] Token was not saved correctly!')
                 clearTimeout(timeoutId)

@@ -3,6 +3,7 @@ import { ru } from '../locales/ru'
 import { en } from '../locales/en'
 import { api } from '../services/api'
 import { isVKWebApp, getVKLanguage } from '../utils/vk'
+import { storageSync, default as storage } from '../utils/storage'
 
 type Language = 'ru' | 'en'
 
@@ -36,7 +37,8 @@ export function I18nProvider({ children }: { children: ReactNode }) {
           if (vkLang && (vkLang === 'ru' || vkLang === 'en')) {
             setLanguageState(vkLang as Language)
             languageRef.current = vkLang as Language
-            localStorage.setItem('language', vkLang)
+            storageSync.setItem('language', vkLang)
+            storage.setItem('language', vkLang).catch(console.error)
             setIsLoading(false)
             // Update user profile with VK language if logged in
             checkProfileLanguage(vkLang as Language)
@@ -44,8 +46,8 @@ export function I18nProvider({ children }: { children: ReactNode }) {
           }
         }
 
-        // First check localStorage
-        const savedLang = localStorage.getItem('language') as Language | null
+        // First check storage
+        const savedLang = storageSync.getItem('language') as Language | null
         if (savedLang && (savedLang === 'ru' || savedLang === 'en')) {
           setLanguageState(savedLang)
           languageRef.current = savedLang
@@ -67,7 +69,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
     const checkProfileLanguage = async (currentLang?: Language) => {
       try {
-        const token = localStorage.getItem('token')
+        const token = storageSync.getItem('token')
         if (token) {
           const user = await api.getCurrentUser()
           if (user?.language) {
@@ -77,7 +79,8 @@ export function I18nProvider({ children }: { children: ReactNode }) {
               if (!currentLang || currentLang !== userLang) {
                 setLanguageState(userLang)
                 languageRef.current = userLang
-                localStorage.setItem('language', userLang)
+                storageSync.setItem('language', userLang)
+                storage.setItem('language', userLang).catch(console.error)
               }
               if (!currentLang) {
                 setIsLoading(false)
@@ -94,7 +97,8 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       if (!currentLang) {
         setLanguageState('ru')
         languageRef.current = 'ru'
-        localStorage.setItem('language', 'ru')
+        storageSync.setItem('language', 'ru')
+        storage.setItem('language', 'ru').catch(console.error)
         setIsLoading(false)
       }
     }
@@ -103,7 +107,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     
     // Periodically check for language changes (every 5 seconds)
     const interval = setInterval(() => {
-      const token = localStorage.getItem('token')
+      const token = storageSync.getItem('token')
       if (token) {
         checkProfileLanguage(languageRef.current)
       }
@@ -115,17 +119,18 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const setLanguage = async (lang: Language) => {
     setLanguageState(lang)
     languageRef.current = lang
-    localStorage.setItem('language', lang)
+    storageSync.setItem('language', lang)
+    storage.setItem('language', lang).catch(console.error)
     
     // Update user profile if logged in
     try {
-      const token = localStorage.getItem('token')
+      const token = storageSync.getItem('token')
       if (token) {
         await api.updateUser({ language: lang })
       }
     } catch (error) {
       console.error('Error updating user language:', error)
-      // Don't fail if update fails, language is still saved in localStorage
+      // Don't fail if update fails, language is still saved in storage
     }
   }
 

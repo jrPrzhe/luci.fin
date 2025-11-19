@@ -169,11 +169,12 @@ export function Profile() {
               onChange={(e) => setDefaultCurrency(e.target.value)}
               className="input text-sm md:text-base"
             >
-              <option value="RUB">RUB - Российский рубль</option>
-              <option value="USD">USD - Доллар США</option>
-              <option value="EUR">EUR - Евро</option>
-              <option value="GBP">GBP - Фунт стерлингов</option>
-              <option value="CNY">CNY - Китайский юань</option>
+              <option value="RUB">₽ RUB - Российский рубль</option>
+              <option value="USD">$ USD - Доллар США</option>
+              <option value="EUR">€ EUR - Евро</option>
+              <option value="KZT">₸ KZT - Казахстанский тенге</option>
+              <option value="GBP">£ GBP - Фунт стерлингов</option>
+              <option value="CNY">¥ CNY - Китайский юань</option>
             </select>
           </div>
           

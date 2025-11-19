@@ -236,6 +236,15 @@ export function Dashboard() {
       return
     }
 
+    // Validate amount: max 13 digits before decimal point (NUMERIC(15, 2) constraint)
+    const amountStr = quickFormData.amount.toString()
+    const parts = amountStr.split('.')
+    const integerPart = parts[0].replace(/[^0-9]/g, '') // Remove any non-digits
+    if (integerPart.length > 13) {
+      showError('Сумма слишком большая. Максимум 13 цифр перед запятой.')
+      return
+    }
+
     if (quickFormType === 'transfer' && !quickFormData.to_account_id) {
       showError(t.dashboard.form.toAccount)
       return

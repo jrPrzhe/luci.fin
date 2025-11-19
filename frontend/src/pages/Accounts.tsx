@@ -353,6 +353,8 @@ export function Accounts() {
                     <option value="USD">$ USD</option>
                     <option value="EUR">€ EUR</option>
                     <option value="KZT">₸ KZT</option>
+                    <option value="GBP">£ GBP</option>
+                    <option value="CNY">¥ CNY</option>
                   </select>
                 </div>
 
