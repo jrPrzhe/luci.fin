@@ -738,6 +738,72 @@ class ApiClient {
     })
   }
 
+  // Goals API
+  async getGoals(statusFilter?: string): Promise<any[]> {
+    const params = new URLSearchParams()
+    if (statusFilter) params.append('status_filter', statusFilter)
+    const queryString = params.toString()
+    return this.request(`/api/v1/goals${queryString ? `?${queryString}` : ''}`)
+  }
+
+  async getGoal(goalId: number): Promise<any> {
+    return this.request(`/api/v1/goals/${goalId}`)
+  }
+
+  async createGoal(data: {
+    name: string
+    description?: string
+    target_amount: number
+    currency?: string
+    target_date?: string
+    roadmap?: string
+    category_id?: number
+    goal_type?: string
+  }): Promise<any> {
+    return this.request('/api/v1/goals/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async updateGoal(goalId: number, data: {
+    name?: string
+    description?: string
+    target_amount?: number
+    currency?: string
+    target_date?: string
+    current_amount?: number
+    status?: string
+    roadmap?: string
+    category_id?: number
+  }): Promise<any> {
+    return this.request(`/api/v1/goals/${goalId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async deleteGoal(goalId: number): Promise<void> {
+    return this.request(`/api/v1/goals/${goalId}`, {
+      method: 'DELETE',
+    })
+  }
+
+  async generateRoadmap(data: {
+    goal_name: string
+    target_amount: number
+    currency: string
+    transactions?: any[]
+    balance?: number
+    income_total?: number
+    expense_total?: number
+  }): Promise<{ roadmap: string; monthly_savings_needed: number; feasibility: string; recommendations: string[]; savings_by_category: Record<string, number>; estimated_months: number }> {
+    return this.request('/api/v1/goals/generate-roadmap', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
   // Reports/Analytics API
   async getAnalytics(period: 'week' | 'month' | 'year' = 'month'): Promise<any> {
     return this.request(`/api/v1/reports/analytics?period=${period}`)

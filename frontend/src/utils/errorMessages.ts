@@ -8,7 +8,36 @@ export function translateError(error: any): string {
   }
 
   // Если ошибка уже на русском и понятная, возвращаем как есть
-  const errorMessage = typeof error === 'string' ? error : error.message || error.detail || String(error)
+  let errorMessage: string
+  if (typeof error === 'string') {
+    errorMessage = error
+  } else if (error && typeof error === 'object') {
+    // Проверяем различные возможные поля с сообщением об ошибке
+    errorMessage = error.message || error.detail || error.error || error.msg || error.toString()
+    // Если toString() вернул "[object Object]", пытаемся извлечь информацию из объекта
+    if (errorMessage === '[object Object]' || errorMessage === '[object Error]') {
+      // Пытаемся найти полезную информацию в объекте
+      if (error.name) {
+        errorMessage = `${error.name}: ${error.message || 'Неизвестная ошибка'}`
+      } else if (error.status) {
+        errorMessage = `Ошибка ${error.status}: ${error.statusText || 'Ошибка запроса'}`
+      } else {
+        // Пытаемся сериализовать объект
+        try {
+          const errorStr = JSON.stringify(error)
+          if (errorStr !== '{}' && errorStr.length < 200) {
+            errorMessage = errorStr
+          } else {
+            errorMessage = 'Произошла неизвестная ошибка'
+          }
+        } catch {
+          errorMessage = 'Произошла неизвестная ошибка'
+        }
+      }
+    }
+  } else {
+    errorMessage = String(error)
+  }
   
   // Проверяем, не является ли сообщение уже понятным русским текстом
   if (errorMessage.includes('Сумма слишком большая') || 
