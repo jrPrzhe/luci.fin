@@ -149,9 +149,20 @@ def decode_token(token: str) -> Optional[dict]:
         logger.info(f"Token decoded successfully, payload keys: {list(payload.keys())}")
         return payload
     except JWTError as e:
-        logger.error(f"JWT decode error: {type(e).__name__}: {str(e)}")
-        logger.error(f"Token length: {len(token)}, SECRET_KEY length: {len(settings.SECRET_KEY) if settings.SECRET_KEY else 0}")
-        logger.error(f"Token full value (first 200 chars): {token[:200]}")
+        error_type = type(e).__name__
+        error_msg = str(e)
+        
+        # ExpiredSignatureError - это нормальная ситуация, токен нужно обновить через refresh
+        # Логируем как INFO, а не ERROR
+        if error_type == 'ExpiredSignatureError':
+            logger.info(f"JWT token expired (expected, should be refreshed): {error_msg}")
+            # Не логируем полный токен для истекших токенов - это норма
+        else:
+            # Другие ошибки JWT - это реальные проблемы (неверная подпись, формат и т.д.)
+            logger.error(f"JWT decode error: {error_type}: {error_msg}")
+            logger.error(f"Token length: {len(token)}, SECRET_KEY length: {len(settings.SECRET_KEY) if settings.SECRET_KEY else 0}")
+            logger.error(f"Token full value (first 200 chars): {token[:200]}")
+        
         return None
     except Exception as e:
         logger.error(f"Unexpected error decoding token: {type(e).__name__}: {str(e)}")

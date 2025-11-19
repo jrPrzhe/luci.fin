@@ -35,13 +35,17 @@ def get_current_user(
     
     payload = decode_token(token)
     if payload is None:
-        logger.warning(f"Failed to decode token. Token length: {len(token) if token else 0}, Token value: {token[:100] if token else 'None'}...")
-        # Проверяем формат токена
+        # decode_token уже логирует детальную информацию об ошибке
+        # Здесь логируем только общее предупреждение
         if token and '.' in token:
             parts = token.split('.')
-            logger.warning(f"Token has {len(parts)} parts (should be 3 for JWT)")
             if len(parts) != 3:
-                logger.warning(f"Token format incorrect: expected 3 parts separated by '.', got {len(parts)}")
+                logger.warning(f"Token format incorrect: expected 3 parts separated by '.', got {len(parts)} parts")
+            # Если токен имеет 3 части, но decode_token вернул None - это может быть истекший токен или неверная подпись
+            # Детали уже залогированы в decode_token
+        else:
+            logger.warning(f"Token format invalid: no '.' found, token length: {len(token) if token else 0}")
+        
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials",
