@@ -277,29 +277,22 @@ export function Login() {
               </p>
             </div>
 
-            {/* Web version - only email login */}
+            {/* Email/Password Login Button (Secondary) - Only for web version */}
             {!isTelegram && !isVK && (
+              <>
+                <button
+                  onClick={() => setAuthMethod('email')}
+                  disabled={isLoading}
+                  className="w-full flex items-center justify-center gap-3 p-4 md:p-5 rounded-telegram-lg bg-telegram-surface dark:bg-telegram-dark-surface border-2 border-telegram-border dark:border-telegram-dark-border text-telegram-text dark:text-telegram-dark-text hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span className="text-2xl">📧</span>
+                  <div className="text-left">
+                    <div className="text-base md:text-lg font-medium">Войти через Email</div>
+                    <div className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary">Email и пароль</div>
+                  </div>
+                </button>
               </>
             )}
-
-            <div className="flex items-center gap-3 my-4">
-              <div className="flex-1 h-px bg-telegram-border"></div>
-              <span className="text-xs text-telegram-textSecondary">или</span>
-              <div className="flex-1 h-px bg-telegram-border"></div>
-            </div>
-
-            {/* Email/Password Login Button (Secondary) */}
-            <button
-              onClick={() => setAuthMethod('email')}
-              disabled={isLoading}
-              className="w-full flex items-center justify-center gap-3 p-4 md:p-5 rounded-telegram-lg bg-telegram-surface border-2 border-telegram-border text-telegram-text hover:bg-telegram-hover active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <span className="text-2xl">📧</span>
-              <div className="text-left">
-                <div className="text-base md:text-lg font-medium">Войти через Email</div>
-                <div className="text-xs text-telegram-textSecondary">Email и пароль</div>
-              </div>
-            </button>
 
             <div className="text-center pt-4">
               <p className="text-xs md:text-sm text-telegram-textSecondary">
