@@ -426,6 +426,60 @@ async def create_transaction(
             detail="Transaction type must be 'income', 'expense', or 'transfer'"
         )
     
+    # Validate amount: check for NUMERIC(15, 2) constraint
+    # Maximum: 13 digits before decimal point, 2 digits after
+    try:
+        amount_decimal = Decimal(str(transaction_data.amount))
+        
+        # Check if amount is positive
+        if amount_decimal <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Amount must be greater than 0"
+            )
+        
+        # Convert to string to check digits
+        amount_str = str(amount_decimal)
+        if '.' in amount_str:
+            integer_part, decimal_part = amount_str.split('.')
+            # Remove negative sign if present
+            integer_part = integer_part.lstrip('-')
+            # Check integer part (max 13 digits)
+            if len(integer_part) > 13:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Сумма слишком большая. Максимум 13 цифр перед запятой (максимальная сумма: 9999999999999.99)"
+                )
+            # Check decimal part (max 2 digits)
+            if len(decimal_part) > 2:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Сумма может содержать максимум 2 знака после запятой"
+                )
+        else:
+            # No decimal point, check integer part
+            integer_part = amount_str.lstrip('-')
+            if len(integer_part) > 13:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Сумма слишком большая. Максимум 13 цифр перед запятой (максимальная сумма: 9999999999999.99)"
+                )
+        
+        # Check maximum value: 9999999999999.99
+        max_amount = Decimal('9999999999999.99')
+        if amount_decimal > max_amount:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Сумма слишком большая. Максимальная сумма: 9 999 999 999 999.99"
+            )
+    except HTTPException:
+        raise
+    except (ValueError, TypeError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Некорректная сумма: {str(e)}"
+        )
+    
     # For transfer, verify to_account_id
     to_account = None
     if transaction_data.transaction_type == "transfer":
@@ -642,9 +696,18 @@ async def create_transaction(
         except Exception as e:
             logger.error(f"Error creating transfer transactions: {e}", exc_info=True)
             db.rollback()
+            
+            # Check for database numeric overflow errors
+            error_str = str(e).lower()
+            if 'numeric' in error_str or 'overflow' in error_str or 'value too large' in error_str or 'out of range' in error_str:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Сумма слишком большая. Максимальная сумма: 9 999 999 999 999.99"
+                )
+            
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to create transfer: {str(e)}"
+                detail=f"Ошибка при создании перевода: {str(e)}"
             )
     else:
         # For non-transfer transactions, use raw SQL to avoid enum issues
@@ -702,9 +765,18 @@ async def create_transaction(
         except Exception as e:
             logger.error(f"Error creating transaction: {e}", exc_info=True)
             db.rollback()
+            
+            # Check for database numeric overflow errors
+            error_str = str(e).lower()
+            if 'numeric' in error_str or 'overflow' in error_str or 'value too large' in error_str or 'out of range' in error_str:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Сумма слишком большая. Максимальная сумма: 9 999 999 999 999.99"
+                )
+            
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Failed to create transaction: {str(e)}"
+                detail=f"Ошибка при создании транзакции: {str(e)}"
             )
     
     # If transaction is on goal's account, sync goal with account balance
@@ -981,7 +1053,60 @@ async def update_transaction(
             transaction.transaction_type = TransactionType(transaction_data.transaction_type)
         
         if transaction_data.amount is not None:
-            transaction.amount = transaction_data.amount
+            # Validate amount: check for NUMERIC(15, 2) constraint
+            try:
+                amount_decimal = Decimal(str(transaction_data.amount))
+                
+                # Check if amount is positive
+                if amount_decimal <= 0:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Amount must be greater than 0"
+                    )
+                
+                # Convert to string to check digits
+                amount_str = str(amount_decimal)
+                if '.' in amount_str:
+                    integer_part, decimal_part = amount_str.split('.')
+                    # Remove negative sign if present
+                    integer_part = integer_part.lstrip('-')
+                    # Check integer part (max 13 digits)
+                    if len(integer_part) > 13:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Сумма слишком большая. Максимум 13 цифр перед запятой (максимальная сумма: 9999999999999.99)"
+                        )
+                    # Check decimal part (max 2 digits)
+                    if len(decimal_part) > 2:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Сумма может содержать максимум 2 знака после запятой"
+                        )
+                else:
+                    # No decimal point, check integer part
+                    integer_part = amount_str.lstrip('-')
+                    if len(integer_part) > 13:
+                        raise HTTPException(
+                            status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Сумма слишком большая. Максимум 13 цифр перед запятой (максимальная сумма: 9999999999999.99)"
+                        )
+                
+                # Check maximum value: 9999999999999.99
+                max_amount = Decimal('9999999999999.99')
+                if amount_decimal > max_amount:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Сумма слишком большая. Максимальная сумма: 9 999 999 999 999.99"
+                    )
+                
+                transaction.amount = transaction_data.amount
+            except HTTPException:
+                raise
+            except (ValueError, TypeError) as e:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Некорректная сумма: {str(e)}"
+                )
         
         if transaction_data.goal_id is not None:
             # Handle goal changes
@@ -1019,12 +1144,24 @@ async def update_transaction(
         try:
             db.commit()
             db.refresh(transaction)
+        except HTTPException:
+            db.rollback()
+            raise
         except Exception as e:
             db.rollback()
             logger.error(f"Error committing transaction update: {e}")
+            
+            # Check for database numeric overflow errors
+            error_str = str(e).lower()
+            if 'numeric' in error_str or 'overflow' in error_str or 'value too large' in error_str or 'out of range' in error_str:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Сумма слишком большая. Максимальная сумма: 9 999 999 999 999.99"
+                )
+            
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Failed to update transaction"
+                detail=f"Ошибка при обновлении транзакции: {str(e)}"
             )
         
         # Sync goals with account balances if transaction affects goal accounts

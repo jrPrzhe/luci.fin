@@ -305,14 +305,25 @@ export function Reports() {
               <div
                 key={index}
                 className={`p-4 rounded-telegram flex items-start gap-3 ${
-                  fact.type === 'positive' ? 'bg-green-50 border border-green-200' :
-                  fact.type === 'warning' ? 'bg-orange-50 border border-orange-200' :
-                  fact.type === 'trend' ? 'bg-blue-50 border border-blue-200' :
-                  'bg-telegram-surface border border-telegram-border'
+                  fact.type === 'positive' 
+                    ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' :
+                  fact.type === 'warning' 
+                    ? 'bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800' :
+                  fact.type === 'trend' 
+                    ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800' :
+                  'bg-telegram-surface dark:bg-telegram-dark-surface border border-telegram-border dark:border-telegram-dark-border'
                 }`}
               >
                 <span className="text-2xl">{fact.icon}</span>
-                <p className="text-sm text-telegram-text dark:text-telegram-dark-text flex-1">{fact.text}</p>
+                <p className={`text-sm flex-1 ${
+                  fact.type === 'positive' 
+                    ? 'text-green-900 dark:text-green-200' :
+                  fact.type === 'warning' 
+                    ? 'text-orange-900 dark:text-orange-200' :
+                  fact.type === 'trend' 
+                    ? 'text-blue-900 dark:text-blue-200' :
+                  'text-telegram-text dark:text-telegram-dark-text'
+                }`}>{fact.text}</p>
               </div>
             ))}
           </div>
@@ -478,8 +489,21 @@ export function Reports() {
                   width={120}
                 />
                 <Tooltip 
-                  formatter={(value: number) => formatCurrency(value)}
-                  contentStyle={{ borderRadius: '12px', border: '1px solid #E5E5E5', backgroundColor: 'var(--tw-telegram-surface, white)' }}
+                  content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      return (
+                        <div className="bg-white dark:bg-telegram-dark-surface p-3 rounded-lg shadow-lg border border-telegram-border dark:border-telegram-dark-border">
+                          {payload.map((entry: any, index: number) => (
+                            <p key={index} className="text-sm text-telegram-text dark:text-telegram-dark-text">
+                              <span className="font-semibold">{entry.name || 'Категория'}:</span>{' '}
+                              <span className="font-bold">{formatCurrency(entry.value)}</span>
+                            </p>
+                          ))}
+                        </div>
+                      )
+                    }
+                    return null
+                  }}
                 />
                 <Bar 
                   dataKey="amount" 

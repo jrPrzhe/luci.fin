@@ -608,11 +608,11 @@ export function SharedBudgets() {
 
       {/* Create Budget Modal */}
       {showCreateForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-black dark:bg-opacity-70 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-telegram-dark-surface rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold">Создать совместный бюджет</h2>
+                <h2 className="text-2xl font-bold text-telegram-text dark:text-telegram-dark-text">Создать совместный бюджет</h2>
                 <button
                   onClick={() => {
                     setShowCreateForm(false)
@@ -623,7 +623,7 @@ export function SharedBudgets() {
                       currency: 'RUB',
                     })
                   }}
-                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                  className="text-gray-400 dark:text-telegram-dark-textSecondary hover:text-gray-600 dark:hover:text-telegram-dark-text text-2xl"
                 >
                   ×
                 </button>
@@ -631,8 +631,8 @@ export function SharedBudgets() {
 
               <form onSubmit={handleCreateBudget} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Название бюджета <span className="text-red-500">*</span>
+                  <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
+                    Название бюджета <span className="text-red-500 dark:text-red-400">*</span>
                   </label>
                   <input
                     type="text"
@@ -640,22 +640,22 @@ export function SharedBudgets() {
                     onChange={(e) =>
                       setCreateFormData({ ...createFormData, name: e.target.value })
                     }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-telegram-dark-border rounded-lg focus:ring-2 focus:ring-telegram-primary dark:focus:ring-telegram-dark-primary focus:border-transparent bg-white dark:bg-telegram-dark-bg text-telegram-text dark:text-telegram-dark-text"
                     placeholder="Например: Семейный бюджет"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Валюта <span className="text-red-500">*</span>
+                  <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
+                    Валюта <span className="text-red-500 dark:text-red-400">*</span>
                   </label>
                   <select
                     value={createFormData.currency}
                     onChange={(e) =>
                       setCreateFormData({ ...createFormData, currency: e.target.value })
                     }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-telegram-dark-border rounded-lg focus:ring-2 focus:ring-telegram-primary dark:focus:ring-telegram-dark-primary focus:border-transparent bg-white dark:bg-telegram-dark-bg text-telegram-text dark:text-telegram-dark-text"
                   >
                     <option value="RUB">₽ RUB</option>
                     <option value="USD">$ USD</option>
@@ -663,7 +663,7 @@ export function SharedBudgets() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
                     Описание (необязательно)
                   </label>
                   <textarea
@@ -671,7 +671,7 @@ export function SharedBudgets() {
                     onChange={(e) =>
                       setCreateFormData({ ...createFormData, description: e.target.value })
                     }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-telegram-dark-border rounded-lg focus:ring-2 focus:ring-telegram-primary dark:focus:ring-telegram-dark-primary focus:border-transparent bg-white dark:bg-telegram-dark-bg text-telegram-text dark:text-telegram-dark-text"
                     rows={3}
                     placeholder="Описание бюджета"
                   />
@@ -689,7 +689,7 @@ export function SharedBudgets() {
                         currency: 'RUB',
                       })
                     }}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-telegram-dark-border rounded-lg hover:bg-gray-50 dark:hover:bg-telegram-dark-hover text-telegram-text dark:text-telegram-dark-text"
                   >
                     Отмена
                   </button>
@@ -705,14 +705,14 @@ export function SharedBudgets() {
 
       {/* Show Invite Code Modal */}
       {showInviteCode && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-black dark:bg-opacity-70 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-telegram-dark-surface rounded-lg shadow-xl max-w-md w-full mx-4">
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold">Код приглашения</h2>
+                <h2 className="text-2xl font-bold text-telegram-text dark:text-telegram-dark-text">Код приглашения</h2>
                 <button
                   onClick={() => setShowInviteCode(null)}
-                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                  className="text-gray-400 dark:text-telegram-dark-textSecondary hover:text-gray-600 dark:hover:text-telegram-dark-text text-2xl"
                 >
                   ×
                 </button>
@@ -720,18 +720,18 @@ export function SharedBudgets() {
 
               {budgets.find(b => b.id === showInviteCode) && (
                 <div>
-                  <p className="text-gray-600 mb-4">
-                    Отправьте этот код пользователю, чтобы он мог присоединиться к бюджету <strong>"{budgets.find(b => b.id === showInviteCode)?.name}"</strong>
+                  <p className="text-gray-600 dark:text-telegram-dark-textSecondary mb-4">
+                    Отправьте этот код пользователю, чтобы он мог присоединиться к бюджету <strong className="text-telegram-text dark:text-telegram-dark-text">"{budgets.find(b => b.id === showInviteCode)?.name}"</strong>
                   </p>
                   
-                  <div className="bg-gray-50 p-4 rounded-lg mb-4">
+                  <div className="bg-gray-50 dark:bg-telegram-dark-hover p-4 rounded-lg mb-4">
                     <div className="flex items-center justify-between mb-3">
-                      <code className="text-3xl font-bold text-primary-600">
+                      <code className="text-3xl font-bold text-telegram-primary dark:text-telegram-dark-primary">
                         {budgets.find(b => b.id === showInviteCode)?.invite_code}
                       </code>
                       <button
                         onClick={() => copyToClipboard(budgets.find(b => b.id === showInviteCode)?.invite_code || '')}
-                        className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+                        className="px-4 py-2 bg-telegram-primary dark:bg-telegram-dark-primary text-white rounded-lg hover:bg-telegram-primaryHover dark:hover:bg-telegram-dark-primaryHover"
                       >
                         {copiedCode === budgets.find(b => b.id === showInviteCode)?.invite_code ? '✓ Скопировано' : '📋 Копировать'}
                       </button>
@@ -745,7 +745,7 @@ export function SharedBudgets() {
                         sendTelegramInvite(budget.invite_code, budget.name)
                       }
                     }}
-                    className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 mb-3 flex items-center justify-center gap-2"
+                    className="w-full px-4 py-2 bg-blue-500 dark:bg-telegram-primary text-white rounded-lg hover:bg-blue-600 dark:hover:bg-telegram-primaryHover mb-3 flex items-center justify-center gap-2"
                   >
                     <span>📨</span>
                     <span>Отправить в Telegram</span>
@@ -761,14 +761,14 @@ export function SharedBudgets() {
                         setError(err.message || 'Ошибка обновления кода')
                       }
                     }}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 mb-3"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-telegram-dark-border rounded-lg hover:bg-gray-50 dark:hover:bg-telegram-dark-hover mb-3 text-telegram-text dark:text-telegram-dark-text"
                   >
                     🔄 Сгенерировать новый код
                   </button>
 
                   <button
                     onClick={() => setShowInviteCode(null)}
-                    className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                    className="w-full px-4 py-2 bg-gray-200 dark:bg-telegram-dark-surface text-gray-700 dark:text-telegram-dark-text rounded-lg hover:bg-gray-300 dark:hover:bg-telegram-dark-hover"
                   >
                     Закрыть
                   </button>
@@ -781,18 +781,18 @@ export function SharedBudgets() {
 
       {/* Join by Code Modal */}
       {showJoinForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-black dark:bg-opacity-70 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-telegram-dark-surface rounded-lg shadow-xl max-w-md w-full mx-4">
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold">Присоединиться к бюджету</h2>
+                <h2 className="text-2xl font-bold text-telegram-text dark:text-telegram-dark-text">Присоединиться к бюджету</h2>
                 <button
                   onClick={() => {
                     setShowJoinForm(false)
                     setJoinCode('')
                     setError('')
                   }}
-                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                  className="text-gray-400 dark:text-telegram-dark-textSecondary hover:text-gray-600 dark:hover:text-telegram-dark-text text-2xl"
                 >
                   ×
                 </button>
@@ -800,25 +800,25 @@ export function SharedBudgets() {
 
               <form onSubmit={handleJoinByCode} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
                     Код приглашения
                   </label>
                   <input
                     type="text"
                     value={joinCode}
                     onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-2xl text-center font-bold tracking-widest"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-telegram-dark-border rounded-lg focus:ring-2 focus:ring-telegram-primary dark:focus:ring-telegram-dark-primary focus:border-transparent text-2xl text-center font-bold tracking-widest bg-white dark:bg-telegram-dark-bg text-telegram-text dark:text-telegram-dark-text"
                     placeholder="ABC123"
                     maxLength={6}
                     required
                   />
-                  <p className="text-xs text-gray-500 mt-2">
+                  <p className="text-xs text-gray-500 dark:text-telegram-dark-textSecondary mt-2">
                     Введите 6-значный код, который вам предоставил администратор бюджета
                   </p>
                 </div>
 
                 {error && (
-                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                  <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm">
                     {error}
                   </div>
                 )}
@@ -831,7 +831,7 @@ export function SharedBudgets() {
                       setJoinCode('')
                       setError('')
                     }}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                    className="flex-1 px-4 py-2 border border-gray-300 dark:border-telegram-dark-border rounded-lg hover:bg-gray-50 dark:hover:bg-telegram-dark-hover text-telegram-text dark:text-telegram-dark-text"
                   >
                     Отмена
                   </button>

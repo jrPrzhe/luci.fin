@@ -334,7 +334,19 @@ export function Dashboard() {
       
       showSuccess(t.dashboard.quickActions[quickFormType || 'expense'] + ' добавлено')
     } catch (err: any) {
-      showError(err.message || t.errors.serverError)
+      // Улучшенная обработка ошибок
+      let errorMessage = err.message || t.errors.serverError
+      
+      // Проверяем специфичные ошибки базы данных
+      if (errorMessage.includes('Сумма слишком большая') || 
+          errorMessage.includes('numeric') || 
+          errorMessage.includes('overflow') ||
+          errorMessage.includes('value too large') ||
+          errorMessage.includes('out of range')) {
+        errorMessage = 'Сумма слишком большая. Максимальная сумма: 9 999 999 999 999.99'
+      }
+      
+      showError(errorMessage)
       setSubmitting(false)
     } finally {
       // Reset submitting after a short delay to allow form to close

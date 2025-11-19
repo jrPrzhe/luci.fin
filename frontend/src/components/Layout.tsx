@@ -74,9 +74,18 @@ export function Layout() {
       if (!token) {
         // Сохраняем текущий путь для редиректа после авторизации
         const returnTo = location.pathname
-        setIsAuthorized(false)
-        setIsCheckingAuth(false)
-        navigate(`/login?returnTo=${encodeURIComponent(returnTo)}`)
+        // Даем время на авторизацию через Mini App (Telegram/VK)
+        // Если через 2 секунды токен не появился, редиректим на логин
+        setTimeout(() => {
+          if (!localStorage.getItem('token')) {
+            setIsAuthorized(false)
+            setIsCheckingAuth(false)
+            navigate(`/login?returnTo=${encodeURIComponent(returnTo)}`)
+          } else {
+            // Токен появился, проверяем его
+            checkAuth()
+          }
+        }, 2000)
         return
       }
 
@@ -100,9 +109,14 @@ export function Layout() {
     }
 
     // Проверяем авторизацию если статус неизвестен или false
-    if (isAuthorized === null || (isAuthorized === false && localStorage.getItem('token'))) {
-      checkAuth()
-    }
+    // Добавляем небольшую задержку для Mini App авторизации
+    const timeout = setTimeout(() => {
+      if (isAuthorized === null || (isAuthorized === false && localStorage.getItem('token'))) {
+        checkAuth()
+      }
+    }, 500)
+
+    return () => clearTimeout(timeout)
   }, [navigate, location.pathname, showWelcome, isCheckingAuth, isAuthorized])
 
   // Проверяем флаг justLoggedIn отдельно
@@ -132,19 +146,29 @@ export function Layout() {
   // Отслеживаем появление токена для обновления авторизации (особенно важно для Mini App)
   useEffect(() => {
     // Работаем только на защищенных страницах
-    if (location.pathname === '/login' || location.pathname === '/register') {
+    if (location.pathname === '/login' || location.pathname === '/register' || location.pathname === '/onboarding') {
       return
     }
 
-    // Если уже авторизованы и показываем приветствие, не проверяем
+    // Если уже авторизованы, не проверяем
     if (isAuthorized === true) {
       return
     }
+
+    let checkCount = 0
+    const maxChecks = 10 // Максимум 10 проверок (5 секунд при интервале 500мс)
 
     // Периодически проверяем токен, если авторизация неизвестна или false
     const checkTokenPeriodically = () => {
       // Пропускаем, если идет проверка
       if (isCheckingAuth) return
+
+      // Ограничиваем количество проверок
+      checkCount++
+      if (checkCount > maxChecks) {
+        console.warn('[Layout] Max auth checks reached, stopping periodic check')
+        return
+      }
 
       const token = localStorage.getItem('token')
       if (token && (isAuthorized === false || isAuthorized === null)) {
@@ -163,12 +187,23 @@ export function Layout() {
               }
             } else {
               setIsCheckingAuth(false)
+              setIsAuthorized(false)
             }
           })
           .catch(error => {
             console.error('Failed to verify token:', error)
             setIsCheckingAuth(false)
+            setIsAuthorized(false)
+            // Если токен невалиден, удаляем его
+            localStorage.removeItem('token')
+            api.setToken(null)
           })
+      } else if (!token && isAuthorized === null) {
+        // Нет токена и статус неизвестен - устанавливаем false после нескольких проверок
+        if (checkCount >= 3) {
+          setIsAuthorized(false)
+          navigate('/login')
+        }
       }
     }
 
@@ -177,23 +212,30 @@ export function Layout() {
 
     // И затем каждые 500мс, пока не авторизованы
     const interval = setInterval(() => {
-      if (!isAuthorized) {
+      if (!isAuthorized && checkCount <= maxChecks) {
         checkTokenPeriodically()
       } else {
         clearInterval(interval)
       }
     }, 500)
 
-    // Останавливаем через 8 секунд
+    // Останавливаем через 5 секунд
     const timeout = setTimeout(() => {
       clearInterval(interval)
-    }, 8000)
+      // Если после таймаута все еще не авторизованы и нет токена, редиректим на логин
+      if (!isAuthorized && !localStorage.getItem('token')) {
+        setIsAuthorized(false)
+        if (location.pathname !== '/login' && location.pathname !== '/register') {
+          navigate('/login')
+        }
+      }
+    }, 5000)
 
     return () => {
       clearInterval(interval)
       clearTimeout(timeout)
     }
-  }, [isAuthorized, showWelcome, isCheckingAuth, location.pathname])
+  }, [isAuthorized, showWelcome, isCheckingAuth, location.pathname, navigate])
 
 
   const handleLogout = () => {
@@ -215,13 +257,16 @@ export function Layout() {
   }
 
   // Показываем загрузку во время проверки авторизации
-  // НЕ показываем загрузку на странице онбординга
-  if ((isAuthorized === null || (isCheckingAuth && isAuthorized !== true)) && location.pathname !== '/onboarding') {
+  // НЕ показываем загрузку на странице онбординга и логина/регистрации
+  if ((isAuthorized === null || (isCheckingAuth && isAuthorized !== true)) && 
+      location.pathname !== '/onboarding' && 
+      location.pathname !== '/login' && 
+      location.pathname !== '/register') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-telegram-bg">
+      <div className="min-h-screen flex items-center justify-center bg-telegram-bg dark:bg-telegram-dark-bg">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-telegram-primary mb-4"></div>
-          <p className="text-telegram-textSecondary">{t.common.loading}</p>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-telegram-primary dark:border-telegram-dark-primary mb-4"></div>
+          <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{t.common.loading}</p>
         </div>
       </div>
     )

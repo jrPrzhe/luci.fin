@@ -170,11 +170,16 @@ function TelegramAuthHandler() {
               
               // Помечаем, что пользователь только что вошел
               sessionStorage.setItem('justLoggedIn', 'true')
-              clearTimeout(timeoutId)
-              setIsChecking(false)
               
-              // Проверяем онбординг - Layout перенаправит на онбординг если нужно
-              navigate('/', { replace: true })
+              // Даем время на сохранение токена и обновление состояния
+              setTimeout(() => {
+                if (mounted) {
+                  clearTimeout(timeoutId)
+                  setIsChecking(false)
+                  // Проверяем онбординг - Layout перенаправит на онбординг если нужно
+                  navigate('/', { replace: true })
+                }
+              }, 100)
             }
           } catch (error: any) {
             console.error('Telegram auto-auth failed:', error)
@@ -387,11 +392,16 @@ function VKAuthHandler() {
               
               // Помечаем, что пользователь только что вошел
               sessionStorage.setItem('justLoggedIn', 'true')
-              clearTimeout(timeoutId)
-              setIsChecking(false)
               
-              // Проверяем онбординг - Layout перенаправит на онбординг если нужно
-              navigate('/', { replace: true })
+              // Даем время на сохранение токена и обновление состояния
+              setTimeout(() => {
+                if (mounted) {
+                  clearTimeout(timeoutId)
+                  setIsChecking(false)
+                  // Проверяем онбординг - Layout перенаправит на онбординг если нужно
+                  navigate('/', { replace: true })
+                }
+              }, 100)
             }
           } catch (error: any) {
             console.error('VK auto-auth failed:', error)
