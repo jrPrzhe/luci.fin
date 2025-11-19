@@ -245,12 +245,6 @@ export function Goals() {
           <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-6">
             Создайте свою первую финансовую цель и начните путь к мечте!
           </p>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="btn-primary px-6 py-3"
-          >
-            Создать цель
-          </button>
         </div>
       )}
 
@@ -548,36 +542,65 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
 
     setLoading(true)
     try {
-      // First, generate roadmap
-      const balance = await api.getBalance()
-      const transactions = await api.getTransactions(100)
+      let roadmap: string | undefined = undefined
       
-      const incomeTotal = transactions
-        .filter((t: any) => t.transaction_type === 'income')
-        .reduce((sum: number, t: any) => sum + t.amount, 0)
-      
-      const expenseTotal = transactions
-        .filter((t: any) => t.transaction_type === 'expense')
-        .reduce((sum: number, t: any) => sum + t.amount, 0)
+      // Try to generate roadmap with timeout, but don't fail if it times out
+      try {
+        const balancePromise = api.getBalance()
+        const transactionsPromise = api.getTransactions(100)
+        
+        // Use Promise.race to add timeout
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Timeout')), 15000) // 15 seconds timeout
+        )
+        
+        const [balance, transactions] = await Promise.race([
+          Promise.all([balancePromise, transactionsPromise]),
+          timeoutPromise
+        ]) as [any, any]
+        
+        const incomeTotal = transactions
+          .filter((t: any) => t.transaction_type === 'income')
+          .reduce((sum: number, t: any) => sum + t.amount, 0)
+        
+        const expenseTotal = transactions
+          .filter((t: any) => t.transaction_type === 'expense')
+          .reduce((sum: number, t: any) => sum + t.amount, 0)
 
-      const roadmapResponse = await api.generateRoadmap({
-        goal_name: formData.name,
-        target_amount: parseFloat(formData.target_amount),
-        currency: formData.currency,
-        transactions,
-        balance: balance.total,
-        income_total: incomeTotal,
-        expense_total: expenseTotal,
-      })
+        // Try to generate roadmap with timeout
+        const roadmapPromise = api.generateRoadmap({
+          goal_name: formData.name,
+          target_amount: parseFloat(formData.target_amount),
+          currency: formData.currency,
+          transactions,
+          balance: balance.total,
+          income_total: incomeTotal,
+          expense_total: expenseTotal,
+        })
+        
+        const roadmapTimeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Roadmap generation timeout')), 20000) // 20 seconds for roadmap
+        )
+        
+        const roadmapResponse = await Promise.race([
+          roadmapPromise,
+          roadmapTimeoutPromise
+        ]) as any
+        
+        roadmap = roadmapResponse.roadmap
+      } catch (roadmapError: any) {
+        console.warn('Roadmap generation failed or timed out, creating goal without roadmap:', roadmapError)
+        // Continue without roadmap - goal can be created without it
+      }
 
-      // Then create goal
+      // Create goal (with or without roadmap)
       await api.createGoal({
         name: formData.name,
         description: formData.description || undefined,
         target_amount: parseFloat(formData.target_amount),
         currency: formData.currency,
         target_date: formData.target_date || undefined,
-        roadmap: roadmapResponse.roadmap,
+        roadmap: roadmap,
       })
 
       showSuccess('Цель успешно создана')

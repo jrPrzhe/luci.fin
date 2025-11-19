@@ -25,6 +25,8 @@ export function Categories() {
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
   const [isTogglingAll, setIsTogglingAll] = useState(false)
   const [isEditingMode, setIsEditingMode] = useState(false)
+  const [showFavoritesSection, setShowFavoritesSection] = useState(true)
+  const [showAllCategoriesSection, setShowAllCategoriesSection] = useState(true)
   const { showError, showSuccess } = useToast()
 
   const [formData, setFormData] = useState({
@@ -236,7 +238,7 @@ export function Categories() {
                 : 'bg-telegram-surface dark:bg-telegram-dark-surface text-telegram-text dark:text-telegram-dark-text hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover'
             }`}
           >
-            {isEditingMode ? '✓ Редактирование' : '✏️ Редактировать'}
+            {isEditingMode ? '✓ Редактирование' : '✏️'}
           </button>
           {isEditingMode && (
             <button
@@ -436,83 +438,98 @@ export function Categories() {
           {/* Favorite Categories */}
           {!showFavoritesOnly && favoriteCategories.length > 0 && (
             <div>
-              <h3 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-3 flex items-center gap-2">
-                ⭐ Избранные категории
+              <h3 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-3 flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  ⭐ Избранные категории
+                </span>
+                <button
+                  onClick={() => setShowFavoritesSection(!showFavoritesSection)}
+                  className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text text-sm"
+                  title={showFavoritesSection ? 'Скрыть' : 'Показать'}
+                >
+                  {showFavoritesSection ? '▼' : '▶'}
+                </button>
               </h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
-                {favoriteCategories.map((category) => (
-                  <div
-                    key={category.id}
-                    className="card hover:shadow-lg transition-all relative group p-2 md:p-4"
-                    style={{
-                      borderLeft: `3px solid ${category.color || '#4CAF50'}`,
-                    }}
-                  >
-                    <div className="flex flex-col items-center gap-2 md:gap-2.5">
-                      {/* Иконка категории */}
-                      <div
-                        className="w-10 h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 rounded-full flex items-center justify-center text-xl md:text-2xl lg:text-3xl flex-shrink-0"
-                        style={{ backgroundColor: `${category.color || '#4CAF50'}20` }}
-                      >
-                        {category.icon || '📦'}
-                      </div>
+              {showFavoritesSection && (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
+                  {favoriteCategories.map((category) => (
+                    <div
+                      key={category.id}
+                      className="card hover:shadow-lg transition-all relative group p-2 md:p-4"
+                      style={{
+                        borderLeft: `3px solid ${category.color || '#4CAF50'}`,
+                      }}
+                    >
+                      {/* Кнопка редактирования в правом верхнем углу */}
+                      {isEditingMode && (
+                        <button
+                          onClick={() => handleEdit(category)}
+                          className="absolute top-2 right-2 p-1.5 text-telegram-primary hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover rounded-full transition-all active:scale-95 z-10"
+                          title="Редактировать"
+                        >
+                          <span className="text-base">✏️</span>
+                        </button>
+                      )}
                       
-                      {/* Название категории */}
-                      <div className="w-full text-center">
-                        <h4 className="font-semibold text-telegram-text dark:text-telegram-dark-text truncate text-sm md:text-base lg:text-lg mb-1">
-                          {category.name}
-                        </h4>
-                        <p className="text-xs md:text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-1">
-                          {getTransactionTypeIcon(category.transaction_type)} {getTransactionTypeLabel(category.transaction_type)}
-                        </p>
-                        {(category.is_system || category.shared_budget_id) && (
-                          <div className="flex items-center justify-center gap-1.5 mt-1">
-                            {category.is_system && (
-                              <span className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary" title="Базовая категория">
-                                📋
-                              </span>
-                            )}
-                            {category.shared_budget_id && (
-                              <span className="text-xs text-blue-600 dark:text-blue-400" title="Общая категория">
-                                👥
-                              </span>
+                      <div className="flex flex-col items-center gap-2 md:gap-2.5">
+                        {/* Иконка категории */}
+                        <div
+                          className="w-10 h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 rounded-full flex items-center justify-center text-xl md:text-2xl lg:text-3xl flex-shrink-0"
+                          style={{ backgroundColor: `${category.color || '#4CAF50'}20` }}
+                        >
+                          {category.icon || '📦'}
+                        </div>
+                        
+                        {/* Название категории */}
+                        <div className="w-full text-center">
+                          <h4 className="font-semibold text-telegram-text dark:text-telegram-dark-text truncate text-sm md:text-base lg:text-lg mb-1 pr-8">
+                            {category.name}
+                          </h4>
+                          <p className="text-xs md:text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-1">
+                            {getTransactionTypeIcon(category.transaction_type)} {getTransactionTypeLabel(category.transaction_type)}
+                          </p>
+                          {(category.is_system || category.shared_budget_id) && (
+                            <div className="flex items-center justify-center gap-1.5 mt-1">
+                              {category.is_system && (
+                                <span className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary" title="Базовая категория">
+                                  📋
+                                </span>
+                              )}
+                              {category.shared_budget_id && (
+                                <span className="text-xs text-blue-600 dark:text-blue-400" title="Общая категория">
+                                  👥
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Кнопки редактирования - внизу карточки (только избранное и удаление) */}
+                        {isEditingMode && (
+                          <div className="flex items-center justify-center gap-2 w-full pt-2 border-t border-telegram-hover dark:border-telegram-dark-hover mt-auto">
+                            <button
+                              onClick={() => handleToggleFavorite(category.id, category.is_favorite)}
+                              className="p-2 text-yellow-500 hover:text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/30 rounded-full transition-all active:scale-95"
+                              title="Убрать из избранного"
+                            >
+                              <span className="text-base md:text-lg">⭐</span>
+                            </button>
+                            {!category.is_system && (
+                              <button
+                                onClick={() => handleDelete(category.id)}
+                                className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-all active:scale-95"
+                                title="Удалить"
+                              >
+                                <span className="text-base md:text-lg">🗑️</span>
+                              </button>
                             )}
                           </div>
                         )}
                       </div>
-
-                      {/* Кнопки редактирования - внизу карточки */}
-                      {isEditingMode && (
-                        <div className="flex items-center justify-center gap-2 w-full pt-2 border-t border-telegram-hover dark:border-telegram-dark-hover mt-auto">
-                          <button
-                            onClick={() => handleToggleFavorite(category.id, category.is_favorite)}
-                            className="p-2 text-yellow-500 hover:text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/30 rounded-full transition-all active:scale-95"
-                            title="Убрать из избранного"
-                          >
-                            <span className="text-base md:text-lg">⭐</span>
-                          </button>
-                          <button
-                            onClick={() => handleEdit(category)}
-                            className="p-2 text-telegram-primary hover:bg-telegram-surface rounded-full transition-all active:scale-95"
-                            title="Редактировать"
-                          >
-                            <span className="text-base md:text-lg">✏️</span>
-                          </button>
-                          {!category.is_system && (
-                            <button
-                              onClick={() => handleDelete(category.id)}
-                              className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-all active:scale-95"
-                              title="Удалить"
-                            >
-                              <span className="text-base md:text-lg">🗑️</span>
-                            </button>
-                          )}
-                        </div>
-                      )}
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -520,12 +537,22 @@ export function Categories() {
           {(!showFavoritesOnly || favoriteCategories.length === 0) && (
             <div>
               {!showFavoritesOnly && favoriteCategories.length > 0 && (
-                <h3 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-3 flex items-center gap-2">
-                  Все категории
+                <h3 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-3 flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    Все категории
+                  </span>
+                  <button
+                    onClick={() => setShowAllCategoriesSection(!showAllCategoriesSection)}
+                    className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text text-sm"
+                    title={showAllCategoriesSection ? 'Скрыть' : 'Показать'}
+                  >
+                    {showAllCategoriesSection ? '▼' : '▶'}
+                  </button>
                 </h3>
               )}
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
-                {regularCategories.map((category) => (
+              {showAllCategoriesSection && (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
+                  {regularCategories.map((category) => (
                   <div
                     key={category.id}
                     className="card hover:shadow-lg transition-all relative group p-2 md:p-4"
@@ -533,6 +560,17 @@ export function Categories() {
                       borderLeft: `3px solid ${category.color || '#4CAF50'}`,
                     }}
                   >
+                    {/* Кнопка редактирования в правом верхнем углу */}
+                    {isEditingMode && (
+                      <button
+                        onClick={() => handleEdit(category)}
+                        className="absolute top-2 right-2 p-1.5 text-telegram-primary hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover rounded-full transition-all active:scale-95 z-10"
+                        title="Редактировать"
+                      >
+                        <span className="text-base">✏️</span>
+                      </button>
+                    )}
+                    
                     <div className="flex flex-col items-center gap-2 md:gap-2.5">
                       {/* Иконка категории */}
                       <div
@@ -544,7 +582,7 @@ export function Categories() {
                       
                       {/* Название категории */}
                       <div className="w-full text-center">
-                        <h4 className="font-semibold text-telegram-text dark:text-telegram-dark-text truncate text-sm md:text-base lg:text-lg mb-1">
+                        <h4 className="font-semibold text-telegram-text dark:text-telegram-dark-text truncate text-sm md:text-base lg:text-lg mb-1 pr-8">
                           {category.name}
                         </h4>
                         <p className="text-xs md:text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-1">
@@ -566,7 +604,7 @@ export function Categories() {
                         )}
                       </div>
 
-                      {/* Кнопки редактирования - внизу карточки */}
+                      {/* Кнопки редактирования - внизу карточки (только избранное и удаление) */}
                       {isEditingMode && (
                         <div className="flex items-center justify-center gap-2 w-full pt-2 border-t border-telegram-hover dark:border-telegram-dark-hover mt-auto">
                           <button
@@ -576,13 +614,6 @@ export function Categories() {
                           >
                             <span className="text-base md:text-lg">⭐</span>
                           </button>
-                          <button
-                            onClick={() => handleEdit(category)}
-                            className="p-2 text-telegram-primary hover:bg-telegram-surface rounded-full transition-all active:scale-95"
-                            title="Редактировать"
-                          >
-                            <span className="text-base md:text-lg">✏️</span>
-                          </button>
                           {!category.is_system && (
                             <button
                               onClick={() => handleDelete(category.id)}
@@ -594,10 +625,11 @@ export function Categories() {
                           )}
                         </div>
                       )}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
