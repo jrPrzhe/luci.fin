@@ -55,6 +55,9 @@ class UserGamificationProfile(Base):
     total_xp_earned = Column(Integer, default=0, nullable=False)
     total_quests_completed = Column(Integer, default=0, nullable=False)
     
+    # ID последнего ежедневного сообщения в Telegram (для редактирования вместо создания нового)
+    daily_reminder_message_id = Column(Integer, nullable=True)
+    
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

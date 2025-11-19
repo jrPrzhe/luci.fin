@@ -48,45 +48,126 @@ async def send_daily_reminder_telegram(user: User, db: Session) -> bool:
         except:
             lucy_message = f"Доброе утро, {user.first_name or 'друг'}! Люся ждёт тебя. ❤️"
         
-        # Формируем сообщение
+        # Формируем красивое HTML сообщение с форматированием
+        user_name = user.first_name or "друг"
+        
+        # Заголовок с жирным именем Люси
         message_parts = [
-            lucy_message,
+            f"💬 <b>Люся</b> желает доброго дня, {user_name}! ✨",
             "",
-            f"🔥 Страйк: {profile.streak_days} дней подряд",
-            f"⭐ Уровень: {profile.level}",
-            f"❤️ Сердце: {profile.heart_level}/100",
-            "",
-            "🎯 Ежедневные задания:"
         ]
         
+        # Статистика с жирными значениями
+        message_parts.extend([
+            "<b>📊 Твоя статистика:</b>",
+            f"🔥 <b>Страйк:</b> {profile.streak_days} дней подряд",
+            f"⭐ <b>Уровень:</b> {profile.level}",
+            f"❤️ <b>Сердце Люси:</b> {profile.heart_level}/100",
+            "",
+        ])
+        
+        # Основное сообщение от Люси
+        message_parts.append(f"💝 {lucy_message}")
+        message_parts.append("")
+        
+        # Задания в спойлере для интриги
         if quests:
+            quests_text_parts = []
             for i, quest in enumerate(quests[:3], 1):  # Показываем до 3 квестов
                 icon = "💸" if quest.quest_type.value == "record_expense" else \
                        "💰" if quest.quest_type.value == "record_income" else \
                        "📊" if quest.quest_type.value == "review_transactions" else \
                        "💳" if quest.quest_type.value == "check_balance" else "📋"
-                message_parts.append(f"{i}. {icon} {quest.title} (+{quest.xp_reward} XP)")
+                quests_text_parts.append(f"{i}. {icon} {quest.title} <b>(+{quest.xp_reward} XP)</b>")
+            
+            quests_text = "\n".join(quests_text_parts)
+            message_parts.append(f"🎯 <b>Ежедневные задания на сегодня:</b>")
+            message_parts.append(f"<spoiler>{quests_text}</spoiler>")
         else:
-            message_parts.append("На сегодня заданий нет. Отдыхай! 😊")
+            message_parts.append("<spoiler>🎉 На сегодня заданий нет. Отдыхай! 😊</spoiler>")
         
         message_parts.append("")
-        message_parts.append("Выполняй задания, чтобы получить XP и поднять уровень! 🚀")
+        message_parts.append("💡 <i>Выполняй задания, чтобы получить XP и поднять уровень!</i> 🚀")
         
         message = "\n".join(message_parts)
         
-        # Отправляем в Telegram
-        url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendMessage"
-        payload = {
-            "chat_id": user.telegram_id,
-            "text": message,
-            "parse_mode": "HTML"
+        # Формируем inline keyboard с кнопкой для мини-апп
+        keyboard = []
+        frontend_url = settings.FRONTEND_URL or "http://localhost:5173"
+        
+        # Добавляем кнопку для открытия мини-апп
+        keyboard.append([{
+            "text": "📱 Открыть приложение",
+            "web_app": {"url": frontend_url}
+        }])
+        
+        reply_markup = {
+            "inline_keyboard": keyboard
         }
         
+        # Проверяем, есть ли уже отправленное сообщение для редактирования
+        old_message_id = profile.daily_reminder_message_id
+        
         async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.post(url, json=payload)
+            base_url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}"
+            
+            # Если есть старое сообщение, пытаемся его отредактировать
+            if old_message_id:
+                try:
+                    edit_url = f"{base_url}/editMessageText"
+                    edit_payload = {
+                        "chat_id": user.telegram_id,
+                        "message_id": old_message_id,
+                        "text": message,
+                        "parse_mode": "HTML",
+                        "reply_markup": reply_markup
+                    }
+                    
+                    edit_response = await client.post(edit_url, json=edit_payload)
+                    if edit_response.status_code == 200:
+                        result = edit_response.json()
+                        if result.get("ok"):
+                            logger.info(f"Daily reminder edited for Telegram user {user.id}, message_id: {old_message_id}")
+                            db.commit()
+                            return True
+                        else:
+                            # Сообщение не найдено или удалено, отправляем новое
+                            logger.warning(f"Could not edit message {old_message_id}, sending new one")
+                            profile.daily_reminder_message_id = None
+                            db.commit()
+                    else:
+                        # Ошибка редактирования, отправляем новое сообщение
+                        logger.warning(f"Failed to edit message {old_message_id}: {edit_response.status_code}, sending new one")
+                        profile.daily_reminder_message_id = None
+                        db.commit()
+                except Exception as e:
+                    logger.warning(f"Error editing message {old_message_id}: {e}, sending new one")
+                    profile.daily_reminder_message_id = None
+                    db.commit()
+            
+            # Отправляем новое сообщение (если редактирование не удалось или сообщения нет)
+            send_url = f"{base_url}/sendMessage"
+            send_payload = {
+                "chat_id": user.telegram_id,
+                "text": message,
+                "parse_mode": "HTML",
+                "reply_markup": reply_markup
+            }
+            
+            response = await client.post(send_url, json=send_payload)
             if response.status_code == 200:
-                logger.info(f"Daily reminder sent to Telegram user {user.id}")
-                return True
+                result = response.json()
+                if result.get("ok"):
+                    # Сохраняем ID нового сообщения
+                    new_message_id = result.get("result", {}).get("message_id")
+                    if new_message_id:
+                        profile.daily_reminder_message_id = new_message_id
+                        db.commit()
+                    logger.info(f"Daily reminder sent to Telegram user {user.id}, message_id: {new_message_id}")
+                    return True
+                else:
+                    logger.error(f"Failed to send Telegram reminder: {result.get('description', 'Unknown error')}")
+                    return False
             else:
                 logger.error(f"Failed to send Telegram reminder: {response.status_code}")
                 return False
