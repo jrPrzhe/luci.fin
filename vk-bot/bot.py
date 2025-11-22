@@ -330,7 +330,6 @@ async def start_handler(message: Message):
             t("start.report", lang) +
             t("start.goal", lang) +
             t("start.help", lang) +
-            t("start.language", lang) +
             t("start.important", lang)
         )
         
@@ -352,9 +351,8 @@ async def start_handler(message: Message):
         keyboard.add(Text(t("buttons.goal", lang), payload=json.dumps({"command": "goal"})))
         keyboard.row()
         
-        # Fourth row: Help and Language
+        # Fourth row: Help
         keyboard.add(Text(t("buttons.help", lang), payload=json.dumps({"command": "help"})))
-        keyboard.add(Text(t("buttons.language", lang), payload=json.dumps({"command": "language"})))
         keyboard.row()
         
         # Fifth row: Application button
@@ -405,7 +403,6 @@ async def help_handler(message: Message):
         t("help.add_income", lang) +
         t("help.report", lang) +
         t("help.goal", lang) +
-        t("help.language", lang) +
         t("help.cancel", lang) +
         t("help.help", lang) +
         t("help.usage", lang) +
@@ -469,55 +466,6 @@ async def balance_handler(message: Message):
     except Exception as e:
         logger.error(f"Error getting balance: {e}", exc_info=True)
         await message.answer(t("balance.error", "ru"))
-
-
-async def language_selection_handler(message: Message):
-    """Handle language selection - show keyboard with language options"""
-    vk_id = str(message.from_id)
-    lang = await get_user_language(vk_id)
-    current_lang_display = "Русский" if lang == "ru" else "English"
-    
-    # Create keyboard with language options
-    keyboard = Keyboard(one_time=True)
-    keyboard.add(Text("🇷🇺 Русский", payload=json.dumps({"command": "lang_ru"})))
-    keyboard.add(Text("🇬🇧 English", payload=json.dumps({"command": "lang_en"})))
-    keyboard.row()
-    
-    message_text = (
-        t("language.select", lang) +
-        t("language.current", lang, lang=current_lang_display)
-    )
-    
-    await message.answer(message_text, keyboard=keyboard)
-
-
-async def language_selected_handler(message: Message, selected_lang: str):
-    """Handle language selection"""
-    vk_id = str(message.from_id)
-    
-    try:
-        # Update user language via API
-        response = await make_authenticated_request(
-            "PATCH",
-            f"{BACKEND_URL}/api/v1/auth/me",
-            vk_id,
-            json_data={"language": selected_lang},
-            timeout=5.0
-        )
-        
-        if response.status_code == 200:
-            lang_display = "Русский" if selected_lang == "ru" else "English"
-            lang = selected_lang  # Use selected language for response
-            
-            message_text = t("language.changed", lang, lang=lang_display)
-            await message.answer(message_text)
-        else:
-            lang = await get_user_language(vk_id)
-            await message.answer(t("language.error", lang))
-    except Exception as e:
-        logger.error(f"Error changing language: {e}", exc_info=True)
-        lang = await get_user_language(vk_id)
-        await message.answer(t("language.error", lang))
 
 
 async def add_expense_start(message: Message):
@@ -627,7 +575,10 @@ async def account_selected_handler(message: Message, account_id: int):
     vk_id = str(message.from_id)
     user_id = int(vk_id)
     
+    logger.info(f"Account selected: account_id={account_id}, user_id={user_id}")
+    
     if user_id not in user_states:
+        logger.warning(f"User {user_id} not in user_states when selecting account")
         lang = await get_user_language(vk_id)
         await message.answer(t("common.error", lang))
         return
@@ -637,6 +588,8 @@ async def account_selected_handler(message: Message, account_id: int):
     trans_type = state.get("transaction_type", "expense")
     lang = state.get("language", "ru")
     
+    logger.info(f"Transaction type: {trans_type}, language: {lang}")
+    
     # Find account name
     accounts = state.get("accounts", [])
     account = next((a for a in accounts if a['id'] == account_id), None)
@@ -644,6 +597,7 @@ async def account_selected_handler(message: Message, account_id: int):
     
     try:
         # Load categories
+        logger.info(f"Loading categories for transaction_type={trans_type}")
         response = await make_authenticated_request(
             "GET",
             f"{BACKEND_URL}/api/v1/categories/",
@@ -652,9 +606,13 @@ async def account_selected_handler(message: Message, account_id: int):
             timeout=10.0
         )
         
+        logger.info(f"Categories response status: {response.status_code}")
+        
         if response.status_code == 200:
             categories = response.json()
-            if categories:
+            logger.info(f"Received {len(categories) if categories else 0} categories")
+            
+            if categories and len(categories) > 0:
                 state["categories"] = categories
                 
                 # Create keyboard with categories
@@ -663,7 +621,7 @@ async def account_selected_handler(message: Message, account_id: int):
                     cat_name = cat.get('name', t("common.category", lang))
                     cat_icon = cat.get('icon', '📦')
                     cat_label = f"{cat_icon} {cat_name}"
-                    # Truncate if too long
+                    # Truncate if too long (VK button label limit is ~40 chars)
                     if len(cat_label) > 40:
                         cat_label = cat_label[:37] + "..."
                     keyboard.add(Text(
@@ -689,8 +647,11 @@ async def account_selected_handler(message: Message, account_id: int):
                 )
                 
                 state["type"] = WAITING_CATEGORY
+                logger.info(f"Sending category selection message with {len(categories)} categories")
                 await message.answer(message_text, keyboard=keyboard)
                 return
+            else:
+                logger.warning(f"No categories returned for transaction_type={trans_type}")
         
         # No categories or error, skip to amount
         title_text = t("expense.title", lang) if trans_type == "expense" else t("income.title", lang)
@@ -986,12 +947,6 @@ async def button_handler(message: Message):
                 return
             elif command == "help":
                 await help_handler(message)
-                return
-            elif command == "language":
-                await language_selection_handler(message)
-                return
-            elif command == "lang_ru" or command == "lang_en":
-                await language_selected_handler(message, command.split("_")[1])
                 return
             elif command and command.startswith("account_"):
                 account_id = int(command.split("_")[1])
