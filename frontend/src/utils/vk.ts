@@ -197,3 +197,138 @@ export async function getVKUserAsync(): Promise<VKUser | null> {
 
   return null
 }
+
+/**
+ * Show VK alert (uses VKWebAppShowSnackbar)
+ * Note: In production, prefer using ToastContext in React components instead of this function
+ */
+export async function showVKAlert(message: string, callback?: () => void): Promise<void> {
+  if (!isVKWebApp()) {
+    // No browser alerts allowed - log to console instead
+    console.warn('[VK Alert]', message)
+    callback?.()
+    return
+  }
+
+  try {
+    // Initialize VK Bridge if not already initialized
+    await initVKWebApp()
+
+    // Use VK Bridge snackbar (recommended for VK Mini Apps)
+    // @ts-expect-error - VKWebAppShowSnackbar is not in TypeScript types but exists in VK Bridge
+    await bridge.send('VKWebAppShowSnackbar', {
+      text: message,
+      duration: 'long' // or 'short'
+    })
+    
+    callback?.()
+  } catch (error) {
+    // No browser alerts allowed - log to console instead
+    console.warn('[VK Alert] Failed to show VK snackbar:', error)
+    console.warn('[VK Alert] Message:', message)
+    callback?.()
+  }
+}
+
+/**
+ * Show VK snackbar notification
+ * VK Bridge method for showing temporary notifications
+ */
+export async function showVKSnackbar(
+  message: string, 
+  duration: 'short' | 'long' = 'short'
+): Promise<void> {
+  if (!isVKWebApp()) {
+    // Fallback to console if not in VK
+    console.info(message)
+    return
+  }
+
+  try {
+    await initVKWebApp()
+    // @ts-expect-error - VKWebAppShowSnackbar is not in TypeScript types but exists in VK Bridge
+    await bridge.send('VKWebAppShowSnackbar', {
+      text: message,
+      duration
+    })
+  } catch (error) {
+    console.warn('Failed to show VK snackbar:', error)
+    // Fallback to console
+    console.info(message)
+  }
+}
+
+/**
+ * Check if browser alerts are being blocked or if native VK methods are available
+ * Returns info about alert support
+ */
+export async function checkAlertSupport(): Promise<{
+  vkBridgeAvailable: boolean
+  browserAlertAvailable: boolean
+  preferredMethod: 'vk' | 'browser' | 'none'
+}> {
+  const vkBridgeAvailable = isVKWebApp() && typeof bridge !== 'undefined'
+  
+  // Check if browser alert is available (not blocked)
+  let browserAlertAvailable = false
+  try {
+    // Try to detect if alerts are blocked by checking window.alert
+    browserAlertAvailable = typeof window !== 'undefined' && typeof window.alert === 'function'
+  } catch {
+    browserAlertAvailable = false
+  }
+
+  let preferredMethod: 'vk' | 'browser' | 'none' = 'none'
+  if (vkBridgeAvailable) {
+    preferredMethod = 'vk'
+  } else if (browserAlertAvailable) {
+    preferredMethod = 'browser'
+  }
+
+  return {
+    vkBridgeAvailable,
+    browserAlertAvailable,
+    preferredMethod
+  }
+}
+
+/**
+ * Monitor for browser alerts (for debugging/testing purposes)
+ * This function wraps window.alert to detect when alerts are triggered
+ * 
+ * Usage in development:
+ * ```typescript
+ * const stopMonitoring = monitorBrowserAlerts((message) => {
+ *   console.log('Alert detected:', message)
+ * })
+ * // Later: stopMonitoring() to restore original alert
+ * ```
+ */
+export function monitorBrowserAlerts(
+  onAlert?: (message: string) => void
+): () => void {
+  if (typeof window === 'undefined') {
+    return () => {}
+  }
+
+  // Store original alert
+  const originalAlert = window.alert
+
+  // Wrap alert to monitor it (but don't actually show alerts)
+  window.alert = function(message: string) {
+    // Log to console instead of showing alert
+    console.warn('[Browser Alert Blocked]', message)
+    console.warn('[Browser Alert Blocked] Use ToastContext or platform-specific methods instead')
+    
+    // Call callback if provided
+    onAlert?.(message)
+
+    // Don't call original alert - block it completely
+    return undefined
+  }
+
+  // Return function to restore original alert
+  return () => {
+    window.alert = originalAlert
+  }
+}

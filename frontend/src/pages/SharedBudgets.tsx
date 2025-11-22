@@ -43,7 +43,7 @@ interface Invitation {
 }
 
 export function SharedBudgets() {
-  const { showSuccess } = useToast()
+  const { showSuccess, showError: showErrorToast } = useToast()
   const [budgets, setBudgets] = useState<SharedBudget[]>([])
   const [invitations, setInvitations] = useState<Invitation[]>([])
   const [loading, setLoading] = useState(true)
@@ -57,6 +57,17 @@ export function SharedBudgets() {
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
   const [joinCode, setJoinCode] = useState('')
   const [currentUser, setCurrentUser] = useState<any>(null)
+
+  // Confirmation modals state
+  const [confirmModal, setConfirmModal] = useState<{
+    show: boolean
+    message: string
+    onConfirm: () => void | Promise<void>
+  }>({
+    show: false,
+    message: '',
+    onConfirm: () => {},
+  })
 
   // Create form state
   const [createFormData, setCreateFormData] = useState({
@@ -168,34 +179,42 @@ export function SharedBudgets() {
   }
 
   const handleRemoveMember = async (budgetId: number, userId: number) => {
-    if (!confirm('Вы уверены, что хотите удалить этого участника?')) {
-      return
-    }
-
-    try {
-      await api.removeMember(budgetId, userId)
-      await loadMembers(budgetId)
-      await loadData()
-    } catch (err: any) {
-      const { translateError } = await import('../utils/errorMessages')
-      setError(translateError(err))
-    }
+    setConfirmModal({
+      show: true,
+      message: 'Вы уверены, что хотите удалить этого участника?',
+      onConfirm: async () => {
+        try {
+          await api.removeMember(budgetId, userId)
+          await loadMembers(budgetId)
+          await loadData()
+          setConfirmModal({ show: false, message: '', onConfirm: () => {} })
+        } catch (err: any) {
+          const { translateError } = await import('../utils/errorMessages')
+          setError(translateError(err))
+          setConfirmModal({ show: false, message: '', onConfirm: () => {} })
+        }
+      },
+    })
   }
 
   const handleUpdateRole = async (budgetId: number, userId: number, newRole: 'admin' | 'member') => {
     const roleName = newRole === 'admin' ? 'администратором' : 'участником'
-    if (!confirm(`Вы уверены, что хотите назначить этого пользователя ${roleName}?`)) {
-      return
-    }
-
-    try {
-      await api.updateMemberRole(budgetId, userId, newRole)
-      await loadMembers(budgetId)
-      await loadData()
-    } catch (err: any) {
-      const { translateError } = await import('../utils/errorMessages')
-      setError(translateError(err))
-    }
+    setConfirmModal({
+      show: true,
+      message: `Вы уверены, что хотите назначить этого пользователя ${roleName}?`,
+      onConfirm: async () => {
+        try {
+          await api.updateMemberRole(budgetId, userId, newRole)
+          await loadMembers(budgetId)
+          await loadData()
+          setConfirmModal({ show: false, message: '', onConfirm: () => {} })
+        } catch (err: any) {
+          const { translateError } = await import('../utils/errorMessages')
+          setError(translateError(err))
+          setConfirmModal({ show: false, message: '', onConfirm: () => {} })
+        }
+      },
+    })
   }
 
   const handleJoinByCode = async (e: React.FormEvent) => {
@@ -283,6 +302,39 @@ export function SharedBudgets() {
   }
 
   return (
+    <>
+      {/* Confirmation Modal */}
+      {confirmModal.show && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="card p-6 max-w-md w-full">
+            <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
+              Подтверждение
+            </h2>
+            <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-6">
+              {confirmModal.message}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  confirmModal.onConfirm()
+                }}
+                className="flex-1 btn-primary text-sm md:text-base py-2.5 md:py-3"
+              >
+                Да
+              </button>
+              <button
+                onClick={() => {
+                  setConfirmModal({ show: false, message: '', onConfirm: () => {} })
+                }}
+                className="flex-1 btn-secondary text-sm md:text-base py-2.5 md:py-3"
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     <div className="p-4 md:p-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
@@ -397,17 +449,22 @@ export function SharedBudgets() {
                 </div>
               </div>
               <button
-                onClick={async () => {
-                  if (!confirm('Вы уверены, что хотите выйти из этого бюджета?')) {
-                    return
-                  }
-                  try {
-                    await api.leaveBudget(selectedBudget.id)
-                    setSelectedBudget(null)
-                    await loadData()
-                  } catch (err: any) {
-                    setError(err.message || 'Ошибка выхода из бюджета')
-                  }
+                onClick={() => {
+                  setConfirmModal({
+                    show: true,
+                    message: 'Вы уверены, что хотите выйти из этого бюджета?',
+                    onConfirm: async () => {
+                      try {
+                        await api.leaveBudget(selectedBudget.id)
+                        setSelectedBudget(null)
+                        await loadData()
+                        setConfirmModal({ show: false, message: '', onConfirm: () => {} })
+                      } catch (err: any) {
+                        setError(err.message || 'Ошибка выхода из бюджета')
+                        setConfirmModal({ show: false, message: '', onConfirm: () => {} })
+                      }
+                    },
+                  })
                 }}
                 className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium whitespace-nowrap"
               >
@@ -853,5 +910,6 @@ export function SharedBudgets() {
         </div>
       )}
     </div>
+    </>
   )
 }

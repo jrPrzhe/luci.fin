@@ -190,27 +190,31 @@ export function getInitData(): string {
 
 /**
  * Show Telegram alert
+ * Note: In production, prefer using ToastContext in React components instead of this function
  */
 export function showTelegramAlert(message: string, callback?: () => void) {
   const webApp = getTelegramWebApp()
   if (webApp) {
     webApp.showAlert(message, callback)
   } else {
-    alert(message)
+    // No browser alerts allowed - log to console instead
+    console.warn('[Telegram Alert]', message)
     callback?.()
   }
 }
 
 /**
  * Show Telegram confirmation
+ * Note: In production, prefer using custom modal dialogs in React components instead of this function
  */
 export function showTelegramConfirm(message: string, callback?: (confirmed: boolean) => void) {
   const webApp = getTelegramWebApp()
   if (webApp) {
     webApp.showConfirm(message, callback)
   } else {
-    const confirmed = confirm(message)
-    callback?.(confirmed)
+    // No browser dialogs allowed - log to console and return false
+    console.warn('[Telegram Confirm]', message)
+    callback?.(false)
   }
 }
 

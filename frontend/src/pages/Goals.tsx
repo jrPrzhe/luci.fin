@@ -20,8 +20,18 @@ interface Goal {
 
 export function Goals() {
   const queryClient = useQueryClient()
+  const { showError } = useToast()
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [confirmModal, setConfirmModal] = useState<{
+    show: boolean
+    message: string
+    onConfirm: () => void | Promise<void>
+  }>({
+    show: false,
+    message: '',
+    onConfirm: () => {},
+  })
 
   const { data: goals = [], isLoading } = useQuery({
     queryKey: ['goals'],
@@ -94,13 +104,20 @@ export function Goals() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
-                        if (confirm('Вы уверены, что хотите удалить эту цель?')) {
-                          api.deleteGoal(goal.id).then(() => {
-                            queryClient.invalidateQueries({ queryKey: ['goals'] })
-                          }).catch((err: any) => {
-                            alert(err.message || 'Ошибка при удалении цели')
-                          })
-                        }
+                        setConfirmModal({
+                          show: true,
+                          message: 'Вы уверены, что хотите удалить эту цель?',
+                          onConfirm: async () => {
+                            try {
+                              await api.deleteGoal(goal.id)
+                              queryClient.invalidateQueries({ queryKey: ['goals'] })
+                              setConfirmModal({ show: false, message: '', onConfirm: () => {} })
+                            } catch (err: any) {
+                              showError(err.message || 'Ошибка при удалении цели')
+                              setConfirmModal({ show: false, message: '', onConfirm: () => {} })
+                            }
+                          },
+                        })
                       }}
                       className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 p-1 hover:bg-red-50 dark:hover:bg-red-900/30 rounded"
                       title="Удалить цель"
@@ -270,6 +287,38 @@ export function Goals() {
           }}
         />
       )}
+
+      {/* Confirmation Modal */}
+      {confirmModal.show && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="card p-6 max-w-md w-full">
+            <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
+              Подтверждение
+            </h2>
+            <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-6">
+              {confirmModal.message}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  confirmModal.onConfirm()
+                }}
+                className="flex-1 btn-primary text-sm md:text-base py-2.5 md:py-3"
+              >
+                Да
+              </button>
+              <button
+                onClick={() => {
+                  setConfirmModal({ show: false, message: '', onConfirm: () => {} })
+                }}
+                className="flex-1 btn-secondary text-sm md:text-base py-2.5 md:py-3"
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -280,24 +329,27 @@ function GoalDetailModal({ goal, onClose, onDelete }: { goal: Goal; onClose: () 
   const daysRemaining = getDaysRemaining(goal.target_date)
   const progressColor = getProgressColor(goal.progress_percentage)
   const [isDeleting, setIsDeleting] = useState(false)
+  const { showError } = useToast()
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
   
   const { data: transactions } = useQuery({
     queryKey: ['goal-transactions', goal.id],
     queryFn: () => api.getTransactions(100),
   })
 
-  const handleDelete = async () => {
-    if (!confirm('Вы уверены, что хотите удалить эту цель? Это действие нельзя отменить.')) {
-      return
-    }
+  const handleDelete = () => {
+    setShowConfirmModal(true)
+  }
 
+  const confirmDelete = async () => {
     setIsDeleting(true)
+    setShowConfirmModal(false)
     try {
       await api.deleteGoal(goal.id)
       onDelete()
     } catch (error: any) {
       console.error('Error deleting goal:', error)
-      alert(error.message || 'Ошибка при удалении цели')
+      showError(error.message || 'Ошибка при удалении цели')
     } finally {
       setIsDeleting(false)
     }
@@ -508,6 +560,36 @@ function GoalDetailModal({ goal, onClose, onDelete }: { goal: Goal; onClose: () 
           </div>
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+          <div className="card p-6 max-w-md w-full">
+            <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
+              Подтверждение
+            </h2>
+            <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-6">
+              Вы уверены, что хотите удалить эту цель? Это действие нельзя отменить.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={confirmDelete}
+                disabled={isDeleting}
+                className="flex-1 btn-primary text-sm md:text-base py-2.5 md:py-3 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Да, удалить
+              </button>
+              <button
+                onClick={() => setShowConfirmModal(false)}
+                disabled={isDeleting}
+                className="flex-1 btn-secondary text-sm md:text-base py-2.5 md:py-3 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
