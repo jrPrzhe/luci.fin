@@ -226,13 +226,20 @@ export function Goals() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
-                        if (confirm('Вы уверены, что хотите удалить эту цель?')) {
-                          api.deleteGoal(goal.id).then(() => {
-                            queryClient.invalidateQueries({ queryKey: ['goals'] })
-                          }).catch((err: any) => {
-                            alert(err.message || 'Ошибка при удалении цели')
-                          })
-                        }
+                        setConfirmModal({
+                          show: true,
+                          message: 'Вы уверены, что хотите удалить эту цель?',
+                          onConfirm: async () => {
+                            try {
+                              await api.deleteGoal(goal.id)
+                              queryClient.invalidateQueries({ queryKey: ['goals'] })
+                              setConfirmModal({ show: false, message: '', onConfirm: () => {} })
+                            } catch (err: any) {
+                              showError(err.message || 'Ошибка при удалении цели')
+                              setConfirmModal({ show: false, message: '', onConfirm: () => {} })
+                            }
+                          },
+                        })
                       }}
                       className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 p-1 hover:bg-red-50 dark:hover:bg-red-900/30 rounded"
                       title="Удалить цель"
