@@ -262,30 +262,6 @@ async def update_goal(
     return goal
 
 
-@router.delete("/{goal_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_goal(
-    goal_id: int,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Delete a goal"""
-    goal = db.query(Goal).filter(
-        Goal.id == goal_id,
-        Goal.user_id == current_user.id
-    ).first()
-    
-    if not goal:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Цель не найдена"
-        )
-    
-    db.delete(goal)
-    db.commit()
-    
-    return None
-
-
 @router.post("/{goal_id}/add-progress", response_model=GoalResponse)
 async def add_progress_to_goal(
     goal_id: int,

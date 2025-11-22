@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { api } from '../services/api'
 import { useToast } from '../contexts/ToastContext'
 
@@ -40,6 +41,7 @@ const accountTypeIcons: Record<string, string> = {
 
 export function Accounts() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { showError, showSuccess } = useToast()
   const [accounts, setAccounts] = useState<Account[]>([])
   const [sharedBudgets, setSharedBudgets] = useState<any[]>([])
@@ -254,6 +256,8 @@ export function Accounts() {
                           try {
                             await api.deleteAccount(account.id)
                             await loadAccounts()
+                            // Also invalidate goals query in case this was a goal account
+                            queryClient.invalidateQueries({ queryKey: ['goals'] })
                             showSuccess('Счёт удалён')
                             setConfirmModal({ show: false, message: '', onConfirm: () => {} })
                           } catch (err: any) {

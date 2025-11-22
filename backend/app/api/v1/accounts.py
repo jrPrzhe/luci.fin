@@ -319,6 +319,47 @@ async def delete_account(
                 detail="Только администраторы могут удалять общие счета"
             )
     
+    # Check if account is linked to a goal
+    from app.models.goal import Goal
+    linked_goal = db.query(Goal).filter(Goal.account_id == account_id).first()
+    
+    if linked_goal:
+        # If account is linked to a goal, we need to handle the goal first
+        # Option 1: Delete the goal (which will handle the account relationship)
+        # Option 2: Unlink the goal from the account
+        
+        # Check if account has transactions
+        transaction_count = db.query(Transaction).filter(
+            Transaction.account_id == account_id
+        ).count()
+        
+        if transaction_count > 0:
+            # Archive account and unlink goal
+            account.is_archived = True
+            account.is_active = False
+            linked_goal.account_id = None  # Unlink goal from account
+            db.commit()
+            db.refresh(account)
+            return {
+                "message": "Account archived (has transactions and was linked to a goal)", 
+                "account_id": account_id,
+                "goal_unlinked": True,
+                "goal_id": linked_goal.id
+            }
+        else:
+            # Delete the goal first (which will handle account deletion)
+            # But we need to delete the account ourselves since delete_goal handles it differently
+            # Actually, let's just unlink and delete the account
+            linked_goal.account_id = None
+            db.delete(account)
+            db.commit()
+            return {
+                "message": "Account deleted (was linked to a goal, goal unlinked)", 
+                "account_id": account_id,
+                "goal_unlinked": True,
+                "goal_id": linked_goal.id
+            }
+    
     # Check if account has transactions
     transaction_count = db.query(Transaction).filter(
         Transaction.account_id == account_id
