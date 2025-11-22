@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { storageSync } from '../utils/storage'
 
 interface NewYearContextType {
   isEnabled: boolean
@@ -12,22 +13,19 @@ const NEW_YEAR_THEME_KEY = 'newYearTheme'
 
 export function NewYearProvider({ children }: { children: ReactNode }) {
   const [isEnabled, setIsEnabled] = useState<boolean>(() => {
-    // Проверяем localStorage при инициализации
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(NEW_YEAR_THEME_KEY)
-      if (saved !== null) {
-        return saved === 'true'
-      }
-      // По умолчанию новогодний режим включен
-      return true
+    // Проверяем storage при инициализации
+    // Для VK и Telegram используем их хранилища, для веба - localStorage
+    const saved = storageSync.getItem(NEW_YEAR_THEME_KEY)
+    if (saved !== null) {
+      return saved === 'true'
     }
+    // По умолчанию новогодний режим включен
     return true
   })
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(NEW_YEAR_THEME_KEY, isEnabled.toString())
-    }
+    // Сохраняем в storage (VK Storage, Telegram Cloud Storage или localStorage)
+    storageSync.setItem(NEW_YEAR_THEME_KEY, isEnabled.toString())
   }, [isEnabled])
 
   const toggle = () => {

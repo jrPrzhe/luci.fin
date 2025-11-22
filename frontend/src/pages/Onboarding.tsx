@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useI18n } from '../contexts/I18nContext'
+import { storageSync } from '../utils/storage'
 
 interface OnboardingPage {
   title: string
@@ -84,7 +85,7 @@ export function Onboarding({ onComplete }: { onComplete?: () => void }) {
   const handleNext = () => {
     if (isLastPage) {
       // Завершаем онбординг
-      localStorage.setItem('onboarding_completed', 'true')
+      storageSync.setItem('onboarding_completed', 'true')
       // Показываем приветствие после онбординга
       sessionStorage.setItem('justLoggedIn', 'true')
       if (onComplete) {
@@ -98,7 +99,7 @@ export function Onboarding({ onComplete }: { onComplete?: () => void }) {
   }
 
   const handleSkip = () => {
-    localStorage.setItem('onboarding_completed', 'true')
+    storageSync.setItem('onboarding_completed', 'true')
     // Показываем приветствие после онбординга
     sessionStorage.setItem('justLoggedIn', 'true')
     if (onComplete) {

@@ -4,6 +4,7 @@ import App from './App'
 import './styles/index.css'
 import { initTelegramWebApp } from './utils/telegram'
 import { initVKWebApp } from './utils/vk'
+import { storageSync, initStorage } from './utils/storage'
 
 // Initialize Telegram Web App if running inside Telegram
 initTelegramWebApp()
@@ -11,8 +12,12 @@ initTelegramWebApp()
 // Initialize VK Web App if running inside VK
 initVKWebApp()
 
-// Initialize theme from localStorage
-const savedTheme = localStorage.getItem('theme')
+// Инициализируем storage и загружаем данные из правильного хранилища
+initStorage().catch(console.error)
+
+// Initialize theme from storage
+// Для VK и Telegram используем их хранилища, для веба - localStorage
+const savedTheme = storageSync.getItem('theme')
 if (savedTheme === 'dark') {
   document.documentElement.classList.add('dark')
 } else if (savedTheme === 'light') {

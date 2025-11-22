@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { isTelegramWebApp } from '../utils/telegram'
 import { isVKWebApp } from '../utils/vk'
 import { api } from '../services/api'
+import { storageSync } from '../utils/storage'
 import { Welcome } from './Welcome'
 import { Stories } from './Stories'
 import { SnowEffect } from './SnowEffect'
@@ -69,7 +70,9 @@ export function Layout() {
     const checkAuth = async () => {
       setIsCheckingAuth(true)
       
-      const token = localStorage.getItem('token')
+      // Используем storageSync вместо прямого localStorage
+      // Для VK и Telegram это будет работать через их хранилища
+      const token = storageSync.getItem('token')
       
       if (!token) {
         // Сохраняем текущий путь для редиректа после авторизации
@@ -77,7 +80,7 @@ export function Layout() {
         // Даем время на авторизацию через Mini App (Telegram/VK)
         // Если через 2 секунды токен не появился, редиректим на логин
         setTimeout(() => {
-          if (!localStorage.getItem('token')) {
+          if (!storageSync.getItem('token')) {
             setIsAuthorized(false)
             setIsCheckingAuth(false)
             navigate(`/login?returnTo=${encodeURIComponent(returnTo)}`)
@@ -100,7 +103,7 @@ export function Layout() {
       } catch (error) {
         console.error('Auth check failed:', error)
         setIsAuthorized(false)
-        localStorage.removeItem('token')
+        storageSync.removeItem('token')
         api.setToken(null)
         navigate('/login')
       } finally {
@@ -111,7 +114,7 @@ export function Layout() {
     // Проверяем авторизацию если статус неизвестен или false
     // Добавляем небольшую задержку для Mini App авторизации
     const timeout = setTimeout(() => {
-      if (isAuthorized === null || (isAuthorized === false && localStorage.getItem('token'))) {
+      if (isAuthorized === null || (isAuthorized === false && storageSync.getItem('token'))) {
         checkAuth()
       }
     }, 500)
@@ -128,7 +131,7 @@ export function Layout() {
           if (user) {
             setUserName(user.first_name || user.username || 'Пользователь')
             // Проверяем, прошел ли пользователь онбординг
-            const onboardingCompleted = localStorage.getItem('onboarding_completed') === 'true'
+            const onboardingCompleted = storageSync.getItem('onboarding_completed') === 'true'
             if (!onboardingCompleted) {
               // Показываем онбординг для новых пользователей
               navigate('/onboarding')
@@ -170,7 +173,7 @@ export function Layout() {
         return
       }
 
-      const token = localStorage.getItem('token')
+      const token = storageSync.getItem('token')
       if (token && (isAuthorized === false || isAuthorized === null)) {
         // Токен появился, проверяем авторизацию
         setIsCheckingAuth(true)
@@ -195,7 +198,7 @@ export function Layout() {
             setIsCheckingAuth(false)
             setIsAuthorized(false)
             // Если токен невалиден, удаляем его
-            localStorage.removeItem('token')
+            storageSync.removeItem('token')
             api.setToken(null)
           })
       } else if (!token && isAuthorized === null) {
@@ -223,7 +226,7 @@ export function Layout() {
     const timeout = setTimeout(() => {
       clearInterval(interval)
       // Если после таймаута все еще не авторизованы и нет токена, редиректим на логин
-      if (!isAuthorized && !localStorage.getItem('token')) {
+      if (!isAuthorized && !storageSync.getItem('token')) {
         setIsAuthorized(false)
         if (location.pathname !== '/login' && location.pathname !== '/register') {
           navigate('/login')
@@ -239,7 +242,7 @@ export function Layout() {
 
 
   const handleLogout = () => {
-    localStorage.removeItem('token')
+    storageSync.removeItem('token')
     api.setToken(null)
     navigate('/login')
   }

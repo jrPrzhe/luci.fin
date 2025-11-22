@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { storageSync } from '../utils/storage'
 
 type Theme = 'light' | 'dark'
 
@@ -6,8 +7,9 @@ const THEME_STORAGE_KEY = 'theme'
 
 export function useTheme() {
   const [theme, setTheme] = useState<Theme>(() => {
-    // Проверяем localStorage при инициализации
-    const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) as Theme | null
+    // Проверяем storage при инициализации
+    // Для VK и Telegram используем их хранилища, для веба - localStorage
+    const savedTheme = storageSync.getItem(THEME_STORAGE_KEY) as Theme | null
     if (savedTheme && (savedTheme === 'light' || savedTheme === 'dark')) {
       return savedTheme
     }
@@ -22,7 +24,8 @@ export function useTheme() {
     } else {
       root.classList.remove('dark')
     }
-    localStorage.setItem(THEME_STORAGE_KEY, theme)
+    // Сохраняем в storage (VK Storage, Telegram Cloud Storage или localStorage)
+    storageSync.setItem(THEME_STORAGE_KEY, theme)
   }, [theme])
 
   const toggleTheme = () => {

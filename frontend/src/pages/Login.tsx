@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { api } from '../services/api'
 import { isTelegramWebApp, getInitData } from '../utils/telegram'
 import { isVKWebApp, getVKLaunchParams, initVKWebApp, getVKUser } from '../utils/vk'
+import { storageSync } from '../utils/storage'
 import { useToast } from '../contexts/ToastContext'
 
 export function Login() {
@@ -66,7 +67,6 @@ export function Login() {
 
     try {
       // Try to get current token for account linking
-      const { storageSync } = await import('../utils/storage')
       const currentToken = storageSync.getItem('token')
       const response = await api.loginTelegram(initData, currentToken)
       console.log('[Login] Telegram login response:', {
@@ -80,7 +80,7 @@ export function Login() {
       await new Promise(resolve => setTimeout(resolve, 100))
       
       // Проверяем, что токен действительно сохранен
-      const savedToken = storageSync.getItem('token') || localStorage.getItem('token')
+      const savedToken = storageSync.getItem('token')
       if (!savedToken || savedToken !== response.access_token) {
         console.error('[Login] Token was not saved correctly!', {
           expected: response.access_token,
@@ -149,7 +149,6 @@ export function Login() {
 
     try {
       // Try to get current token for account linking
-      const { storageSync } = await import('../utils/storage')
       const currentToken = storageSync.getItem('token')
       const response = await api.loginVK(launchParams, currentToken, firstName, lastName)
       console.log('[Login] VK login response:', {
@@ -163,7 +162,7 @@ export function Login() {
       await new Promise(resolve => setTimeout(resolve, 100))
       
       // Проверяем, что токен действительно сохранен
-      const savedToken = storageSync.getItem('token') || localStorage.getItem('token')
+      const savedToken = storageSync.getItem('token')
       if (!savedToken || savedToken !== response.access_token) {
         console.error('[Login] Token was not saved correctly!', {
           expected: response.access_token,

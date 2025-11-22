@@ -22,6 +22,7 @@ import { Analytics } from './pages/Analytics'
 import { isTelegramWebApp, getInitData, getTelegramUser } from './utils/telegram'
 import { isVKWebApp, getVKLaunchParams, getVKUserId, initVKWebApp, getVKUser } from './utils/vk'
 import { api } from './services/api'
+import { storageSync } from './utils/storage'
 import { NewYearProvider } from './contexts/NewYearContext'
 import { I18nProvider } from './contexts/I18nContext'
 import { ToastProvider } from './contexts/ToastContext'
@@ -65,7 +66,8 @@ function TelegramAuthHandler() {
         // На других страницах просто проверяем в фоне
 
         // Если уже есть токен, проверяем его валидность
-        const token = localStorage.getItem('token')
+        // Используем storageSync вместо прямого localStorage
+        const token = storageSync.getItem('token')
         if (token) {
           try {
             const user = await api.getCurrentUser()
@@ -81,7 +83,7 @@ function TelegramAuthHandler() {
                   // Если user.telegram_id не совпадает с текущим Telegram ID, очищаем токен
                   if (user.telegram_id && user.telegram_id !== telegramId) {
                     console.warn('Token belongs to different Telegram user, clearing and re-authenticating')
-                    localStorage.removeItem('token')
+                    storageSync.removeItem('token')
                     api.setToken(null)
                     // Продолжаем авторизацию через Telegram
                   } else {
@@ -119,7 +121,7 @@ function TelegramAuthHandler() {
           } catch (error) {
             // Токен невалиден, удаляем его и продолжаем авторизацию
             console.warn('Token invalid, will re-authenticate via Telegram')
-            localStorage.removeItem('token')
+            storageSync.removeItem('token')
             api.setToken(null)
           }
         }
@@ -147,7 +149,7 @@ function TelegramAuthHandler() {
           try {
             console.log('Attempting automatic Telegram login...')
             // Get current token for account linking (if user is already logged in via VK)
-            const currentToken = localStorage.getItem('token')
+            const currentToken = storageSync.getItem('token')
             const response = await api.loginTelegram(initData, currentToken)
             console.log('Telegram auto-login successful:', { 
               userId: response.user?.id,
@@ -158,7 +160,7 @@ function TelegramAuthHandler() {
             if (mounted) {
               // Tokens are already stored by api.loginTelegram method
               // Проверяем, что токен действительно сохранен
-              const savedToken = localStorage.getItem('token')
+              const savedToken = storageSync.getItem('token')
               if (!savedToken || savedToken !== response.access_token) {
                 console.error('[TelegramAuthHandler] Token was not saved correctly!')
                 clearTimeout(timeoutId)
@@ -265,14 +267,14 @@ function VKAuthHandler() {
         try {
           await api.trackEvent('miniapp_open', 'vk_miniapp_launch', {
             path: location.pathname,
-            hasToken: !!localStorage.getItem('token')
+            hasToken: !!storageSync.getItem('token')
           })
         } catch (error) {
           // Игнорируем ошибки аналитики
         }
 
         // Если уже есть токен, проверяем его валидность
-        const token = localStorage.getItem('token')
+        const token = storageSync.getItem('token')
         if (token) {
           try {
             const user = await api.getCurrentUser()
@@ -287,7 +289,7 @@ function VKAuthHandler() {
                   // Если user.vk_id не совпадает с текущим VK ID, очищаем токен
                   if (user.vk_id && user.vk_id !== vkId) {
                     console.warn('Token belongs to different VK user, clearing and re-authenticating')
-                    localStorage.removeItem('token')
+                    storageSync.removeItem('token')
                     api.setToken(null)
                     // Продолжаем авторизацию через VK
                   } else {
@@ -325,7 +327,7 @@ function VKAuthHandler() {
           } catch (error) {
             // Токен невалиден, удаляем его и продолжаем авторизацию
             console.warn('Token invalid, will re-authenticate via VK')
-            localStorage.removeItem('token')
+            storageSync.removeItem('token')
             api.setToken(null)
           }
         }

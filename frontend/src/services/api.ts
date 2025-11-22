@@ -18,78 +18,110 @@ class ApiClient {
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl
-    // Use synchronous storage access for token initialization
-    // For VK, we'll use localStorage as fallback for initial load
-    // Storage sync will be used for saving, but initial read must be synchronous
-    if (typeof window !== 'undefined' && window.localStorage) {
-      this.token = localStorage.getItem('token')
-      this.refreshToken = localStorage.getItem('refresh_token')
-    }
-    
-    // Also try to load from VK Storage asynchronously (for VK users)
-    // This is a fallback if localStorage is empty but VK Storage has the token
-    import('../utils/storage').then(({ storageSync }) => {
-      // Only update if we don't have tokens from localStorage
-      if (!this.token && !this.refreshToken) {
-        const vkToken = storageSync.getItem('token')
-        const vkRefreshToken = storageSync.getItem('refresh_token')
-        if (vkToken) {
-          this.token = vkToken
-          // Also sync back to localStorage for consistency
-          localStorage.setItem('token', vkToken)
-        }
-        if (vkRefreshToken) {
-          this.refreshToken = vkRefreshToken
-          localStorage.setItem('refresh_token', vkRefreshToken)
-        }
+    // Инициализация токенов
+    // Для VK и Telegram используем их хранилища (привязаны к user_id)
+    // Для обычного веба используем localStorage (привязан к браузеру)
+    import('../utils/storage').then(({ storageSync, default: storage, isVKWebApp }) => {
+      // Пытаемся получить токены синхронно (из кэша или localStorage)
+      this.token = storageSync.getItem('token')
+      this.refreshToken = storageSync.getItem('refresh_token')
+      
+      // Для VK и Telegram также загружаем асинхронно из их хранилищ
+      // Это гарантирует, что мы получим актуальные данные
+      if (isVKWebApp()) {
+        // Для VK используем только VK Storage, не localStorage
+        storage.getItem('token').then(token => {
+          if (token) {
+            this.token = token
+          }
+        }).catch(console.error)
+        
+        storage.getItem('refresh_token').then(refreshToken => {
+          if (refreshToken) {
+            this.refreshToken = refreshToken
+          }
+        }).catch(console.error)
       }
     }).catch(() => {
-      // Ignore errors, localStorage is our fallback
+      // Fallback: если не удалось загрузить модуль storage, используем localStorage
+      if (typeof window !== 'undefined' && window.localStorage) {
+        this.token = localStorage.getItem('token')
+        this.refreshToken = localStorage.getItem('refresh_token')
+      }
     })
   }
 
   setToken(token: string | null, refreshToken?: string | null) {
     this.token = token
     
-    // Always save to localStorage first (synchronous)
-    if (typeof window !== 'undefined' && window.localStorage) {
+    // Используем storage вместо прямого localStorage
+    // Для VK и Telegram данные сохраняются в их хранилищах (привязаны к user_id)
+    // Для обычного веба - в localStorage (привязан к браузеру)
+    import('../utils/storage').then(({ default: storage, storageSync, isVKWebApp, isTelegramWebApp }) => {
+      // Сохраняем через storageSync (синхронно для веба, асинхронно для VK/Telegram)
       if (token) {
-        localStorage.setItem('token', token)
+        storageSync.setItem('token', token)
+        // Также сохраняем асинхронно для надежности
+        storage.setItem('token', token).catch(console.error)
       } else {
-        localStorage.removeItem('token')
+        storageSync.removeItem('token')
+        storage.removeItem('token').catch(console.error)
         this.token = null
       }
       
       if (refreshToken !== undefined) {
         this.refreshToken = refreshToken
         if (refreshToken) {
-          localStorage.setItem('refresh_token', refreshToken)
+          storageSync.setItem('refresh_token', refreshToken)
+          storage.setItem('refresh_token', refreshToken).catch(console.error)
         } else {
-          localStorage.removeItem('refresh_token')
+          storageSync.removeItem('refresh_token')
+          storage.removeItem('refresh_token').catch(console.error)
           this.refreshToken = null
         }
       }
-    }
-    
-    // Also save to VK Storage if in VK (async, non-blocking)
-    import('../utils/storage').then(({ default: storage, isVKWebApp }) => {
-      if (typeof isVKWebApp === 'function' && isVKWebApp()) {
-        if (token) {
-          storage.setItem('token', token).catch(console.error)
-        } else {
-          storage.removeItem('token').catch(console.error)
-        }
-        
-        if (refreshToken !== undefined) {
-          if (refreshToken) {
-            storage.setItem('refresh_token', refreshToken).catch(console.error)
+      
+      // ВАЖНО: Для VK и Telegram НЕ используем localStorage
+      // Данные должны храниться только в их хранилищах
+      // Для обычного веба storageSync уже использует localStorage
+      if (!isVKWebApp() && !isTelegramWebApp()) {
+        // Для обычного веба также сохраняем в localStorage напрямую для совместимости
+        if (typeof window !== 'undefined' && window.localStorage) {
+          if (token) {
+            localStorage.setItem('token', token)
           } else {
-            storage.removeItem('refresh_token').catch(console.error)
+            localStorage.removeItem('token')
+          }
+          
+          if (refreshToken !== undefined) {
+            if (refreshToken) {
+              localStorage.setItem('refresh_token', refreshToken)
+            } else {
+              localStorage.removeItem('refresh_token')
+            }
           }
         }
       }
     }).catch(() => {
-      // Ignore errors, localStorage is our primary storage
+      // Fallback: если не удалось загрузить модуль storage, используем localStorage
+      if (typeof window !== 'undefined' && window.localStorage) {
+        if (token) {
+          localStorage.setItem('token', token)
+        } else {
+          localStorage.removeItem('token')
+          this.token = null
+        }
+        
+        if (refreshToken !== undefined) {
+          this.refreshToken = refreshToken
+          if (refreshToken) {
+            localStorage.setItem('refresh_token', refreshToken)
+          } else {
+            localStorage.removeItem('refresh_token')
+            this.refreshToken = null
+          }
+        }
+      }
     })
   }
 
@@ -155,9 +187,24 @@ class ApiClient {
       headers['Expires'] = '0'
     }
 
-    // Всегда читаем токен из localStorage перед каждым запросом
+    // Всегда читаем токен из storage перед каждым запросом
     // чтобы гарантировать, что используется актуальный токен
-    let token = localStorage.getItem('token') || this.token
+    // Для VK и Telegram используем их хранилища, для веба - localStorage
+    // Используем синхронный доступ через storageSync
+    const { storageSync } = await import('../utils/storage')
+    let token = storageSync.getItem('token') || this.token
+    
+    // Fallback: для веба также проверяем localStorage напрямую
+    if (!token && typeof window !== 'undefined' && window.localStorage) {
+      token = localStorage.getItem('token') || this.token
+    }
+    
+    // Обновляем this.token для синхронизации
+    if (token) {
+      this.token = token
+    } else {
+      this.token = null
+    }
     if (token) {
       headers['Authorization'] = `Bearer ${token}`
       // Обновляем this.token для синхронизации
