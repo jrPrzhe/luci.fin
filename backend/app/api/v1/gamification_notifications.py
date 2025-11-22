@@ -4,6 +4,7 @@
 import logging
 import httpx
 import traceback
+import random
 from datetime import datetime, timezone, timedelta
 from sqlalchemy.orm import Session
 from typing import List
@@ -199,41 +200,51 @@ async def send_daily_reminder_vk(user: User, db: Session) -> bool:
         
         # Получаем сообщение от Люси
         try:
-            from app.api.v1.ai import GamificationMessageRequest
-            request_obj = GamificationMessageRequest(event="daily_greeting", user_data=None)
             lucy_message_response = await generate_gamification_message(
-                request=request_obj,
+                request={"event": "daily_greeting", "user_data": None},
                 current_user=user,
                 db=db
             )
             lucy_message = lucy_message_response.message if hasattr(lucy_message_response, 'message') else ""
-        except Exception as e:
-            logger.warning(f"Could not get Lucy message: {e}")
+        except:
             lucy_message = f"Доброе утро, {user.first_name or 'друг'}! Люся ждёт тебя. ❤️"
         
-        # Формируем сообщение
+        # Формируем красивое сообщение для VK (без HTML, так как VK не поддерживает HTML)
+        user_name = user.first_name or "друг"
+        
+        # Заголовок
         message_parts = [
-            lucy_message,
+            f"💬 Люся желает доброго дня, {user_name}! ✨",
             "",
-            f"🔥 Страйк: {profile.streak_days} дней подряд",
-            f"⭐ Уровень: {profile.level}",
-            f"❤️ Сердце: {profile.heart_level}/100",
-            "",
-            "🎯 Ежедневные задания:"
         ]
         
+        # Статистика
+        message_parts.extend([
+            "📊 Твоя статистика:",
+            f"🔥 Страйк: {profile.streak_days} дней подряд",
+            f"⭐ Уровень: {profile.level}",
+            f"❤️ Сердце Люси: {profile.heart_level}/100",
+            "",
+        ])
+        
+        # Основное сообщение от Люси
+        message_parts.append(f"💝 {lucy_message}")
+        message_parts.append("")
+        
+        # Задания
         if quests:
-            for i, quest in enumerate(quests[:3], 1):
+            message_parts.append("🎯 Ежедневные задания на сегодня:")
+            for i, quest in enumerate(quests[:3], 1):  # Показываем до 3 квестов
                 icon = "💸" if quest.quest_type.value == "record_expense" else \
                        "💰" if quest.quest_type.value == "record_income" else \
                        "📊" if quest.quest_type.value == "review_transactions" else \
                        "💳" if quest.quest_type.value == "check_balance" else "📋"
                 message_parts.append(f"{i}. {icon} {quest.title} (+{quest.xp_reward} XP)")
         else:
-            message_parts.append("На сегодня заданий нет. Отдыхай! 😊")
+            message_parts.append("🎉 На сегодня заданий нет. Отдыхай! 😊")
         
         message_parts.append("")
-        message_parts.append("Выполняй задания, чтобы получить XP и поднять уровень! 🚀")
+        message_parts.append("💡 Выполняй задания, чтобы получить XP и поднять уровень! 🚀")
         
         message = "\n".join(message_parts)
         
@@ -241,30 +252,61 @@ async def send_daily_reminder_vk(user: User, db: Session) -> bool:
         if not settings.VK_BOT_TOKEN:
             logger.warning("VK_BOT_TOKEN not configured, skipping VK reminder")
             return False
-            
+        
+        # Проверяем, есть ли уже отправленное сообщение для редактирования
+        old_message_id = profile.daily_reminder_message_id
+        
         try:
             # VK API для отправки сообщений
             vk_api_url = "https://api.vk.com/method/messages.send"
-            params = {
+            
+            # Генерируем random_id (должен быть уникальным для каждого сообщения)
+            random_id = random.randint(1, 2147483647)
+            
+            payload = {
                 "access_token": settings.VK_BOT_TOKEN,
-                "user_id": user.vk_id,
+                "user_id": int(user.vk_id),
                 "message": message,
-                "random_id": int(datetime.now(timezone.utc).timestamp() * 1000),
+                "random_id": random_id,
                 "v": "5.131"
             }
             
             async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.get(vk_api_url, params=params)
+                # VK API требует POST запрос
+                response = await client.post(vk_api_url, json=payload)
+                
                 if response.status_code == 200:
                     result = response.json()
-                    if result.get("response"):
-                        logger.info(f"Daily reminder sent to VK user {user.id}")
+                    
+                    # Проверяем на ошибки VK API
+                    if "error" in result:
+                        error = result["error"]
+                        error_code = error.get("error_code", "unknown")
+                        error_msg = error.get("error_msg", "Unknown error")
+                        logger.error(f"VK API error {error_code}: {error_msg}")
+                        
+                        # Если сообщение не найдено (например, удалено), отправляем новое
+                        if error_code in [1, 6, 7, 9, 10]:  # Различные ошибки доступа/не найдено
+                            old_message_id = None
+                            profile.daily_reminder_message_id = None
+                            db.commit()
+                        
+                        return False
+                    
+                    # Успешная отправка
+                    if "response" in result:
+                        # Сохраняем ID нового сообщения
+                        new_message_id = result.get("response")
+                        if new_message_id:
+                            profile.daily_reminder_message_id = new_message_id
+                            db.commit()
+                        logger.info(f"Daily reminder sent to VK user {user.id}, message_id: {new_message_id}")
                         return True
                     else:
-                        logger.error(f"VK API error: {result.get('error')}")
+                        logger.error(f"Unexpected VK API response: {result}")
                         return False
                 else:
-                    logger.error(f"Failed to send VK reminder: {response.status_code}")
+                    logger.error(f"Failed to send VK reminder: HTTP {response.status_code} - {response.text}")
                     return False
         except Exception as e:
             logger.error(f"Error sending VK reminder: {e}", exc_info=True)
