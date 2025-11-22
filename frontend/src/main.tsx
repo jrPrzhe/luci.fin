@@ -13,7 +13,12 @@ initTelegramWebApp()
 initVKWebApp()
 
 // Инициализируем storage и загружаем данные из правильного хранилища
-initStorage().catch(console.error)
+// Важно: ждем завершения инициализации для Telegram/VK, чтобы токены были доступны
+initStorage().then(() => {
+  console.log('[main] Storage initialized successfully')
+}).catch((error) => {
+  console.error('[main] Storage initialization failed:', error)
+})
 
 // Initialize theme from storage
 // Для VK и Telegram используем их хранилища, для веба - localStorage

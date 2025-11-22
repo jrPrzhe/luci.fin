@@ -162,7 +162,7 @@ export function Layout() {
     const maxChecks = 10 // Максимум 10 проверок (5 секунд при интервале 500мс)
 
     // Периодически проверяем токен, если авторизация неизвестна или false
-    const checkTokenPeriodically = () => {
+    const checkTokenPeriodically = async () => {
       // Пропускаем, если идет проверка
       if (isCheckingAuth) return
 
@@ -173,7 +173,24 @@ export function Layout() {
         return
       }
 
-      const token = storageSync.getItem('token')
+      // Для Telegram/VK используем асинхронный доступ к storage
+      let token: string | null = null
+      if (isTelegramWebApp() || isVKWebApp()) {
+        try {
+          const { default: storage } = await import('../utils/storage')
+          token = await storage.getItem('token')
+          // Если не нашли асинхронно, пробуем синхронный кэш
+          if (!token) {
+            token = storageSync.getItem('token')
+          }
+        } catch (error) {
+          console.warn('[Layout] Failed to get token from Cloud Storage:', error)
+          token = storageSync.getItem('token')
+        }
+      } else {
+        token = storageSync.getItem('token')
+      }
+      
       if (token && (isAuthorized === false || isAuthorized === null)) {
         // Токен появился, проверяем авторизацию
         setIsCheckingAuth(true)
@@ -211,12 +228,12 @@ export function Layout() {
     }
 
     // Проверяем сразу
-    checkTokenPeriodically()
+    checkTokenPeriodically().catch(console.error)
 
     // И затем каждые 500мс, пока не авторизованы
     const interval = setInterval(() => {
       if (!isAuthorized && checkCount <= maxChecks) {
-        checkTokenPeriodically()
+        checkTokenPeriodically().catch(console.error)
       } else {
         clearInterval(interval)
       }

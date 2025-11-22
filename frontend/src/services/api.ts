@@ -57,27 +57,59 @@ class ApiClient {
     // Используем storage вместо прямого localStorage
     // Для VK и Telegram данные сохраняются в их хранилищах (привязаны к user_id)
     // Для обычного веба - в localStorage (привязан к браузеру)
-    import('../utils/storage').then(({ default: storage, storageSync, isVKWebApp, isTelegramWebApp }) => {
-      // Сохраняем через storageSync (синхронно для веба, асинхронно для VK/Telegram)
-      if (token) {
-        storageSync.setItem('token', token)
-        // Также сохраняем асинхронно для надежности
-        storage.setItem('token', token).catch(console.error)
+    import('../utils/storage').then(async ({ default: storage, storageSync, isVKWebApp, isTelegramWebApp }) => {
+      // Для Telegram и VK используем асинхронное сохранение с ожиданием завершения
+      if (isTelegramWebApp() || isVKWebApp()) {
+        try {
+          if (token) {
+            // Сначала обновляем кэш для синхронного доступа
+            storageSync.setItem('token', token)
+            // Затем сохраняем асинхронно и ждем завершения
+            await storage.setItem('token', token)
+            console.log('[ApiClient] Token saved to Cloud Storage successfully')
+          } else {
+            storageSync.removeItem('token')
+            await storage.removeItem('token')
+            this.token = null
+          }
+          
+          if (refreshToken !== undefined) {
+            this.refreshToken = refreshToken
+            if (refreshToken) {
+              storageSync.setItem('refresh_token', refreshToken)
+              await storage.setItem('refresh_token', refreshToken)
+            } else {
+              storageSync.removeItem('refresh_token')
+              await storage.removeItem('refresh_token')
+              this.refreshToken = null
+            }
+          }
+        } catch (error) {
+          console.error('[ApiClient] Failed to save token to Cloud Storage:', error)
+          // Продолжаем работу даже если сохранение не удалось
+        }
       } else {
-        storageSync.removeItem('token')
-        storage.removeItem('token').catch(console.error)
-        this.token = null
-      }
-      
-      if (refreshToken !== undefined) {
-        this.refreshToken = refreshToken
-        if (refreshToken) {
-          storageSync.setItem('refresh_token', refreshToken)
-          storage.setItem('refresh_token', refreshToken).catch(console.error)
+        // Для обычного веба используем синхронное сохранение
+        if (token) {
+          storageSync.setItem('token', token)
+          // Также сохраняем асинхронно для надежности
+          storage.setItem('token', token).catch(console.error)
         } else {
-          storageSync.removeItem('refresh_token')
-          storage.removeItem('refresh_token').catch(console.error)
-          this.refreshToken = null
+          storageSync.removeItem('token')
+          storage.removeItem('token').catch(console.error)
+          this.token = null
+        }
+        
+        if (refreshToken !== undefined) {
+          this.refreshToken = refreshToken
+          if (refreshToken) {
+            storageSync.setItem('refresh_token', refreshToken)
+            storage.setItem('refresh_token', refreshToken).catch(console.error)
+          } else {
+            storageSync.removeItem('refresh_token')
+            storage.removeItem('refresh_token').catch(console.error)
+            this.refreshToken = null
+          }
         }
       }
       
