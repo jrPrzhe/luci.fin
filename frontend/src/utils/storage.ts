@@ -351,8 +351,9 @@ export async function initStorage(): Promise<void> {
   }
 }
 
-// Export isVKWebApp for api.ts
+// Export isVKWebApp and isTelegramWebApp for api.ts
 export { isVKWebApp } from './vk'
+export { isTelegramWebApp } from './telegram'
 
 export default storage
 
