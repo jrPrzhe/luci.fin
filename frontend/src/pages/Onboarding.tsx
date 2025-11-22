@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useI18n } from '../contexts/I18nContext'
 import { storageSync } from '../utils/storage'
+import { api } from '../services/api'
 
 interface OnboardingPage {
   title: string
@@ -15,6 +16,42 @@ export function Onboarding({ onComplete }: { onComplete?: () => void }) {
   const { t, setLanguage, language } = useI18n()
   const [currentPage, setCurrentPage] = useState(0)
   const navigate = useNavigate()
+  const [isChecking, setIsChecking] = useState(true)
+  
+  // Проверяем, является ли пользователь существующим
+  useEffect(() => {
+    const checkIfExistingUser = async () => {
+      try {
+        const accounts = await api.getAccounts()
+        // Если есть счета, значит пользователь существующий - пропускаем онбординг
+        if (Array.isArray(accounts) && accounts.length > 0) {
+          storageSync.setItem('onboarding_completed', 'true')
+          if (onComplete) {
+            onComplete()
+          } else {
+            navigate('/')
+          }
+          return
+        }
+      } catch (error) {
+        console.error('Error checking accounts:', error)
+      }
+      setIsChecking(false)
+    }
+    
+    checkIfExistingUser()
+  }, [navigate, onComplete])
+  
+  if (isChecking) {
+    return (
+      <div className="min-h-screen bg-telegram-bg flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-telegram-primary mb-4"></div>
+          <p className="text-telegram-textSecondary">Загрузка...</p>
+        </div>
+      </div>
+    )
+  }
   
   const onboardingPages: OnboardingPage[] = [
     {

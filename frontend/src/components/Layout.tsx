@@ -127,18 +127,36 @@ export function Layout() {
     if (isAuthorized && !showWelcome) {
       const justLoggedIn = sessionStorage.getItem('justLoggedIn') === 'true'
       if (justLoggedIn) {
-        api.getCurrentUser().then(user => {
+        // Проверяем, является ли пользователь новым или существующим
+        Promise.all([
+          api.getCurrentUser(),
+          api.getAccounts().catch(() => []), // Если ошибка, считаем что нет счетов
+        ]).then(([user, accounts]) => {
           if (user) {
             setUserName(user.first_name || user.username || 'Пользователь')
-            // Проверяем, прошел ли пользователь онбординг
-            const onboardingCompleted = storageSync.getItem('onboarding_completed') === 'true'
-            if (!onboardingCompleted) {
-              // Показываем онбординг для новых пользователей
-              navigate('/onboarding')
-              sessionStorage.removeItem('justLoggedIn')
-            } else {
+            
+            // Проверяем, является ли пользователь существующим
+            // Если есть счета (больше чем дефолтный), значит пользователь существующий
+            const hasAccounts = Array.isArray(accounts) && accounts.length > 0
+            const isExistingUser = hasAccounts
+            
+            if (isExistingUser) {
+              // Для существующих пользователей - только приветствие, без онбординга
+              // Устанавливаем флаг онбординга, чтобы больше не показывать
+              storageSync.setItem('onboarding_completed', 'true')
               setShowWelcome(true)
               sessionStorage.removeItem('justLoggedIn')
+            } else {
+              // Для новых пользователей проверяем флаг онбординга
+              const onboardingCompleted = storageSync.getItem('onboarding_completed') === 'true'
+              if (!onboardingCompleted) {
+                // Показываем онбординг для новых пользователей
+                navigate('/onboarding')
+                sessionStorage.removeItem('justLoggedIn')
+              } else {
+                setShowWelcome(true)
+                sessionStorage.removeItem('justLoggedIn')
+              }
             }
           }
         }).catch(console.error)
