@@ -49,12 +49,13 @@ function TelegramAuthHandler() {
 
     const checkTelegramAuth = async () => {
       try {
-        // Timeout after 10 seconds (увеличено для Telegram Cloud Storage)
+        // Timeout after 5 seconds (достаточно для авторизации)
         timeoutId = setTimeout(() => {
           if (mounted) {
+            console.warn('[TelegramAuthHandler] Auth check timeout')
             setIsChecking(false)
           }
-        }, 10000)
+        }, 5000)
 
         // Если не в Telegram Mini App, пропускаем проверку
         if (!isTelegramWebApp()) {
@@ -66,30 +67,27 @@ function TelegramAuthHandler() {
         // На других страницах просто проверяем в фоне
 
         // Для Telegram используем асинхронный доступ к storage
-        // Сначала пытаемся загрузить токен из Cloud Storage
+        // Сначала пытаемся загрузить токен из Cloud Storage (одна попытка, быстро)
         let token: string | null = null
         
-        // Пробуем несколько раз с задержкой (Telegram Cloud Storage может быть медленным)
-        for (let attempt = 0; attempt < 3; attempt++) {
-          try {
-            // Используем асинхронный доступ для Telegram
-            const { default: storage } = await import('./utils/storage')
-            token = await storage.getItem('token')
-            if (token) break
-          } catch (error) {
-            console.warn(`[TelegramAuthHandler] Storage access attempt ${attempt + 1} failed:`, error)
-          }
+        try {
+          // Сначала пробуем синхронный доступ (из кэша) - быстрее
+          token = storageSync.getItem('token')
           
-          // Если токен не найден, пробуем синхронный доступ (из кэша)
+          // Если не нашли в кэше, пробуем асинхронный доступ (только одна попытка)
           if (!token) {
-            token = storageSync.getItem('token')
-            if (token) break
+            try {
+              const { default: storage } = await import('./utils/storage')
+              token = await Promise.race([
+                storage.getItem('token'),
+                new Promise<string | null>((resolve) => setTimeout(() => resolve(null), 500)) // Таймаут 500мс
+              ])
+            } catch (error) {
+              console.warn('[TelegramAuthHandler] Storage access failed:', error)
+            }
           }
-          
-          // Ждем перед следующей попыткой (только если не последняя)
-          if (attempt < 2 && !token) {
-            await new Promise(resolve => setTimeout(resolve, 300))
-          }
+        } catch (error) {
+          console.warn('[TelegramAuthHandler] Token loading error:', error)
         }
         if (token) {
           try {
@@ -184,52 +182,36 @@ function TelegramAuthHandler() {
             
             if (mounted) {
               // Tokens are already stored by api.loginTelegram method
-              // Проверяем, что токен действительно сохранен (с повторными попытками для Telegram Cloud Storage)
-              let savedToken: string | null = null
-              for (let attempt = 0; attempt < 5; attempt++) {
+              // Проверяем токен быстро (одна попытка)
+              let savedToken: string | null = storageSync.getItem('token')
+              
+              // Если не нашли синхронно, пробуем асинхронно (с таймаутом)
+              if (!savedToken || savedToken !== response.access_token) {
                 try {
                   const { default: storage } = await import('./utils/storage')
-                  savedToken = await storage.getItem('token')
-                  if (savedToken && savedToken === response.access_token) break
+                  savedToken = await Promise.race([
+                    storage.getItem('token'),
+                    new Promise<string | null>((resolve) => setTimeout(() => resolve(null), 300))
+                  ])
                 } catch (error) {
-                  console.warn(`[TelegramAuthHandler] Token verification attempt ${attempt + 1} failed:`, error)
-                }
-                
-                // Также проверяем синхронный кэш
-                if (!savedToken || savedToken !== response.access_token) {
-                  savedToken = storageSync.getItem('token')
-                  if (savedToken && savedToken === response.access_token) break
-                }
-                
-                // Ждем перед следующей попыткой
-                if (attempt < 4) {
-                  await new Promise(resolve => setTimeout(resolve, 200))
+                  console.warn('[TelegramAuthHandler] Token verification failed:', error)
                 }
               }
               
-              if (!savedToken || savedToken !== response.access_token) {
-                console.error('[TelegramAuthHandler] Token was not saved correctly after multiple attempts!', {
-                  expected: response.access_token?.substring(0, 20),
-                  saved: savedToken?.substring(0, 20)
-                })
-                // Не прерываем процесс - токен может быть сохранен, просто не успел загрузиться
-                // Продолжаем с навигацией
-              } else {
+              if (savedToken && savedToken === response.access_token) {
                 console.log('[TelegramAuthHandler] Token saved and verified successfully')
+              } else {
+                console.warn('[TelegramAuthHandler] Token verification incomplete, but continuing...')
               }
               
               // Помечаем, что пользователь только что вошел
               sessionStorage.setItem('justLoggedIn', 'true')
               
-              // Даем время на сохранение токена и обновление состояния
-              setTimeout(() => {
-                if (mounted) {
-                  clearTimeout(timeoutId)
-                  setIsChecking(false)
-                  // Проверяем онбординг - Layout перенаправит на онбординг если нужно
-                  navigate('/', { replace: true })
-                }
-              }, 300)
+              // Сразу переходим (не ждем) - токен уже сохранен
+              clearTimeout(timeoutId)
+              setIsChecking(false)
+              // Проверяем онбординг - Layout перенаправит на онбординг если нужно
+              navigate('/', { replace: true })
             }
           } catch (error: any) {
             console.error('Telegram auto-auth failed:', error)

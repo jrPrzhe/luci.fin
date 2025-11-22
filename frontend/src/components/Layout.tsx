@@ -173,22 +173,20 @@ export function Layout() {
         return
       }
 
-      // Для Telegram/VK используем асинхронный доступ к storage
-      let token: string | null = null
-      if (isTelegramWebApp() || isVKWebApp()) {
+      // Для Telegram/VK используем быстрый доступ к storage
+      let token: string | null = storageSync.getItem('token')
+      
+      // Если не нашли синхронно и это Telegram/VK, пробуем асинхронно (с таймаутом)
+      if (!token && (isTelegramWebApp() || isVKWebApp())) {
         try {
           const { default: storage } = await import('../utils/storage')
-          token = await storage.getItem('token')
-          // Если не нашли асинхронно, пробуем синхронный кэш
-          if (!token) {
-            token = storageSync.getItem('token')
-          }
+          token = await Promise.race([
+            storage.getItem('token'),
+            new Promise<string | null>((resolve) => setTimeout(() => resolve(null), 200)) // Таймаут 200мс
+          ])
         } catch (error) {
           console.warn('[Layout] Failed to get token from Cloud Storage:', error)
-          token = storageSync.getItem('token')
         }
-      } else {
-        token = storageSync.getItem('token')
       }
       
       if (token && (isAuthorized === false || isAuthorized === null)) {
