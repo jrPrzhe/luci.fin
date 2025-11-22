@@ -610,72 +610,11 @@ class ApiClient {
     )
   }
 
-  // Goals
-  async getGoals(status?: string) {
-    const url = status ? `/api/v1/goals/?status_filter=${status}` : '/api/v1/goals/'
-    return this.request<any[]>(url)
-  }
-
-  async getGoal(goalId: number) {
-    return this.request<any>(`/api/v1/goals/${goalId}`)
-  }
-
-  async deleteGoal(goalId: number) {
-    return this.request<void>(`/api/v1/goals/${goalId}`, {
-      method: 'DELETE',
-    })
-  }
-
-  async createGoal(data: {
-    name: string
-    description?: string
-    target_amount: number
-    currency?: string
-    target_date?: string
-    goal_type?: string
-    roadmap?: string
-  }) {
-    return this.request<any>('/api/v1/goals/', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    })
-  }
-
-  async updateGoal(goalId: number, data: {
-    name?: string
-    description?: string
-    target_amount?: number
-    currency?: string
-    target_date?: string
-    current_amount?: number
-    status?: string
-    roadmap?: string
-  }) {
-    return this.request<any>(`/api/v1/goals/${goalId}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    })
-  }
 
   async addProgressToGoal(goalId: number, amount: number) {
     return this.request<any>(`/api/v1/goals/${goalId}/add-progress`, {
       method: 'POST',
       body: JSON.stringify({ amount }),
-    })
-  }
-
-  async generateRoadmap(data: {
-    goal_name: string
-    target_amount: number
-    currency: string
-    transactions?: any[]
-    balance?: number
-    income_total?: number
-    expense_total?: number
-  }) {
-    return this.request<any>('/api/v1/goals/generate-roadmap', {
-      method: 'POST',
-      body: JSON.stringify(data),
     })
   }
 
