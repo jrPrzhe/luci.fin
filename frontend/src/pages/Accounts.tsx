@@ -45,6 +45,17 @@ export function Accounts() {
   const [sharedBudgets, setSharedBudgets] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  
+  // Confirmation modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    show: boolean
+    message: string
+    onConfirm: () => void | Promise<void>
+  }>({
+    show: false,
+    message: '',
+    onConfirm: () => {},
+  })
 
   // Form state
   const [formData, setFormData] = useState({
@@ -235,17 +246,22 @@ export function Accounts() {
                     )}
                   </div>
                   <button
-                    onClick={async () => {
-                      if (!confirm('Вы уверены, что хотите удалить этот счёт?')) {
-                        return
-                      }
-                      try {
-                        await api.deleteAccount(account.id)
-                        await loadAccounts()
-                        showSuccess('Счёт удалён')
-                      } catch (err: any) {
-                        showError(err.message || 'Ошибка удаления счёта')
-                      }
+                    onClick={() => {
+                      setConfirmModal({
+                        show: true,
+                        message: 'Вы уверены, что хотите удалить этот счёт?',
+                        onConfirm: async () => {
+                          try {
+                            await api.deleteAccount(account.id)
+                            await loadAccounts()
+                            showSuccess('Счёт удалён')
+                            setConfirmModal({ show: false, message: '', onConfirm: () => {} })
+                          } catch (err: any) {
+                            showError(err.message || 'Ошибка удаления счёта')
+                            setConfirmModal({ show: false, message: '', onConfirm: () => {} })
+                          }
+                        },
+                      })
                     }}
                     className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 px-2 py-1 text-sm"
                     title="Удалить счёт"
@@ -443,6 +459,38 @@ export function Accounts() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {confirmModal.show && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="card p-6 max-w-md w-full">
+            <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
+              Подтверждение
+            </h2>
+            <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-6">
+              {confirmModal.message}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  confirmModal.onConfirm()
+                }}
+                className="flex-1 btn-primary text-sm md:text-base py-2.5 md:py-3"
+              >
+                Да
+              </button>
+              <button
+                onClick={() => {
+                  setConfirmModal({ show: false, message: '', onConfirm: () => {} })
+                }}
+                className="flex-1 btn-secondary text-sm md:text-base py-2.5 md:py-3"
+              >
+                Отмена
+              </button>
             </div>
           </div>
         </div>

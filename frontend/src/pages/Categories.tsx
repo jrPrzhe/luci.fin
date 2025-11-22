@@ -29,6 +29,17 @@ export function Categories() {
   const [showAllCategoriesSection, setShowAllCategoriesSection] = useState(true)
   const { showError, showSuccess } = useToast()
 
+  // Confirmation modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    show: boolean
+    message: string
+    onConfirm: () => void | Promise<void>
+  }>({
+    show: false,
+    message: '',
+    onConfirm: () => {},
+  })
+
   const [formData, setFormData] = useState({
     name: '',
     transaction_type: 'expense' as 'income' | 'expense' | 'both',
@@ -91,19 +102,23 @@ export function Categories() {
     setShowForm(true)
   }
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Вы уверены, что хотите удалить эту категорию?')) {
-      return
-    }
-
-    try {
-      await api.deleteCategory(id)
-      showSuccess('Категория успешно удалена')
-      await loadCategories()
-    } catch (err: any) {
-      const { translateError } = await import('../utils/errorMessages')
-      showError(translateError(err))
-    }
+  const handleDelete = (id: number) => {
+    setConfirmModal({
+      show: true,
+      message: 'Вы уверены, что хотите удалить эту категорию?',
+      onConfirm: async () => {
+        try {
+          await api.deleteCategory(id)
+          showSuccess('Категория успешно удалена')
+          await loadCategories()
+          setConfirmModal({ show: false, message: '', onConfirm: () => {} })
+        } catch (err: any) {
+          const { translateError } = await import('../utils/errorMessages')
+          showError(translateError(err))
+          setConfirmModal({ show: false, message: '', onConfirm: () => {} })
+        }
+      },
+    })
   }
 
   const handleToggleFavorite = async (id: number, currentFavorite: boolean) => {
@@ -623,6 +638,38 @@ export function Categories() {
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {confirmModal.show && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="card p-6 max-w-md w-full">
+            <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
+              Подтверждение
+            </h2>
+            <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-6">
+              {confirmModal.message}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  confirmModal.onConfirm()
+                }}
+                className="flex-1 btn-primary text-sm md:text-base py-2.5 md:py-3"
+              >
+                Да
+              </button>
+              <button
+                onClick={() => {
+                  setConfirmModal({ show: false, message: '', onConfirm: () => {} })
+                }}
+                className="flex-1 btn-secondary text-sm md:text-base py-2.5 md:py-3"
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

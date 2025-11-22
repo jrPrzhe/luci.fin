@@ -61,6 +61,17 @@ export function Transactions() {
   const [hasMore, setHasMore] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
 
+  // Confirmation modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    show: boolean
+    message: string
+    onConfirm: () => void | Promise<void>
+  }>({
+    show: false,
+    message: '',
+    onConfirm: () => {},
+  })
+
   // Form state
   const [formData, setFormData] = useState({
     account_id: '',
@@ -284,18 +295,22 @@ export function Transactions() {
     setShowForm(true)
   }
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Вы уверены, что хотите удалить эту транзакцию?')) {
-      return
-    }
-
-    try {
-      await api.deleteTransaction(id)
-      await loadData()
-      showSuccess('Транзакция удалена')
-    } catch (err: any) {
-      showError(err.message || 'Ошибка удаления транзакции')
-    }
+  const handleDelete = (id: number) => {
+    setConfirmModal({
+      show: true,
+      message: 'Вы уверены, что хотите удалить эту транзакцию?',
+      onConfirm: async () => {
+        try {
+          await api.deleteTransaction(id)
+          await loadData()
+          showSuccess('Транзакция удалена')
+          setConfirmModal({ show: false, message: '', onConfirm: () => {} })
+        } catch (err: any) {
+          showError(err.message || 'Ошибка удаления транзакции')
+          setConfirmModal({ show: false, message: '', onConfirm: () => {} })
+        }
+      },
+    })
   }
 
   const resetForm = () => {
@@ -962,6 +977,38 @@ export function Transactions() {
               Показано {transactions.length} транзакций
             </div>
           )}
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {confirmModal.show && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="card p-6 max-w-md w-full">
+            <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
+              Подтверждение
+            </h2>
+            <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-6">
+              {confirmModal.message}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  confirmModal.onConfirm()
+                }}
+                className="flex-1 btn-primary text-sm md:text-base py-2.5 md:py-3"
+              >
+                Да
+              </button>
+              <button
+                onClick={() => {
+                  setConfirmModal({ show: false, message: '', onConfirm: () => {} })
+                }}
+                className="flex-1 btn-secondary text-sm md:text-base py-2.5 md:py-3"
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
