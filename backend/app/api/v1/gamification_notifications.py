@@ -23,6 +23,16 @@ async def send_daily_reminder_telegram(user: User, db: Session) -> bool:
     if not user.telegram_id or not settings.TELEGRAM_BOT_TOKEN:
         return False
     
+    # Валидация telegram_id - должен быть числом или строкой с числом
+    try:
+        telegram_id = str(user.telegram_id).strip()
+        if not telegram_id or not telegram_id.isdigit():
+            logger.error(f"Invalid telegram_id for user {user.id}: '{user.telegram_id}'")
+            return False
+    except Exception as e:
+        logger.error(f"Error validating telegram_id for user {user.id}: {e}")
+        return False
+    
     try:
         # Получаем профиль геймификации
         profile = get_or_create_profile(user.id, db)
@@ -71,21 +81,17 @@ async def send_daily_reminder_telegram(user: User, db: Session) -> bool:
         message_parts.append(f"💝 {lucy_message}")
         message_parts.append("")
         
-        # Задания в спойлере для интриги
+        # Задания
         if quests:
-            quests_text_parts = []
+            message_parts.append(f"🎯 <b>Ежедневные задания на сегодня:</b>")
             for i, quest in enumerate(quests[:3], 1):  # Показываем до 3 квестов
                 icon = "💸" if quest.quest_type.value == "record_expense" else \
                        "💰" if quest.quest_type.value == "record_income" else \
                        "📊" if quest.quest_type.value == "review_transactions" else \
                        "💳" if quest.quest_type.value == "check_balance" else "📋"
-                quests_text_parts.append(f"{i}. {icon} {quest.title} <b>(+{quest.xp_reward} XP)</b>")
-            
-            quests_text = "\n".join(quests_text_parts)
-            message_parts.append(f"🎯 <b>Ежедневные задания на сегодня:</b>")
-            message_parts.append(f"<spoiler>{quests_text}</spoiler>")
+                message_parts.append(f"{i}. {icon} {quest.title} <b>(+{quest.xp_reward} XP)</b>")
         else:
-            message_parts.append("<spoiler>🎉 На сегодня заданий нет. Отдыхай! 😊</spoiler>")
+            message_parts.append("🎉 На сегодня заданий нет. Отдыхай! 😊")
         
         message_parts.append("")
         message_parts.append("💡 <i>Выполняй задания, чтобы получить XP и поднять уровень!</i> 🚀")
@@ -96,15 +102,23 @@ async def send_daily_reminder_telegram(user: User, db: Session) -> bool:
         keyboard = []
         frontend_url = settings.FRONTEND_URL or "http://localhost:5173"
         
-        # Добавляем кнопку для открытия мини-апп
-        keyboard.append([{
-            "text": "📱 Открыть приложение",
-            "web_app": {"url": frontend_url}
-        }])
+        # Проверяем, что URL валидный для web_app (должен быть HTTPS в продакшене)
+        # Для web_app кнопки Telegram требует HTTPS (кроме localhost)
+        use_web_app = True
+        if frontend_url and not frontend_url.startswith(("https://", "http://localhost")):
+            logger.warning(f"Frontend URL is not HTTPS: {frontend_url}, web_app button may not work")
+            use_web_app = False
+        
+        # Добавляем кнопку для открытия мини-апп только если URL валидный
+        if use_web_app and frontend_url:
+            keyboard.append([{
+                "text": "📱 Открыть приложение",
+                "web_app": {"url": frontend_url}
+            }])
         
         reply_markup = {
             "inline_keyboard": keyboard
-        }
+        } if keyboard else None
         
         # Проверяем, есть ли уже отправленное сообщение для редактирования
         old_message_id = profile.daily_reminder_message_id
@@ -117,7 +131,7 @@ async def send_daily_reminder_telegram(user: User, db: Session) -> bool:
                 try:
                     edit_url = f"{base_url}/editMessageText"
                     edit_payload = {
-                        "chat_id": user.telegram_id,
+                        "chat_id": telegram_id,
                         "message_id": old_message_id,
                         "text": message,
                         "parse_mode": "HTML",
@@ -125,6 +139,7 @@ async def send_daily_reminder_telegram(user: User, db: Session) -> bool:
                     }
                     
                     edit_response = await client.post(edit_url, json=edit_payload)
+                    edit_response_text = edit_response.text
                     if edit_response.status_code == 200:
                         result = edit_response.json()
                         if result.get("ok"):
@@ -133,12 +148,13 @@ async def send_daily_reminder_telegram(user: User, db: Session) -> bool:
                             return True
                         else:
                             # Сообщение не найдено или удалено, отправляем новое
-                            logger.warning(f"Could not edit message {old_message_id}, sending new one")
+                            error_description = result.get('description', 'Unknown error')
+                            logger.warning(f"Could not edit message {old_message_id}: {error_description}, sending new one")
                             profile.daily_reminder_message_id = None
                             db.commit()
                     else:
                         # Ошибка редактирования, отправляем новое сообщение
-                        logger.warning(f"Failed to edit message {old_message_id}: {edit_response.status_code}, sending new one")
+                        logger.warning(f"Failed to edit message {old_message_id}: HTTP {edit_response.status_code}, response: {edit_response_text}, sending new one")
                         profile.daily_reminder_message_id = None
                         db.commit()
                 except Exception as e:
@@ -149,13 +165,15 @@ async def send_daily_reminder_telegram(user: User, db: Session) -> bool:
             # Отправляем новое сообщение (если редактирование не удалось или сообщения нет)
             send_url = f"{base_url}/sendMessage"
             send_payload = {
-                "chat_id": user.telegram_id,
+                "chat_id": telegram_id,
                 "text": message,
-                "parse_mode": "HTML",
-                "reply_markup": reply_markup
+                "parse_mode": "HTML"
             }
+            if reply_markup:
+                send_payload["reply_markup"] = reply_markup
             
             response = await client.post(send_url, json=send_payload)
+            response_text = response.text
             if response.status_code == 200:
                 result = response.json()
                 if result.get("ok"):
@@ -167,10 +185,16 @@ async def send_daily_reminder_telegram(user: User, db: Session) -> bool:
                     logger.info(f"Daily reminder sent to Telegram user {user.id}, message_id: {new_message_id}")
                     return True
                 else:
-                    logger.error(f"Failed to send Telegram reminder: {result.get('description', 'Unknown error')}")
+                    error_description = result.get('description', 'Unknown error')
+                    error_code = result.get('error_code', 'N/A')
+                    logger.error(f"Failed to send Telegram reminder: {error_code} - {error_description}")
+                    logger.error(f"Response: {response_text}")
+                    logger.error(f"Payload: chat_id={telegram_id}, message_length={len(message)}")
                     return False
             else:
-                logger.error(f"Failed to send Telegram reminder: {response.status_code}")
+                logger.error(f"Failed to send Telegram reminder: HTTP {response.status_code}")
+                logger.error(f"Response: {response_text}")
+                logger.error(f"Payload: chat_id={telegram_id}, message_length={len(message)}")
                 return False
                 
     except Exception as e:
@@ -181,6 +205,17 @@ async def send_daily_reminder_telegram(user: User, db: Session) -> bool:
 async def send_daily_reminder_vk(user: User, db: Session) -> bool:
     """Отправить ежедневное напоминание в VK"""
     if not user.vk_id or not settings.VK_BOT_TOKEN:
+        return False
+    
+    # Валидация vk_id - должен быть числом или строкой с числом
+    try:
+        vk_id = str(user.vk_id).strip()
+        if not vk_id or not vk_id.isdigit():
+            logger.error(f"Invalid vk_id for user {user.id}: '{user.vk_id}'")
+            return False
+        vk_id_int = int(vk_id)
+    except (ValueError, AttributeError) as e:
+        logger.error(f"Error validating vk_id for user {user.id}: {e}")
         return False
     
     try:
@@ -265,7 +300,7 @@ async def send_daily_reminder_vk(user: User, db: Session) -> bool:
             
             payload = {
                 "access_token": settings.VK_BOT_TOKEN,
-                "user_id": int(user.vk_id),
+                "user_id": vk_id_int,
                 "message": message,
                 "random_id": random_id,
                 "v": "5.131"
@@ -284,6 +319,8 @@ async def send_daily_reminder_vk(user: User, db: Session) -> bool:
                         error_code = error.get("error_code", "unknown")
                         error_msg = error.get("error_msg", "Unknown error")
                         logger.error(f"VK API error {error_code}: {error_msg}")
+                        logger.error(f"VK API response: {result}")
+                        logger.error(f"VK user_id: {vk_id_int}, message_length: {len(message)}")
                         
                         # Если сообщение не найдено (например, удалено), отправляем новое
                         if error_code in [1, 6, 7, 9, 10]:  # Различные ошибки доступа/не найдено
@@ -306,7 +343,9 @@ async def send_daily_reminder_vk(user: User, db: Session) -> bool:
                         logger.error(f"Unexpected VK API response: {result}")
                         return False
                 else:
-                    logger.error(f"Failed to send VK reminder: HTTP {response.status_code} - {response.text}")
+                    logger.error(f"Failed to send VK reminder: HTTP {response.status_code}")
+                    logger.error(f"VK API response: {response.text}")
+                    logger.error(f"VK user_id: {vk_id_int}, message_length: {len(message)}")
                     return False
         except Exception as e:
             logger.error(f"Error sending VK reminder: {e}", exc_info=True)
