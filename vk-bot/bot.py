@@ -382,7 +382,7 @@ async def cancel_handler(message: Message):
 
 @bot.on.message(CommandRule("notifications", ["уведомления", "настройки"]))
 async def notifications_handler(message: Message):
-    """Handle notifications command - manage notification settings"""
+    """Handle notifications command - manage VK notification settings only"""
     vk_id = str(message.from_id)
     lang = await get_user_language(vk_id)
     
@@ -400,31 +400,18 @@ async def notifications_handler(message: Message):
             return
         
         user_data = response.json()
-        telegram_enabled = user_data.get('telegram_notifications_enabled', True)
         vk_enabled = user_data.get('vk_notifications_enabled', True)
         
-        # Build status text
-        telegram_status = t("notifications.enabled", lang) if telegram_enabled else t("notifications.disabled", lang)
+        # Build status text - only VK notifications
         vk_status = t("notifications.enabled", lang) if vk_enabled else t("notifications.disabled", lang)
         
         message_text = (
             t("notifications.title", lang) +
-            t("notifications.telegram_status", lang, status=telegram_status) +
             t("notifications.vk_status", lang, status=vk_status)
         )
         
-        # Create keyboard with toggle buttons
+        # Create keyboard with toggle button - only VK
         keyboard = Keyboard(one_time=False)
-        
-        # Telegram toggle button (only if user has Telegram ID)
-        if user_data.get('telegram_id'):
-            telegram_button_text = t("notifications.telegram_toggle", lang,
-                status="✅" if telegram_enabled else "❌")
-            keyboard.add(Text(
-                telegram_button_text,
-                payload=json.dumps({"command": "notif_tg", "value": not telegram_enabled})
-            ))
-            keyboard.row()
         
         # VK toggle button
         vk_button_text = t("notifications.vk_toggle", lang,
@@ -1010,21 +997,16 @@ async def button_handler(message: Message):
             elif command == "help":
                 await help_handler(message)
                 return
-            elif command == "notif_tg" or command == "notif_vk":
-                # Handle notification toggle
-                platform = "telegram" if command == "notif_tg" else "vk"
+            elif command == "notif_vk":
+                # Handle VK notification toggle - only VK in VK bot
                 new_value = payload_data.get("value", True)
                 
                 vk_id = str(message.from_id)
                 lang = await get_user_language(vk_id)
                 
                 try:
-                    # Prepare update data
-                    update_data = {}
-                    if platform == "telegram":
-                        update_data["telegram_notifications_enabled"] = new_value
-                    else:
-                        update_data["vk_notifications_enabled"] = new_value
+                    # Prepare update data - only VK notifications
+                    update_data = {"vk_notifications_enabled": new_value}
                     
                     # Update settings in backend
                     response = await make_authenticated_request(
