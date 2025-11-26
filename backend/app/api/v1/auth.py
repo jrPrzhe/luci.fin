@@ -1298,6 +1298,10 @@ async def update_current_user(
         current_user.default_currency = user_update.default_currency
     if user_update.language is not None:
         current_user.language = user_update.language
+    if user_update.telegram_notifications_enabled is not None:
+        current_user.telegram_notifications_enabled = user_update.telegram_notifications_enabled
+    if user_update.vk_notifications_enabled is not None:
+        current_user.vk_notifications_enabled = user_update.vk_notifications_enabled
     
     # Note: username and telegram_username cannot be changed via API
     # telegram_username is updated automatically via Telegram login

@@ -11,7 +11,8 @@ en = {
         "report": "📊 report - get AI report\n",
         "goal": "🎯 goal - create financial goal\n",
         "help": "❓ help - help\n",
-        "language": "🌍 language - change language\n\n",
+        "language": "🌍 language - change language\n",
+        "notifications": "🔔 notifications - manage notifications\n\n",
         "important": "*Important:* To use the bot, you need to register first through the web interface or Mini App.",
     },
     "help": {
@@ -24,6 +25,7 @@ en = {
         "report": "📊 report - get AI financial analysis\n",
         "goal": "🎯 goal - create financial goal with AI plan\n",
         "language": "🌍 language - change language\n",
+        "notifications": "🔔 notifications - manage notifications\n",
         "cancel": "cancel - cancel current operation\n",
         "help": "❓ help - this help\n\n",
         "usage": "*Usage:*\n",
@@ -113,6 +115,17 @@ en = {
     },
     "cancel": {
         "cancelled": "❌ Operation cancelled",
+    },
+    "notifications": {
+        "title": "🔔 *Notification Settings*\n\n",
+        "telegram_status": "Telegram notifications: *{status}*\n",
+        "vk_status": "VKontakte notifications: *{status}*\n",
+        "enabled": "Enabled ✅",
+        "disabled": "Disabled ❌",
+        "telegram_toggle": "Telegram: {status}",
+        "vk_toggle": "VKontakte: {status}",
+        "updated": "✅ Notification settings updated",
+        "error": "❌ Error updating settings",
     },
 }
 

@@ -8,6 +8,7 @@ import random
 from datetime import datetime, timezone, timedelta
 from sqlalchemy.orm import Session
 from typing import List
+import pytz
 from app.core.database import SessionLocal
 from app.core.config import settings
 from app.models.user import User
@@ -21,6 +22,11 @@ logger = logging.getLogger(__name__)
 async def send_daily_reminder_telegram(user: User, db: Session) -> bool:
     """Отправить ежедневное напоминание в Telegram"""
     if not user.telegram_id or not settings.TELEGRAM_BOT_TOKEN:
+        return False
+    
+    # Проверяем, включены ли уведомления для Telegram
+    if not getattr(user, 'telegram_notifications_enabled', True):
+        logger.info(f"Telegram notifications disabled for user {user.id}, skipping")
         return False
     
     # Валидация telegram_id - должен быть числом или строкой с числом
@@ -218,6 +224,11 @@ async def send_daily_reminder_vk(user: User, db: Session) -> bool:
     if not user.vk_id or not settings.VK_BOT_TOKEN:
         return False
     
+    # Проверяем, включены ли уведомления для VK
+    if not getattr(user, 'vk_notifications_enabled', True):
+        logger.info(f"VK notifications disabled for user {user.id}, skipping")
+        return False
+    
     # Валидация vk_id - должен быть числом или строкой с числом
     try:
         vk_id = str(user.vk_id).strip()
@@ -336,6 +347,15 @@ async def send_daily_reminder_vk(user: User, db: Session) -> bool:
                         error = result["error"]
                         error_code = error.get("error_code", "unknown")
                         error_msg = error.get("error_msg", "Unknown error")
+                        
+                        # Ошибка 901 - пользователь не разрешил отправку сообщений
+                        # Это не критическая ошибка, просто пользователь не настроил бота
+                        if error_code == 901:
+                            logger.info(f"VK user {user.id} (vk_id: {vk_id_int}) has not allowed messages from bot. This is expected if user hasn't started conversation with bot.")
+                            # Не логируем как ошибку, это нормальная ситуация
+                            return False
+                        
+                        # Другие ошибки логируем как ошибки
                         logger.error(f"VK API error {error_code}: {error_msg}")
                         logger.error(f"VK API response: {result}")
                         logger.error(f"VK user_id: {vk_id_int}, message_length: {len(message)}")
@@ -374,8 +394,42 @@ async def send_daily_reminder_vk(user: User, db: Session) -> bool:
         return False
 
 
+def is_time_for_reminder(user: User) -> bool:
+    """Проверяет, наступило ли время для отправки напоминания (9:00 по местному времени пользователя)"""
+    try:
+        # Получаем часовой пояс пользователя (по умолчанию UTC)
+        user_timezone_str = getattr(user, 'timezone', 'UTC') or 'UTC'
+        
+        # Пытаемся получить объект часового пояса
+        try:
+            user_tz = pytz.timezone(user_timezone_str)
+        except pytz.exceptions.UnknownTimeZoneError:
+            logger.warning(f"Unknown timezone '{user_timezone_str}' for user {user.id}, using UTC")
+            user_tz = pytz.UTC
+        
+        # Получаем текущее время в часовом поясе пользователя
+        now_utc = datetime.now(timezone.utc)
+        now_user_tz = now_utc.astimezone(user_tz)
+        
+        # Проверяем, что сейчас 9:00 (с допуском в 1 час для запуска скрипта)
+        current_hour = now_user_tz.hour
+        current_minute = now_user_tz.minute
+        
+        # Отправляем если время между 9:00 и 9:59
+        if current_hour == 9:
+            return True
+        
+        logger.debug(f"User {user.id} timezone {user_timezone_str}: current time {now_user_tz.strftime('%H:%M')}, not 9:00 yet")
+        return False
+        
+    except Exception as e:
+        logger.error(f"Error checking time for user {user.id}: {e}", exc_info=True)
+        # В случае ошибки не отправляем (безопаснее)
+        return False
+
+
 async def send_daily_reminders_to_all_users():
-    """Отправить ежедневные напоминания всем пользователям с активными ботами"""
+    """Отправить ежедневные напоминания всем пользователям с активными ботами в 9:00 по их местному времени"""
     # Используем sys.stdout для гарантированного вывода
     import sys
     def log(msg):
@@ -394,40 +448,60 @@ async def send_daily_reminders_to_all_users():
         ).all()
         
         log(f"[INFO] Found {len(users)} users with Telegram or VK IDs")
-        logger.info(f"Sending daily reminders to {len(users)} users")
+        logger.info(f"Checking {len(users)} users for daily reminders")
         
         if len(users) == 0:
             log("[WARNING] No users found with Telegram or VK IDs")
             return 0
         
         sent_count = 0
+        skipped_timezone_count = 0
+        skipped_settings_count = 0
+        
         for i, user in enumerate(users, 1):
             try:
-                log(f"[INFO] Processing user {i}/{len(users)}: ID={user.id}, Telegram={bool(user.telegram_id)}, VK={bool(user.vk_id)}")
+                # Проверяем, наступило ли время для отправки (9:00 по местному времени)
+                if not is_time_for_reminder(user):
+                    skipped_timezone_count += 1
+                    continue
+                
+                log(f"[INFO] Processing user {i}/{len(users)}: ID={user.id}, Telegram={bool(user.telegram_id)}, VK={bool(user.vk_id)}, Timezone={getattr(user, 'timezone', 'UTC')}")
                 
                 if user.telegram_id:
-                    log(f"[INFO] Sending Telegram reminder to user {user.id}...")
-                    success = await send_daily_reminder_telegram(user, db)
-                    if success:
-                        sent_count += 1
-                        log(f"[SUCCESS] Telegram reminder sent to user {user.id}")
+                    # Проверяем настройки уведомлений
+                    if not getattr(user, 'telegram_notifications_enabled', True):
+                        log(f"[INFO] Telegram notifications disabled for user {user.id}, skipping")
+                        skipped_settings_count += 1
                     else:
-                        log(f"[WARNING] Failed to send Telegram reminder to user {user.id}")
+                        log(f"[INFO] Sending Telegram reminder to user {user.id}...")
+                        success = await send_daily_reminder_telegram(user, db)
+                        if success:
+                            sent_count += 1
+                            log(f"[SUCCESS] Telegram reminder sent to user {user.id}")
+                        else:
+                            log(f"[WARNING] Failed to send Telegram reminder to user {user.id}")
                 
                 if user.vk_id:
-                    log(f"[INFO] Sending VK reminder to user {user.id}...")
-                    success = await send_daily_reminder_vk(user, db)
-                    if success:
-                        sent_count += 1
-                        log(f"[SUCCESS] VK reminder sent to user {user.id}")
+                    # Проверяем настройки уведомлений
+                    if not getattr(user, 'vk_notifications_enabled', True):
+                        log(f"[INFO] VK notifications disabled for user {user.id}, skipping")
+                        skipped_settings_count += 1
                     else:
-                        log(f"[WARNING] Failed to send VK reminder to user {user.id}")
+                        log(f"[INFO] Sending VK reminder to user {user.id}...")
+                        success = await send_daily_reminder_vk(user, db)
+                        if success:
+                            sent_count += 1
+                            log(f"[SUCCESS] VK reminder sent to user {user.id}")
+                        else:
+                            log(f"[WARNING] Failed to send VK reminder to user {user.id}")
             except Exception as e:
                 log(f"[ERROR] Error sending reminder to user {user.id}: {e}")
                 logger.error(f"Error sending reminder to user {user.id}: {e}", exc_info=True)
                 continue
         
         log(f"[INFO] Daily reminders sent to {sent_count} out of {len(users)} users")
+        log(f"[INFO] Skipped {skipped_timezone_count} users (not 9:00 in their timezone)")
+        log(f"[INFO] Skipped {skipped_settings_count} users (notifications disabled)")
         logger.info(f"Daily reminders sent to {sent_count} users")
         return sent_count
         
