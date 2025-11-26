@@ -100,17 +100,28 @@ async def send_daily_reminder_telegram(user: User, db: Session) -> bool:
         
         # Формируем inline keyboard с кнопкой для мини-апп
         keyboard = []
-        frontend_url = settings.FRONTEND_URL or "http://localhost:5173"
+        frontend_url = settings.FRONTEND_URL or ""
         
-        # Проверяем, что URL валидный для web_app (должен быть HTTPS в продакшене)
-        # Для web_app кнопки Telegram требует HTTPS (кроме localhost)
-        use_web_app = True
-        if frontend_url and not frontend_url.startswith(("https://", "http://localhost")):
-            logger.warning(f"Frontend URL is not HTTPS: {frontend_url}, web_app button may not work")
-            use_web_app = False
+        # Проверяем, что URL валидный для web_app
+        # Telegram требует HTTPS для web_app кнопок в продакшене
+        # В dev режиме localhost разрешен, но в продакшене только HTTPS
+        use_web_app = False
+        if frontend_url:
+            # Убираем trailing slash если есть
+            frontend_url = frontend_url.rstrip('/')
+            
+            if frontend_url.startswith("https://"):
+                # HTTPS URL - валиден для продакшена
+                use_web_app = True
+            elif frontend_url.startswith("http://localhost") and settings.DEBUG:
+                # В dev режиме localhost разрешен только если DEBUG=True
+                use_web_app = True
+            else:
+                # Не валидный URL для web_app - пропускаем кнопку
+                logger.warning(f"Frontend URL is not valid for web_app: {frontend_url} (must be HTTPS in production or localhost in DEBUG mode), skipping web_app button")
         
         # Добавляем кнопку для открытия мини-апп только если URL валидный
-        if use_web_app and frontend_url:
+        if use_web_app:
             keyboard.append([{
                 "text": "📱 Открыть приложение",
                 "web_app": {"url": frontend_url}
@@ -295,11 +306,18 @@ async def send_daily_reminder_vk(user: User, db: Session) -> bool:
             # VK API для отправки сообщений
             vk_api_url = "https://api.vk.com/method/messages.send"
             
+            # Проверяем, что токен установлен
+            if not settings.VK_BOT_TOKEN or not settings.VK_BOT_TOKEN.strip():
+                logger.error(f"VK_BOT_TOKEN is empty or not set for user {user.id}")
+                return False
+            
             # Генерируем random_id (должен быть уникальным для каждого сообщения)
             random_id = random.randint(1, 2147483647)
             
+            # VK API требует передачу токена в query параметрах или в form-data
+            # Используем form-data для совместимости
             payload = {
-                "access_token": settings.VK_BOT_TOKEN,
+                "access_token": settings.VK_BOT_TOKEN.strip(),
                 "user_id": vk_id_int,
                 "message": message,
                 "random_id": random_id,
@@ -307,8 +325,8 @@ async def send_daily_reminder_vk(user: User, db: Session) -> bool:
             }
             
             async with httpx.AsyncClient(timeout=10.0) as client:
-                # VK API требует POST запрос
-                response = await client.post(vk_api_url, json=payload)
+                # VK API требует POST запрос с form-data (не JSON!)
+                response = await client.post(vk_api_url, data=payload)
                 
                 if response.status_code == 200:
                     result = response.json()
