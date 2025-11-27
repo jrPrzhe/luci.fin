@@ -435,6 +435,19 @@ async def notifications_command(update: Update, context: ContextTypes.DEFAULT_TY
     lang = await get_user_language(telegram_id)
     
     try:
+        # Удаляем предыдущее сообщение с настройками уведомлений, если оно есть
+        previous_message_id = context.user_data.get('notifications_message_id')
+        if previous_message_id:
+            try:
+                await update.message.bot.delete_message(
+                    chat_id=update.effective_chat.id,
+                    message_id=previous_message_id
+                )
+                logger.debug(f"Deleted previous notifications message {previous_message_id} for user {user.id}")
+            except Exception as e:
+                # Сообщение уже удалено или не найдено - это нормально
+                logger.debug(f"Could not delete previous notifications message: {e}")
+        
         # Get current user settings
         response = await make_authenticated_request(
             "GET",
@@ -470,7 +483,11 @@ async def notifications_command(update: Update, context: ContextTypes.DEFAULT_TY
         )])
         
         reply_markup = InlineKeyboardMarkup(keyboard)
-        await update.message.reply_text(message_text, reply_markup=reply_markup, parse_mode='Markdown')
+        sent_message = await update.message.reply_text(message_text, reply_markup=reply_markup, parse_mode='Markdown')
+        
+        # Сохраняем ID сообщения для последующего удаления
+        if sent_message:
+            context.user_data['notifications_message_id'] = sent_message.message_id
         
     except Exception as e:
         logger.error(f"Error getting notification settings: {e}")
@@ -756,11 +773,15 @@ async def add_expense_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup = InlineKeyboardMarkup(keyboard)
             
             message = t("expense.title", lang) + t("expense.select_account", lang)
-            await update.message.reply_text(
+            sent_message = await update.message.reply_text(
                 message,
                 reply_markup=reply_markup,
                 parse_mode='Markdown'
             )
+            
+            # Сохраняем ID сообщения для последующего удаления
+            if sent_message:
+                context.user_data['selection_message_id'] = sent_message.message_id
             
             return WAITING_AMOUNT
         elif response.status_code == 401:
@@ -865,7 +886,7 @@ async def account_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     title_text = t("expense.title", lang) if trans_type == "expense" else t("income.title", lang)
                     select_cat_text = t("expense.select_category", lang) if trans_type == "expense" else t("income.select_category", lang)
                     
-                    await query.edit_message_text(
+                    edited_message = await query.edit_message_text(
                         f"{title_text}\n"
                         f"{t('common.account', lang)}: *{account_name}*\n\n"
                         f"{select_cat_text}",
@@ -873,28 +894,42 @@ async def account_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         parse_mode='Markdown'
                     )
                     
+                    # Сохраняем ID сообщения для последующего удаления
+                    if edited_message:
+                        context.user_data['selection_message_id'] = edited_message.message_id
+                    
                     return WAITING_CATEGORY
                 else:
                     # No categories, skip to amount
                     title_text = t("expense.title", lang) if trans_type == "expense" else t("income.title", lang)
                     enter_amount_text = t("expense.enter_amount", lang) if trans_type == "expense" else t("income.enter_amount", lang)
-                    await query.edit_message_text(
+                    edited_message = await query.edit_message_text(
                         f"{title_text}\n"
                         f"{t('common.account', lang)}: *{account_name}*\n\n"
                         f"{enter_amount_text}",
                         parse_mode='Markdown'
                     )
+                    
+                    # Сохраняем ID сообщения для последующего удаления
+                    if edited_message:
+                        context.user_data['selection_message_id'] = edited_message.message_id
+                    
                     return WAITING_AMOUNT
             else:
                 # Error loading categories, skip to amount
                 title_text = t("expense.title", lang) if trans_type == "expense" else t("income.title", lang)
                 enter_amount_text = t("expense.enter_amount", lang) if trans_type == "expense" else t("income.enter_amount", lang)
-                await query.edit_message_text(
+                edited_message = await query.edit_message_text(
                     f"{title_text}\n"
                     f"{t('common.account', lang)}: *{account_name}*\n\n"
                     f"{enter_amount_text}",
                     parse_mode='Markdown'
                 )
+                
+                # Сохраняем ID сообщения для последующего удаления
+                if edited_message:
+                    context.user_data['selection_message_id'] = edited_message.message_id
+                
                 return WAITING_AMOUNT
         except Exception as e:
             logger.error(f"Error loading categories: {e}")
@@ -910,13 +945,18 @@ async def account_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return WAITING_AMOUNT
     else:
         # For transfer, go directly to amount
-        await query.edit_message_text(
-            f"{icon} Добавление {type_text}\n\n"
-            f"Счет: *{account_name}*\n\n"
-            f"Введите сумму {type_text}:",
-            parse_mode='Markdown'
-        )
-        return WAITING_AMOUNT
+            edited_message = await query.edit_message_text(
+                f"{icon} Добавление {type_text}\n\n"
+                f"Счет: *{account_name}*\n\n"
+                f"Введите сумму {type_text}:",
+                parse_mode='Markdown'
+            )
+            
+            # Сохраняем ID сообщения для последующего удаления
+            if edited_message:
+                context.user_data['selection_message_id'] = edited_message.message_id
+            
+            return WAITING_AMOUNT
 
 
 async def category_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -950,11 +990,15 @@ async def category_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.user_data.get('category_id'):
         category_info = f"{t('common.category', lang)}: {context.user_data.get('category_name', '')}\n\n"
     
-    await query.edit_message_text(
+    edited_message = await query.edit_message_text(
         f"{title_text}\n"
         f"{category_info}{enter_amount_text}",
         parse_mode='Markdown'
     )
+    
+    # Сохраняем ID сообщения для последующего удаления
+    if edited_message:
+        context.user_data['selection_message_id'] = edited_message.message_id
     
     return WAITING_AMOUNT
 
@@ -1128,6 +1172,19 @@ async def description_received(update: Update, context: ContextTypes.DEFAULT_TYP
                            category=category_name,
                            description=description or t("common.no_description", lang))
             
+            # Удаляем промежуточные сообщения (выбор счета/категории)
+            selection_message_id = context.user_data.get('selection_message_id')
+            if selection_message_id:
+                try:
+                    await update.message.bot.delete_message(
+                        chat_id=update.effective_chat.id,
+                        message_id=selection_message_id
+                    )
+                    logger.debug(f"Deleted selection message {selection_message_id} after transaction creation")
+                except Exception as e:
+                    # Сообщение уже удалено или не найдено - это нормально
+                    logger.debug(f"Could not delete selection message: {e}")
+            
             # Edit processing message or send new one
             if processing_msg:
                 try:
@@ -1141,6 +1198,18 @@ async def description_received(update: Update, context: ContextTypes.DEFAULT_TYP
             else:
                 await update.message.reply_text(success_text, parse_mode='Markdown')
         elif response.status_code == 401:
+            # Удаляем промежуточные сообщения при ошибке
+            selection_message_id = context.user_data.get('selection_message_id')
+            if selection_message_id:
+                try:
+                    await update.message.bot.delete_message(
+                        chat_id=update.effective_chat.id,
+                        message_id=selection_message_id
+                    )
+                    logger.debug(f"Deleted selection message {selection_message_id} after auth error")
+                except Exception as e:
+                    logger.debug(f"Could not delete selection message: {e}")
+            
             error_text = t("auth.failed", lang)
             if processing_msg:
                 try:
@@ -1154,6 +1223,18 @@ async def description_received(update: Update, context: ContextTypes.DEFAULT_TYP
             else:
                 await update.message.reply_text(error_text)
         else:
+            # Удаляем промежуточные сообщения при ошибке
+            selection_message_id = context.user_data.get('selection_message_id')
+            if selection_message_id:
+                try:
+                    await update.message.bot.delete_message(
+                        chat_id=update.effective_chat.id,
+                        message_id=selection_message_id
+                    )
+                    logger.debug(f"Deleted selection message {selection_message_id} after transaction error")
+                except Exception as e:
+                    logger.debug(f"Could not delete selection message: {e}")
+            
             try:
                 error_msg = response.json().get("detail", t("common.error", lang))
             except:
@@ -1173,6 +1254,20 @@ async def description_received(update: Update, context: ContextTypes.DEFAULT_TYP
     except Exception as e:
         logger.error(f"Error creating transaction: {e}", exc_info=True)
         error_text = t("expense.error", lang) if transaction_type == "expense" else t("income.error", lang)
+        
+        # Удаляем промежуточные сообщения при ошибке
+        selection_message_id = context.user_data.get('selection_message_id')
+        if selection_message_id:
+            try:
+                await update.message.bot.delete_message(
+                    chat_id=update.effective_chat.id,
+                    message_id=selection_message_id
+                )
+                logger.debug(f"Deleted selection message {selection_message_id} after transaction error")
+            except Exception as e:
+                # Сообщение уже удалено или не найдено - это нормально
+                logger.debug(f"Could not delete selection message: {e}")
+        
         if processing_msg:
             try:
                 await processing_msg.edit_text(error_text)
@@ -1225,11 +1320,15 @@ async def add_income_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup = InlineKeyboardMarkup(keyboard)
             
             message = t("income.title", lang) + t("income.select_account", lang)
-            await update.message.reply_text(
+            sent_message = await update.message.reply_text(
                 message,
                 reply_markup=reply_markup,
                 parse_mode='Markdown'
             )
+            
+            # Сохраняем ID сообщения для последующего удаления
+            if sent_message:
+                context.user_data['selection_message_id'] = sent_message.message_id
             
             return WAITING_AMOUNT
         elif response.status_code == 401:

@@ -137,49 +137,35 @@ async def send_daily_reminder_telegram(user: User, db: Session) -> bool:
             "inline_keyboard": keyboard
         } if keyboard else None
         
-        # Проверяем, есть ли уже отправленное сообщение для редактирования
+        # Удаляем предыдущее ежедневное уведомление перед отправкой нового
         old_message_id = profile.daily_reminder_message_id
         
         async with httpx.AsyncClient(timeout=10.0) as client:
             base_url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}"
             
-            # Если есть старое сообщение, пытаемся его отредактировать
+            # Удаляем предыдущее сообщение, если оно есть
             if old_message_id:
                 try:
-                    edit_url = f"{base_url}/editMessageText"
-                    edit_payload = {
+                    delete_url = f"{base_url}/deleteMessage"
+                    delete_payload = {
                         "chat_id": telegram_id,
-                        "message_id": old_message_id,
-                        "text": message,
-                        "parse_mode": "HTML",
-                        "reply_markup": reply_markup
+                        "message_id": old_message_id
                     }
-                    
-                    edit_response = await client.post(edit_url, json=edit_payload)
-                    edit_response_text = edit_response.text
-                    if edit_response.status_code == 200:
-                        result = edit_response.json()
+                    delete_response = await client.post(delete_url, json=delete_payload)
+                    if delete_response.status_code == 200:
+                        result = delete_response.json()
                         if result.get("ok"):
-                            logger.info(f"Daily reminder edited for Telegram user {user.id}, message_id: {old_message_id}")
-                            db.commit()
-                            return True
+                            logger.info(f"Deleted previous daily reminder message {old_message_id} for user {user.id}")
                         else:
-                            # Сообщение не найдено или удалено, отправляем новое
-                            error_description = result.get('description', 'Unknown error')
-                            logger.warning(f"Could not edit message {old_message_id}: {error_description}, sending new one")
-                            profile.daily_reminder_message_id = None
-                            db.commit()
+                            # Сообщение уже удалено или не найдено - это нормально
+                            logger.debug(f"Could not delete message {old_message_id}: {result.get('description', 'Unknown')}")
                     else:
-                        # Ошибка редактирования, отправляем новое сообщение
-                        logger.warning(f"Failed to edit message {old_message_id}: HTTP {edit_response.status_code}, response: {edit_response_text}, sending new one")
-                        profile.daily_reminder_message_id = None
-                        db.commit()
+                        logger.debug(f"Failed to delete message {old_message_id}: HTTP {delete_response.status_code}")
                 except Exception as e:
-                    logger.warning(f"Error editing message {old_message_id}: {e}, sending new one")
-                    profile.daily_reminder_message_id = None
-                    db.commit()
+                    logger.warning(f"Error deleting previous message {old_message_id}: {e}")
+                    # Продолжаем отправку нового сообщения даже если не удалось удалить старое
             
-            # Отправляем новое сообщение (если редактирование не удалось или сообщения нет)
+            # Отправляем новое сообщение
             send_url = f"{base_url}/sendMessage"
             send_payload = {
                 "chat_id": telegram_id,
@@ -310,7 +296,7 @@ async def send_daily_reminder_vk(user: User, db: Session) -> bool:
             logger.warning("VK_BOT_TOKEN not configured, skipping VK reminder")
             return False
         
-        # Проверяем, есть ли уже отправленное сообщение для редактирования
+        # Проверяем, есть ли уже отправленное сообщение для удаления
         old_message_id = profile.daily_reminder_message_id
         
         try:
@@ -513,4 +499,3 @@ async def send_daily_reminders_to_all_users():
     finally:
         db.close()
         log("[INFO] Database connection closed")
-
