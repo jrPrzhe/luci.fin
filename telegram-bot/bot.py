@@ -290,6 +290,18 @@ def t(key: str, language: str = "ru", **kwargs) -> str:
         return key
 
 
+def escape_markdown(text: str) -> str:
+    """Escape special Markdown characters to prevent parsing errors"""
+    if not text:
+        return text
+    # Characters that need to be escaped in Markdown: _ * [ ] ( ) ` ~
+    special_chars = ['_', '*', '[', ']', '(', ')', '`', '~']
+    escaped = text
+    for char in special_chars:
+        escaped = escaped.replace(char, '\\' + char)
+    return escaped
+
+
 def get_transaction_description(transaction: dict, language: str = "ru") -> str:
     """Get transaction description, using category_name if description is missing"""
     description = transaction.get('description')
@@ -314,9 +326,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Get user language
     lang = await get_user_language(telegram_id)
     
+    # Escape user's first name to prevent Markdown parsing errors
+    safe_name = escape_markdown(user.first_name or "Пользователь")
+    
     # Build message
     message = (
-        t("start.greeting", lang, name=user.first_name) +
+        t("start.greeting", lang, name=safe_name) +
         t("start.commands", lang) +
         t("start.balance", lang) +
         t("start.transactions", lang) +
@@ -663,7 +678,7 @@ async def get_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if accounts:
                 message += t("balance.accounts", lang)
                 for acc in accounts[:5]:  # Show first 5 accounts
-                    acc_name = acc.get("name", t("common.account", lang))
+                    acc_name = escape_markdown(acc.get("name", t("common.account", lang)))
                     acc_balance = acc.get("balance", 0)
                     message += t("balance.account_item", lang, name=acc_name, amount=f"{int(round(acc_balance)):,}", currency=currency)
             
@@ -712,7 +727,7 @@ async def get_transactions(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 trans_type = trans.get("transaction_type", "")
                 amount = trans.get("amount", 0)
                 currency = trans.get("currency", "RUB")
-                description = get_transaction_description(trans, lang)
+                description = escape_markdown(get_transaction_description(trans, lang))
                 date = trans.get("transaction_date", "")[:10]
                 
                 icon = "💰" if trans_type == "income" else "💸" if trans_type == "expense" else "↔️"
@@ -988,7 +1003,9 @@ async def category_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     category_info = ""
     if context.user_data.get('category_id'):
-        category_info = f"{t('common.category', lang)}: {context.user_data.get('category_name', '')}\n\n"
+        category_name = context.user_data.get('category_name', '')
+        safe_category_name = escape_markdown(category_name) if category_name else ''
+        category_info = f"{t('common.category', lang)}: {safe_category_name}\n\n"
     
     edited_message = await query.edit_message_text(
         f"{title_text}\n"
@@ -1157,20 +1174,21 @@ async def description_received(update: Update, context: ContextTypes.DEFAULT_TYP
             # Get account and category names for success message
             accounts = context.user_data.get('accounts', [])
             account = next((a for a in accounts if a['id'] == account_id), None)
-            account_name = account['name'] if account else t("common.account", lang)
-            category_name = context.user_data.get('category_name', '') or t("common.category", lang)
+            account_name = escape_markdown(account['name'] if account else t("common.account", lang))
+            category_name = escape_markdown(context.user_data.get('category_name', '') or t("common.category", lang))
+            safe_description = escape_markdown(description or t("common.no_description", lang))
             
             success_text = t("expense.created", lang, 
                            amount=f"{int(round(amount)):,}",
                            currency=currency,
                            account=account_name,
                            category=category_name,
-                           description=description or t("common.no_description", lang)) if transaction_type == "expense" else t("income.created", lang,
+                           description=safe_description) if transaction_type == "expense" else t("income.created", lang,
                            amount=f"{int(round(amount)):,}",
                            currency=currency,
                            account=account_name,
                            category=category_name,
-                           description=description or t("common.no_description", lang))
+                           description=safe_description)
             
             # Удаляем промежуточные сообщения (выбор счета/категории)
             selection_message_id = context.user_data.get('selection_message_id')
@@ -1425,7 +1443,8 @@ async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if top_expenses:
             report_text += f"💸 *Топ расходов:*\n"
             for i, (desc, amount) in enumerate(top_expenses, 1):
-                report_text += f"{i}. {desc}: {int(round(amount)):,} {currency}\n"
+                safe_desc = escape_markdown(desc)
+                report_text += f"{i}. {safe_desc}: {int(round(amount)):,} {currency}\n"
             report_text += "\n"
         
         # AI Analysis
@@ -1446,7 +1465,8 @@ async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 ai_data = ai_response.json()
                 insights = ai_data.get("insights", "")
                 if insights:
-                    report_text += f"🤖 *Анализ ИИ:*\n{insights}\n"
+                    safe_insights = escape_markdown(insights)
+                    report_text += f"🤖 *Анализ ИИ:*\n{safe_insights}\n"
         except Exception as e:
             logger.error(f"AI analysis error: {e}")
             # Fallback analysis
@@ -1556,8 +1576,11 @@ async def lucy_question_received(update: Update, context: ContextTypes.DEFAULT_T
                 
                 logger.info(f"Answer received, length: {len(answer)}, quest_completed: {quest_completed}")
                 
+                # Escape answer to prevent Markdown parsing errors
+                safe_answer = escape_markdown(answer)
+                
                 # Format response
-                response_text = f"💬 *Люся:*\n\n{answer}\n"
+                response_text = f"💬 *Люся:*\n\n{safe_answer}\n"
                 
                 if quest_completed:
                     response_text += "\n✅ *Квест выполнен!* Вы получили XP за задание 'Спроси Люсю'."
