@@ -327,7 +327,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         t("start.ask_lucy", lang) +
         t("start.help", lang) +
         t("start.language", lang) +
-        t("start.notifications", lang) +
         t("start.important", lang)
     )
     
@@ -454,7 +453,7 @@ async def notifications_command(update: Update, context: ContextTypes.DEFAULT_TY
         # Build status text - only Telegram notifications
         telegram_status = t("notifications.enabled", lang) if telegram_enabled else t("notifications.disabled", lang)
         
-        message = (
+        message_text = (
             t("notifications.title", lang) +
             t("notifications.telegram_status", lang, status=telegram_status)
         )
@@ -471,7 +470,7 @@ async def notifications_command(update: Update, context: ContextTypes.DEFAULT_TY
         )])
         
         reply_markup = InlineKeyboardMarkup(keyboard)
-        await update.message.reply_text(message, reply_markup=reply_markup, parse_mode='Markdown')
+        await update.message.reply_text(message_text, reply_markup=reply_markup, parse_mode='Markdown')
         
     except Exception as e:
         logger.error(f"Error getting notification settings: {e}")
@@ -479,7 +478,7 @@ async def notifications_command(update: Update, context: ContextTypes.DEFAULT_TY
 
 
 async def notifications_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle notification toggle callback"""
+    """Handle notification toggle callback - only Telegram notifications"""
     query = update.callback_query
     await query.answer()
     
@@ -514,13 +513,50 @@ async def notifications_callback(update: Update, context: ContextTypes.DEFAULT_T
         )
         
         if response.status_code == 200:
-            # Refresh the notification settings screen
-            await notifications_command(update, context)
+            # Get updated settings to refresh the message
+            user_response = await make_authenticated_request(
+                "GET",
+                f"{BACKEND_URL}/api/v1/auth/me",
+                telegram_id,
+                timeout=5.0
+            )
+            
+            if user_response.status_code == 200:
+                user_data = user_response.json()
+                telegram_enabled = user_data.get('telegram_notifications_enabled', True)
+                
+                # Build updated message
+                telegram_status = t("notifications.enabled", lang) if telegram_enabled else t("notifications.disabled", lang)
+                message_text = (
+                    t("notifications.title", lang) +
+                    t("notifications.telegram_status", lang, status=telegram_status)
+                )
+                
+                # Create updated keyboard
+                keyboard = []
+                telegram_button_text = t("notifications.telegram_toggle", lang, 
+                    status="✅" if telegram_enabled else "❌")
+                keyboard.append([InlineKeyboardButton(
+                    telegram_button_text,
+                    callback_data=f"notif_tg_{not telegram_enabled}"
+                )])
+                reply_markup = InlineKeyboardMarkup(keyboard)
+                
+                # Edit the message instead of calling notifications_command
+                await query.edit_message_text(
+                    message_text, 
+                    reply_markup=reply_markup, 
+                    parse_mode='Markdown'
+                )
+            else:
+                # If can't get updated settings, just show success
+                await query.edit_message_text(t("notifications.updated", lang))
         else:
+            logger.error(f"Failed to update notification settings: {response.status_code} - {response.text}")
             await query.edit_message_text(t("notifications.error", lang))
             
     except Exception as e:
-        logger.error(f"Error updating notification settings: {e}")
+        logger.error(f"Error updating notification settings: {e}", exc_info=True)
         await query.edit_message_text(t("notifications.error", lang))
 
 
@@ -1764,103 +1800,6 @@ async def goal_confirmation_handler(update: Update, context: ContextTypes.DEFAUL
     
     context.user_data.clear()
     return ConversationHandler.END
-
-
-async def notifications_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle /notifications command - manage Telegram notification settings only"""
-    user = update.effective_user
-    telegram_id = str(user.id)
-    
-    # Get user language
-    lang = await get_user_language(telegram_id)
-    
-    try:
-        # Get current user settings
-        response = await make_authenticated_request(
-            "GET",
-            f"{BACKEND_URL}/api/v1/auth/me",
-            telegram_id,
-            timeout=5.0
-        )
-        
-        if response.status_code != 200:
-            await update.message.reply_text(t("notifications.error", lang))
-            return
-        
-        user_data = response.json()
-        telegram_enabled = user_data.get('telegram_notifications_enabled', True)
-        
-        # Build status text - only Telegram notifications
-        telegram_status = t("notifications.enabled", lang) if telegram_enabled else t("notifications.disabled", lang)
-        
-        message_text = (
-            t("notifications.title", lang) +
-            t("notifications.telegram_status", lang, status=telegram_status)
-        )
-        
-        # Create keyboard with toggle button - only Telegram
-        keyboard = []
-        
-        # Telegram toggle button
-        telegram_button_text = t("notifications.telegram_toggle", lang, 
-            status="✅" if telegram_enabled else "❌")
-        keyboard.append([InlineKeyboardButton(
-            telegram_button_text,
-            callback_data=f"notif_tg_{not telegram_enabled}"
-        )])
-        
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await update.message.reply_text(message_text, reply_markup=reply_markup, parse_mode='Markdown')
-        
-    except Exception as e:
-        logger.error(f"Error getting notification settings: {e}")
-        await update.message.reply_text(t("notifications.error", lang))
-
-
-async def notifications_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle notification toggle callback - only Telegram notifications"""
-    query = update.callback_query
-    await query.answer()
-    
-    telegram_id = str(query.from_user.id)
-    lang = await get_user_language(telegram_id)
-    
-    try:
-        # Parse callback data: notif_tg_True or notif_tg_False
-        parts = query.data.split("_")
-        if len(parts) != 3:
-            await query.edit_message_text(t("notifications.error", lang))
-            return
-        
-        platform = parts[1]  # "tg"
-        new_value = parts[2] == "True"  # Convert string to bool
-        
-        # Only Telegram notifications in Telegram bot
-        if platform != "tg":
-            await query.edit_message_text(t("notifications.error", lang))
-            return
-        
-        # Prepare update data
-        update_data = {"telegram_notifications_enabled": new_value}
-        
-        # Update settings in backend
-        response = await make_authenticated_request(
-            "PUT",
-            f"{BACKEND_URL}/api/v1/auth/me",
-            telegram_id,
-            json_data=update_data,
-            timeout=5.0
-        )
-        
-        if response.status_code == 200:
-            # Refresh the notification settings screen
-            await notifications_command(update, context)
-        else:
-            await query.edit_message_text(t("notifications.error", lang))
-            
-    except Exception as e:
-        logger.error(f"Error updating notification settings: {e}")
-        await query.edit_message_text(t("notifications.error", lang))
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
