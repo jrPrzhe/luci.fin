@@ -210,8 +210,8 @@ async def make_authenticated_request(
             if user_id in user_tokens:
                 del user_tokens[user_id]
             
-            # Get fresh token
-            token = await get_user_token(telegram_id, force_refresh=True)
+            # Get fresh token (cache already cleared, so it will fetch new one)
+            token = await get_user_token(telegram_id)
             headers = {"Authorization": f"Bearer {token}"}
             
             # Retry request
@@ -1722,9 +1722,10 @@ async def goal_info_received(update: Update, context: ContextTypes.DEFAULT_TYPE)
     context.user_data['currency'] = 'RUB'  # Default, will be updated from balance
     
     # Show what we understood
+    safe_goal_name = escape_markdown(goal_name)
     await update.message.reply_text(
         f"✅ *Понял вашу цель:*\n\n"
-        f"🎯 Название: {goal_name}\n"
+        f"🎯 Название: {safe_goal_name}\n"
         f"💰 Стоимость: {int(round(target_amount)):,} {context.user_data['currency']}\n\n"
         f"Анализирую ваши транзакции и создаю индивидуальный план...\n"
         f"⏳ Пожалуйста, подождите...",
@@ -1769,24 +1770,43 @@ async def goal_info_received(update: Update, context: ContextTypes.DEFAULT_TYPE)
         context.user_data['currency'] = currency
         
         # Generate roadmap using authenticated request helper
-        roadmap_response = await make_authenticated_request(
-            "POST",
-            f"{BACKEND_URL}/api/v1/goals/generate-roadmap",
-            telegram_id,
-            json_data={
-                "goal_name": goal_name,
-                "target_amount": float(target_amount),
-                "currency": currency,
-                "transactions": transactions[:50],
-                "balance": float(balance),
-                "income_total": float(income_total),
-                "expense_total": float(expense_total)
-            },
-            timeout=30.0
-        )
+        try:
+            roadmap_response = await make_authenticated_request(
+                "POST",
+                f"{BACKEND_URL}/api/v1/goals/generate-roadmap",
+                telegram_id,
+                json_data={
+                    "goal_name": goal_name,
+                    "target_amount": float(target_amount),
+                    "currency": currency,
+                    "transactions": transactions[:50],
+                    "balance": float(balance),
+                    "income_total": float(income_total),
+                    "expense_total": float(expense_total)
+                },
+                timeout=60.0  # Increased timeout for AI generation
+            )
+        except Exception as e:
+            logger.error(f"Error generating roadmap: {e}", exc_info=True)
+            if "ReadTimeout" in str(type(e).__name__) or "timeout" in str(e).lower():
+                await update.message.reply_text(
+                    "⏱️ Генерация плана занимает больше времени, чем ожидалось.\n\n"
+                    "Попробуйте позже или упростите запрос."
+                )
+            else:
+                await update.message.reply_text("❌ Ошибка при создании плана. Попробуйте позже.")
+            return ConversationHandler.END
         
         if roadmap_response.status_code != 200:
-            await update.message.reply_text("❌ Не удалось создать план. Попробуйте позже.")
+            error_msg = "❌ Не удалось создать план."
+            try:
+                error_data = roadmap_response.json()
+                detail = error_data.get("detail", "")
+                if detail:
+                    error_msg += f"\n{detail}"
+            except:
+                pass
+            await update.message.reply_text(error_msg)
             return ConversationHandler.END
         
         roadmap_data = roadmap_response.json()
@@ -1806,17 +1826,19 @@ async def goal_info_received(update: Update, context: ContextTypes.DEFAULT_TYPE)
         
         # Format roadmap message
         roadmap_text = roadmap.get('roadmap_text', '')
+        safe_goal_name = escape_markdown(goal_name)
         if not roadmap_text:
             roadmap_text = f"""🗺️ *Дорожная карта для достижения цели*
 
-🎯 Цель: {goal_name}
+🎯 Цель: {safe_goal_name}
 💰 Стоимость: {int(round(target_amount)):,} {currency}
 📅 Оценка времени: {roadmap_data.get('estimated_months', 12)} месяцев
 💵 Ежемесячные накопления: {int(round(roadmap_data.get('monthly_savings_needed', 0))):,} {currency}
 
 📋 Рекомендации:"""
             for rec in roadmap_data.get('recommendations', [])[:3]:
-                roadmap_text += f"\n• {rec}"
+                safe_rec = escape_markdown(str(rec))
+                roadmap_text += f"\n• {safe_rec}"
         
         feasibility_emoji = {
             'feasible': '✅',
