@@ -62,7 +62,7 @@ def check_admin_status(user_id: int = None, email: str = None, telegram_id: str 
         db.close()
 
 
-def set_admin(user_id: int = None, email: str = None, telegram_id: str = None, value: bool = True):
+def set_admin(user_id: int = None, email: str = None, telegram_id: str = None, telegram_username: str = None, value: bool = True):
     """Установить статус админа"""
     db = SessionLocal()
     try:
@@ -72,8 +72,12 @@ def set_admin(user_id: int = None, email: str = None, telegram_id: str = None, v
             user = db.query(User).filter(User.email == email).first()
         elif telegram_id:
             user = db.query(User).filter(User.telegram_id == telegram_id).first()
+        elif telegram_username:
+            # Remove @ if present
+            username = telegram_username.lstrip('@')
+            user = db.query(User).filter(User.telegram_username == username).first()
         else:
-            print("❌ Укажите user_id, email или telegram_id")
+            print("❌ Укажите user_id, email, telegram_id или telegram_username")
             return
         
         if not user:
@@ -85,8 +89,14 @@ def set_admin(user_id: int = None, email: str = None, telegram_id: str = None, v
         db.commit()
         
         print(f"[OK] Статус админа обновлен для пользователя {user.id} ({user.email})")
+        if user.telegram_username:
+            print(f"   Telegram: @{user.telegram_username} (ID: {user.telegram_id})")
         print(f"   Было: is_admin = {old_value}")
         print(f"   Стало: is_admin = {value}")
+        
+        # Also update ADMIN_TELEGRAM_IDS if user has telegram_id
+        if user.telegram_id and value:
+            print(f"\n💡 Не забудьте добавить telegram_id '{user.telegram_id}' в ADMIN_TELEGRAM_IDS в Railway")
         
     finally:
         db.close()
@@ -121,6 +131,7 @@ if __name__ == "__main__":
         print("  python check_admin_access.py --check --telegram-id 123456789    # Проверить по Telegram ID")
         print("  python check_admin_access.py --set-admin --user-id 1  # Установить админом")
         print("  python check_admin_access.py --set-admin --email user@example.com  # Установить админом")
+        print("  python check_admin_access.py --set-admin --telegram-username przhrdsk  # Установить админом по username")
         sys.exit(1)
     
     if "--list" in sys.argv:
@@ -149,8 +160,16 @@ if __name__ == "__main__":
             idx = sys.argv.index("--email")
             email = sys.argv[idx + 1]
             set_admin(email=email)
+        elif "--telegram-username" in sys.argv:
+            idx = sys.argv.index("--telegram-username")
+            username = sys.argv[idx + 1]
+            set_admin(telegram_username=username)
+        elif "--telegram-id" in sys.argv:
+            idx = sys.argv.index("--telegram-id")
+            telegram_id = sys.argv[idx + 1]
+            set_admin(telegram_id=telegram_id)
         else:
-            print("❌ Укажите --user-id или --email")
+            print("❌ Укажите --user-id, --email, --telegram-id или --telegram-username")
     else:
         print("❌ Неизвестная команда")
 

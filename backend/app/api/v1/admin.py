@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
 from datetime import datetime
+import os
 from app.core.database import get_db
 from app.models.user import User
 from app.models.transaction import Transaction
@@ -328,3 +329,132 @@ async def update_user_premium(
     
     logger.info(f"Successfully updated premium status for user {user_id}: is_premium={target_user.is_premium}")
     return UserResponse.model_validate(target_user)
+
+
+class SetAdminByUsernameRequest(BaseModel):
+    telegram_username: str
+
+
+@router.post("/set-admin-by-username", response_model=UserResponse)
+async def set_admin_by_username(
+    request: SetAdminByUsernameRequest,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Set admin status for user by Telegram username
+    Only accessible by admins
+    """
+    import logging
+    from app.core.config import settings
+    
+    logger = logging.getLogger(__name__)
+    
+    # Remove @ if present
+    username = request.telegram_username.lstrip('@')
+    
+    # Find user by telegram_username
+    target_user = db.query(User).filter(
+        User.telegram_username == username
+    ).first()
+    
+    if not target_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with Telegram username @{username} not found"
+        )
+    
+    if not target_user.telegram_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"User @{username} does not have telegram_id"
+        )
+    
+    logger.info(f"Admin {current_admin.id} setting admin status for user @{username} (ID: {target_user.id}, telegram_id: {target_user.telegram_id})")
+    
+    # Set admin status
+    target_user.is_admin = True
+    db.commit()
+    db.refresh(target_user)
+    
+    # Also add to ADMIN_TELEGRAM_IDS if not already there
+    admin_ids = settings.ADMIN_TELEGRAM_IDS if isinstance(settings.ADMIN_TELEGRAM_IDS, list) else []
+    telegram_id_str = str(target_user.telegram_id)
+    
+    if telegram_id_str not in admin_ids:
+        logger.info(f"Note: User's telegram_id {telegram_id_str} should be added to ADMIN_TELEGRAM_IDS environment variable for automatic sync")
+    
+    logger.info(f"Successfully set admin status for user @{username} (ID: {target_user.id})")
+    return UserResponse.model_validate(target_user)
+
+
+@router.post("/restore-admin-access", response_model=dict)
+async def restore_admin_access(
+    request: SetAdminByUsernameRequest,
+    secret_key: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Emergency endpoint to restore admin access by username
+    Requires secret key to prevent unauthorized access
+    Use this if all admins lost access
+    """
+    import logging
+    from app.core.config import settings
+    
+    logger = logging.getLogger(__name__)
+    
+    # Simple secret key check (should match SECRET_KEY or a special restore key)
+    # In production, set RESTORE_ADMIN_SECRET in environment
+    restore_secret = os.getenv("RESTORE_ADMIN_SECRET", settings.SECRET_KEY)
+    
+    if secret_key != restore_secret:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid secret key"
+        )
+    
+    # Remove @ if present
+    username = request.telegram_username.lstrip('@')
+    
+    # Find user by telegram_username
+    target_user = db.query(User).filter(
+        User.telegram_username == username
+    ).first()
+    
+    if not target_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with Telegram username @{username} not found"
+        )
+    
+    if not target_user.telegram_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"User @{username} does not have telegram_id"
+        )
+    
+    logger.warning(f"EMERGENCY: Restoring admin access for user @{username} (ID: {target_user.id}, telegram_id: {target_user.telegram_id})")
+    
+    # Set admin status
+    target_user.is_admin = True
+    db.commit()
+    db.refresh(target_user)
+    
+    # Return info about ADMIN_TELEGRAM_IDS
+    admin_ids = settings.ADMIN_TELEGRAM_IDS if isinstance(settings.ADMIN_TELEGRAM_IDS, list) else []
+    telegram_id_str = str(target_user.telegram_id)
+    
+    return {
+        "success": True,
+        "user": {
+            "id": target_user.id,
+            "email": target_user.email,
+            "telegram_username": target_user.telegram_username,
+            "telegram_id": target_user.telegram_id,
+            "is_admin": target_user.is_admin
+        },
+        "message": f"Admin access restored for @{username}",
+        "note": f"Add telegram_id '{telegram_id_str}' to ADMIN_TELEGRAM_IDS in Railway for automatic sync",
+        "current_admin_ids": admin_ids
+    }
