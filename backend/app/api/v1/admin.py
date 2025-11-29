@@ -4,6 +4,7 @@ from sqlalchemy import func
 from typing import List, Optional
 from datetime import datetime
 import os
+import logging
 from app.core.database import get_db
 from app.models.user import User
 from app.models.transaction import Transaction
@@ -14,6 +15,7 @@ from app.schemas.user import UserResponse
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+logger = logging.getLogger(__name__)
 
 
 class UserStatsResponse(BaseModel):
@@ -45,45 +47,60 @@ async def get_all_users(
     Get list of all users with statistics
     Only accessible by admins
     """
-    # Get all users with their statistics
-    users = db.query(User).all()
-    
-    result = []
-    for user in users:
-        # Count transactions
-        transaction_count = db.query(func.count(Transaction.id)).filter(
-            Transaction.user_id == user.id
-        ).scalar() or 0
+    try:
+        # Get all users with their statistics
+        users = db.query(User).all()
         
-        # Count accounts
-        account_count = db.query(func.count(Account.id)).filter(
-            Account.user_id == user.id
-        ).scalar() or 0
+        result = []
+        for user in users:
+            try:
+                # Count transactions
+                transaction_count = db.query(func.count(Transaction.id)).filter(
+                    Transaction.user_id == user.id
+                ).scalar() or 0
+                
+                # Count accounts
+                account_count = db.query(func.count(Account.id)).filter(
+                    Account.user_id == user.id
+                ).scalar() or 0
+                
+                # Count categories
+                category_count = db.query(func.count(Category.id)).filter(
+                    Category.user_id == user.id
+                ).scalar() or 0
+                
+                # Safely get is_premium field (in case migration hasn't been applied)
+                is_premium = getattr(user, 'is_premium', False)
+                
+                result.append(UserStatsResponse(
+                    id=user.id,
+                    email=user.email,
+                    username=user.username,
+                    first_name=user.first_name,
+                    last_name=user.last_name,
+                    telegram_id=user.telegram_id,
+                    telegram_username=user.telegram_username,
+                    created_at=user.created_at,
+                    last_login=user.last_login,
+                    transaction_count=transaction_count,
+                    account_count=account_count,
+                    category_count=category_count,
+                    is_active=user.is_active,
+                    is_verified=user.is_verified,
+                    is_premium=is_premium
+                ))
+            except Exception as e:
+                logger.error(f"Error processing user {user.id}: {str(e)}", exc_info=True)
+                # Skip this user and continue with others
+                continue
         
-        # Count categories
-        category_count = db.query(func.count(Category.id)).filter(
-            Category.user_id == user.id
-        ).scalar() or 0
-        
-        result.append(UserStatsResponse(
-            id=user.id,
-            email=user.email,
-            username=user.username,
-            first_name=user.first_name,
-            last_name=user.last_name,
-            telegram_id=user.telegram_id,
-            telegram_username=user.telegram_username,
-            created_at=user.created_at,
-            last_login=user.last_login,
-            transaction_count=transaction_count,
-            account_count=account_count,
-            category_count=category_count,
-            is_active=user.is_active,
-            is_verified=user.is_verified,
-            is_premium=user.is_premium
-        ))
-    
-    return result
+        return result
+    except Exception as e:
+        logger.error(f"Error in get_all_users: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Ошибка при получении списка пользователей: {str(e)}"
+        )
 
 
 @router.post("/users/{user_id}/reset", response_model=UserResponse)
