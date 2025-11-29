@@ -166,6 +166,7 @@ export function PremiumSubscriptionModal({ onClose }: PremiumSubscriptionModalPr
           </p>
         </div>
       </div>
+      </div>
     </div>
   )
 }
