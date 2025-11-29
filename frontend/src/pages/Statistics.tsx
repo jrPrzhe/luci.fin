@@ -22,6 +22,18 @@ export function Statistics() {
     },
   })
 
+  const premiumMutation = useMutation({
+    mutationFn: ({ userId, isPremium }: { userId: number; isPremium: boolean }) => 
+      api.updateUserPremium(userId, isPremium),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminUsers'] })
+    },
+  })
+
+  const handlePremiumToggle = (userId: number, currentValue: boolean) => {
+    premiumMutation.mutate({ userId, isPremium: !currentValue })
+  }
+
   const handleResetClick = (userId: number) => {
     setResetUserId(userId)
     setShowResetConfirm(true)
@@ -152,6 +164,9 @@ export function Statistics() {
                     Статистика
                   </th>
                   <th className="text-left py-3 px-2 text-xs md:text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
+                    Подписка
+                  </th>
+                  <th className="text-left py-3 px-2 text-xs md:text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
                     Действия
                   </th>
                 </tr>
@@ -197,6 +212,20 @@ export function Statistics() {
                           <div>Счетов: {user.account_count}</div>
                           <div>Категорий: {user.category_count}</div>
                         </div>
+                      </td>
+                      <td className="py-3 px-2">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={user.is_premium || false}
+                            onChange={() => handlePremiumToggle(user.id, user.is_premium || false)}
+                            disabled={premiumMutation.isPending}
+                            className="w-4 h-4 text-telegram-primary bg-telegram-surface border-telegram-border rounded focus:ring-telegram-primary focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                          />
+                          <span className={`text-xs md:text-sm ${user.is_premium ? 'text-telegram-primary font-semibold' : 'text-telegram-textSecondary dark:text-telegram-dark-textSecondary'}`}>
+                            {user.is_premium ? '⭐ Премиум' : 'Базовый'}
+                          </span>
+                        </label>
                       </td>
                       <td className="py-3 px-2">
                         <button

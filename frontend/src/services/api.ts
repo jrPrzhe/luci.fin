@@ -895,6 +895,7 @@ class ApiClient {
     category_count: number
     is_active: boolean
     is_verified: boolean
+    is_premium: boolean
   }>> {
     return this.request('/api/v1/admin/users')
   }
@@ -902,6 +903,13 @@ class ApiClient {
   async resetUserSettings(userId: number): Promise<any> {
     return this.request(`/api/v1/admin/users/${userId}/reset`, {
       method: 'POST',
+    })
+  }
+
+  async updateUserPremium(userId: number, isPremium: boolean): Promise<any> {
+    return this.request(`/api/v1/admin/users/${userId}/premium`, {
+      method: 'PATCH',
+      body: JSON.stringify({ is_premium: isPremium }),
     })
   }
 
