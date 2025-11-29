@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { api } from '../services/api'
-import { isTelegramWebApp, getInitData, waitForInitData } from '../utils/telegram'
+import { isTelegramWebApp, waitForInitData } from '../utils/telegram'
 import { isVKWebApp, getVKLaunchParams, initVKWebApp, getVKUser } from '../utils/vk'
 import { storageSync } from '../utils/storage'
 import { useToast } from '../contexts/ToastContext'
