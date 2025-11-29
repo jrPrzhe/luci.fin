@@ -2,20 +2,75 @@
 import io
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
-import matplotlib
-matplotlib.use('Agg')  # Use non-interactive backend
-import matplotlib.pyplot as plt
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import inch
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image, PageBreak
-from reportlab.lib.enums import TA_CENTER
-from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from openpyxl.chart import PieChart, BarChart, LineChart, Reference
-from openpyxl.utils import get_column_letter
-import numpy as np
+
+# Lazy imports for heavy dependencies - only import when needed
+def _import_matplotlib():
+    """Lazy import matplotlib to avoid startup errors if not installed"""
+    try:
+        import matplotlib
+        matplotlib.use('Agg')  # Use non-interactive backend
+        import matplotlib.pyplot as plt
+        return plt
+    except ImportError:
+        raise ImportError("matplotlib is required for premium reports. Please install it: pip install matplotlib")
+
+def _import_reportlab():
+    """Lazy import reportlab"""
+    try:
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.units import inch
+        from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image, PageBreak
+        from reportlab.lib.enums import TA_CENTER
+        return {
+            'colors': colors,
+            'A4': A4,
+            'getSampleStyleSheet': getSampleStyleSheet,
+            'ParagraphStyle': ParagraphStyle,
+            'inch': inch,
+            'SimpleDocTemplate': SimpleDocTemplate,
+            'Table': Table,
+            'TableStyle': TableStyle,
+            'Paragraph': Paragraph,
+            'Spacer': Spacer,
+            'Image': Image,
+            'PageBreak': PageBreak,
+            'TA_CENTER': TA_CENTER
+        }
+    except ImportError:
+        raise ImportError("reportlab is required for premium reports. Please install it: pip install reportlab")
+
+def _import_openpyxl():
+    """Lazy import openpyxl"""
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        from openpyxl.chart import PieChart, BarChart, LineChart, Reference
+        from openpyxl.utils import get_column_letter
+        return {
+            'Workbook': Workbook,
+            'Font': Font,
+            'PatternFill': PatternFill,
+            'Alignment': Alignment,
+            'Border': Border,
+            'Side': Side,
+            'PieChart': PieChart,
+            'BarChart': BarChart,
+            'LineChart': LineChart,
+            'Reference': Reference,
+            'get_column_letter': get_column_letter
+        }
+    except ImportError:
+        raise ImportError("openpyxl is required for premium reports. Please install it: pip install openpyxl")
+
+def _import_numpy():
+    """Lazy import numpy"""
+    try:
+        import numpy as np
+        return np
+    except ImportError:
+        raise ImportError("numpy is required for premium reports. Please install it: pip install numpy")
 
 
 class PremiumReportGenerator:
@@ -31,6 +86,22 @@ class PremiumReportGenerator:
         
     def generate_pdf(self) -> bytes:
         """Generate PDF report with charts and detailed information"""
+        # Import reportlab only when needed
+        reportlab = _import_reportlab()
+        SimpleDocTemplate = reportlab['SimpleDocTemplate']
+        A4 = reportlab['A4']
+        colors = reportlab['colors']
+        getSampleStyleSheet = reportlab['getSampleStyleSheet']
+        ParagraphStyle = reportlab['ParagraphStyle']
+        inch = reportlab['inch']
+        Table = reportlab['Table']
+        TableStyle = reportlab['TableStyle']
+        Paragraph = reportlab['Paragraph']
+        Spacer = reportlab['Spacer']
+        Image = reportlab['Image']
+        PageBreak = reportlab['PageBreak']
+        TA_CENTER = reportlab['TA_CENTER']
+        
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(buffer, pagesize=A4, 
                                 rightMargin=72, leftMargin=72,
@@ -244,6 +315,10 @@ class PremiumReportGenerator:
     
     def _generate_charts(self) -> List[io.BytesIO]:
         """Generate chart images for PDF"""
+        # Import matplotlib only when needed
+        plt = _import_matplotlib()
+        np = _import_numpy()
+        
         charts = []
         
         # Chart 1: Expenses by Category (Pie Chart)
@@ -323,6 +398,20 @@ class PremiumReportGenerator:
     
     def generate_excel(self) -> bytes:
         """Generate Excel report with charts and detailed data"""
+        # Import openpyxl only when needed
+        openpyxl = _import_openpyxl()
+        Workbook = openpyxl['Workbook']
+        Font = openpyxl['Font']
+        PatternFill = openpyxl['PatternFill']
+        Alignment = openpyxl['Alignment']
+        Border = openpyxl['Border']
+        Side = openpyxl['Side']
+        PieChart = openpyxl['PieChart']
+        BarChart = openpyxl['BarChart']
+        LineChart = openpyxl['LineChart']
+        Reference = openpyxl['Reference']
+        get_column_letter = openpyxl['get_column_letter']
+        
         wb = Workbook()
         ws = wb.active
         ws.title = "Финансовый отчет"
