@@ -273,6 +273,35 @@ async def reset_user_settings(
         )
 
 
+class UpdatePremiumRequest(BaseModel):
+    is_premium: bool
+
+
+@router.patch("/users/{user_id}/premium", response_model=UserResponse)
+async def update_user_premium(
+    user_id: int,
+    request: UpdatePremiumRequest,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Update premium status for a user.
+    Only accessible by admins.
+    """
+    logger.info(f"Admin {current_admin.id} updating premium status for user {user_id} to {request.is_premium}")
+    
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    
+    user.is_premium = request.is_premium
+    db.commit()
+    db.refresh(user)
+    
+    logger.info(f"Successfully updated premium status for user {user_id}: is_premium={user.is_premium}")
+    return UserResponse.model_validate(user)
+
+
 @router.get("/sync-admin-status")
 @router.post("/sync-admin-status")
 async def sync_admin_status(

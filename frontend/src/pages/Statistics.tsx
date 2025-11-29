@@ -23,17 +23,47 @@ export function Statistics() {
   })
 
   const premiumMutation = useMutation({
-    mutationFn: ({ userId, isPremium }: { userId: number; isPremium: boolean }) => 
-      api.updateUserPremium(userId, isPremium),
-    onSuccess: () => {
+    mutationFn: ({ userId, isPremium }: { userId: number; isPremium: boolean }) => {
+      console.log('[Statistics] Updating premium status:', { userId, isPremium })
+      return api.updateUserPremium(userId, isPremium)
+    },
+    onMutate: async ({ userId, isPremium }) => {
+      // Отменяем исходящие запросы, чтобы они не перезаписали оптимистичное обновление
+      await queryClient.cancelQueries({ queryKey: ['adminUsers'] })
+      
+      // Сохраняем предыдущее значение для отката
+      const previousUsers = queryClient.getQueryData(['adminUsers'])
+      
+      // Оптимистично обновляем данные
+      queryClient.setQueryData(['adminUsers'], (old: any) => {
+        if (!old) return old
+        return old.map((user: any) => 
+          user.id === userId ? { ...user, is_premium: isPremium } : user
+        )
+      })
+      
+      return { previousUsers }
+    },
+    onSuccess: (data, variables) => {
+      console.log('[Statistics] Premium update successful:', { data, variables })
       queryClient.invalidateQueries({ queryKey: ['adminUsers'] })
       // Также обновляем данные текущего пользователя, если это он
       queryClient.invalidateQueries({ queryKey: ['currentUser'] })
     },
+    onError: (error, variables, context) => {
+      console.error('[Statistics] Premium update failed:', error, variables)
+      // Откатываем изменения при ошибке
+      if (context?.previousUsers) {
+        queryClient.setQueryData(['adminUsers'], context.previousUsers)
+      }
+      queryClient.invalidateQueries({ queryKey: ['adminUsers'] })
+    },
   })
 
   const handlePremiumToggle = (userId: number, currentValue: boolean) => {
-    premiumMutation.mutate({ userId, isPremium: !currentValue })
+    const newValue = !currentValue
+    console.log('[Statistics] Toggling premium:', { userId, currentValue, newValue })
+    premiumMutation.mutate({ userId, isPremium: newValue })
   }
 
   const handleResetClick = (userId: number) => {
