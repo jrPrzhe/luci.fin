@@ -436,10 +436,6 @@ class ApiClient {
     return response
   }
 
-  async getCurrentUser() {
-    return this.request<any>('/api/v1/auth/me')
-  }
-
   async syncAdminStatus() {
     return this.request<{
       is_admin: boolean
