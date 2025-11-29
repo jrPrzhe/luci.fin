@@ -281,6 +281,26 @@ except Exception as e:
     print(f"[STARTUP] Schema check warning (non-fatal): {e}", file=sys.stderr, flush=True)
     pass
 
+# Ensure is_premium column exists in users table (migration helper)
+print("[STARTUP] Checking users.is_premium...", file=sys.stderr, flush=True)
+try:
+    if inspector.has_table('users'):
+        columns = [col['name'] for col in inspector.get_columns('users')]
+        if 'is_premium' not in columns:
+            print("[STARTUP] Adding is_premium to users...", file=sys.stderr, flush=True)
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE users ADD COLUMN is_premium BOOLEAN DEFAULT false"))
+                conn.execute(text("UPDATE users SET is_premium = false WHERE is_premium IS NULL"))
+                conn.execute(text("ALTER TABLE users ALTER COLUMN is_premium SET NOT NULL"))
+                conn.execute(text("ALTER TABLE users ALTER COLUMN is_premium SET DEFAULT false"))
+                migration_logger.info("Added is_premium column to users table")
+            print("[STARTUP] is_premium column added", file=sys.stderr, flush=True)
+        else:
+            print("[STARTUP] is_premium column already exists", file=sys.stderr, flush=True)
+except Exception as e:
+    print(f"[STARTUP] Schema check warning (non-fatal): {e}", file=sys.stderr, flush=True)
+    pass
+
 print("[STARTUP] Schema checks completed", file=sys.stderr, flush=True)
 
 # Log admin configuration on startup (using print for guaranteed output)

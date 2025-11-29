@@ -288,18 +288,56 @@ async def update_user_premium(
     Update premium status for a user.
     Only accessible by admins.
     """
-    logger.info(f"Admin {current_admin.id} updating premium status for user {user_id} to {request.is_premium}")
-    
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    
-    user.is_premium = request.is_premium
-    db.commit()
-    db.refresh(user)
-    
-    logger.info(f"Successfully updated premium status for user {user_id}: is_premium={user.is_premium}")
-    return UserResponse.model_validate(user)
+    try:
+        logger.info(f"Admin {current_admin.id} updating premium status for user {user_id} to {request.is_premium}")
+        
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        
+        # Логируем текущее значение
+        old_value = getattr(user, 'is_premium', None)
+        logger.info(f"User {user_id} current is_premium: {old_value}, new value: {request.is_premium}")
+        
+        # Проверяем, существует ли атрибут
+        if not hasattr(user, 'is_premium'):
+            logger.error(f"User model does not have is_premium attribute! This is a database schema issue.")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database schema error: is_premium column missing. Please run migrations."
+            )
+        
+        # Обновляем значение
+        user.is_premium = request.is_premium
+        
+        # Сохраняем изменения
+        db.commit()
+        
+        # Обновляем объект из БД
+        db.refresh(user)
+        
+        # Проверяем, что значение сохранилось
+        saved_value = getattr(user, 'is_premium', None)
+        logger.info(f"User {user_id} premium status saved: is_premium={saved_value}")
+        
+        if saved_value != request.is_premium:
+            logger.error(f"CRITICAL: Value mismatch! Expected {request.is_premium}, got {saved_value}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to save premium status. Expected {request.is_premium}, got {saved_value}"
+            )
+        
+        logger.info(f"Successfully updated premium status for user {user_id}: is_premium={user.is_premium}")
+        return UserResponse.model_validate(user)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating premium status for user {user_id}: {str(e)}", exc_info=True)
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating premium status: {str(e)}"
+        )
 
 
 @router.get("/sync-admin-status")
