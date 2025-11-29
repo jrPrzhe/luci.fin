@@ -25,8 +25,10 @@ export function Statistics() {
   const premiumMutation = useMutation({
     mutationFn: ({ userId, isPremium }: { userId: number; isPremium: boolean }) => 
       api.updateUserPremium(userId, isPremium),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['adminUsers'] })
+      // Также обновляем данные текущего пользователя, если это он
+      queryClient.invalidateQueries({ queryKey: ['currentUser'] })
     },
   })
 

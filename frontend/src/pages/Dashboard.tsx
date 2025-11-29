@@ -94,6 +94,14 @@ export function Dashboard() {
     refetchOnWindowFocus: false,
   })
 
+  // Получаем данные текущего пользователя для проверки премиум статуса
+  const { data: currentUser } = useQuery({
+    queryKey: ['currentUser'],
+    queryFn: () => api.getCurrentUser(),
+    staleTime: 60000, // 1 minute
+    refetchOnWindowFocus: false,
+  })
+
   // Получаем доходы и расходы за текущий месяц
   const { data: monthlyStats, isLoading: monthlyStatsLoading } = useQuery({
     queryKey: ['monthly-stats'],
@@ -368,7 +376,14 @@ export function Dashboard() {
       </div>
 
       {/* Balance Card - Hero */}
-      <div className="card mb-4 md:mb-6 bg-gradient-to-br from-telegram-primary dark:from-telegram-dark-primary to-telegram-primaryLight dark:to-telegram-dark-primaryLight text-white border-0 shadow-telegram-lg p-4 md:p-5">
+      <div className="card mb-4 md:mb-6 bg-gradient-to-br from-telegram-primary dark:from-telegram-dark-primary to-telegram-primaryLight dark:to-telegram-dark-primaryLight text-white border-0 shadow-telegram-lg p-4 md:p-5 relative overflow-hidden">
+        {/* Premium Badge */}
+        {currentUser?.is_premium && (
+          <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-yellow-400/20 backdrop-blur-sm border border-yellow-300/30 rounded-full px-2.5 py-1 z-10">
+            <span className="text-yellow-300 text-sm">⭐</span>
+            <span className="text-yellow-100 text-xs font-semibold">Премиум</span>
+          </div>
+        )}
         <div className="flex items-center justify-between mb-3 md:mb-4">
           <div className="flex-1">
             <p className="text-xs md:text-sm opacity-90 mb-1">{t.dashboard.totalBalance}</p>
