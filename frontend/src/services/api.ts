@@ -869,8 +869,10 @@ class ApiClient {
     first_name: string | null
     last_name: string | null
     telegram_id: string | null
+    telegram_username: string | null
     vk_id: string | null
     default_currency: string
+    language: string
     is_premium: boolean
     is_admin: boolean
   }> {
