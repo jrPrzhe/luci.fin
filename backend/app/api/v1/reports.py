@@ -1,8 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func, extract, and_, or_, text as sa_text
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
+import logging
 from app.core.database import get_db
 from app.api.v1.auth import get_current_user
 from app.models.user import User
@@ -10,8 +12,12 @@ from app.models.transaction import Transaction, TransactionType
 from app.models.account import Account
 from app.models.category import Category
 from app.models.goal import Goal, GoalStatus
+from app.services.premium import require_premium
+from app.services.report_generator import PremiumReportGenerator
+import io
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.get("/analytics", response_model=Dict[str, Any])
@@ -382,4 +388,450 @@ async def get_analytics(
         "transaction_count": len(transactions_data),
         "goals": goals_info
     }
+
+
+@router.get("/premium/export")
+async def generate_premium_report(
+    format: str = "pdf",  # "pdf" or "excel"
+    period: Optional[str] = "month",  # "week", "month", "year"
+    start_date: Optional[str] = None,  # ISO format date string
+    end_date: Optional[str] = None,  # ISO format date string
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Generate premium financial report in PDF or Excel format.
+    Requires premium subscription.
+    """
+    # Check premium status
+    require_premium(current_user)
+    
+    # Validate format
+    if format not in ["pdf", "excel"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Формат должен быть 'pdf' или 'excel'"
+        )
+    
+    # Parse dates or use period
+    if start_date and end_date:
+        try:
+            start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+            end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Неверный формат даты. Используйте ISO формат (YYYY-MM-DD или YYYY-MM-DDTHH:MM:SS)"
+            )
+    else:
+        # Use period
+        end_dt = datetime.utcnow()
+        if period == "week":
+            start_dt = end_dt - timedelta(days=7)
+        elif period == "month":
+            start_dt = end_dt - timedelta(days=30)
+        elif period == "year":
+            start_dt = end_dt - timedelta(days=365)
+        else:
+            start_dt = end_dt - timedelta(days=30)
+    
+    # Get analytics data - call get_analytics with appropriate period
+    # Determine period from dates if custom dates provided
+    if start_date and end_date:
+        # Calculate period based on date range
+        days_diff = (end_dt - start_dt).days
+        if days_diff <= 7:
+            period_for_analytics = "week"
+        elif days_diff <= 90:
+            period_for_analytics = "month"
+        else:
+            period_for_analytics = "year"
+    else:
+        period_for_analytics = period
+    
+    # Get analytics data
+    analytics_response = await get_analytics(
+        period=period_for_analytics,
+        current_user=current_user,
+        db=db
+    )
+    
+    # Override dates if custom dates provided
+    if start_date and end_date:
+        analytics_response["start_date"] = start_dt.isoformat()
+        analytics_response["end_date"] = end_dt.isoformat()
+        # Recalculate analytics for custom date range
+        # We'll use the same logic but with custom dates
+        from app.models.shared_budget import SharedBudgetMember
+        
+        # Get user's accounts
+        user_accounts = db.query(Account).filter(
+            Account.user_id == current_user.id,
+            Account.is_active == True
+        ).all()
+        account_ids = [acc.id for acc in user_accounts]
+        
+        # Get shared budget accounts
+        budget_memberships = db.query(SharedBudgetMember).filter(
+            SharedBudgetMember.user_id == current_user.id
+        ).all()
+        budget_ids = [m.shared_budget_id for m in budget_memberships]
+        
+        shared_account_ids = []
+        if budget_ids:
+            shared_accounts = db.query(Account).filter(
+                Account.shared_budget_id.in_(budget_ids),
+                Account.is_active == True
+            ).all()
+            shared_account_ids = [acc.id for acc in shared_accounts]
+        
+        all_account_ids = account_ids + shared_account_ids
+    else:
+        # Use account IDs from analytics response calculation
+        from app.models.shared_budget import SharedBudgetMember
+        user_accounts = db.query(Account).filter(
+            Account.user_id == current_user.id,
+            Account.is_active == True
+        ).all()
+        account_ids = [acc.id for acc in user_accounts]
+        budget_memberships = db.query(SharedBudgetMember).filter(
+            SharedBudgetMember.user_id == current_user.id
+        ).all()
+        budget_ids = [m.shared_budget_id for m in budget_memberships]
+        shared_account_ids = []
+        if budget_ids:
+            shared_accounts = db.query(Account).filter(
+                Account.shared_budget_id.in_(budget_ids),
+                Account.is_active == True
+            ).all()
+            shared_account_ids = [acc.id for acc in shared_accounts]
+        all_account_ids = account_ids + shared_account_ids
+        start_dt = datetime.fromisoformat(analytics_response["start_date"].replace('Z', '+00:00'))
+        end_dt = datetime.fromisoformat(analytics_response["end_date"].replace('Z', '+00:00'))
+    
+    # Get transactions with full details for report
+    transactions_list = []
+    if all_account_ids:
+        placeholders = ','.join([f':acc_{i}' for i in range(len(all_account_ids))])
+        params = {f"acc_{i}": acc_id for i, acc_id in enumerate(all_account_ids)}
+        params["start_date"] = start_dt
+        params["end_date"] = end_dt
+        
+        # Get transactions with category and account names
+        sql_query = f"""
+            SELECT 
+                t.id, t.account_id, t.transaction_type::text, t.amount, t.currency,
+                t.category_id, t.description, t.goal_id, t.transaction_date,
+                t.amount_in_default_currency,
+                c.name as category_name, a.name as account_name
+            FROM transactions t
+            LEFT JOIN categories c ON t.category_id = c.id
+            LEFT JOIN accounts a ON t.account_id = a.id
+            WHERE t.account_id IN ({placeholders})
+            AND t.transaction_date >= :start_date
+            AND t.transaction_date <= :end_date
+            ORDER BY t.transaction_date DESC
+        """
+        
+        result = db.execute(sa_text(sql_query), params)
+        for row in result:
+            transactions_list.append({
+                "id": row[0],
+                "account_id": row[1],
+                "transaction_type": row[2].lower() if row[2] else '',
+                "amount": float(row[3]) if row[3] else 0.0,
+                "currency": row[4] or current_user.default_currency,
+                "category_id": row[5],
+                "description": row[6] or '',
+                "goal_id": row[7],
+                "transaction_date": row[8].isoformat() if row[8] else '',
+                "amount_in_default_currency": float(row[9]) if row[9] else None,
+                "category_name": row[10] or '',
+                "account_name": row[11] or ''
+            })
+    
+    # Prepare user info
+    user_info = {
+        "id": current_user.id,
+        "first_name": current_user.first_name,
+        "last_name": current_user.last_name,
+        "username": current_user.username,
+        "email": current_user.email,
+        "default_currency": current_user.default_currency
+    }
+    
+    # Generate report
+    generator = PremiumReportGenerator(
+        user_data={},
+        analytics_data=analytics_response,
+        transactions_data=transactions_list,
+        user_info=user_info
+    )
+    
+    if format == "pdf":
+        pdf_bytes = generator.generate_pdf()
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="financial_report_{datetime.now().strftime("%Y%m%d_%H%M%S")}.pdf"'
+            }
+        )
+    else:  # excel
+        excel_bytes = generator.generate_excel()
+        return Response(
+            content=excel_bytes,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": f'attachment; filename="financial_report_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx"'
+            }
+        )
+
+
+@router.post("/premium/send-via-bot")
+async def send_report_via_bot(
+    format: str = "pdf",  # "pdf" or "excel"
+    period: Optional[str] = "month",  # "week", "month", "year"
+    start_date: Optional[str] = None,  # ISO format date string
+    end_date: Optional[str] = None,  # ISO format date string
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Generate premium report and send it via Telegram or VK bot.
+    Requires premium subscription.
+    """
+    import httpx
+    from app.core.config import settings
+    
+    # Check premium status
+    require_premium(current_user)
+    
+    # Validate format
+    if format not in ["pdf", "excel"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Формат должен быть 'pdf' или 'excel'"
+        )
+    
+    # Parse dates or use period
+    if start_date and end_date:
+        try:
+            start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+            end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Неверный формат даты. Используйте ISO формат (YYYY-MM-DD или YYYY-MM-DDTHH:MM:SS)"
+            )
+    else:
+        # Use period
+        end_dt = datetime.utcnow()
+        if period == "week":
+            start_dt = end_dt - timedelta(days=7)
+        elif period == "month":
+            start_dt = end_dt - timedelta(days=30)
+        elif period == "year":
+            start_dt = end_dt - timedelta(days=365)
+        else:
+            start_dt = end_dt - timedelta(days=30)
+    
+    # Determine period for analytics
+    if start_date and end_date:
+        days_diff = (end_dt - start_dt).days
+        if days_diff <= 7:
+            period_for_analytics = "week"
+        elif days_diff <= 90:
+            period_for_analytics = "month"
+        else:
+            period_for_analytics = "year"
+    else:
+        period_for_analytics = period
+    
+    # Get analytics data
+    analytics_response = await get_analytics(
+        period=period_for_analytics,
+        current_user=current_user,
+        db=db
+    )
+    
+    # Override dates if custom dates provided
+    if start_date and end_date:
+        analytics_response["start_date"] = start_dt.isoformat()
+        analytics_response["end_date"] = end_dt.isoformat()
+        from app.models.shared_budget import SharedBudgetMember
+        user_accounts = db.query(Account).filter(
+            Account.user_id == current_user.id,
+            Account.is_active == True
+        ).all()
+        account_ids = [acc.id for acc in user_accounts]
+        budget_memberships = db.query(SharedBudgetMember).filter(
+            SharedBudgetMember.user_id == current_user.id
+        ).all()
+        budget_ids = [m.shared_budget_id for m in budget_memberships]
+        shared_account_ids = []
+        if budget_ids:
+            shared_accounts = db.query(Account).filter(
+                Account.shared_budget_id.in_(budget_ids),
+                Account.is_active == True
+            ).all()
+            shared_account_ids = [acc.id for acc in shared_accounts]
+        all_account_ids = account_ids + shared_account_ids
+    else:
+        from app.models.shared_budget import SharedBudgetMember
+        user_accounts = db.query(Account).filter(
+            Account.user_id == current_user.id,
+            Account.is_active == True
+        ).all()
+        account_ids = [acc.id for acc in user_accounts]
+        budget_memberships = db.query(SharedBudgetMember).filter(
+            SharedBudgetMember.user_id == current_user.id
+        ).all()
+        budget_ids = [m.shared_budget_id for m in budget_memberships]
+        shared_account_ids = []
+        if budget_ids:
+            shared_accounts = db.query(Account).filter(
+                Account.shared_budget_id.in_(budget_ids),
+                Account.is_active == True
+            ).all()
+            shared_account_ids = [acc.id for acc in shared_accounts]
+        all_account_ids = account_ids + shared_account_ids
+        start_dt = datetime.fromisoformat(analytics_response["start_date"].replace('Z', '+00:00'))
+        end_dt = datetime.fromisoformat(analytics_response["end_date"].replace('Z', '+00:00'))
+    
+    # Get transactions
+    transactions_list = []
+    if all_account_ids:
+        placeholders = ','.join([f':acc_{i}' for i in range(len(all_account_ids))])
+        params = {f"acc_{i}": acc_id for i, acc_id in enumerate(all_account_ids)}
+        params["start_date"] = start_dt
+        params["end_date"] = end_dt
+        
+        sql_query = f"""
+            SELECT 
+                t.id, t.account_id, t.transaction_type::text, t.amount, t.currency,
+                t.category_id, t.description, t.goal_id, t.transaction_date,
+                t.amount_in_default_currency,
+                c.name as category_name, a.name as account_name
+            FROM transactions t
+            LEFT JOIN categories c ON t.category_id = c.id
+            LEFT JOIN accounts a ON t.account_id = a.id
+            WHERE t.account_id IN ({placeholders})
+            AND t.transaction_date >= :start_date
+            AND t.transaction_date <= :end_date
+            ORDER BY t.transaction_date DESC
+        """
+        
+        result = db.execute(sa_text(sql_query), params)
+        for row in result:
+            transactions_list.append({
+                "id": row[0],
+                "account_id": row[1],
+                "transaction_type": row[2].lower() if row[2] else '',
+                "amount": float(row[3]) if row[3] else 0.0,
+                "currency": row[4] or current_user.default_currency,
+                "category_id": row[5],
+                "description": row[6] or '',
+                "goal_id": row[7],
+                "transaction_date": row[8].isoformat() if row[8] else '',
+                "amount_in_default_currency": float(row[9]) if row[9] else None,
+                "category_name": row[10] or '',
+                "account_name": row[11] or ''
+            })
+    
+    # Prepare user info
+    user_info = {
+        "id": current_user.id,
+        "first_name": current_user.first_name,
+        "last_name": current_user.last_name,
+        "username": current_user.username,
+        "email": current_user.email,
+        "default_currency": current_user.default_currency
+    }
+    
+    # Generate report
+    generator = PremiumReportGenerator(
+        user_data={},
+        analytics_data=analytics_response,
+        transactions_data=transactions_list,
+        user_info=user_info
+    )
+    
+    # Generate file
+    if format == "pdf":
+        file_bytes = generator.generate_pdf()
+        file_extension = "pdf"
+        mime_type = "application/pdf"
+    else:
+        file_bytes = generator.generate_excel()
+        file_extension = "xlsx"
+        mime_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    
+    filename = f"financial_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{file_extension}"
+    
+    # Send via bot (Telegram or VK)
+    telegram_id = current_user.telegram_id
+    vk_id = current_user.vk_id
+    
+    if telegram_id:
+        # Send via Telegram bot
+        try:
+            import base64
+            file_base64 = base64.b64encode(file_bytes).decode('utf-8')
+            
+            url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendDocument"
+            files = {
+                'document': (filename, file_bytes, mime_type)
+            }
+            data = {
+                'chat_id': telegram_id,
+                'caption': f'📊 Ваш финансовый отчет за период {start_dt.strftime("%d.%m.%Y")} - {end_dt.strftime("%d.%m.%Y")}'
+            }
+            
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(url, files=files, data=data)
+                if response.status_code == 200:
+                    return {"status": "success", "message": "Отчет отправлен в Telegram", "platform": "telegram"}
+                else:
+                    logger.error(f"Failed to send Telegram document: {response.status_code}, {response.text}")
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail="Не удалось отправить отчет в Telegram"
+                    )
+        except Exception as e:
+            logger.error(f"Error sending Telegram document: {e}", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Ошибка отправки отчета: {str(e)}"
+            )
+    
+    elif vk_id:
+        # Send via VK bot
+        try:
+            import base64
+            file_base64 = base64.b64encode(file_bytes).decode('utf-8')
+            
+            # VK API для отправки документов
+            # Нужно сначала загрузить документ на сервер VK, затем отправить
+            # Для упрощения, отправляем через backend VK бота
+            # В реальности нужно использовать VK API для загрузки документов
+            
+            # Пока возвращаем ошибку, т.к. VK API требует более сложной логики
+            raise HTTPException(
+                status_code=status.HTTP_501_NOT_IMPLEMENTED,
+                detail="Отправка через VK бота временно недоступна. Используйте Telegram или скачайте отчет напрямую."
+            )
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Error sending VK document: {e}", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Ошибка отправки отчета: {str(e)}"
+            )
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Не найден Telegram ID или VK ID. Пожалуйста, войдите через Telegram или VK."
+        )
 

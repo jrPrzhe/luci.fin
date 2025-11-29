@@ -823,6 +823,64 @@ class ApiClient {
     return this.request(`/api/v1/reports/analytics?period=${period}`)
   }
 
+  async downloadPremiumReport(
+    format: 'pdf' | 'excel' = 'pdf',
+    period?: 'week' | 'month' | 'year',
+    startDate?: string,
+    endDate?: string
+  ): Promise<Blob> {
+    const params = new URLSearchParams()
+    params.append('format', format)
+    if (period) params.append('period', period)
+    if (startDate) params.append('start_date', startDate)
+    if (endDate) params.append('end_date', endDate)
+    
+    const response = await fetch(`${this.baseUrl}/api/v1/reports/premium/export?${params.toString()}`, {
+      headers: {
+        'Authorization': `Bearer ${this.token}`,
+      },
+    })
+    
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Ошибка загрузки отчета' }))
+      throw new Error(error.detail || 'Ошибка загрузки отчета')
+    }
+    
+    return response.blob()
+  }
+
+  async sendReportViaBot(
+    format: 'pdf' | 'excel' = 'pdf',
+    period?: 'week' | 'month' | 'year',
+    startDate?: string,
+    endDate?: string
+  ): Promise<{ status: string; message: string; platform: string }> {
+    const params = new URLSearchParams()
+    params.append('format', format)
+    if (period) params.append('period', period)
+    if (startDate) params.append('start_date', startDate)
+    if (endDate) params.append('end_date', endDate)
+    
+    return this.request(`/api/v1/reports/premium/send-via-bot?${params.toString()}`, {
+      method: 'POST',
+    })
+  }
+
+  async getCurrentUser(): Promise<{
+    id: number
+    email: string
+    username: string | null
+    first_name: string | null
+    last_name: string | null
+    telegram_id: string | null
+    vk_id: string | null
+    default_currency: string
+    is_premium: boolean
+    is_admin: boolean
+  }> {
+    return this.request('/api/v1/auth/me')
+  }
+
   // Admin API
   async getAdminUsers(): Promise<Array<{
     id: number

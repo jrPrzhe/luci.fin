@@ -40,20 +40,18 @@ class UserUpdate(BaseModel):
     timezone: Optional[str] = None
     default_currency: Optional[str] = None
     language: Optional[str] = None
-    telegram_notifications_enabled: Optional[bool] = None
-    vk_notifications_enabled: Optional[bool] = None
 
 
 class UserResponse(UserBase):
     id: int
     telegram_id: Optional[str] = None
     telegram_username: Optional[str] = None
+    vk_id: Optional[str] = None
     is_active: bool
     is_verified: bool
     is_admin: bool = False
+    is_premium: bool = False
     is_2fa_enabled: bool
-    telegram_notifications_enabled: bool = True
-    vk_notifications_enabled: bool = True
     created_at: datetime
     last_login: Optional[datetime] = None
     

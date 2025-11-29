@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation } from '@tanstack/react-query'
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { api } from '../services/api'
+import { PremiumSubscriptionModal } from '../components/PremiumSubscriptionModal'
 
 interface AnalyticsData {
   period: string
@@ -57,6 +58,8 @@ const COLORS = ['#3390EC', '#6CC3F2', '#4CAF50', '#FF9800', '#9C27B0', '#F44336'
 
 export function Reports() {
   const [period, setPeriod] = useState<'week' | 'month' | 'year'>('month')
+  const [showPremiumModal, setShowPremiumModal] = useState(false)
+  const [isDownloading, setIsDownloading] = useState(false)
   
   const { data: analytics, isLoading, error } = useQuery<AnalyticsData>({
     queryKey: ['analytics', period],
@@ -64,6 +67,66 @@ export function Reports() {
     staleTime: 60000, // 1 minute
     refetchOnWindowFocus: false,
   })
+
+  const { data: user } = useQuery({
+    queryKey: ['currentUser'],
+    queryFn: () => api.getCurrentUser(),
+    staleTime: 300000, // 5 minutes
+  })
+
+  const sendReportMutation = useMutation({
+    mutationFn: (format: 'pdf' | 'excel') => 
+      api.sendReportViaBot(format, period),
+    onSuccess: (data) => {
+      setIsDownloading(false)
+      alert(`✅ ${data.message}`)
+    },
+    onError: (error: any) => {
+      setIsDownloading(false)
+      if (error.message?.includes('премиум')) {
+        setShowPremiumModal(true)
+      } else {
+        alert(`❌ Ошибка: ${error.message || 'Не удалось отправить отчет'}`)
+      }
+    },
+  })
+
+  const handleDownload = async (format: 'pdf' | 'excel' = 'pdf') => {
+    if (!user?.is_premium) {
+      setShowPremiumModal(true)
+      return
+    }
+
+    setIsDownloading(true)
+    
+    try {
+      // Проверяем, есть ли Telegram или VK ID
+      if (user.telegram_id || user.vk_id) {
+        // Отправляем через бота
+        await sendReportMutation.mutateAsync(format)
+      } else {
+        // Скачиваем напрямую
+        const blob = await api.downloadPremiumReport(format, period)
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `financial_report_${new Date().toISOString().split('T')[0]}.${format === 'pdf' ? 'pdf' : 'xlsx'}`
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+        setIsDownloading(false)
+        alert('✅ Отчет успешно скачан')
+      }
+    } catch (error: any) {
+      setIsDownloading(false)
+      if (error.message?.includes('премиум') || error.message?.includes('403')) {
+        setShowPremiumModal(true)
+      } else {
+        alert(`❌ Ошибка: ${error.message || 'Не удалось скачать отчет'}`)
+      }
+    }
+  }
 
   const formatCurrency = (amount: number) => {
     const currency = analytics?.totals.currency || 'RUB'
@@ -143,13 +206,60 @@ export function Reports() {
 
   return (
     <div className="min-h-screen p-4 md:p-6 animate-fade-in max-w-7xl mx-auto w-full">
+      {showPremiumModal && (
+        <PremiumSubscriptionModal onClose={() => setShowPremiumModal(false)} />
+      )}
+      
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <h1 className="text-xl md:text-2xl font-bold text-telegram-text dark:text-telegram-dark-text mb-4 md:mb-0">
           Финансовая аналитика
         </h1>
         
-        {/* Period Selector */}
-        <div className="flex gap-2">
+        <div className="flex items-center gap-3">
+          {/* Download Button */}
+          <div className="relative group">
+            <button
+              onClick={() => handleDownload('pdf')}
+              disabled={isDownloading}
+              className="flex items-center gap-2 px-4 py-2 bg-telegram-primary text-white rounded-lg font-medium hover:bg-telegram-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Скачать отчет"
+            >
+              {isDownloading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span className="hidden md:inline">Загрузка...</span>
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  <span className="hidden md:inline">Скачать</span>
+                </>
+              )}
+            </button>
+            
+            {/* Format dropdown - показываем при наведении на десктопе */}
+            {!isDownloading && (
+              <div className="absolute right-0 top-full mt-1 bg-telegram-surface dark:bg-telegram-dark-surface border border-telegram-border dark:border-telegram-dark-border rounded-lg shadow-lg overflow-hidden opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 min-w-[120px]">
+                <button
+                  onClick={() => handleDownload('pdf')}
+                  className="block w-full px-4 py-2 text-left text-sm text-telegram-text dark:text-telegram-dark-text hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover"
+                >
+                  📄 PDF
+                </button>
+                <button
+                  onClick={() => handleDownload('excel')}
+                  className="block w-full px-4 py-2 text-left text-sm text-telegram-text dark:text-telegram-dark-text hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover"
+                >
+                  📊 Excel
+                </button>
+              </div>
+            )}
+          </div>
+          
+          {/* Period Selector */}
+          <div className="flex gap-2">
           <button
             onClick={() => setPeriod('week')}
             className={`px-4 py-2 rounded-telegram text-sm font-medium transition-all ${
@@ -180,6 +290,7 @@ export function Reports() {
           >
             Год
           </button>
+          </div>
         </div>
       </div>
 
