@@ -19,7 +19,7 @@ import { Statistics } from './pages/Statistics'
 import { Achievements } from './pages/Achievements'
 import { Quests } from './pages/Quests'
 import { Analytics } from './pages/Analytics'
-import { isTelegramWebApp, getInitData, getTelegramUser } from './utils/telegram'
+import { isTelegramWebApp, getInitData, getTelegramUser, waitForInitData } from './utils/telegram'
 import { isVKWebApp, getVKLaunchParams, getVKUserId, initVKWebApp, getVKUser } from './utils/vk'
 import { api } from './services/api'
 import { storageSync } from './utils/storage'
@@ -157,7 +157,9 @@ function TelegramAuthHandler() {
         }
 
         // Автоматическая авторизация через Telegram Mini App
-        const initData = getInitData()
+        // Ждем, пока Telegram WebApp будет готов и initData станет доступен
+        console.log('Telegram auto-auth check: waiting for initData...')
+        const initData = await waitForInitData(2000) // Ждем до 2 секунд
         console.log('Telegram auto-auth check:', { 
           hasInitData: !!initData, 
           initDataLength: initData?.length || 0,

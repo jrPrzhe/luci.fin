@@ -178,6 +178,46 @@ export function getTelegramUser() {
 }
 
 /**
+ * Wait for Telegram WebApp to be ready and initData to be available
+ * Returns initData when ready, or empty string after timeout
+ */
+export async function waitForInitData(maxWaitMs: number = 2000): Promise<string> {
+  const webApp = getTelegramWebApp()
+  if (!webApp) {
+    return ''
+  }
+
+  // If initData is already available, return it immediately
+  if (webApp.initData && webApp.initData.length > 0) {
+    return webApp.initData
+  }
+
+  // Wait for initData to become available
+  const startTime = Date.now()
+  const checkInterval = 50 // Check every 50ms
+
+  return new Promise((resolve) => {
+    const checkInitData = () => {
+      const webApp = getTelegramWebApp()
+      if (webApp && webApp.initData && webApp.initData.length > 0) {
+        resolve(webApp.initData)
+        return
+      }
+
+      if (Date.now() - startTime >= maxWaitMs) {
+        // Timeout reached, return whatever we have (might be empty)
+        resolve(webApp?.initData || '')
+        return
+      }
+
+      setTimeout(checkInitData, checkInterval)
+    }
+
+    checkInitData()
+  })
+}
+
+/**
  * Get init data for backend verification
  */
 export function getInitData(): string {

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { api } from '../services/api'
-import { isTelegramWebApp, getInitData } from '../utils/telegram'
+import { isTelegramWebApp, getInitData, waitForInitData } from '../utils/telegram'
 import { isVKWebApp, getVKLaunchParams, initVKWebApp, getVKUser } from '../utils/vk'
 import { storageSync } from '../utils/storage'
 import { useToast } from '../contexts/ToastContext'
@@ -58,7 +58,8 @@ export function Login() {
       return
     }
 
-    const initData = getInitData()
+    // Ждем, пока Telegram WebApp будет готов и initData станет доступен
+    const initData = await waitForInitData(2000) // Ждем до 2 секунд
     if (!initData || initData.length === 0) {
       showError('Не удалось получить данные Telegram. Убедитесь, что открыто через Telegram Mini App.')
       setIsLoading(false)
@@ -201,13 +202,19 @@ export function Login() {
     // In Telegram Mini App - only Telegram auth, no choice
     if (isTelegram && !isVK) {
       if (authMethod === 'select') {
-        const initData = getInitData()
-        if (initData && initData.length > 0) {
-          handleTelegramLogin()
-        } else {
-          showError('Не удалось получить данные Telegram. Убедитесь, что открыто через Telegram Mini App.')
+        // Ждем, пока Telegram WebApp будет готов и initData станет доступен
+        waitForInitData(2000).then((initData) => {
+          if (initData && initData.length > 0) {
+            handleTelegramLogin()
+          } else {
+            showError('Не удалось получить данные Telegram. Убедитесь, что открыто через Telegram Mini App.')
+            setIsLoading(false)
+          }
+        }).catch((error) => {
+          console.error('[Login] Failed to wait for Telegram initData:', error)
+          showError('Ошибка инициализации Telegram Mini App')
           setIsLoading(false)
-        }
+        })
       }
     }
     // In VK Mini App - only VK auth, no choice
