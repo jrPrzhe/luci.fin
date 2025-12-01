@@ -365,20 +365,11 @@ export function Layout() {
               <div className="absolute -inset-1 rounded-full border-2 border-telegram-primary dark:border-telegram-dark-primary opacity-40 animate-pulse" style={{ animationDuration: '1.5s' }}></div>
             </button>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <h1 className="text-base font-extrabold tracking-tight">
-                  <span className="bg-gradient-to-r from-telegram-primary dark:from-telegram-dark-primary via-purple-500 to-telegram-primaryLight dark:to-telegram-dark-primaryLight bg-clip-text text-transparent">
-                    {newYearEnabled ? '🎄 ' : ''}Люся.Бюджет{newYearEnabled ? ' ❄️' : ''}
-                  </span>
-                </h1>
-                {/* Premium Badge в меню */}
-                {user?.is_premium && (
-                  <div className="flex items-center gap-1 bg-yellow-400/20 backdrop-blur-sm border border-yellow-300/30 rounded-full px-2 py-0.5">
-                    <span className="text-yellow-300 text-xs">⭐</span>
-                    <span className="text-yellow-100 text-[10px] font-semibold">Премиум</span>
-                  </div>
-                )}
-              </div>
+              <h1 className="text-base font-extrabold tracking-tight">
+                <span className="bg-gradient-to-r from-telegram-primary dark:from-telegram-dark-primary via-purple-500 to-telegram-primaryLight dark:to-telegram-dark-primaryLight bg-clip-text text-transparent">
+                  {newYearEnabled ? '🎄 ' : ''}Люся.Бюджет{newYearEnabled ? ' ❄️' : ''}
+                </span>
+              </h1>
               <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary font-medium tracking-wide">
                 {newYearEnabled ? 'С Новым годом! 🎉' : 'Все посчитала'}
               </p>
@@ -483,20 +474,11 @@ export function Layout() {
             <div className="absolute inset-0 rounded-full bg-gradient-to-br from-telegram-primary dark:from-telegram-dark-primary to-telegram-primaryLight dark:to-telegram-dark-primaryLight opacity-60 animate-ping" style={{ animationDuration: '2s' }}></div>
             <div className="absolute -inset-1 rounded-full border-2 border-telegram-primary dark:border-telegram-dark-primary opacity-40 animate-pulse" style={{ animationDuration: '1.5s' }}></div>
           </button>
-          <div className="flex items-center gap-2">
-            <h1 className="text-base font-extrabold tracking-tight">
-              <span className="bg-gradient-to-r from-telegram-primary dark:from-telegram-dark-primary via-purple-500 to-telegram-primaryLight dark:to-telegram-dark-primaryLight bg-clip-text text-transparent">
-                {newYearEnabled ? '🎄 ' : ''}Люся.Бюджет{newYearEnabled ? ' ❄️' : ''}
-              </span>
-            </h1>
-            {/* Premium Badge в мобильном меню */}
-            {user?.is_premium && (
-              <div className="flex items-center gap-1 bg-yellow-400/20 backdrop-blur-sm border border-yellow-300/30 rounded-full px-1.5 py-0.5">
-                <span className="text-yellow-300 text-[10px]">⭐</span>
-                <span className="text-yellow-100 text-[9px] font-semibold">Премиум</span>
-              </div>
-            )}
-          </div>
+          <h1 className="text-base font-extrabold tracking-tight">
+            <span className="bg-gradient-to-r from-telegram-primary dark:from-telegram-dark-primary via-purple-500 to-telegram-primaryLight dark:to-telegram-dark-primaryLight bg-clip-text text-transparent">
+              {newYearEnabled ? '🎄 ' : ''}Люся.Бюджет{newYearEnabled ? ' ❄️' : ''}
+            </span>
+          </h1>
           </div>
           <div className="flex items-center gap-2">
             {/* Quest Notifications */}
