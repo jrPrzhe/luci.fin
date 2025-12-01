@@ -83,9 +83,6 @@ export function I18nProvider({ children }: { children: ReactNode }) {
           if (user?.language) {
             const userLang = user.language.toLowerCase() as Language
             if (userLang === 'ru' || userLang === 'en') {
-              // Get current language from storage (source of truth for manual changes)
-              const storageLang = storageSync.getItem('language') as Language | null
-              
               // Don't update if user manually changed language recently
               if (timeSinceLastManualChange < 60000) {
                 return
