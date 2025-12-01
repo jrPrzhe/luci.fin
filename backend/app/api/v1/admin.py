@@ -414,42 +414,6 @@ async def sync_admin_status(
     }
 
 
-class UpdatePremiumRequest(BaseModel):
-    is_premium: bool
-
-
-@router.patch("/users/{user_id}/premium", response_model=UserResponse)
-async def update_user_premium(
-    user_id: int,
-    request: UpdatePremiumRequest,
-    current_admin: User = Depends(get_current_admin),
-    db: Session = Depends(get_db)
-):
-    """
-    Update user premium subscription status
-    Only accessible by admins
-    """
-    import logging
-    logger = logging.getLogger(__name__)
-    
-    # Get target user
-    target_user = db.query(User).filter(User.id == user_id).first()
-    if not target_user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
-    
-    logger.info(f"Admin {current_admin.id} updating premium status for user {user_id}: is_premium={request.is_premium}")
-    
-    target_user.is_premium = request.is_premium
-    db.commit()
-    db.refresh(target_user)
-    
-    logger.info(f"Successfully updated premium status for user {user_id}: is_premium={target_user.is_premium}")
-    return UserResponse.model_validate(target_user)
-
-
 class SetAdminByUsernameRequest(BaseModel):
     telegram_username: str
 

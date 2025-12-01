@@ -56,12 +56,16 @@ export function Statistics() {
       })
       
       // Также обновляем данные текущего пользователя, если это он
-      queryClient.setQueryData(['currentUser'], (old: any) => {
-        if (old && old.id === variables.userId) {
-          return { ...old, is_premium: updatedUser.is_premium }
-        }
-        return old
-      })
+      const currentUser = queryClient.getQueryData(['currentUser']) as any
+      if (currentUser && currentUser.id === variables.userId) {
+        // Обновляем кэш напрямую
+        queryClient.setQueryData(['currentUser'], { ...currentUser, is_premium: updatedUser.is_premium })
+        // И принудительно перезагружаем данные, чтобы убедиться, что они свежие
+        queryClient.refetchQueries({ queryKey: ['currentUser'] })
+      } else {
+        // Если это не текущий пользователь, просто инвалидируем кэш
+        queryClient.invalidateQueries({ queryKey: ['currentUser'] })
+      }
     },
     onError: (error, variables, context) => {
       console.error('[Statistics] Premium update failed:', error, variables)
