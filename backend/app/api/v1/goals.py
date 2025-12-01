@@ -409,25 +409,31 @@ async def generate_roadmap(
     
     if assistant.client:
         try:
+            # Extract values to avoid scope issues in f-strings
+            goal_name = request.goal_name
+            currency = request.currency
+            balance = request.balance
+            
             # Build structured prompt for AI
             prompt = f"""Ты - финансовый консультант. Создай структурированную дорожную карту для достижения финансовой цели.
 
-Цель: {request.goal_name}
-Стоимость цели: {int(round(float(target_amount))):,} {request.currency}
-Текущий баланс: {int(round(request.balance)):,} {request.currency}
-Осталось накопить: {int(round(float(remaining_amount))):,} {request.currency}
+Цель: {goal_name}
+Стоимость цели: {int(round(float(target_amount))):,} {currency}
+Текущий баланс: {int(round(balance)):,} {currency}
+Осталось накопить: {int(round(float(remaining_amount))):,} {currency}
 
 Финансовое положение пользователя:
-- Среднемесячный доход: {int(round(float(monthly_income))):,} {request.currency}
-- Среднемесячные расходы: {int(round(float(monthly_expense))):,} {request.currency}
-- Среднемесячные накопления: {int(round(float(monthly_savings))):,} {request.currency}
+- Среднемесячный доход: {int(round(float(monthly_income))):,} {currency}
+- Среднемесячные расходы: {int(round(float(monthly_expense))):,} {currency}
+- Среднемесячные накопления: {int(round(float(monthly_savings))):,} {currency}
 
 Топ категорий расходов:
 """
             for i, (cat, amount) in enumerate(top_categories, 1):
                 monthly_cat = int(round(amount/12))
-                prompt += f"{i}. {cat}: {monthly_cat:,} {request.currency}/мес\n"
+                prompt += f"{i}. {cat}: {monthly_cat:,} {currency}/мес\n"
             
+            monthly_savings_needed_int = int(round(float(monthly_savings_needed)))
             prompt += f"""
 
 Создай дорожную карту в СТРОГО следующем формате (три раздела):
@@ -441,7 +447,7 @@ async def generate_roadmap(
 
 РАЗДЕЛ 2 - ЧТО НУЖНО ДЕЛАТЬ:
 Четко опиши конкретный план действий:
-- Сколько нужно откладывать каждый месяц: {int(round(float(monthly_savings_needed))):,} {request.currency}
+- Сколько нужно откладывать каждый месяц: {monthly_savings_needed_int:,} {currency}
 - Сколько месяцев потребуется: {months_to_save}
 - Конкретные шаги для достижения цели с учетом доходов и расходов
 - Как распределить накопления по месяцам
@@ -465,7 +471,8 @@ async def generate_roadmap(
             roadmap_text = response.text if hasattr(response, 'text') else str(response)
             
             # Generate detailed recommendations with time savings
-            rec_prompt = f"""На основе анализа финансов пользователя, создай 3-5 конкретных рекомендаций по экономии для достижения цели "{request.goal_name}".
+            target_amount_int = int(round(float(target_amount)))
+            rec_prompt = f"""На основе анализа финансов пользователя, создай 3-5 конкретных рекомендаций по экономии для достижения цели "{goal_name}".
 
 Для каждой рекомендации:
 1. Укажи категорию расходов
@@ -473,15 +480,15 @@ async def generate_roadmap(
 3. Рассчитай, на сколько месяцев быстрее можно достичь цели
 
 Текущая ситуация:
-- Цель: {int(round(float(target_amount))):,} {request.currency}
-- Нужно откладывать в месяц: {int(round(float(monthly_savings_needed))):,} {request.currency}
+- Цель: {target_amount_int:,} {currency}
+- Нужно откладывать в месяц: {monthly_savings_needed_int:,} {currency}
 - Оценка времени: {months_to_save} месяцев
 
 Топ категории расходов:
 """
             for cat, amount in top_categories:
                 monthly_cat = int(round(amount/12))
-                rec_prompt += f"- {cat}: {monthly_cat:,} {request.currency}/мес\n"
+                rec_prompt += f"- {cat}: {monthly_cat:,} {currency}/мес\n"
             
             rec_prompt += "\nОтвет должен быть кратким списком рекомендаций на русском языке, каждая рекомендация в отдельной строке с расчетом экономии времени."
             
