@@ -345,7 +345,21 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         t("start.important", lang)
     )
     
-    await update.message.reply_text(message, parse_mode='Markdown')
+    # Send welcome message
+    sent_message = await update.message.reply_text(message, parse_mode='Markdown')
+    
+    # Pin the message in the chat
+    try:
+        await context.bot.pin_chat_message(
+            chat_id=update.effective_chat.id,
+            message_id=sent_message.message_id,
+            disable_notification=True  # Pin silently without notification
+        )
+        logger.info(f"Pinned welcome message for user {telegram_id}")
+    except Exception as e:
+        # Log error but don't fail the command if pinning fails
+        # (e.g., bot might not have permission to pin messages in some chats)
+        logger.warning(f"Failed to pin message for user {telegram_id}: {e}")
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
