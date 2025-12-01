@@ -48,3 +48,5 @@ psql -h 195.43.142.121 -U finance_user -d finance_db -c "DELETE FROM alembic_ver
 
 
 
+
+

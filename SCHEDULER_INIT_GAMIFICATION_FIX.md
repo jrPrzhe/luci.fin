@@ -86,3 +86,5 @@ python /app/backend/scripts/init_gamification_data.py
 
 
 
+
+

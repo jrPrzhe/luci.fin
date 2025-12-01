@@ -330,7 +330,6 @@ async def start_handler(message: Message):
             t("start.report", lang) +
             t("start.goal", lang) +
             t("start.help", lang) +
-            t("start.notifications", lang) +
             t("start.important", lang)
         )
         
@@ -378,54 +377,6 @@ async def cancel_handler(message: Message):
         await message.answer(t("cancel.cancelled", lang))
     else:
         await message.answer(t("cancel.cancelled", lang))
-
-
-@bot.on.message(CommandRule("notifications", ["уведомления", "настройки"]))
-async def notifications_handler(message: Message):
-    """Handle notifications command - manage VK notification settings only"""
-    vk_id = str(message.from_id)
-    lang = await get_user_language(vk_id)
-    
-    try:
-        # Get current user settings
-        response = await make_authenticated_request(
-            "GET",
-            f"{BACKEND_URL}/api/v1/auth/me",
-            vk_id,
-            timeout=5.0
-        )
-        
-        if response.status_code != 200:
-            await message.answer(t("notifications.error", lang))
-            return
-        
-        user_data = response.json()
-        vk_enabled = user_data.get('vk_notifications_enabled', True)
-        
-        # Build status text - only VK notifications
-        vk_status = t("notifications.enabled", lang) if vk_enabled else t("notifications.disabled", lang)
-        
-        message_text = (
-            t("notifications.title", lang) +
-            t("notifications.vk_status", lang, status=vk_status)
-        )
-        
-        # Create keyboard with toggle button - only VK
-        keyboard = Keyboard(one_time=False)
-        
-        # VK toggle button
-        vk_button_text = t("notifications.vk_toggle", lang,
-            status="✅" if vk_enabled else "❌")
-        keyboard.add(Text(
-            vk_button_text,
-            payload=json.dumps({"command": "notif_vk", "value": not vk_enabled})
-        ))
-        
-        await message.answer(message_text, keyboard=keyboard)
-        
-    except Exception as e:
-        logger.error(f"Error getting notification settings: {e}")
-        await message.answer(t("notifications.error", lang))
 
 
 @bot.on.message(CommandRule("help", ["помощь", "справка"]))
@@ -996,36 +947,6 @@ async def button_handler(message: Message):
                 return
             elif command == "help":
                 await help_handler(message)
-                return
-            elif command == "notif_vk":
-                # Handle VK notification toggle - only VK in VK bot
-                new_value = payload_data.get("value", True)
-                
-                vk_id = str(message.from_id)
-                lang = await get_user_language(vk_id)
-                
-                try:
-                    # Prepare update data - only VK notifications
-                    update_data = {"vk_notifications_enabled": new_value}
-                    
-                    # Update settings in backend
-                    response = await make_authenticated_request(
-                        "PUT",
-                        f"{BACKEND_URL}/api/v1/auth/me",
-                        vk_id,
-                        json_data=update_data,
-                        timeout=5.0
-                    )
-                    
-                    if response.status_code == 200:
-                        await message.answer(t("notifications.updated", lang))
-                        # Refresh the notification settings screen
-                        await notifications_handler(message)
-                    else:
-                        await message.answer(t("notifications.error", lang))
-                except Exception as e:
-                    logger.error(f"Error updating notification settings: {e}")
-                    await message.answer(t("notifications.error", lang))
                 return
             elif command and command.startswith("account_"):
                 account_id = int(command.split("_")[1])

@@ -61,9 +61,7 @@ class Settings(BaseSettings):
     SESSION_TIMEOUT_MINUTES: int = 60
     
     # Frontend
-    # Default to empty string - should be set via environment variable in production
-    # For production, set FRONTEND_URL=https://luci-fin.vercel.app
-    FRONTEND_URL: str = ""
+    FRONTEND_URL: str = "http://localhost:5173"
     
     # Celery
     CELERY_BROKER_URL: str = ""

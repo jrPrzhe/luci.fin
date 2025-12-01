@@ -4,6 +4,8 @@ from app.models.user import User
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 import logging
+import httpx
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -62,5 +64,80 @@ def require_premium(user: User, db: Session = None) -> None:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Эта функция доступна только для премиум пользователей. Пожалуйста, оформите подписку."
         )
+
+
+def send_premium_notification(user: User) -> bool:
+    """Send premium activation notification to user via Telegram (synchronous version)"""
+    if not user.telegram_id:
+        logger.info(f"User {user.id} does not have telegram_id, skipping premium notification")
+        return False
+    
+    if not settings.TELEGRAM_BOT_TOKEN:
+        logger.warning("TELEGRAM_BOT_TOKEN not configured, cannot send premium notification")
+        return False
+    
+    # Get user language (default to Russian)
+    user_language = getattr(user, 'language', 'ru') or 'ru'
+    
+    # Premium features list based on language
+    if user_language == 'en':
+        premium_features = [
+            "📊 Detailed financial reports with charts",
+            "📈 Data visualization and trends",
+            "📄 Export reports to PDF and Excel",
+            "💬 Automatic report delivery via bot",
+            "🎯 Advanced analytics and insights",
+            "📱 Priority support"
+        ]
+        message = f"""⭐ <b>Congratulations! You now have Premium!</b>
+
+🎉 You've got access to premium features!
+
+<b>Available premium features:</b>
+{chr(10).join(premium_features)}
+
+🚀 Start using all the app features right now!
+
+If you have any questions, contact support."""
+    else:
+        # Russian (default)
+        premium_features = [
+            "📊 Детальные финансовые отчеты с графиками",
+            "📈 Визуализация данных и трендов",
+            "📄 Экспорт отчетов в PDF и Excel",
+            "💬 Автоматическая отправка отчетов через бота",
+            "🎯 Расширенная аналитика и инсайты",
+            "📱 Приоритетная поддержка"
+        ]
+        message = f"""⭐ <b>Поздравляем! У вас теперь Премиум!</b>
+
+🎉 Вы получили доступ к премиум функциям!
+
+<b>Доступные платные функции:</b>
+{chr(10).join(premium_features)}
+
+🚀 Начните использовать все возможности приложения прямо сейчас!
+
+Если у вас есть вопросы, обращайтесь в поддержку."""
+    
+    try:
+        url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendMessage"
+        payload = {
+            "chat_id": user.telegram_id,
+            "text": message,
+            "parse_mode": "HTML"
+        }
+        
+        with httpx.Client(timeout=10.0) as client:
+            response = client.post(url, json=payload)
+            if response.status_code == 200:
+                logger.info(f"Premium notification sent to user {user.id} (telegram_id: {user.telegram_id}, language: {user_language})")
+                return True
+            else:
+                logger.error(f"Failed to send premium notification: {response.status_code}, {response.text}")
+                return False
+    except Exception as e:
+        logger.error(f"Error sending premium notification: {e}", exc_info=True)
+        return False
 
 

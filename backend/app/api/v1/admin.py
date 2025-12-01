@@ -363,6 +363,27 @@ async def update_user_premium(
             )
         
         logger.info(f"Successfully updated premium status for user {user_id}: is_premium={user.is_premium}")
+        
+        # Отправляем уведомление о премиум, если статус был изменен на True
+        if request.is_premium and old_value != request.is_premium:
+            try:
+                from app.services.premium import send_premium_notification
+                import threading
+                
+                # Отправляем уведомление в фоне (не блокируем ответ)
+                def send_notification():
+                    try:
+                        send_premium_notification(user)
+                    except Exception as e:
+                        logger.error(f"Failed to send premium notification in background: {e}")
+                
+                thread = threading.Thread(target=send_notification)
+                thread.daemon = True
+                thread.start()
+            except Exception as e:
+                logger.error(f"Failed to start premium notification thread: {e}", exc_info=True)
+                # Не прерываем выполнение, если уведомление не отправилось
+        
         return UserResponse.model_validate(user)
     except HTTPException:
         raise

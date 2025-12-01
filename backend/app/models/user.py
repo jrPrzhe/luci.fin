@@ -24,10 +24,6 @@ class User(Base):
     default_currency = Column(String(3), default="USD")
     language = Column(String(5), default="en")
     
-    # Notification settings
-    telegram_notifications_enabled = Column(Boolean, default=True)
-    vk_notifications_enabled = Column(Boolean, default=True)
-    
     # 2FA
     is_2fa_enabled = Column(Boolean, default=False)
     two_factor_secret = Column(String(32), nullable=True)
@@ -37,6 +33,7 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     is_verified = Column(Boolean, default=False)
     is_admin = Column(Boolean, default=False)
+    is_premium = Column(Boolean, default=False)  # Premium subscription status
     verification_token = Column(String(255), nullable=True)
     
     # Timestamps

@@ -1824,21 +1824,8 @@ async def goal_info_received(update: Update, context: ContextTypes.DEFAULT_TYPE)
         context.user_data['recommendations'] = roadmap_data.get('recommendations', [])
         context.user_data['savings_by_category'] = roadmap_data.get('savings_by_category', {})
         
-        # Format roadmap message
-        roadmap_text = roadmap.get('roadmap_text', '')
-        safe_goal_name = escape_markdown(goal_name)
-        if not roadmap_text:
-            roadmap_text = f"""🗺️ *Дорожная карта для достижения цели*
-
-🎯 Цель: {safe_goal_name}
-💰 Стоимость: {int(round(target_amount)):,} {currency}
-📅 Оценка времени: {roadmap_data.get('estimated_months', 12)} месяцев
-💵 Ежемесячные накопления: {int(round(roadmap_data.get('monthly_savings_needed', 0))):,} {currency}
-
-📋 Рекомендации:"""
-            for rec in roadmap_data.get('recommendations', [])[:3]:
-                safe_rec = escape_markdown(str(rec))
-                roadmap_text += f"\n• {safe_rec}"
+        # Format roadmap message with better structure
+        roadmap_text_raw = roadmap.get('roadmap_text', '')
         
         feasibility_emoji = {
             'feasible': '✅',
@@ -1852,12 +1839,69 @@ async def goal_info_received(update: Update, context: ContextTypes.DEFAULT_TYPE)
         }
         
         feasibility = roadmap_data.get('feasibility', 'feasible')
+        monthly_savings_needed = roadmap_data.get('monthly_savings_needed', 0)
+        estimated_months = roadmap_data.get('estimated_months', 12)
         
-        message = f"{feasibility_emoji.get(feasibility, '✅')} *{feasibility_text.get(feasibility, 'Достижимо')}*\n\n"
-        message += roadmap_text[:3000]  # Telegram message limit
+        # Build structured message
+        message = f"🎯 *Цель: {escape_markdown(goal_name)}*\n\n"
+        message += f"{feasibility_emoji.get(feasibility, '✅')} *{feasibility_text.get(feasibility, 'Достижимо')}*\n\n"
         
-        if len(roadmap_text) > 3000:
-            message += "\n\n... (план будет сохранен полностью)"
+        # Add progress visualization
+        current_balance = int(round(request.balance))
+        remaining = int(round(target_amount - current_balance))
+        progress_pct = int((current_balance / target_amount * 100)) if target_amount > 0 else 0
+        
+        message += f"📊 *Текущий прогресс:*\n"
+        message += f"💰 Накоплено: {current_balance:,} {currency}\n"
+        message += f"🎯 Цель: {int(round(target_amount)):,} {currency}\n"
+        message += f"📈 Осталось: {remaining:,} {currency}\n"
+        message += f"📉 Прогресс: {progress_pct}%\n\n"
+        
+        # Visual progress bar (using Unicode blocks)
+        progress_bar_length = 20
+        filled = int(progress_pct / 100 * progress_bar_length)
+        progress_bar = "█" * filled + "░" * (progress_bar_length - filled)
+        message += f"`{progress_bar}` {progress_pct}%\n\n"
+        
+        # Add roadmap text if available
+        if roadmap_text_raw:
+            # Truncate if too long, but preserve structure
+            max_roadmap_length = 2000
+            if len(roadmap_text_raw) > max_roadmap_length:
+                # Try to preserve sections by truncating at section boundaries
+                sections = roadmap_text_raw.split('\n\n')
+                truncated = []
+                current_length = len(message)
+                for section in sections:
+                    if current_length + len(section) + 10 > max_roadmap_length:
+                        break
+                    truncated.append(section)
+                    current_length += len(section) + 2
+                roadmap_text_raw = '\n\n'.join(truncated)
+                if len(roadmap_text_raw) < len(roadmap.get('roadmap_text', '')):
+                    roadmap_text_raw += "\n\n... (план будет сохранен полностью в приложении)"
+            
+            message += roadmap_text_raw
+        else:
+            # Build roadmap text manually if not provided
+            message += f"🗺️ *Дорожная карта:*\n\n"
+            message += f"📅 *Оценка времени:* {estimated_months} месяцев\n"
+            message += f"💵 *Ежемесячные накопления:* {int(round(monthly_savings_needed)):,} {currency}\n\n"
+            message += "📋 *План действий:*\n"
+            message += f"1. Откладывайте {int(round(monthly_savings_needed)):,} {currency} каждый месяц\n"
+            message += f"2. Отслеживайте прогресс ежемесячно\n"
+            message += f"3. Оптимизируйте расходы для ускорения\n\n"
+            
+            # Add recommendations
+            recommendations = roadmap_data.get('recommendations', [])
+            if recommendations:
+                message += "💡 *Рекомендации:*\n"
+                for i, rec in enumerate(recommendations[:5], 1):
+                    message += f"{i}. {rec}\n"
+        
+        # Ensure message doesn't exceed Telegram limit
+        if len(message) > 4000:
+            message = message[:3900] + "\n\n... (полный план доступен в приложении)"
         
         # Add confirmation buttons
         from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -1867,9 +1911,10 @@ async def goal_info_received(update: Update, context: ContextTypes.DEFAULT_TYPE)
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
         
+        # Send message without Markdown parsing to avoid errors
         await update.message.reply_text(
             message,
-            parse_mode='Markdown',
+            parse_mode=None,  # No Markdown parsing to avoid errors
             reply_markup=reply_markup
         )
         
@@ -1877,8 +1922,11 @@ async def goal_info_received(update: Update, context: ContextTypes.DEFAULT_TYPE)
             
     except Exception as e:
         logger.error(f"Error generating roadmap: {e}", exc_info=True)
+        # Escape error message to prevent Markdown parsing errors
+        error_msg = str(e)[:200]
+        safe_error_msg = escape_markdown(error_msg)
         await update.message.reply_text(
-            f"❌ Ошибка при создании плана: {str(e)[:200]}\n\nПопробуйте позже или введите цель снова."
+            f"❌ Ошибка при создании плана: {safe_error_msg}\n\nПопробуйте позже или введите цель снова."
         )
         return ConversationHandler.END
 

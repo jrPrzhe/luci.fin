@@ -364,14 +364,22 @@ async def generate_roadmap(
     recommendations = []
     savings_by_category = {}
     
+    # Calculate current savings progress
+    current_savings = Decimal(str(request.balance))
+    remaining_amount = target_amount - current_savings
+    
+    # Calculate top expense categories for recommendations
+    top_categories = sorted(expenses_by_category.items(), key=lambda x: x[1], reverse=True)[:5]
+    
     if assistant.client:
         try:
-            # Build prompt for AI
-            prompt = f"""Ты - финансовый консультант. Пользователь хочет достичь финансовой цели.
+            # Build structured prompt for AI
+            prompt = f"""Ты - финансовый консультант. Создай структурированную дорожную карту для достижения финансовой цели.
 
 Цель: {request.goal_name}
-Стоимость: {int(round(float(target_amount))):,} {request.currency}
+Стоимость цели: {int(round(float(target_amount))):,} {request.currency}
 Текущий баланс: {int(round(request.balance)):,} {request.currency}
+Осталось накопить: {int(round(float(remaining_amount))):,} {request.currency}
 
 Финансовое положение пользователя:
 - Среднемесячный доход: {int(round(float(monthly_income))):,} {request.currency}
@@ -380,20 +388,35 @@ async def generate_roadmap(
 
 Топ категорий расходов:
 """
-            for i, (cat, amount) in enumerate(sorted(expenses_by_category.items(), key=lambda x: x[1], reverse=True)[:5], 1):
-                prompt += f"{i}. {cat}: {int(round(amount/12)):,} {request.currency}/мес\n"
+            for i, (cat, amount) in enumerate(top_categories, 1):
+                monthly_cat = int(round(amount/12))
+                prompt += f"{i}. {cat}: {monthly_cat:,} {request.currency}/мес\n"
             
             prompt += f"""
 
-Создай детальную дорожную карту (roadmap) для достижения этой цели. Дорожная карта должна включать:
-1. Пошаговый план на {months_to_save} месяцев
-2. Рекомендации по экономии в конкретных категориях расходов
-3. Конкретные суммы, которые можно сэкономить в каждой категории
-4. Месячный план накоплений
-5. Рекомендации по оптимизации расходов
+Создай дорожную карту в СТРОГО следующем формате (три раздела):
 
-Формат ответа должен быть структурированным и понятным. Используй эмодзи для визуализации.
-Ответ должен быть на русском языке."""
+РАЗДЕЛ 1 - ОБЗОР ТЕКУЩЕГО ПОЛОЖЕНИЯ:
+Начни с анализа текущих транзакций и накоплений пользователя. Опиши:
+- Текущее состояние накоплений для этой цели
+- Анализ основных категорий расходов
+- Текущий уровень доходов и расходов
+- Что уже сделано для достижения цели
+
+РАЗДЕЛ 2 - ЧТО НУЖНО ДЕЛАТЬ:
+Четко опиши конкретный план действий:
+- Сколько нужно откладывать каждый месяц: {int(round(float(monthly_savings_needed))):,} {request.currency}
+- Сколько месяцев потребуется: {months_to_save}
+- Конкретные шаги для достижения цели с учетом доходов и расходов
+- Как распределить накопления по месяцам
+
+РАЗДЕЛ 3 - РЕКОМЕНДАЦИИ:
+Дай конкретные рекомендации по оптимизации расходов:
+- Для каждой топ-категории расходов укажи, сколько можно сэкономить
+- Рассчитай, на сколько месяцев быстрее можно достичь цели при следовании рекомендациям
+- Пример: "Вы тратите много на [категория]. Если сократите расходы на [сумма]/мес, то достигнете цели на [X] месяцев быстрее"
+
+Используй эмодзи для визуализации. Ответ должен быть на русском языке и структурированным."""
 
             import asyncio
             loop = asyncio.get_event_loop()
@@ -405,9 +428,26 @@ async def generate_roadmap(
             
             roadmap_text = response.text if hasattr(response, 'text') else str(response)
             
-            # Generate recommendations
-            rec_prompt = f"""На основе анализа финансов пользователя, дай 3-5 конкретных рекомендаций по экономии для достижения цели "{request.goal_name}".
-Ответ должен быть кратким списком рекомендаций на русском языке, каждая рекомендация в отдельной строке."""
+            # Generate detailed recommendations with time savings
+            rec_prompt = f"""На основе анализа финансов пользователя, создай 3-5 конкретных рекомендаций по экономии для достижения цели "{request.goal_name}".
+
+Для каждой рекомендации:
+1. Укажи категорию расходов
+2. Укажи сумму, которую можно сэкономить в месяц
+3. Рассчитай, на сколько месяцев быстрее можно достичь цели
+
+Текущая ситуация:
+- Цель: {int(round(float(target_amount))):,} {request.currency}
+- Нужно откладывать в месяц: {int(round(float(monthly_savings_needed))):,} {request.currency}
+- Оценка времени: {months_to_save} месяцев
+
+Топ категории расходов:
+"""
+            for cat, amount in top_categories:
+                monthly_cat = int(round(amount/12))
+                rec_prompt += f"- {cat}: {monthly_cat:,} {request.currency}/мес\n"
+            
+            rec_prompt += "\nОтвет должен быть кратким списком рекомендаций на русском языке, каждая рекомендация в отдельной строке с расчетом экономии времени."
             
             rec_response = await loop.run_in_executor(
                 None,
@@ -416,14 +456,23 @@ async def generate_roadmap(
             )
             
             rec_text = rec_response.text if hasattr(rec_response, 'text') else str(rec_response)
-            recommendations = [r.strip() for r in rec_text.split('\n') if r.strip() and not r.strip().startswith('*')][:5]
+            recommendations = [r.strip() for r in rec_text.split('\n') if r.strip() and not r.strip().startswith('*') and len(r.strip()) > 10][:5]
             
-            # Calculate potential savings by category (suggest 10-20% reduction)
+            # Calculate potential savings by category and time savings
             for category, amount in expenses_by_category.items():
                 monthly_cat_expense = Decimal(str(amount / 12))
                 if monthly_cat_expense > 1000:  # Only for significant expenses
                     potential_savings = monthly_cat_expense * Decimal("0.15")  # 15% savings
                     savings_by_category[category] = potential_savings
+                    
+                    # Calculate time savings if this category is reduced
+                    if monthly_savings_needed > 0:
+                        new_monthly_savings = monthly_savings + potential_savings
+                        if new_monthly_savings > 0:
+                            new_months = max(1, int(float(remaining_amount / new_monthly_savings)))
+                            time_saved = months_to_save - new_months
+                            if time_saved > 0:
+                                savings_by_category[f"{category}_time_saved"] = time_saved
             
         except Exception as e:
             logger.error(f"AI roadmap generation error: {e}")
@@ -468,22 +517,51 @@ async def generate_roadmap(
 
 def generate_fallback_roadmap(request: GoalRoadmapRequest, monthly_savings: Decimal, months: int) -> str:
     """Generate fallback roadmap without AI"""
-    roadmap = f"""🗺️ Дорожная карта для достижения цели: {request.goal_name}
+    target_amount = Decimal(str(request.target_amount))
+    current_balance = Decimal(str(request.balance))
+    remaining = target_amount - current_balance
+    
+    # Calculate monthly averages for context
+    monthly_income = Decimal(str(request.income_total / 12 if request.income_total > 0 else 0))
+    monthly_expense = Decimal(str(request.expense_total / 12 if request.expense_total > 0 else 0))
+    
+    roadmap = f"""📊 ОБЗОР ТЕКУЩЕГО ПОЛОЖЕНИЯ:
 
-💰 Цель: {int(round(float(request.target_amount))):,} {request.currency}
-📅 Оценка времени: {months} месяцев
-💵 Ежемесячные накопления: {int(round(float(monthly_savings))):,} {request.currency}
+Ваша финансовая ситуация:
+• Текущий баланс: {int(round(float(current_balance))):,} {request.currency}
+• Цель: {int(round(float(target_amount))):,} {request.currency}
+• Осталось накопить: {int(round(float(remaining))):,} {request.currency}
 
-📋 План действий:
-1. Создайте отдельный счет для накоплений
-2. Откладывайте {int(round(float(monthly_savings))):,} {request.currency} каждый месяц
-3. Пересматривайте прогресс ежемесячно
-4. Оптимизируйте расходы в категориях с наибольшими тратами
+Анализ доходов и расходов:
+• Среднемесячный доход: {int(round(float(monthly_income))):,} {request.currency}
+• Среднемесячные расходы: {int(round(float(monthly_expense))):,} {request.currency}
+• Текущие накопления в месяц: {int(round(float(monthly_savings))):,} {request.currency}
 
-💡 Рекомендации:
-• Отслеживайте все расходы
-• Сократите необязательные траты на 15-20%
-• Ищите дополнительные источники дохода при необходимости"""
+🎯 ЧТО НУЖНО ДЕЛАТЬ:
+
+Для достижения цели "{request.goal_name}" вам необходимо:
+
+1. Ежемесячно откладывать: {int(round(float(monthly_savings))):,} {request.currency}
+2. Срок достижения цели: {months} месяцев
+3. План по месяцам:
+"""
+    
+    # Add monthly breakdown
+    for month in range(1, min(months + 1, 7)):  # Show first 6 months
+        cumulative = monthly_savings * month
+        roadmap += f"   Месяц {month}: накоплено {int(round(float(cumulative))):,} {request.currency}\n"
+    
+    if months > 6:
+        roadmap += f"   ... и так далее до {months} месяца\n"
+    
+    roadmap += f"""
+💡 РЕКОМЕНДАЦИИ:
+
+Для ускорения достижения цели:
+• Сократите расходы на 15-20% в категориях с наибольшими тратами
+• Создайте отдельный счет для накоплений и автоматизируйте переводы
+• Отслеживайте прогресс ежемесячно и корректируйте план при необходимости
+• Ищите дополнительные источники дохода для ускорения накоплений"""
     
     return roadmap
 
