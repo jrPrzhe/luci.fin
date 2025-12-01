@@ -825,7 +825,10 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
           roadmapTimeoutPromise
         ]) as any
         
-        roadmap = roadmapResponse.roadmap
+        // Ensure roadmap is a string (it should already be a JSON string from backend)
+        roadmap = typeof roadmapResponse.roadmap === 'string' 
+          ? roadmapResponse.roadmap 
+          : JSON.stringify(roadmapResponse.roadmap)
         setRoadmapStatus('Дорожная карта успешно создана!')
       } catch (roadmapError: any) {
         console.warn('Roadmap generation failed or timed out, creating goal without roadmap:', roadmapError)
@@ -839,14 +842,20 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
 
       // Create goal (with or without roadmap)
       setRoadmapStatus('Создаю цель...')
-      await api.createGoal({
+      const goalData: any = {
         name: formData.name,
         description: formData.description || undefined,
         target_amount: parseFloat(formData.target_amount),
         currency: formData.currency,
         target_date: formData.target_date || undefined,
-        roadmap: roadmap,
-      })
+      }
+      
+      // Only include roadmap if it exists and is a valid string
+      if (roadmap && typeof roadmap === 'string' && roadmap.trim().length > 0) {
+        goalData.roadmap = roadmap
+      }
+      
+      await api.createGoal(goalData)
 
       showSuccess(roadmap ? 'Цель успешно создана с дорожной картой!' : 'Цель успешно создана')
       onSuccess()

@@ -178,6 +178,28 @@ async def create_goal(
     db.add(account)
     db.flush()  # Flush to get account.id
     
+    # Handle roadmap - ensure it's a JSON string
+    roadmap_value = goal_data.roadmap
+    if roadmap_value:
+        # If roadmap is already a JSON string (from generate-roadmap endpoint), use it as is
+        # If it's a dict/object (shouldn't happen but handle it), convert to JSON string
+        if isinstance(roadmap_value, dict):
+            roadmap_value = json.dumps(roadmap_value, ensure_ascii=False)
+        elif isinstance(roadmap_value, str):
+            # If it's a string, it might be double-encoded, try to parse and re-encode
+            try:
+                # Try to parse it - if it's valid JSON, it's already a JSON string
+                parsed = json.loads(roadmap_value)
+                # Re-encode to ensure it's properly formatted
+                roadmap_value = json.dumps(parsed, ensure_ascii=False)
+                logger.info(f"Roadmap parsed and re-encoded for goal: {goal_data.name}")
+            except (json.JSONDecodeError, TypeError):
+                # If parsing fails, it's already a plain string, use as is
+                logger.info(f"Roadmap is plain string for goal: {goal_data.name}")
+        logger.info(f"Roadmap will be saved for goal: {goal_data.name}, length: {len(roadmap_value) if roadmap_value else 0}")
+    else:
+        logger.info(f"No roadmap provided for goal: {goal_data.name}")
+    
     # Create goal linked to the account
     goal = Goal(
         user_id=current_user.id,
@@ -191,7 +213,7 @@ async def create_goal(
         target_date=goal_data.target_date,
         status=GoalStatus.ACTIVE,
         progress_percentage=0,
-        roadmap=goal_data.roadmap,
+        roadmap=roadmap_value,
         category_id=goal_data.category_id,
         account_id=account.id  # Link goal to account
     )
@@ -245,7 +267,21 @@ async def update_goal(
                 detail="Неверный статус"
             )
     if goal_update.roadmap is not None:
-        goal.roadmap = goal_update.roadmap
+        # Handle roadmap - ensure it's a JSON string
+        roadmap_value = goal_update.roadmap
+        if isinstance(roadmap_value, dict):
+            roadmap_value = json.dumps(roadmap_value, ensure_ascii=False)
+        elif isinstance(roadmap_value, str):
+            # If it's a string, it might be double-encoded, try to parse and re-encode
+            try:
+                # Try to parse it - if it's valid JSON, it's already a JSON string
+                parsed = json.loads(roadmap_value)
+                # Re-encode to ensure it's properly formatted
+                roadmap_value = json.dumps(parsed, ensure_ascii=False)
+            except (json.JSONDecodeError, TypeError):
+                # If parsing fails, it's already a plain string, use as is
+                pass
+        goal.roadmap = roadmap_value
     if goal_update.category_id is not None:
         goal.category_id = goal_update.category_id
     
