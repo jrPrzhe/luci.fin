@@ -825,13 +825,35 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
           roadmapTimeoutPromise
         ]) as any
         
+        console.log('Roadmap response received:', { 
+          hasRoadmap: !!roadmapResponse.roadmap,
+          roadmapType: typeof roadmapResponse.roadmap,
+          roadmapLength: roadmapResponse.roadmap ? roadmapResponse.roadmap.length : 0,
+          fullResponse: roadmapResponse
+        })
+        
         // Ensure roadmap is a string (it should already be a JSON string from backend)
-        roadmap = typeof roadmapResponse.roadmap === 'string' 
-          ? roadmapResponse.roadmap 
-          : JSON.stringify(roadmapResponse.roadmap)
+        if (roadmapResponse && roadmapResponse.roadmap) {
+          roadmap = typeof roadmapResponse.roadmap === 'string' 
+            ? roadmapResponse.roadmap 
+            : JSON.stringify(roadmapResponse.roadmap)
+          console.log('Roadmap processed:', { 
+            isString: typeof roadmap === 'string',
+            length: roadmap ? roadmap.length : 0,
+            preview: roadmap ? roadmap.substring(0, 100) : 'empty'
+          })
+        } else {
+          console.warn('Roadmap response missing roadmap field:', roadmapResponse)
+          roadmap = undefined
+        }
         setRoadmapStatus('Дорожная карта успешно создана!')
       } catch (roadmapError: any) {
-        console.warn('Roadmap generation failed or timed out, creating goal without roadmap:', roadmapError)
+        console.error('Roadmap generation failed or timed out, creating goal without roadmap:', roadmapError)
+        console.error('Roadmap error details:', {
+          message: roadmapError?.message,
+          stack: roadmapError?.stack,
+          response: roadmapError?.response
+        })
         setRoadmapStatus('Не удалось создать дорожную карту, создаю цель без неё...')
         // Continue without roadmap - goal can be created without it
         // Wait a bit to show the message
@@ -853,7 +875,23 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
       // Only include roadmap if it exists and is a valid string
       if (roadmap && typeof roadmap === 'string' && roadmap.trim().length > 0) {
         goalData.roadmap = roadmap
+        console.log('Including roadmap in goal data:', {
+          roadmapLength: roadmap.length,
+          roadmapPreview: roadmap.substring(0, 200)
+        })
+      } else {
+        console.warn('Roadmap not included in goal data:', {
+          roadmap: roadmap,
+          roadmapType: typeof roadmap,
+          roadmapLength: roadmap ? roadmap.length : 0
+        })
       }
+      
+      console.log('Creating goal with data:', {
+        name: goalData.name,
+        hasRoadmap: !!goalData.roadmap,
+        roadmapLength: goalData.roadmap ? goalData.roadmap.length : 0
+      })
       
       await api.createGoal(goalData)
 
