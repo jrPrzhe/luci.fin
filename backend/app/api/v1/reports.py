@@ -617,14 +617,14 @@ async def send_report_via_bot(
         
         # Parse dates or use period
         if start_date and end_date:
-        try:
-            start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
-            end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
-        except ValueError:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Неверный формат даты. Используйте ISO формат (YYYY-MM-DD или YYYY-MM-DDTHH:MM:SS)"
-            )
+            try:
+                start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+                end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+            except ValueError:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Неверный формат даты. Используйте ISO формат (YYYY-MM-DD или YYYY-MM-DDTHH:MM:SS)"
+                )
         else:
             # Use period
             end_dt = datetime.utcnow()
