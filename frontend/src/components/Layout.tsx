@@ -365,11 +365,20 @@ export function Layout() {
               <div className="absolute -inset-1 rounded-full border-2 border-telegram-primary dark:border-telegram-dark-primary opacity-40 animate-pulse" style={{ animationDuration: '1.5s' }}></div>
             </button>
             <div className="flex-1 min-w-0">
-              <h1 className="text-base font-extrabold tracking-tight">
-                <span className="bg-gradient-to-r from-telegram-primary dark:from-telegram-dark-primary via-purple-500 to-telegram-primaryLight dark:to-telegram-dark-primaryLight bg-clip-text text-transparent">
-                  {newYearEnabled ? '🎄 ' : ''}Люся.Бюджет{newYearEnabled ? ' ❄️' : ''}
-                </span>
-              </h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-extrabold tracking-tight">
+                  <span className="bg-gradient-to-r from-telegram-primary dark:from-telegram-dark-primary via-purple-500 to-telegram-primaryLight dark:to-telegram-dark-primaryLight bg-clip-text text-transparent">
+                    {newYearEnabled ? '🎄 ' : ''}Люся.Бюджет{newYearEnabled ? ' ❄️' : ''}
+                  </span>
+                </h1>
+                {/* Premium Badge в меню */}
+                {user?.is_premium && (
+                  <div className="flex items-center gap-1 bg-yellow-400/20 backdrop-blur-sm border border-yellow-300/30 rounded-full px-2 py-0.5">
+                    <span className="text-yellow-300 text-xs">⭐</span>
+                    <span className="text-yellow-100 text-[10px] font-semibold">Премиум</span>
+                  </div>
+                )}
+              </div>
               <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary font-medium tracking-wide">
                 {newYearEnabled ? 'С Новым годом! 🎉' : 'Все посчитала'}
               </p>
@@ -474,11 +483,20 @@ export function Layout() {
             <div className="absolute inset-0 rounded-full bg-gradient-to-br from-telegram-primary dark:from-telegram-dark-primary to-telegram-primaryLight dark:to-telegram-dark-primaryLight opacity-60 animate-ping" style={{ animationDuration: '2s' }}></div>
             <div className="absolute -inset-1 rounded-full border-2 border-telegram-primary dark:border-telegram-dark-primary opacity-40 animate-pulse" style={{ animationDuration: '1.5s' }}></div>
           </button>
-          <h1 className="text-base font-extrabold tracking-tight">
-            <span className="bg-gradient-to-r from-telegram-primary dark:from-telegram-dark-primary via-purple-500 to-telegram-primaryLight dark:to-telegram-dark-primaryLight bg-clip-text text-transparent">
-              {newYearEnabled ? '🎄 ' : ''}Люся.Бюджет{newYearEnabled ? ' ❄️' : ''}
-            </span>
-                      </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-base font-extrabold tracking-tight">
+              <span className="bg-gradient-to-r from-telegram-primary dark:from-telegram-dark-primary via-purple-500 to-telegram-primaryLight dark:to-telegram-dark-primaryLight bg-clip-text text-transparent">
+                {newYearEnabled ? '🎄 ' : ''}Люся.Бюджет{newYearEnabled ? ' ❄️' : ''}
+              </span>
+            </h1>
+            {/* Premium Badge в мобильном меню */}
+            {user?.is_premium && (
+              <div className="flex items-center gap-1 bg-yellow-400/20 backdrop-blur-sm border border-yellow-300/30 rounded-full px-1.5 py-0.5">
+                <span className="text-yellow-300 text-[10px]">⭐</span>
+                <span className="text-yellow-100 text-[9px] font-semibold">Премиум</span>
+              </div>
+            )}
+          </div>
           </div>
           <div className="flex items-center gap-2">
             {/* Quest Notifications */}
@@ -510,9 +528,18 @@ export function Layout() {
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-telegram-primary dark:from-telegram-dark-primary to-telegram-primaryLight dark:to-telegram-dark-primaryLight flex items-center justify-center overflow-hidden">
                     <img src="/1.png" alt="Люся.Бюджет" className="w-full h-full object-cover" />
                   </div>
-                  <h2 className="text-base font-semibold text-telegram-text dark:text-telegram-dark-text">
-                    {newYearEnabled ? '🎄 Меню' : 'Меню'}
-                  </h2>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base font-semibold text-telegram-text dark:text-telegram-dark-text">
+                      {newYearEnabled ? '🎄 Меню' : 'Меню'}
+                    </h2>
+                    {/* Premium Badge в мобильном меню-оверлее */}
+                    {user?.is_premium && (
+                      <div className="flex items-center gap-1 bg-yellow-400/20 backdrop-blur-sm border border-yellow-300/30 rounded-full px-1.5 py-0.5">
+                        <span className="text-yellow-300 text-[10px]">⭐</span>
+                        <span className="text-yellow-100 text-[9px] font-semibold">Премиум</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <button
                   onClick={() => setMobileMenuOpen(false)}

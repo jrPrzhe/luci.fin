@@ -377,16 +377,18 @@ export function Dashboard() {
 
       {/* Balance Card - Hero */}
       <div className="card mb-4 md:mb-6 bg-gradient-to-br from-telegram-primary dark:from-telegram-dark-primary to-telegram-primaryLight dark:to-telegram-dark-primaryLight text-white border-0 shadow-telegram-lg p-4 md:p-5 relative overflow-hidden">
-        {/* Premium Badge */}
-        {currentUser?.is_premium && (
-          <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-yellow-400/20 backdrop-blur-sm border border-yellow-300/30 rounded-full px-2.5 py-1 z-10">
-            <span className="text-yellow-300 text-sm">⭐</span>
-            <span className="text-yellow-100 text-xs font-semibold">Премиум</span>
-          </div>
-        )}
         <div className="flex items-center justify-between mb-3 md:mb-4">
           <div className="flex-1">
-            <p className="text-xs md:text-sm opacity-90 mb-1">{t.dashboard.totalBalance}</p>
+            <div className="flex items-center gap-2 mb-1">
+              {/* Premium Badge - перед "Общий баланс" */}
+              {currentUser?.is_premium && (
+                <div className="flex items-center gap-1.5 bg-yellow-400/20 backdrop-blur-sm border border-yellow-300/30 rounded-full px-2.5 py-1">
+                  <span className="text-yellow-300 text-sm">⭐</span>
+                  <span className="text-yellow-100 text-xs font-semibold">Премиум</span>
+                </div>
+              )}
+              <p className="text-xs md:text-sm opacity-90">{t.dashboard.totalBalance}</p>
+            </div>
             {balanceLoading ? (
               <div className="h-8 md:h-10 w-24 md:w-32 bg-white/20 rounded-telegram animate-pulse"></div>
             ) : (
