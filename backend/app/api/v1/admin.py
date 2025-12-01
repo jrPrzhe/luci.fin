@@ -295,17 +295,52 @@ async def update_user_premium(
         if not user:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
         
-        # Логируем текущее значение
-        old_value = getattr(user, 'is_premium', None)
-        logger.info(f"User {user_id} current is_premium: {old_value}, new value: {request.is_premium}")
+        # Проверяем, существует ли столбец is_premium в базе данных
+        from sqlalchemy import inspect, text
+        from app.core.database import engine
         
-        # Проверяем, существует ли атрибут
-        if not hasattr(user, 'is_premium'):
-            logger.error(f"User model does not have is_premium attribute! This is a database schema issue.")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Database schema error: is_premium column missing. Please run migrations."
-            )
+        inspector = inspect(engine)
+        if inspector.has_table('users'):
+            columns = [col['name'] for col in inspector.get_columns('users')]
+            if 'is_premium' not in columns:
+                logger.warning(f"Column is_premium not found in users table. Adding it automatically...")
+                try:
+                    with engine.begin() as conn:
+                        conn.execute(text("ALTER TABLE users ADD COLUMN is_premium BOOLEAN DEFAULT false"))
+                        conn.execute(text("UPDATE users SET is_premium = false WHERE is_premium IS NULL"))
+                        conn.execute(text("ALTER TABLE users ALTER COLUMN is_premium SET NOT NULL"))
+                        conn.execute(text("ALTER TABLE users ALTER COLUMN is_premium SET DEFAULT false"))
+                    logger.info(f"Column is_premium successfully added to users table")
+                    # Перезагружаем пользователя после добавления столбца
+                    db.refresh(user)
+                except Exception as e:
+                    logger.error(f"Failed to add is_premium column: {e}")
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail=f"Database schema error: failed to add is_premium column. {str(e)}"
+                    )
+        
+        # Логируем текущее значение
+        # Пытаемся получить значение через SQL, если атрибут недоступен
+        try:
+            old_value = getattr(user, 'is_premium', None)
+            # Если значение None, пробуем прочитать из БД
+            if old_value is None:
+                result = db.execute(text("SELECT is_premium FROM users WHERE id = :user_id"), {"user_id": user_id})
+                row = result.first()
+                old_value = row[0] if row else False
+                # Устанавливаем значение в объект
+                user.is_premium = old_value
+        except (AttributeError, Exception) as e:
+            # Если не удалось прочитать через атрибут, читаем напрямую из БД
+            logger.warning(f"Could not read is_premium attribute, reading from DB directly: {e}")
+            result = db.execute(text("SELECT is_premium FROM users WHERE id = :user_id"), {"user_id": user_id})
+            row = result.first()
+            old_value = row[0] if row else False
+            # Устанавливаем значение в объект
+            user.is_premium = old_value
+        
+        logger.info(f"User {user_id} current is_premium: {old_value}, new value: {request.is_premium}")
         
         # Обновляем значение
         user.is_premium = request.is_premium
