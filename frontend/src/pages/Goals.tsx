@@ -139,48 +139,57 @@ export function Goals() {
                     {goal.name}
                   </h3>
 
-                  {/* Progress Bar - Game Style */}
+                  {/* Progress Bar - Enhanced Visual */}
                   <div className="mb-4">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-semibold text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
                         Прогресс
                       </span>
-                      <span className="text-lg font-bold bg-gradient-to-r from-telegram-primary to-telegram-primaryLight bg-clip-text text-transparent">
+                      <span className="text-xl font-bold bg-gradient-to-r from-telegram-primary to-telegram-primaryLight bg-clip-text text-transparent">
                         {goal.progress_percentage}%
                       </span>
                     </div>
-                    <div className="relative h-6 bg-telegram-border dark:bg-telegram-dark-border rounded-full overflow-hidden">
+                    <div className="relative h-7 bg-telegram-border dark:bg-telegram-dark-border rounded-full overflow-hidden shadow-inner">
                       <div
-                        className={`absolute inset-y-0 left-0 bg-gradient-to-r ${progressColor} transition-all duration-500 ease-out rounded-full shadow-lg`}
+                        className={`absolute inset-y-0 left-0 bg-gradient-to-r ${progressColor} transition-all duration-700 ease-out rounded-full shadow-lg`}
                         style={{ width: `${Math.min(goal.progress_percentage, 100)}%` }}
                       >
                         <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
                       </div>
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-xs font-bold text-telegram-text dark:text-telegram-dark-text z-10">
+                        <span className="text-xs font-bold text-telegram-text dark:text-telegram-dark-text z-10 drop-shadow-sm">
                           {Math.round(goal.current_amount).toLocaleString()} / {Math.round(goal.target_amount).toLocaleString()} {goal.currency}
                         </span>
                       </div>
                     </div>
+                    {/* Mini scale indicator */}
+                    <div className="mt-2 relative h-1 bg-telegram-border dark:bg-telegram-dark-border rounded-full overflow-hidden">
+                      <div
+                        className={`absolute inset-y-0 left-0 bg-gradient-to-r ${progressColor} transition-all duration-500 ease-out rounded-full`}
+                        style={{ width: `${Math.min(goal.progress_percentage, 100)}%` }}
+                      />
+                    </div>
                   </div>
 
-                  {/* Stats Grid */}
+                  {/* Stats Grid - Enhanced */}
                   <div className="grid grid-cols-2 gap-3 mb-4">
                     {daysRemaining !== null && (
-                      <div className="bg-telegram-hover dark:bg-telegram-dark-hover rounded-lg p-3">
-                        <div className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-1">
-                          ⏰ Дней осталось
+                      <div className="bg-gradient-to-br from-blue-50 dark:from-blue-900/20 to-cyan-50 dark:to-cyan-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
+                        <div className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-1 flex items-center gap-1">
+                          <span>⏰</span>
+                          <span>Дней осталось</span>
                         </div>
-                        <div className="text-lg font-bold text-telegram-text dark:text-telegram-dark-text">
+                        <div className="text-xl font-bold text-blue-600 dark:text-blue-400">
                           {daysRemaining}
                         </div>
                       </div>
                     )}
-                    <div className="bg-telegram-hover dark:bg-telegram-dark-hover rounded-lg p-3">
-                      <div className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-1">
-                        💰 Осталось
+                    <div className="bg-gradient-to-br from-orange-50 dark:from-orange-900/20 to-red-50 dark:to-red-900/20 rounded-lg p-3 border border-orange-200 dark:border-orange-800">
+                      <div className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-1 flex items-center gap-1">
+                        <span>💰</span>
+                        <span>Осталось</span>
                       </div>
-                      <div className="text-lg font-bold text-telegram-text dark:text-telegram-dark-text">
+                      <div className="text-xl font-bold text-orange-600 dark:text-orange-400">
                         {Math.round(goal.target_amount - goal.current_amount).toLocaleString()} {goal.currency}
                       </div>
                     </div>
@@ -404,27 +413,74 @@ function GoalDetailModal({ goal, onClose, onDelete }: { goal: Goal; onClose: () 
             </button>
           </div>
 
-          {/* Progress Section */}
+          {/* Progress Section - Enhanced Visual */}
           <div className="mb-6">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-4">
               <span className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text">
                 Прогресс
               </span>
-              <span className="text-2xl font-bold bg-gradient-to-r from-telegram-primary to-telegram-primaryLight bg-clip-text text-transparent">
+              <span className="text-3xl font-bold bg-gradient-to-r from-telegram-primary to-telegram-primaryLight bg-clip-text text-transparent">
                 {goal.progress_percentage}%
               </span>
             </div>
-            <div className="relative h-8 bg-telegram-border dark:bg-telegram-dark-border rounded-full overflow-hidden mb-2">
+            
+            {/* Large Progress Bar */}
+            <div className="relative h-10 bg-telegram-border dark:bg-telegram-dark-border rounded-full overflow-hidden mb-3 shadow-inner">
               <div
-                className={`absolute inset-y-0 left-0 bg-gradient-to-r ${progressColor} transition-all duration-500 ease-out rounded-full`}
+                className={`absolute inset-y-0 left-0 bg-gradient-to-r ${progressColor} transition-all duration-700 ease-out rounded-full shadow-lg`}
                 style={{ width: `${Math.min(goal.progress_percentage, 100)}%` }}
               >
-                <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+                <div className="absolute inset-0 bg-white/30 animate-pulse"></div>
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 text-white font-bold text-xs drop-shadow-lg">
+                  {goal.progress_percentage > 5 ? `${goal.progress_percentage}%` : ''}
+                </div>
               </div>
             </div>
-            <div className="flex justify-between text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-              <span>{Math.round(goal.current_amount).toLocaleString()} {goal.currency}</span>
-              <span>{Math.round(goal.target_amount).toLocaleString()} {goal.currency}</span>
+            
+            {/* Amount Scale */}
+            <div className="grid grid-cols-2 gap-4 mb-3">
+              <div className="bg-telegram-hover dark:bg-telegram-dark-hover rounded-lg p-3 border border-telegram-border dark:border-telegram-dark-border">
+                <div className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-1">
+                  Накоплено
+                </div>
+                <div className="text-xl font-bold text-green-600 dark:text-green-400">
+                  {Math.round(goal.current_amount).toLocaleString()} {goal.currency}
+                </div>
+              </div>
+              <div className="bg-telegram-hover dark:bg-telegram-dark-hover rounded-lg p-3 border border-telegram-border dark:border-telegram-dark-border">
+                <div className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-1">
+                  Осталось
+                </div>
+                <div className="text-xl font-bold text-orange-600 dark:text-orange-400">
+                  {Math.round(goal.target_amount - goal.current_amount).toLocaleString()} {goal.currency}
+                </div>
+              </div>
+            </div>
+            
+            {/* Visual Scale Indicator */}
+            <div className="relative">
+              <div className="flex justify-between text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-1">
+                <span>0</span>
+                <span className="font-semibold">Цель: {Math.round(goal.target_amount).toLocaleString()} {goal.currency}</span>
+              </div>
+              <div className="relative h-2 bg-telegram-border dark:bg-telegram-dark-border rounded-full overflow-hidden">
+                <div
+                  className={`absolute inset-y-0 left-0 bg-gradient-to-r ${progressColor} transition-all duration-500 ease-out rounded-full`}
+                  style={{ width: `${Math.min(goal.progress_percentage, 100)}%` }}
+                />
+                {/* Milestone markers */}
+                {[25, 50, 75, 100].map((milestone) => (
+                  <div
+                    key={milestone}
+                    className="absolute top-0 h-full w-0.5 bg-telegram-textSecondary/30 dark:bg-telegram-dark-textSecondary/30"
+                    style={{ left: `${milestone}%` }}
+                  />
+                ))}
+              </div>
+              <div className="flex justify-between text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
+                <span>{Math.round(goal.current_amount).toLocaleString()}</span>
+                <span>{Math.round(goal.target_amount).toLocaleString()}</span>
+              </div>
             </div>
           </div>
 
@@ -434,8 +490,10 @@ function GoalDetailModal({ goal, onClose, onDelete }: { goal: Goal; onClose: () 
               <h3 className="text-lg font-bold text-telegram-text dark:text-telegram-dark-text mb-3">
                 🗺️ Дорожная карта
               </h3>
-              <div className="bg-telegram-hover dark:bg-telegram-dark-hover rounded-lg p-4 whitespace-pre-wrap text-telegram-text dark:text-telegram-dark-text">
-                {roadmap.roadmap_text || 'Дорожная карта загружается...'}
+              <div className="bg-gradient-to-br from-blue-50 dark:from-blue-900/20 to-cyan-50 dark:to-cyan-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+                <div className="whitespace-pre-wrap text-telegram-text dark:text-telegram-dark-text text-sm leading-relaxed">
+                  {roadmap.roadmap_text || 'Дорожная карта загружается...'}
+                </div>
               </div>
             </div>
           )}
@@ -604,6 +662,8 @@ function GoalDetailModal({ goal, onClose, onDelete }: { goal: Goal; onClose: () 
 // Create Goal Modal Component
 function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const [loading, setLoading] = useState(false)
+  const [generatingRoadmap, setGeneratingRoadmap] = useState(false)
+  const [roadmapStatus, setRoadmapStatus] = useState<string>('')
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -633,8 +693,11 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     try {
       let roadmap: string | undefined = undefined
       
-      // Try to generate roadmap with timeout, but don't fail if it times out
+      // Generate roadmap with user feedback
       try {
+        setGeneratingRoadmap(true)
+        setRoadmapStatus('Получаю данные о транзакциях...')
+        
         const balancePromise = api.getBalance()
         const transactionsPromise = api.getTransactions(100)
         
@@ -643,6 +706,7 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
           setTimeout(() => reject(new Error('Timeout')), 15000) // 15 seconds timeout
         )
         
+        setRoadmapStatus('Анализирую ваши транзакции...')
         const [balance, transactions] = await Promise.race([
           Promise.all([balancePromise, transactionsPromise]),
           timeoutPromise
@@ -656,7 +720,8 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
           .filter((t: any) => t.transaction_type === 'expense')
           .reduce((sum: number, t: any) => sum + t.amount, 0)
 
-        // Try to generate roadmap with timeout
+        // Generate roadmap with timeout
+        setRoadmapStatus('Создаю индивидуальный план через AI...')
         const roadmapPromise = api.generateRoadmap({
           goal_name: formData.name,
           target_amount: parseFloat(formData.target_amount),
@@ -668,7 +733,7 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
         })
         
         const roadmapTimeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Roadmap generation timeout')), 20000) // 20 seconds for roadmap
+          setTimeout(() => reject(new Error('Roadmap generation timeout')), 60000) // 60 seconds for roadmap (AI can take time)
         )
         
         const roadmapResponse = await Promise.race([
@@ -677,12 +742,19 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
         ]) as any
         
         roadmap = roadmapResponse.roadmap
+        setRoadmapStatus('Дорожная карта успешно создана!')
       } catch (roadmapError: any) {
         console.warn('Roadmap generation failed or timed out, creating goal without roadmap:', roadmapError)
+        setRoadmapStatus('Не удалось создать дорожную карту, создаю цель без неё...')
         // Continue without roadmap - goal can be created without it
+        // Wait a bit to show the message
+        await new Promise(resolve => setTimeout(resolve, 1000))
+      } finally {
+        setGeneratingRoadmap(false)
       }
 
       // Create goal (with or without roadmap)
+      setRoadmapStatus('Создаю цель...')
       await api.createGoal({
         name: formData.name,
         description: formData.description || undefined,
@@ -692,7 +764,7 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
         roadmap: roadmap,
       })
 
-      showSuccess('Цель успешно создана')
+      showSuccess(roadmap ? 'Цель успешно создана с дорожной картой!' : 'Цель успешно создана')
       onSuccess()
     } catch (error: any) {
       console.error('Error creating goal:', error)
@@ -700,6 +772,8 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
       showError(translateError(error))
     } finally {
       setLoading(false)
+      setGeneratingRoadmap(false)
+      setRoadmapStatus('')
     }
   }
 
@@ -789,13 +863,30 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
           </div>
         </div>
 
+        {/* Roadmap Generation Status */}
+        {generatingRoadmap && (
+          <div className="mt-4 p-4 bg-gradient-to-br from-blue-50 dark:from-blue-900/20 to-cyan-50 dark:to-cyan-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+            <div className="flex items-center gap-3">
+              <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 dark:border-blue-400"></div>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                  {roadmapStatus || 'Генерация дорожной карты...'}
+                </p>
+                <p className="text-xs text-blue-500 dark:text-blue-500 mt-1">
+                  ⏳ Пожалуйста, подождите. Это может занять некоторое время...
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="flex gap-3 mt-6">
           <button
             onClick={handleCreate}
             className="flex-1 btn-primary"
-            disabled={loading}
+            disabled={loading || generatingRoadmap}
           >
-            {loading ? 'Создание...' : 'Создать'}
+            {loading ? (generatingRoadmap ? roadmapStatus || 'Создание...' : 'Создание...') : 'Создать'}
           </button>
         </div>
       </div>
