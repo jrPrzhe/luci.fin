@@ -80,7 +80,23 @@ def get_current_user(
             detail="Пользователь не найден",
         )
     
-    logger.info(f"User found: id={user.id}, email={user.email}, telegram_id={user.telegram_id}")
+    # Явно загружаем is_premium из БД, если атрибут отсутствует
+    # Это необходимо, так как столбец мог быть добавлен позже
+    if not hasattr(user, 'is_premium') or getattr(user, 'is_premium', None) is None:
+        from sqlalchemy import text
+        try:
+            result = db.execute(text("SELECT is_premium FROM users WHERE id = :user_id"), {"user_id": user_id})
+            row = result.first()
+            if row is not None:
+                is_premium_value = row[0] if row[0] is not None else False
+                user.is_premium = is_premium_value
+                logger.debug(f"Loaded is_premium from DB for user {user_id}: {is_premium_value}")
+        except Exception as e:
+            logger.warning(f"Failed to load is_premium from DB for user {user_id}: {e}")
+            # Устанавливаем значение по умолчанию
+            user.is_premium = False
+    
+    logger.info(f"User found: id={user.id}, email={user.email}, telegram_id={user.telegram_id}, is_premium={getattr(user, 'is_premium', None)}")
     return user
 
 
@@ -559,7 +575,21 @@ async def login_telegram(
         db.commit()
         db.refresh(user)
         
-        logger.info(f"User processed: id={user.id}, telegram_id={user.telegram_id}, is_new={is_new_user}")
+        # Явно загружаем is_premium из БД, если атрибут отсутствует
+        if not hasattr(user, 'is_premium') or getattr(user, 'is_premium', None) is None:
+            from sqlalchemy import text
+            try:
+                result = db.execute(text("SELECT is_premium FROM users WHERE id = :user_id"), {"user_id": user.id})
+                row = result.first()
+                if row is not None:
+                    is_premium_value = row[0] if row[0] is not None else False
+                    user.is_premium = is_premium_value
+                    logger.debug(f"Loaded is_premium from DB for user {user.id} after Telegram login: {is_premium_value}")
+            except Exception as e:
+                logger.warning(f"Failed to load is_premium from DB for user {user.id} after Telegram login: {e}")
+                user.is_premium = False
+        
+        logger.info(f"User processed: id={user.id}, telegram_id={user.telegram_id}, is_new={is_new_user}, is_premium={getattr(user, 'is_premium', None)}")
         
         # Create default account and categories for new users
         if is_new_user:
@@ -900,7 +930,21 @@ async def login_vk(
         db.commit()
         db.refresh(user)
         
-        logger.info(f"User processed: id={user.id}, vk_id={user.vk_id}, is_new={is_new_user}")
+        # Явно загружаем is_premium из БД, если атрибут отсутствует
+        if not hasattr(user, 'is_premium') or getattr(user, 'is_premium', None) is None:
+            from sqlalchemy import text
+            try:
+                result = db.execute(text("SELECT is_premium FROM users WHERE id = :user_id"), {"user_id": user.id})
+                row = result.first()
+                if row is not None:
+                    is_premium_value = row[0] if row[0] is not None else False
+                    user.is_premium = is_premium_value
+                    logger.debug(f"Loaded is_premium from DB for user {user.id} after VK login: {is_premium_value}")
+            except Exception as e:
+                logger.warning(f"Failed to load is_premium from DB for user {user.id} after VK login: {e}")
+                user.is_premium = False
+        
+        logger.info(f"User processed: id={user.id}, vk_id={user.vk_id}, is_new={is_new_user}, is_premium={getattr(user, 'is_premium', None)}")
         
         # Check if user has categories (for both new and existing users)
         from app.models.category import Category
@@ -1298,10 +1342,6 @@ async def update_current_user(
         current_user.default_currency = user_update.default_currency
     if user_update.language is not None:
         current_user.language = user_update.language
-    if user_update.telegram_notifications_enabled is not None:
-        current_user.telegram_notifications_enabled = user_update.telegram_notifications_enabled
-    if user_update.vk_notifications_enabled is not None:
-        current_user.vk_notifications_enabled = user_update.vk_notifications_enabled
     
     # Note: username and telegram_username cannot be changed via API
     # telegram_username is updated automatically via Telegram login

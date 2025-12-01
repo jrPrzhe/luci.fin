@@ -404,7 +404,7 @@ async def generate_premium_report(
     Requires premium subscription.
     """
     # Check premium status
-    require_premium(current_user)
+    require_premium(current_user, db)
     
     # Validate format
     if format not in ["pdf", "excel"]:
