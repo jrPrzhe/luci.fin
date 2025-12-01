@@ -26,6 +26,8 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const [language, setLanguageState] = useState<Language>('ru')
   const [isLoading, setIsLoading] = useState(true)
   const languageRef = useRef<Language>('ru')
+  const lastManualChangeRef = useRef<number>(0) // Timestamp of last manual language change
+  const skipAutoSyncRef = useRef<boolean>(false) // Flag to skip auto-sync after manual change
 
   // Load language from localStorage or user profile
   useEffect(() => {
@@ -68,6 +70,12 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     }
 
     const checkProfileLanguage = async (currentLang?: Language) => {
+      // Skip auto-sync if user recently changed language manually (within 60 seconds)
+      const timeSinceLastManualChange = Date.now() - lastManualChangeRef.current
+      if (skipAutoSyncRef.current && timeSinceLastManualChange < 60000) {
+        return
+      }
+
       try {
         const token = storageSync.getItem('token')
         if (token) {
@@ -75,6 +83,14 @@ export function I18nProvider({ children }: { children: ReactNode }) {
           if (user?.language) {
             const userLang = user.language.toLowerCase() as Language
             if (userLang === 'ru' || userLang === 'en') {
+              // Get current language from storage (source of truth for manual changes)
+              const storageLang = storageSync.getItem('language') as Language | null
+              
+              // Don't update if user manually changed language recently
+              if (timeSinceLastManualChange < 60000) {
+                return
+              }
+              
               // If language changed in profile, update state
               if (!currentLang || currentLang !== userLang) {
                 setLanguageState(userLang)
@@ -106,6 +122,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     loadLanguage()
     
     // Periodically check for language changes (every 5 seconds)
+    // But only if user hasn't manually changed language recently
     const interval = setInterval(() => {
       const token = storageSync.getItem('token')
       if (token) {
@@ -117,6 +134,10 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   }, []) // Only run once on mount
 
   const setLanguage = async (lang: Language) => {
+    // Mark as manual change
+    lastManualChangeRef.current = Date.now()
+    skipAutoSyncRef.current = true
+    
     setLanguageState(lang)
     languageRef.current = lang
     storageSync.setItem('language', lang)
@@ -132,6 +153,11 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       console.error('Error updating user language:', error)
       // Don't fail if update fails, language is still saved in storage
     }
+    
+    // Re-enable auto-sync after 60 seconds
+    setTimeout(() => {
+      skipAutoSyncRef.current = false
+    }, 60000)
   }
 
   if (isLoading) {

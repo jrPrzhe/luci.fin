@@ -44,11 +44,24 @@ export function Statistics() {
       
       return { previousUsers }
     },
-    onSuccess: (data, variables) => {
-      console.log('[Statistics] Premium update successful:', { data, variables })
-      queryClient.invalidateQueries({ queryKey: ['adminUsers'] })
+    onSuccess: (updatedUser, variables) => {
+      console.log('[Statistics] Premium update successful:', { updatedUser, variables })
+      
+      // Обновляем данные напрямую из ответа сервера вместо повторной загрузки
+      queryClient.setQueryData(['adminUsers'], (old: any) => {
+        if (!old) return old
+        return old.map((user: any) => 
+          user.id === variables.userId ? { ...user, is_premium: updatedUser.is_premium } : user
+        )
+      })
+      
       // Также обновляем данные текущего пользователя, если это он
-      queryClient.invalidateQueries({ queryKey: ['currentUser'] })
+      queryClient.setQueryData(['currentUser'], (old: any) => {
+        if (old && old.id === variables.userId) {
+          return { ...old, is_premium: updatedUser.is_premium }
+        }
+        return old
+      })
     },
     onError: (error, variables, context) => {
       console.error('[Statistics] Premium update failed:', error, variables)
@@ -56,7 +69,6 @@ export function Statistics() {
       if (context?.previousUsers) {
         queryClient.setQueryData(['adminUsers'], context.previousUsers)
       }
-      queryClient.invalidateQueries({ queryKey: ['adminUsers'] })
     },
   })
 
