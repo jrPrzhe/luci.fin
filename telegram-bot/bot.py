@@ -1861,7 +1861,7 @@ async def goal_info_received(update: Update, context: ContextTypes.DEFAULT_TYPE)
         message += f"{feasibility_emoji.get(feasibility, '✅')} *{feasibility_text.get(feasibility, 'Достижимо')}*\n\n"
         
         # Add progress visualization
-        current_balance = int(round(request.balance))
+        current_balance = int(round(balance))
         remaining = int(round(target_amount - current_balance))
         progress_pct = int((current_balance / target_amount * 100)) if target_amount > 0 else 0
         
