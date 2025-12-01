@@ -83,29 +83,30 @@ export function Reports() {
     },
     onError: (error: any) => {
       setIsDownloading(false)
-      if (error.message?.includes('премиум')) {
+      const errorMessage = error.message || ''
+      // Проверяем ошибку от бэкенда - если это 403 или сообщение о премиум, показываем модальное окно
+      if (errorMessage.includes('премиум') || 
+          errorMessage.includes('403') || 
+          errorMessage.includes('Forbidden') ||
+          (error.response && error.response.status === 403)) {
         setShowPremiumModal(true)
       } else {
-        alert(`❌ Ошибка: ${error.message || 'Не удалось отправить отчет'}`)
+        alert(`❌ Ошибка: ${errorMessage || 'Не удалось отправить отчет'}`)
       }
     },
   })
 
   const handleDownload = async (format: 'pdf' | 'excel' = 'pdf') => {
-    if (!user?.is_premium) {
-      setShowPremiumModal(true)
-      return
-    }
-
     setIsDownloading(true)
     
     try {
       // Проверяем, есть ли Telegram или VK ID
-      if (user.telegram_id || user.vk_id) {
+      if (user?.telegram_id || user?.vk_id) {
         // Отправляем через бота
         await sendReportMutation.mutateAsync(format)
       } else {
         // Скачиваем напрямую
+        // Полагаемся на проверку премиум статуса на бэкенде
         const blob = await api.downloadPremiumReport(format, period)
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement('a')
@@ -120,10 +121,15 @@ export function Reports() {
       }
     } catch (error: any) {
       setIsDownloading(false)
-      if (error.message?.includes('премиум') || error.message?.includes('403')) {
+      // Проверяем ошибку от бэкенда - если это 403 или сообщение о премиум, показываем модальное окно
+      const errorMessage = error.message || ''
+      if (errorMessage.includes('премиум') || 
+          errorMessage.includes('403') || 
+          errorMessage.includes('Forbidden') ||
+          (error.response && error.response.status === 403)) {
         setShowPremiumModal(true)
       } else {
-        alert(`❌ Ошибка: ${error.message || 'Не удалось скачать отчет'}`)
+        alert(`❌ Ошибка: ${errorMessage || 'Не удалось скачать отчет'}`)
       }
     }
   }

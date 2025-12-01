@@ -356,7 +356,10 @@ class ApiClient {
         const errorMessage = error.detail || `HTTP error! status: ${response.status}`
         // Импортируем функцию перевода ошибок
         const { translateError } = await import('../utils/errorMessages')
-        throw new Error(translateError(errorMessage))
+        const errorObj = new Error(translateError(errorMessage))
+        // Сохраняем статус ответа для проверки на фронтенде
+        ;(errorObj as any).response = { status: response.status }
+        throw errorObj
       }
 
       // Check if response has content
@@ -831,15 +834,27 @@ class ApiClient {
     if (startDate) params.append('start_date', startDate)
     if (endDate) params.append('end_date', endDate)
     
+    // Получаем актуальный токен из storage
+    const { storageSync } = await import('../utils/storage')
+    let token = storageSync.getItem('token') || this.token
+    
+    if (!token && typeof window !== 'undefined' && window.localStorage) {
+      token = localStorage.getItem('token') || this.token
+    }
+    
     const response = await fetch(`${this.baseUrl}/api/v1/reports/premium/export?${params.toString()}`, {
       headers: {
-        'Authorization': `Bearer ${this.token}`,
+        'Authorization': `Bearer ${token}`,
       },
     })
     
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: 'Ошибка загрузки отчета' }))
-      throw new Error(error.detail || 'Ошибка загрузки отчета')
+      // Для 403 ошибки сохраняем статус в объекте ошибки для правильной обработки
+      const error: any = await response.json().catch(() => ({ detail: 'Ошибка загрузки отчета' }))
+      const errorObj = new Error(error.detail || 'Ошибка загрузки отчета')
+      // Добавляем статус ответа для проверки на фронтенде
+      ;(errorObj as any).response = { status: response.status }
+      throw errorObj
     }
     
     return response.blob()
