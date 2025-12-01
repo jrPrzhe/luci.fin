@@ -484,17 +484,73 @@ function GoalDetailModal({ goal, onClose, onDelete }: { goal: Goal; onClose: () 
             </div>
           </div>
 
-          {/* Roadmap Section */}
-          {roadmap && (
+          {/* Roadmap Section - Show if roadmap exists OR if goal has roadmap string */}
+          {(roadmap || goal.roadmap) && (
             <div className="mb-6">
               <h3 className="text-lg font-bold text-telegram-text dark:text-telegram-dark-text mb-3">
                 🗺️ Дорожная карта
               </h3>
-              <div className="bg-gradient-to-br from-blue-50 dark:from-blue-900/20 to-cyan-50 dark:to-cyan-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
-                <div className="whitespace-pre-wrap text-telegram-text dark:text-telegram-dark-text text-sm leading-relaxed">
-                  {roadmap.roadmap_text || 'Дорожная карта загружается...'}
+              
+              {/* Feasibility Status */}
+              {roadmap?.feasibility && (
+                <div className="mb-3 p-3 rounded-lg bg-telegram-hover dark:bg-telegram-dark-hover">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">
+                      {roadmap.feasibility === 'feasible' ? '✅' : roadmap.feasibility === 'challenging' ? '⚠️' : '❌'}
+                    </span>
+                    <span className="font-semibold text-telegram-text dark:text-telegram-dark-text">
+                      {roadmap.feasibility === 'feasible' ? 'Достижимо' : roadmap.feasibility === 'challenging' ? 'Сложно, но возможно' : 'Очень сложно'}
+                    </span>
+                    {roadmap?.estimated_months && (
+                      <span className="ml-auto text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+                        Оценка: {roadmap.estimated_months} {roadmap.estimated_months === 1 ? 'месяц' : roadmap.estimated_months < 5 ? 'месяца' : 'месяцев'}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
+              
+              {/* Roadmap Text from AI */}
+              {roadmap?.roadmap_text ? (
+                <div className="bg-gradient-to-br from-blue-50 dark:from-blue-900/20 to-cyan-50 dark:to-cyan-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800 mb-4">
+                  <div className="whitespace-pre-wrap text-telegram-text dark:text-telegram-dark-text text-sm leading-relaxed">
+                    {roadmap.roadmap_text}
+                  </div>
+                </div>
+              ) : (
+                // Fallback: Show basic roadmap info if AI text is not available
+                <div className="bg-gradient-to-br from-blue-50 dark:from-blue-900/20 to-cyan-50 dark:to-cyan-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800 mb-4">
+                  <div className="text-telegram-text dark:text-telegram-dark-text text-sm leading-relaxed">
+                    <p className="font-semibold mb-2">📋 План действий:</p>
+                    {roadmap?.monthly_savings_needed && (
+                      <p className="mb-2">
+                        • Ежемесячно откладывайте: <strong>{Math.round(roadmap.monthly_savings_needed).toLocaleString()} {goal.currency}</strong>
+                      </p>
+                    )}
+                    {roadmap?.estimated_months && (
+                      <p className="mb-2">
+                        • Срок достижения цели: <strong>{roadmap.estimated_months} {roadmap.estimated_months === 1 ? 'месяц' : roadmap.estimated_months < 5 ? 'месяца' : 'месяцев'}</strong>
+                      </p>
+                    )}
+                    <p className="mb-2">• Отслеживайте прогресс ежемесячно</p>
+                    <p>• Оптимизируйте расходы для ускорения достижения цели</p>
+                  </div>
+                </div>
+              )}
+              
+              {/* Monthly Savings Summary */}
+              {roadmap?.monthly_savings_needed && (
+                <div className="bg-gradient-to-r from-green-50 dark:from-green-900/20 to-emerald-50 dark:to-emerald-900/20 rounded-lg p-4 border border-green-200 dark:border-green-800 mb-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary font-medium">
+                      💵 Ежемесячные накопления
+                    </span>
+                    <span className="text-xl font-bold text-green-600 dark:text-green-400">
+                      {Math.round(roadmap.monthly_savings_needed).toLocaleString()} {goal.currency}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -539,23 +595,51 @@ function GoalDetailModal({ goal, onClose, onDelete }: { goal: Goal; onClose: () 
           {roadmap?.monthly_plan && roadmap.monthly_plan.length > 0 && (
             <div className="mb-6">
               <h3 className="text-lg font-bold text-telegram-text dark:text-telegram-dark-text mb-3">
-                📊 Месячный план
+                📊 Месячный план накоплений
               </h3>
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                {roadmap.monthly_plan.slice(0, 6).map((month: any, index: number) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-3 bg-telegram-hover dark:bg-telegram-dark-hover rounded-lg"
-                  >
-                    <span className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-                      Месяц {month.month}
-                    </span>
-                    <span className="font-semibold text-telegram-text dark:text-telegram-dark-text">
-                      {Math.round(month.target_savings).toLocaleString()} {goal.currency}
-                    </span>
-                  </div>
-                ))}
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {roadmap.monthly_plan.map((month: any, index: number) => {
+                  const cumulativeProgress = goal.target_amount > 0 
+                    ? Math.min(100, (month.cumulative_target / goal.target_amount) * 100)
+                    : 0
+                  
+                  return (
+                    <div
+                      key={index}
+                      className="p-3 bg-telegram-hover dark:bg-telegram-dark-hover rounded-lg border border-telegram-border dark:border-telegram-dark-border"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-semibold text-telegram-text dark:text-telegram-dark-text">
+                          Месяц {month.month}
+                        </span>
+                        <span className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+                          Накоплено: {Math.round(month.cumulative_target).toLocaleString()} {goal.currency}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+                          Отложить в этом месяце:
+                        </span>
+                        <span className="font-bold text-telegram-text dark:text-telegram-dark-text">
+                          {Math.round(month.target_savings).toLocaleString()} {goal.currency}
+                        </span>
+                      </div>
+                      {/* Progress bar for this month */}
+                      <div className="mt-2 h-2 bg-telegram-border dark:bg-telegram-dark-border rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-blue-500 to-cyan-600 transition-all duration-500"
+                          style={{ width: `${cumulativeProgress}%` }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
+              {roadmap.monthly_plan.length > 6 && (
+                <div className="mt-2 text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary text-center">
+                  Показано {roadmap.monthly_plan.length} месяцев
+                </div>
+              )}
             </div>
           )}
 
@@ -898,8 +982,28 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
 function parseRoadmap(roadmap?: string) {
   if (!roadmap) return null
   try {
-    return JSON.parse(roadmap)
-  } catch {
+    // Try to parse as JSON string
+    const parsed = typeof roadmap === 'string' ? JSON.parse(roadmap) : roadmap
+    
+    // Ensure all expected fields exist
+    if (parsed && typeof parsed === 'object') {
+      return {
+        roadmap_text: parsed.roadmap_text || '',
+        monthly_plan: parsed.monthly_plan || [],
+        recommendations: parsed.recommendations || [],
+        monthly_savings_needed: parsed.monthly_savings_needed || 0,
+        estimated_months: parsed.estimated_months || 0,
+        feasibility: parsed.feasibility || 'feasible',
+        savings_by_category: parsed.savings_by_category || {},
+        goal_name: parsed.goal_name || '',
+        target_amount: parsed.target_amount || 0,
+        currency: parsed.currency || 'RUB'
+      }
+    }
+    
+    return parsed
+  } catch (error) {
+    console.error('Error parsing roadmap:', error, roadmap)
     return null
   }
 }
