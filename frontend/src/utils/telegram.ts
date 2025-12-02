@@ -180,15 +180,35 @@ export function getTelegramUser() {
 /**
  * Wait for Telegram WebApp to be ready and initData to be available
  * Returns initData when ready, or empty string after timeout
+ * 
+ * This function ensures Telegram WebApp is fully initialized before returning initData
  */
-export async function waitForInitData(maxWaitMs: number = 2000): Promise<string> {
+export async function waitForInitData(maxWaitMs: number = 5000): Promise<string> {
   const webApp = getTelegramWebApp()
   if (!webApp) {
+    console.warn('[waitForInitData] Telegram WebApp not available')
     return ''
   }
 
-  // If initData is already available, return it immediately
-  if (webApp.initData && webApp.initData.length > 0) {
+  // Ensure WebApp is ready
+  try {
+    webApp.ready()
+  } catch (error) {
+    console.warn('[waitForInitData] Error calling ready():', error)
+  }
+
+  // Helper function to validate initData
+  const isValidInitData = (data: string): boolean => {
+    if (!data || data.length === 0) {
+      return false
+    }
+    // Valid initData should contain at least user data or hash
+    return data.includes('user=') || data.includes('hash=')
+  }
+
+  // If initData is already available and valid, return it immediately
+  if (isValidInitData(webApp.initData)) {
+    console.log('[waitForInitData] InitData already available')
     return webApp.initData
   }
 
@@ -198,21 +218,38 @@ export async function waitForInitData(maxWaitMs: number = 2000): Promise<string>
 
   return new Promise((resolve) => {
     const checkInitData = () => {
-      const webApp = getTelegramWebApp()
-      if (webApp && webApp.initData && webApp.initData.length > 0) {
-        resolve(webApp.initData)
+      const currentWebApp = getTelegramWebApp()
+      
+      if (!currentWebApp) {
+        if (Date.now() - startTime >= maxWaitMs) {
+          console.warn('[waitForInitData] Timeout: WebApp not available')
+          resolve('')
+          return
+        }
+        setTimeout(checkInitData, checkInterval)
         return
       }
 
+      // Check if initData is available and valid
+      if (isValidInitData(currentWebApp.initData)) {
+        console.log('[waitForInitData] InitData became available after', Date.now() - startTime, 'ms')
+        resolve(currentWebApp.initData)
+        return
+      }
+
+      // Check timeout
       if (Date.now() - startTime >= maxWaitMs) {
         // Timeout reached, return whatever we have (might be empty)
-        resolve(webApp?.initData || '')
+        const finalData = currentWebApp.initData || ''
+        console.warn('[waitForInitData] Timeout reached after', maxWaitMs, 'ms. InitData:', finalData ? `available (${finalData.length} chars) but might be incomplete` : 'not available')
+        resolve(finalData)
         return
       }
 
       setTimeout(checkInitData, checkInterval)
     }
 
+    // Start checking immediately
     checkInitData()
   })
 }

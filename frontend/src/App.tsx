@@ -159,7 +159,7 @@ function TelegramAuthHandler() {
         // Автоматическая авторизация через Telegram Mini App
         // Ждем, пока Telegram WebApp будет готов и initData станет доступен
         console.log('Telegram auto-auth check: waiting for initData...')
-        const initData = await waitForInitData(2000) // Ждем до 2 секунд
+        const initData = await waitForInitData(5000) // Ждем до 5 секунд для полной инициализации
         console.log('Telegram auto-auth check:', { 
           hasInitData: !!initData, 
           initDataLength: initData?.length || 0,
@@ -228,10 +228,15 @@ function TelegramAuthHandler() {
           }
         } else {
           // Нет initData - возможно, Mini App еще не инициализирован
-          console.warn('No initData available for Telegram auto-auth')
+          console.warn('No initData available for Telegram auto-auth after waiting')
           if (mounted) {
             clearTimeout(timeoutId)
             setIsChecking(false)
+            // Если на странице логина/регистрации, остаемся там (пользователь может попробовать снова)
+            // На других страницах редиректим на логин
+            if (location.pathname !== '/login' && location.pathname !== '/register') {
+              navigate('/login')
+            }
           }
         }
       } catch (error) {

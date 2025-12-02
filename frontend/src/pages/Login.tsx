@@ -59,7 +59,7 @@ export function Login() {
     }
 
     // Ждем, пока Telegram WebApp будет готов и initData станет доступен
-    const initData = await waitForInitData(2000) // Ждем до 2 секунд
+    const initData = await waitForInitData(5000) // Ждем до 5 секунд для полной инициализации
     if (!initData || initData.length === 0) {
       showError('Не удалось получить данные Telegram. Убедитесь, что открыто через Telegram Mini App.')
       setIsLoading(false)
@@ -203,7 +203,7 @@ export function Login() {
     if (isTelegram && !isVK) {
       if (authMethod === 'select') {
         // Ждем, пока Telegram WebApp будет готов и initData станет доступен
-        waitForInitData(2000).then((initData) => {
+        waitForInitData(5000).then((initData) => {
           if (initData && initData.length > 0) {
             handleTelegramLogin()
           } else {
