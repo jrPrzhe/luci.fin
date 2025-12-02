@@ -222,47 +222,49 @@ export function Reports() {
         </h1>
         
         <div className="flex items-center gap-3">
-          {/* Download Button */}
-          <div className="relative group">
-            <button
-              onClick={() => handleDownload('pdf')}
-              disabled={isDownloading}
-              className="flex items-center gap-2 px-4 py-2 bg-telegram-primary text-white rounded-lg font-medium hover:bg-telegram-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Скачать отчет"
-            >
-              {isDownloading ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span className="hidden md:inline">Загрузка...</span>
-                </>
-              ) : (
-                <>
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  <span className="hidden md:inline">Скачать</span>
-                </>
+          {/* Download Button - только для Premium пользователей */}
+          {user?.is_premium && (
+            <div className="relative group">
+              <button
+                onClick={() => handleDownload('pdf')}
+                disabled={isDownloading}
+                className="flex items-center gap-2 px-4 py-2 bg-telegram-primary text-white rounded-lg font-medium hover:bg-telegram-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Скачать отчет"
+              >
+                {isDownloading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span className="hidden md:inline">Загрузка...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    <span className="hidden md:inline">Скачать</span>
+                  </>
+                )}
+              </button>
+              
+              {/* Format dropdown - показываем при наведении на десктопе */}
+              {!isDownloading && (
+                <div className="absolute right-0 top-full mt-1 bg-telegram-surface dark:bg-telegram-dark-surface border border-telegram-border dark:border-telegram-dark-border rounded-lg shadow-lg overflow-hidden opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 min-w-[120px]">
+                  <button
+                    onClick={() => handleDownload('pdf')}
+                    className="block w-full px-4 py-2 text-left text-sm text-telegram-text dark:text-telegram-dark-text hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover"
+                  >
+                    📄 PDF
+                  </button>
+                  <button
+                    onClick={() => handleDownload('excel')}
+                    className="block w-full px-4 py-2 text-left text-sm text-telegram-text dark:text-telegram-dark-text hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover"
+                  >
+                    📊 Excel
+                  </button>
+                </div>
               )}
-            </button>
-            
-            {/* Format dropdown - показываем при наведении на десктопе */}
-            {!isDownloading && (
-              <div className="absolute right-0 top-full mt-1 bg-telegram-surface dark:bg-telegram-dark-surface border border-telegram-border dark:border-telegram-dark-border rounded-lg shadow-lg overflow-hidden opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 min-w-[120px]">
-                <button
-                  onClick={() => handleDownload('pdf')}
-                  className="block w-full px-4 py-2 text-left text-sm text-telegram-text dark:text-telegram-dark-text hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover"
-                >
-                  📄 PDF
-                </button>
-                <button
-                  onClick={() => handleDownload('excel')}
-                  className="block w-full px-4 py-2 text-left text-sm text-telegram-text dark:text-telegram-dark-text hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover"
-                >
-                  📊 Excel
-                </button>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
           
           {/* Period Selector */}
           <div className="flex gap-2">
