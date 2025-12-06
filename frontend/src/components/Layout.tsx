@@ -350,14 +350,14 @@ export function Layout() {
       {newYearEnabled && <Garland />}
       
       {/* Desktop Sidebar - скрыт на мобильных и планшетах, показывается только на больших экранах (xl: 1280px+) */}
-      <aside className="hidden xl:flex w-64 flex-col bg-telegram-surface dark:bg-telegram-dark-surface border-r border-telegram-border dark:border-telegram-dark-border flex-shrink-0 relative z-10">
+      <aside className="hidden xl:flex w-64 flex-col bg-telegram-surface dark:bg-telegram-dark-surface border-r border-telegram-border dark:border-telegram-dark-border flex-shrink-0 relative z-20">
         <div className="p-4 border-b border-telegram-border dark:border-telegram-dark-border">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setShowStories(true)}
               className="relative group cursor-pointer"
             >
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-telegram-primary dark:from-telegram-dark-primary to-telegram-primaryLight dark:to-telegram-dark-primaryLight flex items-center justify-center overflow-hidden relative z-10 transform transition-transform duration-300 group-hover:scale-110 shadow-lg">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-telegram-primary dark:from-telegram-dark-primary to-telegram-primaryLight dark:to-telegram-dark-primaryLight flex items-center justify-center overflow-hidden relative z-30 transform transition-transform duration-300 group-hover:scale-110 shadow-lg">
                 <img src="/1.png" alt="Люся.Бюджет" className="w-full h-full object-cover" />
               </div>
               {/* Пульсирующее кольцо - анимация как в Instagram Stories */}
