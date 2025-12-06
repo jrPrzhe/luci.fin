@@ -53,12 +53,41 @@ export function Transactions() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
-  const [filterType, setFilterType] = useState<'all' | 'own' | 'shared'>('all')
-  const [transactionTypeFilter, setTransactionTypeFilter] = useState<'all' | 'income' | 'expense' | 'transfer'>('all')
-  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month' | 'year' | 'custom'>('all')
-  const [customStartDate, setCustomStartDate] = useState('')
-  const [customEndDate, setCustomEndDate] = useState('')
-  const [showDateFilter, setShowDateFilter] = useState(false)
+  // Загружаем сохраненные фильтры из localStorage при инициализации
+  const loadSavedFilters = () => {
+    try {
+      const saved = localStorage.getItem('transactionsFilters')
+      if (saved) {
+        const filters = JSON.parse(saved)
+        return {
+          filterType: filters.filterType || 'all',
+          transactionTypeFilter: filters.transactionTypeFilter || 'all',
+          dateFilter: filters.dateFilter || 'all',
+          customStartDate: filters.customStartDate || '',
+          customEndDate: filters.customEndDate || '',
+          showDateFilter: filters.showDateFilter || false,
+        }
+      }
+    } catch (e) {
+      console.error('Error loading saved filters:', e)
+    }
+    return {
+      filterType: 'all' as const,
+      transactionTypeFilter: 'all' as const,
+      dateFilter: 'all' as const,
+      customStartDate: '',
+      customEndDate: '',
+      showDateFilter: false,
+    }
+  }
+
+  const savedFilters = loadSavedFilters()
+  const [filterType, setFilterType] = useState<'all' | 'own' | 'shared'>(savedFilters.filterType)
+  const [transactionTypeFilter, setTransactionTypeFilter] = useState<'all' | 'income' | 'expense' | 'transfer'>(savedFilters.transactionTypeFilter)
+  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month' | 'year' | 'custom'>(savedFilters.dateFilter)
+  const [customStartDate, setCustomStartDate] = useState(savedFilters.customStartDate)
+  const [customEndDate, setCustomEndDate] = useState(savedFilters.customEndDate)
+  const [showDateFilter, setShowDateFilter] = useState(savedFilters.showDateFilter)
   const [filtersExpanded, setFiltersExpanded] = useState(false)
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null)
 
@@ -192,6 +221,19 @@ export function Transactions() {
   const loadMore = async () => {
     await loadData(false)
   }
+
+  // Сохраняем фильтры в localStorage при их изменении
+  useEffect(() => {
+    const filtersToSave = {
+      filterType,
+      transactionTypeFilter,
+      dateFilter,
+      customStartDate,
+      customEndDate,
+      showDateFilter,
+    }
+    localStorage.setItem('transactionsFilters', JSON.stringify(filtersToSave))
+  }, [filterType, transactionTypeFilter, dateFilter, customStartDate, customEndDate, showDateFilter])
 
   // Check if we came from Accounts page with accountId
   useEffect(() => {
