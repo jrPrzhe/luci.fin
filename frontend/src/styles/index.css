@@ -126,6 +126,22 @@
     padding-right: 2.5rem !important;
   }
   
+  /* Стилизуем кнопку календаря */
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="time"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.7;
+  }
+  
+  /* Адаптация иконки календаря для темной темы */
+  .dark input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+  .dark input[type="date"]::-webkit-calendar-picker-indicator,
+  .dark input[type="time"]::-webkit-calendar-picker-indicator {
+    filter: invert(1) brightness(1.2);
+    opacity: 0.8;
+  }
+  
   /* На мобильных устройствах уменьшаем размер шрифта */
   @media (max-width: 640px) {
     input[type="datetime-local"],
@@ -144,6 +160,13 @@
       opacity: 0.7;
       cursor: pointer;
       margin-right: 4px;
+    }
+    
+    .dark input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+    .dark input[type="date"]::-webkit-calendar-picker-indicator,
+    .dark input[type="time"]::-webkit-calendar-picker-indicator {
+      filter: invert(1) brightness(1.2);
+      opacity: 0.8;
     }
   }
   

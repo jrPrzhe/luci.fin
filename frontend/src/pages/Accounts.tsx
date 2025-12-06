@@ -22,8 +22,8 @@ interface Account {
 const accountTypeLabels: Record<string, string> = {
   cash: 'Наличные',
   bank_card: 'Банковская карта',
-  bank_account: 'Банковский счёт',
-  e_wallet: 'Электронный кошелёк',
+  bank_account: 'Банковский счет',
+  e_wallet: 'Электронный кошелек',
   credit_card: 'Кредитная карта',
   investment: 'Инвестиции',
   other: 'Прочее',
@@ -101,7 +101,7 @@ export function Accounts() {
     e.preventDefault()
 
     if (!formData.name.trim()) {
-      showError('Название счёта обязательно')
+      showError('Название счета обязательно')
       return
     }
 
@@ -126,7 +126,7 @@ export function Accounts() {
       })
       setShowForm(false)
       await loadAccounts()
-      showSuccess('Счёт создан')
+      showSuccess('Счет создан')
     } catch (err: any) {
       const { translateError } = await import('../utils/errorMessages')
       showError(translateError(err))
@@ -169,7 +169,7 @@ export function Accounts() {
           onClick={() => setShowForm(true)}
           className="btn-primary"
         >
-          ➕ Добавить счёт
+          ➕ Добавить счет
         </button>
       </div>
 
@@ -181,7 +181,7 @@ export function Accounts() {
             onClick={() => setShowForm(true)}
             className="btn-primary"
           >
-            Создать первый счёт
+            Создать первый счет
           </button>
         </div>
       ) : (
@@ -253,24 +253,24 @@ export function Accounts() {
                     onClick={() => {
                       setConfirmModal({
                         show: true,
-                        message: 'Вы уверены, что хотите удалить этот счёт?',
+                        message: 'Вы уверены, что хотите удалить этот счет?',
                         onConfirm: async () => {
                           try {
                             await api.deleteAccount(account.id)
                             await loadAccounts()
                             // Also invalidate goals query in case this was a goal account
                             queryClient.invalidateQueries({ queryKey: ['goals'] })
-                            showSuccess('Счёт удалён')
+                            showSuccess('Счет удален')
                             setConfirmModal({ show: false, message: '', onConfirm: () => {} })
                           } catch (err: any) {
-                            showError(err.message || 'Ошибка удаления счёта')
+                            showError(err.message || 'Ошибка удаления счета')
                             setConfirmModal({ show: false, message: '', onConfirm: () => {} })
                           }
                         },
                       })
                     }}
                     className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 px-2 py-1 text-sm"
-                    title="Удалить счёт"
+                    title="Удалить счет"
                   >
                     🗑️
                   </button>
@@ -306,7 +306,7 @@ export function Accounts() {
           >
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-telegram-text dark:text-telegram-dark-text">Добавить счёт</h2>
+                <h2 className="text-2xl font-bold text-telegram-text dark:text-telegram-dark-text">Добавить счет</h2>
                 <button
                   onClick={() => {
                     setShowForm(false)
@@ -328,7 +328,7 @@ export function Accounts() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
-                    Название счёта <span className="text-red-500 dark:text-red-400">*</span>
+                    Название счета <span className="text-red-500 dark:text-red-400">*</span>
                   </label>
                   <input
                     type="text"
@@ -337,7 +337,7 @@ export function Accounts() {
                       setFormData({ ...formData, name: e.target.value })
                     }
                     className="input"
-                    placeholder="Например: Основной счёт"
+                    placeholder="Например: Основной счет"
                     maxLength={50}
                     required
                   />
@@ -345,7 +345,7 @@ export function Accounts() {
 
                 <div>
                   <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
-                    Тип счёта <span className="text-red-500 dark:text-red-400">*</span>
+                    Тип счета <span className="text-red-500 dark:text-red-400">*</span>
                   </label>
                   <select
                     value={formData.account_type}
@@ -405,7 +405,7 @@ export function Accounts() {
                     }
                     className="input"
                   >
-                    <option value="">Личный счёт</option>
+                    <option value="">Личный счет</option>
                     {sharedBudgets && Array.isArray(sharedBudgets) && sharedBudgets.length > 0
                       ? sharedBudgets
                           .filter(() => {
@@ -421,7 +421,7 @@ export function Accounts() {
                       : null}
                   </select>
                   <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
-                    Выберите совместный бюджет для создания общего счёта. Только администраторы могут создавать совместные счета.
+                    Выберите совместный бюджет для создания общего счета. Только администраторы могут создавать совместные счета.
                   </p>
                 </div>
 
@@ -436,7 +436,7 @@ export function Accounts() {
                     }
                     className="input"
                     rows={3}
-                    placeholder="Дополнительная информация о счёте"
+                    placeholder="Дополнительная информация о счете"
                     maxLength={200}
                   />
                 </div>
@@ -463,7 +463,7 @@ export function Accounts() {
                     type="submit"
                     className="flex-1 btn-primary"
                   >
-                    Создать счёт
+                    Создать счет
                   </button>
                 </div>
               </form>

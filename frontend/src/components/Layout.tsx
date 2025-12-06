@@ -609,7 +609,7 @@ export function Layout() {
       {isMiniApp && (
         <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-telegram-surface dark:bg-telegram-dark-surface border-t border-telegram-border dark:border-telegram-dark-border px-2 py-2 safe-area-inset-bottom z-10">
           <div className="flex items-center justify-around">
-            {/* Дашборд, Транзакции, Счета, Отчёты */}
+            {/* Дашборд, Транзакции, Счета, Отчеты */}
             {navItems.filter(item => 
               item.path === '/' || 
               item.path === '/transactions' || 
@@ -653,7 +653,7 @@ export function Layout() {
       {!isMiniApp && (
         <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-telegram-surface dark:bg-telegram-dark-surface border-t border-telegram-border dark:border-telegram-dark-border px-2 py-2 safe-area-inset-bottom z-10 shadow-lg">
           <div className="flex items-center justify-around">
-            {/* Дашборд, Транзакции, Счета, Отчёты */}
+            {/* Дашборд, Транзакции, Счета, Отчеты */}
             {navItems.filter(item => 
               item.path === '/' || 
               item.path === '/transactions' || 

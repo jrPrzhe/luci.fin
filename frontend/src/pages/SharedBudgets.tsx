@@ -514,7 +514,7 @@ export function SharedBudgets() {
               <div className="card p-6 text-center bg-gray-50 border-2 border-dashed border-gray-300">
                 <div className="text-4xl mb-3">💳</div>
                 <p className="text-telegram-text dark:text-telegram-dark-text font-medium mb-2">Нет совместных счетов</p>
-                <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">Создайте счёт в разделе "Счета", выбрав этот бюджет</p>
+                <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">Создайте счет в разделе "Счета", выбрав этот бюджет</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -794,8 +794,8 @@ export function SharedBudgets() {
 
       {/* Show Invite Code Modal */}
       {showInviteCode && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-black dark:bg-opacity-70 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-telegram-dark-surface rounded-lg shadow-xl max-w-md w-full mx-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-black dark:bg-opacity-70 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-telegram-dark-surface rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold text-telegram-text dark:text-telegram-dark-text">Код приглашения</h2>
@@ -809,8 +809,8 @@ export function SharedBudgets() {
 
               {budgets.find(b => b.id === showInviteCode) && (
                 <div>
-                  <p className="text-gray-600 dark:text-telegram-dark-textSecondary mb-4">
-                    Отправьте этот код пользователю, чтобы он мог присоединиться к бюджету <strong className="text-telegram-text dark:text-telegram-dark-text">"{budgets.find(b => b.id === showInviteCode)?.name}"</strong>
+                  <p className="text-gray-600 dark:text-telegram-dark-textSecondary mb-4 break-words">
+                    Отправьте этот код пользователю, чтобы он мог присоединиться к бюджету <strong className="text-telegram-text dark:text-telegram-dark-text break-words">"{budgets.find(b => b.id === showInviteCode)?.name}"</strong>
                   </p>
                   
                   <div className="bg-gray-50 dark:bg-telegram-dark-hover p-4 rounded-lg mb-4">
