@@ -4,6 +4,7 @@ import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Cart
 import { api } from '../services/api'
 import { PremiumSubscriptionModal } from '../components/PremiumSubscriptionModal'
 import { useI18n } from '../contexts/I18nContext'
+import { LoadingSpinner } from '../components/LoadingSpinner'
 
 interface AnalyticsData {
   period: string
@@ -216,14 +217,7 @@ export function Reports() {
   }
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen p-4 md:p-6 flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-telegram-primary mb-4"></div>
-          <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{t.reports.loading}</p>
-        </div>
-      </div>
-    )
+    return <LoadingSpinner fullScreen={true} />
   }
 
   if (error || !analytics) {

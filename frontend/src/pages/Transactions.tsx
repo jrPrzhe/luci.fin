@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { api } from '../services/api'
 import { useToast } from '../contexts/ToastContext'
 import { useI18n } from '../contexts/I18nContext'
+import { LoadingSpinner } from '../components/LoadingSpinner'
 
 interface Transaction {
   id: number
@@ -393,14 +394,7 @@ export function Transactions() {
   }
 
   if (loading) {
-    return (
-      <div className="p-4 md:p-8">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-telegram-primary dark:border-telegram-dark-primary mb-4"></div>
-          <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">Загрузка...</p>
-        </div>
-      </div>
-    )
+    return <LoadingSpinner />
   }
 
   return (

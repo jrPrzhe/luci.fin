@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { api } from '../services/api'
 import { useToast } from '../contexts/ToastContext'
+import { LoadingSpinner } from '../components/LoadingSpinner'
 
 interface Account {
   id: number
@@ -144,6 +145,16 @@ export function Accounts() {
       return
     }
 
+    if (formData.name.length > 255) {
+      showError('Название счета не может превышать 255 символов')
+      return
+    }
+
+    if (formData.description.length > 500) {
+      showError('Описание не может превышать 500 символов')
+      return
+    }
+
     try {
       if (editingAccount) {
         // Update existing account
@@ -217,13 +228,7 @@ export function Accounts() {
   }
 
   if (loading) {
-    return (
-      <div className="p-8">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-lg text-telegram-text dark:text-telegram-dark-text">Загрузка...</div>
-        </div>
-      </div>
-    )
+    return <LoadingSpinner />
   }
 
   return (
@@ -435,9 +440,12 @@ export function Accounts() {
                     }
                     className="input"
                     placeholder="Например: Основной счет"
-                    maxLength={50}
+                    maxLength={255}
                     required
                   />
+                  <div className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1 text-right">
+                    {formData.name.length}/255
+                  </div>
                 </div>
 
                 <div>
@@ -538,8 +546,11 @@ export function Accounts() {
                     className="input"
                     rows={3}
                     placeholder="Дополнительная информация о счете"
-                    maxLength={200}
+                    maxLength={500}
                   />
+                  <div className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1 text-right">
+                    {formData.description.length}/500
+                  </div>
                 </div>
 
                 <div className="flex gap-3 pt-4">

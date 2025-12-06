@@ -5,11 +5,11 @@ from decimal import Decimal
 
 
 class AccountBase(BaseModel):
-    name: str
+    name: str = Field(..., min_length=1, max_length=255, description="Account name")
     account_type: str
     currency: str = Field(..., min_length=3, max_length=3)
     initial_balance: Decimal = Decimal("0")
-    description: Optional[str] = None
+    description: Optional[str] = Field(None, max_length=500, description="Account description")
 
 
 class AccountCreate(AccountBase):
@@ -17,10 +17,10 @@ class AccountCreate(AccountBase):
 
 
 class AccountUpdate(BaseModel):
-    name: Optional[str] = None
+    name: Optional[str] = Field(None, min_length=1, max_length=255, description="Account name")
     account_type: Optional[str] = None
     currency: Optional[str] = Field(None, min_length=3, max_length=3)
-    description: Optional[str] = None
+    description: Optional[str] = Field(None, max_length=500, description="Account description")
     is_active: Optional[bool] = None
     is_archived: Optional[bool] = None
 

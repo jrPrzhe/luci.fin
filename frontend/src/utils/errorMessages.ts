@@ -87,6 +87,21 @@ export function translateError(error: any): string {
     return 'Заполните все обязательные поля.'
   }
 
+  // Ошибки длины полей
+  if (errorLower.includes('max_length') || errorLower.includes('too long') || errorLower.includes('exceeds')) {
+    if (errorLower.includes('name') || errorLower.includes('название')) {
+      return 'Название счета не может превышать 255 символов.'
+    }
+    if (errorLower.includes('description') || errorLower.includes('описание')) {
+      return 'Описание не может превышать 500 символов.'
+    }
+    return 'Превышена максимальная длина поля. Проверьте введенные данные.'
+  }
+
+  if (errorLower.includes('min_length') || errorLower.includes('too short')) {
+    return 'Поле слишком короткое. Проверьте введенные данные.'
+  }
+
   // Ошибки базы данных
   if (errorLower.includes('numeric') || errorLower.includes('overflow') || errorLower.includes('value too large') || errorLower.includes('out of range')) {
     return 'Сумма слишком большая. Максимальная сумма: 9 999 999 999 999.99'
