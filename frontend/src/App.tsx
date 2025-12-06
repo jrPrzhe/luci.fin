@@ -26,6 +26,7 @@ import { storageSync } from './utils/storage'
 import { NewYearProvider } from './contexts/NewYearContext'
 import { I18nProvider } from './contexts/I18nContext'
 import { ToastProvider } from './contexts/ToastContext'
+import { LoadingSpinner } from './components/LoadingSpinner'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -261,10 +262,7 @@ function TelegramAuthHandler() {
   if (isChecking && (location.pathname === '/login' || location.pathname === '/register')) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-telegram-bg">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-telegram-primary mb-4"></div>
-          <p className="text-telegram-textSecondary">Загрузка...</p>
-        </div>
+        <LoadingSpinner fullScreen={false} size="md" />
       </div>
     )
   }
@@ -483,10 +481,7 @@ function VKAuthHandler() {
   if (isChecking && (location.pathname === '/login' || location.pathname === '/register')) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-telegram-bg">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-telegram-primary mb-4"></div>
-          <p className="text-telegram-textSecondary">Загрузка...</p>
-        </div>
+        <LoadingSpinner fullScreen={false} size="md" />
       </div>
     )
   }

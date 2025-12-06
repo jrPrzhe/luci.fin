@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { api } from '../services/api'
 import { useToast } from '../contexts/ToastContext'
 import { useI18n } from '../contexts/I18nContext'
+import { LoadingSpinner } from '../components/LoadingSpinner'
 
 interface Category {
   id: number
@@ -260,14 +261,7 @@ export function Categories() {
   const regularCategories = filteredCategories.filter(cat => !cat.is_favorite)
 
   if (loading) {
-    return (
-      <div className="p-4 md:p-8">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-telegram-primary mb-4"></div>
-          <p className="text-telegram-textSecondary">{t.common.loading}</p>
-        </div>
-      </div>
-    )
+    return <LoadingSpinner />
   }
 
   return (

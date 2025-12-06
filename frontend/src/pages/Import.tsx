@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
 import { useToast } from '../contexts/ToastContext'
+import { useI18n } from '../contexts/I18nContext'
 
 interface ImportSource {
   id: string
@@ -12,6 +13,7 @@ interface ImportSource {
 export function Import() {
   const navigate = useNavigate()
   const { showError, showSuccess } = useToast()
+  const { t } = useI18n()
   const [sources, setSources] = useState<ImportSource[]>([])
   const [selectedSource, setSelectedSource] = useState<string>('')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -186,9 +188,9 @@ export function Import() {
             <div className="flex items-center justify-center mb-3">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             </div>
-            <p className="text-center font-medium mb-2">Импорт данных...</p>
+            <p className="text-center font-medium mb-2">{t.profile.importData}...</p>
             <p className="text-center text-sm text-blue-600 mb-2">
-              Пожалуйста, подождите. Это может занять некоторое время.
+              {t.common.loading}
             </p>
             <p className="text-center text-xs text-blue-500">
               Время выполнения: {elapsedTime > 0 ? `${elapsedTime} сек.` : 'менее 1 сек.'}
@@ -203,7 +205,7 @@ export function Import() {
           disabled={isUploading || !selectedFile || !selectedSource}
           className="w-full btn-primary text-sm md:text-base py-2.5 md:py-3 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isUploading ? 'Импорт...' : 'Импортировать данные'}
+          {isUploading ? `${t.profile.importData}...` : t.profile.importData}
         </button>
 
         {/* Информация */}
