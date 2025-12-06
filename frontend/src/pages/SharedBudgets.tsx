@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { api } from '../services/api'
 import { getTelegramWebApp } from '../utils/telegram'
+import { isVKWebApp } from '../utils/vk'
+import bridge from '@vkontakte/vk-bridge'
 import { useToast } from '../contexts/ToastContext'
 import { useI18n } from '../contexts/I18nContext'
 
@@ -287,6 +289,31 @@ export function SharedBudgets() {
       setCopiedCode(text)
       setTimeout(() => setCopiedCode(null), 2000)
     })
+  }
+
+  const sendVKInvite = async (inviteCode: string, budgetName: string) => {
+    if (!isVKWebApp()) {
+      // Not in VK, fallback to copying
+      copyToClipboard(inviteCode)
+      showSuccess(`Код приглашения скопирован: ${inviteCode}`)
+      return
+    }
+
+    try {
+      // Use VK Bridge share functionality
+      await bridge.send('VKWebAppShare', {
+        link: window.location.href
+      })
+      
+      // Also copy to clipboard as fallback with budget name
+      const message = `Приглашение в совместный бюджет "${budgetName}"\n\nКод: ${inviteCode}`
+      copyToClipboard(message)
+    } catch (err) {
+      // Fallback: copy to clipboard with budget name
+      const message = `Приглашение в совместный бюджет "${budgetName}"\n\nКод: ${inviteCode}`
+      copyToClipboard(message)
+      showSuccess(`Код приглашения скопирован: ${inviteCode}\n\nОтправьте его пользователю во ВКонтакте.`)
+    }
   }
 
   const sendTelegramInvite = (inviteCode: string, budgetName: string) => {
@@ -843,13 +870,17 @@ export function SharedBudgets() {
                     onClick={() => {
                       const budget = budgets.find(b => b.id === showInviteCode)
                       if (budget && budget.invite_code) {
-                        sendTelegramInvite(budget.invite_code, budget.name)
+                        if (isVKWebApp()) {
+                          sendVKInvite(budget.invite_code, budget.name)
+                        } else {
+                          sendTelegramInvite(budget.invite_code, budget.name)
+                        }
                       }
                     }}
                     className="w-full px-4 py-2 bg-blue-500 dark:bg-telegram-primary text-white rounded-lg hover:bg-blue-600 dark:hover:bg-telegram-primaryHover mb-3 flex items-center justify-center gap-2"
                   >
                     <span>📨</span>
-                    <span>Отправить в Telegram</span>
+                    <span>{isVKWebApp() ? 'Отправить в ВК' : 'Отправить в Telegram'}</span>
                   </button>
 
                   <button
