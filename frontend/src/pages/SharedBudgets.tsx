@@ -591,23 +591,26 @@ export function SharedBudgets() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {members.map((member) => (
                 <div key={member.id} className="card hover:shadow-lg transition-shadow">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3 flex-1">
-                      <div className={`w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold ${
+                  <div className="flex items-center justify-between gap-3 min-w-0">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold flex-shrink-0 ${
                         member.role === 'admin' 
                           ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-white' 
                           : 'bg-gradient-to-br from-gray-300 to-gray-400 text-white'
                       }`}>
                         {member.user_name?.[0]?.toUpperCase() || member.user_email?.[0]?.toUpperCase() || '👤'}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold text-telegram-text dark:text-telegram-dark-text truncate">
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <h4 
+                          className="font-semibold text-telegram-text dark:text-telegram-dark-text truncate"
+                          title={member.user_name || member.user_email || `Пользователь #${member.user_id}`}
+                        >
                           {member.user_name || member.user_email || `Пользователь #${member.user_id}`}
                         </h4>
-                        <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+                        <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary truncate">
                           {member.role === 'admin' ? '👑 Администратор' : '👤 Участник'}
                         </p>
-                        <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
+                        <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1 truncate">
                           📅 {formatDate(member.joined_at)}
                         </p>
                       </div>
@@ -622,7 +625,7 @@ export function SharedBudgets() {
                       // Show admin controls only if current user is admin
                       if (currentUserIsAdmin && !isCurrentUser) {
                         return (
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 flex-shrink-0">
                             {/* Role change button */}
                             <button
                               onClick={() => handleUpdateRole(
@@ -630,7 +633,7 @@ export function SharedBudgets() {
                                 member.user_id, 
                                 member.role === 'admin' ? 'member' : 'admin'
                               )}
-                              className="px-3 py-1.5 text-xs font-medium rounded-telegram transition-colors"
+                              className="px-3 py-1.5 text-xs font-medium rounded-telegram transition-colors whitespace-nowrap"
                               style={{
                                 backgroundColor: member.role === 'admin' 
                                   ? '#F59E0B' 
@@ -645,7 +648,7 @@ export function SharedBudgets() {
                             {!(member.role === 'admin' && adminCount === 1) && (
                               <button
                                 onClick={() => handleRemoveMember(selectedBudget.id, member.user_id)}
-                                className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                                className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
                                 title="Удалить участника"
                               >
                                 🗑️
