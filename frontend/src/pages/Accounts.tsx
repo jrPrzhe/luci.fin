@@ -48,6 +48,7 @@ export function Accounts() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingAccount, setEditingAccount] = useState<Account | null>(null)
+  const [expandedDescriptions, setExpandedDescriptions] = useState<Set<number>>(new Set())
   
   // Confirmation modal state
   const [confirmModal, setConfirmModal] = useState<{
@@ -71,31 +72,67 @@ export function Accounts() {
   })
 
   useEffect(() => {
-    loadAccounts()
-    loadSharedBudgets()
+    const initialize = async () => {
+      const budgets = await loadSharedBudgets()
+      if (budgets) {
+        await loadAccounts(budgets)
+      } else {
+        await loadAccounts()
+      }
+    }
+    initialize()
   }, [])
 
   const loadSharedBudgets = async () => {
     try {
       const budgets = await api.getSharedBudgets()
-      setSharedBudgets(budgets || [])
+      const budgetsArray = budgets || []
+      setSharedBudgets(budgetsArray)
+      return budgetsArray
     } catch (err) {
       // Ignore errors - budgets might not be accessible
       console.error('Error loading shared budgets:', err)
       setSharedBudgets([])
+      return []
     }
   }
 
-  const loadAccounts = async () => {
+  const loadAccounts = async (budgets?: any[]) => {
     try {
       setLoading(true)
       const accountsData = await api.getAccounts()
-      setAccounts(accountsData)
+      const budgetsToUse = budgets || sharedBudgets
+      // Обогащаем счета описаниями бюджетов
+      const enrichedAccounts = accountsData.map((account: Account) => {
+        if (account.shared_budget_id) {
+          const budget = budgetsToUse.find(b => b.id === account.shared_budget_id)
+          if (budget) {
+            return {
+              ...account,
+              shared_budget_description: budget.description
+            }
+          }
+        }
+        return account
+      })
+      setAccounts(enrichedAccounts)
     } catch (err: any) {
       showError(err.message || 'Ошибка загрузки счетов')
     } finally {
       setLoading(false)
     }
+  }
+
+  const toggleDescription = (accountId: number) => {
+    setExpandedDescriptions(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(accountId)) {
+        newSet.delete(accountId)
+      } else {
+        newSet.add(accountId)
+      }
+      return newSet
+    })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -248,7 +285,26 @@ export function Accounts() {
                 <p className="text-3xl font-bold text-telegram-primary dark:text-telegram-dark-primary">
                   {formatBalance(account.balance, account.currency)}
                 </p>
-                {account.description && (
+                {/* Описание совместного бюджета */}
+                {account.shared_budget_description && (
+                  <div className="mt-2">
+                    <p className={`text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary break-words ${
+                      expandedDescriptions.has(account.id) ? '' : 'line-clamp-2'
+                    }`}>
+                      {account.shared_budget_description}
+                    </p>
+                    {account.shared_budget_description.length > 100 && (
+                      <button
+                        onClick={() => toggleDescription(account.id)}
+                        className="text-xs text-telegram-primary dark:text-telegram-dark-primary hover:underline mt-1"
+                      >
+                        {expandedDescriptions.has(account.id) ? 'Скрыть' : 'Раскрыть'}
+                      </button>
+                    )}
+                  </div>
+                )}
+                {/* Описание счета (если нет описания бюджета) */}
+                {account.description && !account.shared_budget_description && (
                   <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-2 line-clamp-2 break-words">
                     {account.description}
                   </p>
