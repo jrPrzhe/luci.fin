@@ -119,7 +119,7 @@ const localizeMonth = (monthStr: string, locale: string = 'ru-RU'): string => {
 }
 
 export function Reports() {
-  const { t, language } = useI18n()
+  const { t, language, translateCategoryName } = useI18n()
   const [period, setPeriod] = useState<'week' | 'month' | 'year'>('month')
   const [showPremiumModal, setShowPremiumModal] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
@@ -644,7 +644,8 @@ export function Reports() {
             <ResponsiveContainer width="100%" height={300}>
               <BarChart 
                 data={analytics.top_expense_categories.slice(0, 5).map(cat => ({
-                  name: cat.icon + ' ' + cat.name,
+                  name: cat.icon + ' ' + translateCategoryName(cat.name),
+                  originalName: cat.name,
                   amount: cat.amount,
                   color: cat.color,
                 }))}
@@ -671,12 +672,19 @@ export function Reports() {
                     if (active && payload && payload.length) {
                       return (
                         <div className="bg-white dark:bg-telegram-dark-surface p-3 rounded-lg shadow-lg border border-telegram-border dark:border-telegram-dark-border">
-                          {payload.map((entry: any, index: number) => (
-                            <p key={index} className="text-sm text-telegram-text dark:text-telegram-dark-text">
-                              <span className="font-semibold">{entry.name || 'Категория'}:</span>{' '}
-                              <span className="font-bold">{formatCurrency(entry.value)}</span>
-                            </p>
-                          ))}
+                          {payload.map((entry: any, index: number) => {
+                            // Extract category name from entry.name (format: "icon translatedName")
+                            // entry.name already contains translated name, but we need to extract it without icon
+                            const categoryName = entry.payload?.originalName 
+                              ? translateCategoryName(entry.payload.originalName)
+                              : (entry.name ? entry.name.replace(/^[^\s]+\s/, '') : (language === 'ru' ? 'Категория' : 'Category'))
+                            return (
+                              <p key={index} className="text-sm text-telegram-text dark:text-telegram-dark-text">
+                                <span className="font-semibold">{categoryName}:</span>{' '}
+                                <span className="font-bold">{formatCurrency(entry.value)}</span>
+                              </p>
+                            )
+                          })}
                         </div>
                       )
                     }
