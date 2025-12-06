@@ -73,6 +73,13 @@ export function Accounts() {
     shared_budget_id: '',
   })
 
+  // Save draft to localStorage whenever formData changes (but not when editing)
+  useEffect(() => {
+    if (!editingAccount && showForm) {
+      localStorage.setItem('accountFormDraft', JSON.stringify(formData))
+    }
+  }, [formData, editingAccount, showForm])
+
   useEffect(() => {
     const initialize = async () => {
       const budgets = await loadSharedBudgets()
@@ -178,7 +185,8 @@ export function Accounts() {
         showSuccess('Счет создан')
       }
 
-      // Reset form
+      // Clear draft and reset form only after successful creation
+      localStorage.removeItem('accountFormDraft')
       setFormData({
         name: '',
         account_type: 'cash',
@@ -198,6 +206,8 @@ export function Accounts() {
 
   const handleEdit = (account: Account) => {
     setEditingAccount(account)
+    // When editing, clear draft and use account data
+    localStorage.removeItem('accountFormDraft')
     setFormData({
       name: account.name,
       account_type: account.type,
@@ -236,7 +246,21 @@ export function Accounts() {
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-telegram-text dark:text-telegram-dark-text">Счета</h1>
         <button
-          onClick={() => setShowForm(true)}
+          onClick={() => {
+            // Load draft when opening form for creation (not editing)
+            if (!editingAccount) {
+              const savedDraft = localStorage.getItem('accountFormDraft')
+              if (savedDraft) {
+                try {
+                  const draft = JSON.parse(savedDraft)
+                  setFormData(draft)
+                } catch (e) {
+                  console.error('Error loading account form draft:', e)
+                }
+              }
+            }
+            setShowForm(true)
+          }}
           className="btn-primary"
         >
           ➕ Добавить счет
@@ -378,18 +402,11 @@ export function Accounts() {
         <div 
           className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50"
           onClick={(e) => {
-            // Close modal when clicking outside
+            // Close modal when clicking outside - don't reset form, keep draft
             if (e.target === e.currentTarget) {
               setShowForm(false)
               setEditingAccount(null)
-              setFormData({
-                name: '',
-                account_type: 'cash',
-                currency: 'RUB',
-                initial_balance: '0',
-                description: '',
-                shared_budget_id: '',
-              })
+              // Don't reset formData - it's already saved in localStorage
             }
           }}
         >
@@ -406,14 +423,7 @@ export function Accounts() {
                   onClick={() => {
                     setShowForm(false)
                     setEditingAccount(null)
-                    setFormData({
-                      name: '',
-                      account_type: 'cash',
-                      currency: 'RUB',
-                      initial_balance: '0',
-                      description: '',
-                      shared_budget_id: '',
-                    })
+                    // Don't reset formData - it's already saved in localStorage
                   }}
                   className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text text-2xl"
                 >
@@ -553,14 +563,7 @@ export function Accounts() {
                     onClick={() => {
                       setShowForm(false)
                       setEditingAccount(null)
-                      setFormData({
-                        name: '',
-                        account_type: 'cash',
-                        currency: 'RUB',
-                        initial_balance: '0',
-                        description: '',
-                        shared_budget_id: '',
-                      })
+                      // Don't reset formData - it's already saved in localStorage
                     }}
                     className="flex-1 btn-secondary"
                   >
