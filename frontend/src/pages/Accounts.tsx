@@ -198,6 +198,9 @@ export function Accounts() {
       setShowForm(false)
       setEditingAccount(null)
       await loadAccounts()
+      // Invalidate React Query cache for accounts so other pages see the new account
+      queryClient.invalidateQueries({ queryKey: ['accounts'] })
+      queryClient.invalidateQueries({ queryKey: ['balance'] })
     } catch (err: any) {
       const { translateError } = await import('../utils/errorMessages')
       showError(translateError(err))

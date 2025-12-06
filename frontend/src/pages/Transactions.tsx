@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { api } from '../services/api'
 import { useToast } from '../contexts/ToastContext'
 import { useI18n } from '../contexts/I18nContext'
@@ -43,6 +44,7 @@ interface Category {
 
 export function Transactions() {
   const location = useLocation()
+  const queryClient = useQueryClient()
   const { showError, showSuccess } = useToast()
   const { translateCategoryName } = useI18n()
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -273,6 +275,12 @@ export function Transactions() {
       await loadData()
       await loadGoals()  // Reload goals to update progress
       setShowForm(false)
+      
+      // Invalidate React Query cache for analytics/reports
+      queryClient.invalidateQueries({ queryKey: ['analytics'] })
+      queryClient.invalidateQueries({ queryKey: ['balance'] })
+      queryClient.invalidateQueries({ queryKey: ['recent-transactions'] })
+      
       showSuccess(editingTransaction ? 'Транзакция обновлена' : 'Транзакция добавлена')
     } catch (err: any) {
       const { translateError } = await import('../utils/errorMessages')

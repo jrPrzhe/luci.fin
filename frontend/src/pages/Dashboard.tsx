@@ -333,6 +333,7 @@ export function Dashboard() {
       queryClient.invalidateQueries({ queryKey: ['goals'] })
       queryClient.invalidateQueries({ queryKey: ['gamification-status'] })
       queryClient.invalidateQueries({ queryKey: ['daily-quests'] })
+      queryClient.invalidateQueries({ queryKey: ['analytics'] })
       
       // Optionally refetch critical data in background (non-blocking)
       Promise.all([
