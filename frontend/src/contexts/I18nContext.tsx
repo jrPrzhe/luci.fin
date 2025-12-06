@@ -164,8 +164,9 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   const translateCategoryName = (name: string): string => {
     // Если название категории есть в маппинге, возвращаем перевод
-    if (translations[language].categories.names && translations[language].categories.names[name as keyof typeof translations[language].categories.names]) {
-      return translations[language].categories.names[name as keyof typeof translations[language].categories.names] as string
+    const categoryNames = translations[language].categories.names
+    if (categoryNames && name in categoryNames) {
+      return categoryNames[name as keyof typeof categoryNames] as string
     }
     // Иначе возвращаем оригинальное название
     return name

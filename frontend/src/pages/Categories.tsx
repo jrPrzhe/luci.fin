@@ -61,7 +61,7 @@ export function Categories() {
   const [showFavoritesSection, setShowFavoritesSection] = useState(true)
   const [showAllCategoriesSection, setShowAllCategoriesSection] = useState(true)
   const { showError, showSuccess } = useToast()
-  const { translateCategoryName } = useI18n()
+  const { t, translateCategoryName } = useI18n()
 
   // Confirmation modal state
   const [confirmModal, setConfirmModal] = useState<{
