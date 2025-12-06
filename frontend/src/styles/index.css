@@ -23,6 +23,26 @@
     @apply bg-telegram-dark-bg text-telegram-dark-text;
   }
 
+  /* Prevent text selection and cursor on non-editable elements */
+  * {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+
+  /* Allow text selection and cursor for editable elements */
+  input,
+  textarea,
+  [contenteditable="true"],
+  [contenteditable=""] {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+    cursor: text;
+  }
+
   /* Safe area for mobile devices with notches */
   .safe-area-inset-bottom {
     padding-bottom: env(safe-area-inset-bottom);
