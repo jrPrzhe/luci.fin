@@ -139,7 +139,7 @@
   .dark input[type="datetime-local"]::-webkit-calendar-picker-indicator,
   .dark input[type="date"]::-webkit-calendar-picker-indicator,
   .dark input[type="time"]::-webkit-calendar-picker-indicator {
-    filter: invert(1) brightness(2);
+    filter: invert(1) brightness(3) contrast(1.2);
     opacity: 1;
   }
   
@@ -168,7 +168,7 @@
     .dark input[type="datetime-local"]::-webkit-calendar-picker-indicator,
     .dark input[type="date"]::-webkit-calendar-picker-indicator,
     .dark input[type="time"]::-webkit-calendar-picker-indicator {
-      filter: invert(1) brightness(2);
+      filter: invert(1) brightness(3) contrast(1.2);
       opacity: 1;
     }
   }
