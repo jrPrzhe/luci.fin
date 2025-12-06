@@ -3,6 +3,7 @@ import { useQuery, useMutation } from '@tanstack/react-query'
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { api } from '../services/api'
 import { PremiumSubscriptionModal } from '../components/PremiumSubscriptionModal'
+import { useI18n } from '../contexts/I18nContext'
 
 interface AnalyticsData {
   period: string
@@ -66,44 +67,50 @@ const MONTH_MAPPING: Record<string, string> = {
   'September': 'Сентябрь', 'October': 'Октябрь', 'November': 'Ноябрь', 'December': 'Декабрь'
 }
 
-// Функция для локализации названия месяца
-const localizeMonth = (monthStr: string): string => {
+// Функция для локализации названия месяца (использует текущую локаль)
+const localizeMonth = (monthStr: string, locale: string = 'ru-RU'): string => {
   if (!monthStr) return monthStr
   
-  // Если уже на русском, возвращаем как есть
-  if (monthStr.match(/[А-Яа-я]/)) {
+  // Если локаль английская, возвращаем как есть (месяцы уже на английском)
+  if (locale === 'en-US') {
     return monthStr
   }
   
-  // Убираем лишние пробелы
-  const trimmed = monthStr.trim()
-  
-  // Пробуем найти точное совпадение в маппинге
-  if (MONTH_MAPPING[trimmed]) {
-    return MONTH_MAPPING[trimmed]
-  }
-  
-  // Пробуем найти месяц в строке (для случаев типа "Dec 2024" или "December 2024")
-  const monthMatch = trimmed.match(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|January|February|March|April|May|June|July|August|September|October|November|December)\b/i)
-  if (monthMatch) {
-    const englishMonth = monthMatch[1]
-    const capitalized = englishMonth.charAt(0).toUpperCase() + englishMonth.slice(1).toLowerCase()
-    if (MONTH_MAPPING[capitalized]) {
-      // Заменяем английское название на русское в исходной строке
-      return trimmed.replace(monthMatch[1], MONTH_MAPPING[capitalized])
+  // Для русской локали - переводим месяцы
+  if (locale === 'ru-RU') {
+    // Если уже на русском, возвращаем как есть
+    if (monthStr.match(/[А-Яа-я]/)) {
+      return monthStr
     }
-  }
-  
-  // Пробуем распарсить как дату
-  try {
-    const date = new Date(trimmed + ' 1, 2024')
-    if (!isNaN(date.getTime())) {
-      const localized = date.toLocaleDateString('ru-RU', { month: 'short' })
-      // Убираем точку в конце, если есть (например, "сен." -> "сен")
-      return localized.replace(/\.$/, '')
+    
+    // Убираем лишние пробелы
+    const trimmed = monthStr.trim()
+    
+    // Пробуем найти точное совпадение в маппинге
+    if (MONTH_MAPPING[trimmed]) {
+      return MONTH_MAPPING[trimmed]
     }
-  } catch (e) {
-    // Игнорируем ошибки
+    
+    // Пробуем найти месяц в строке
+    const monthMatch = trimmed.match(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|January|February|March|April|May|June|July|August|September|October|November|December)\b/i)
+    if (monthMatch) {
+      const englishMonth = monthMatch[1]
+      const capitalized = englishMonth.charAt(0).toUpperCase() + englishMonth.slice(1).toLowerCase()
+      if (MONTH_MAPPING[capitalized]) {
+        return trimmed.replace(monthMatch[1], MONTH_MAPPING[capitalized])
+      }
+    }
+    
+    // Пробуем распарсить как дату
+    try {
+      const date = new Date(trimmed + ' 1, 2024')
+      if (!isNaN(date.getTime())) {
+        const localized = date.toLocaleDateString('ru-RU', { month: 'short' })
+        return localized.replace(/\.$/, '')
+      }
+    } catch (e) {
+      // Игнорируем ошибки
+    }
   }
   
   // Если ничего не помогло, возвращаем как есть
@@ -111,9 +118,11 @@ const localizeMonth = (monthStr: string): string => {
 }
 
 export function Reports() {
+  const { t, language } = useI18n()
   const [period, setPeriod] = useState<'week' | 'month' | 'year'>('month')
   const [showPremiumModal, setShowPremiumModal] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
+  const locale = language === 'ru' ? 'ru-RU' : 'en-US'
   
   const { data: analytics, isLoading, error } = useQuery<AnalyticsData>({
     queryKey: ['analytics', period],
@@ -211,7 +220,7 @@ export function Reports() {
       <div className="min-h-screen p-4 md:p-6 flex items-center justify-center">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-telegram-primary mb-4"></div>
-          <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">Загрузка аналитики...</p>
+          <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{t.reports.loading}</p>
         </div>
       </div>
     )
@@ -221,7 +230,7 @@ export function Reports() {
     return (
       <div className="min-h-screen p-4 md:p-6">
         <div className="card p-6 text-center">
-          <p className="text-red-500">Ошибка загрузки данных</p>
+          <p className="text-red-500">{t.reports.error}</p>
         </div>
       </div>
     )
@@ -231,14 +240,14 @@ export function Reports() {
   const dailyFlowData = analytics.daily_flow.map(item => ({
     date: formatDate(item.date),
     dateFull: item.date,
-    Доходы: item.income,
-    Расходы: item.expense,
+    [t.reports.income]: item.income,
+    [t.reports.expenses]: item.expense,
   }))
 
   const monthlyData = analytics.monthly_comparison.map(item => ({
-    month: localizeMonth(item.month_short),
-    Доходы: item.income,
-    Расходы: item.expense,
+    month: localizeMonth(item.month_short, locale),
+    [t.reports.income]: item.income,
+    [t.reports.expenses]: item.expense,
   }))
 
   const expensePieData = analytics.top_expense_categories.slice(0, 5).map(cat => ({
@@ -252,7 +261,7 @@ export function Reports() {
     if (active && payload && payload.length) {
       return (
         <div className="bg-white dark:bg-telegram-dark-surface p-3 rounded-lg shadow-lg border border-telegram-border dark:border-telegram-dark-border">
-          <p className="font-semibold mb-2 text-telegram-text dark:text-telegram-dark-text">{localizeMonth(label)}</p>
+          <p className="font-semibold mb-2 text-telegram-text dark:text-telegram-dark-text">{localizeMonth(label, locale)}</p>
           {payload.map((entry: any, index: number) => (
             <p key={index} className="text-sm text-telegram-text dark:text-telegram-dark-text" style={{ color: entry.color }}>
               {entry.name}: {formatCurrency(entry.value)}
@@ -272,7 +281,7 @@ export function Reports() {
       
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
         <h1 className="text-xl md:text-2xl font-bold text-telegram-text dark:text-telegram-dark-text mb-4 md:mb-0">
-          Финансовая аналитика
+          {t.reports.title}
         </h1>
         
         <div className="flex items-center gap-3">
@@ -283,19 +292,19 @@ export function Reports() {
                 onClick={() => handleDownload('pdf')}
                 disabled={isDownloading}
                 className="flex items-center gap-2 px-4 py-2 bg-telegram-primary text-white rounded-lg font-medium hover:bg-telegram-primary/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Скачать отчет"
+                title={t.reports.downloadReport}
               >
                 {isDownloading ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span className="hidden md:inline">Загрузка...</span>
+                    <span className="hidden md:inline">{t.reports.downloading}</span>
                   </>
                 ) : (
                   <>
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
-                    <span className="hidden md:inline">Скачать</span>
+                    <span className="hidden md:inline">{t.reports.download}</span>
                   </>
                 )}
               </button>
@@ -330,7 +339,7 @@ export function Reports() {
                 : 'bg-telegram-surface text-telegram-text hover:bg-telegram-hover'
             }`}
           >
-            Неделя
+            {t.reports.week}
           </button>
           <button
             onClick={() => setPeriod('month')}
@@ -340,7 +349,7 @@ export function Reports() {
                 : 'bg-telegram-surface text-telegram-text hover:bg-telegram-hover'
             }`}
           >
-            Месяц
+            {t.reports.month}
           </button>
           <button
             onClick={() => setPeriod('year')}
@@ -350,7 +359,7 @@ export function Reports() {
                 : 'bg-telegram-surface text-telegram-text hover:bg-telegram-hover'
             }`}
           >
-            Год
+            {t.reports.year}
           </button>
           </div>
         </div>
@@ -364,7 +373,7 @@ export function Reports() {
               <span className="text-xl">💰</span>
             </div>
             <div>
-              <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">Доходы</p>
+              <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{t.reports.income}</p>
               <p className="text-xl font-bold text-green-600 dark:text-green-400">
                 {formatCurrency(analytics.totals.income)}
               </p>
@@ -378,7 +387,7 @@ export function Reports() {
               <span className="text-xl">💸</span>
             </div>
             <div>
-              <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">Расходы</p>
+              <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{t.reports.expenses}</p>
               <p className="text-xl font-bold text-red-600 dark:text-red-400">
                 {formatCurrency(analytics.totals.expense)}
               </p>
@@ -394,7 +403,7 @@ export function Reports() {
               <span className="text-xl">📊</span>
             </div>
             <div>
-              <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">Итого</p>
+              <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{t.reports.total}</p>
               <p className={`text-xl font-bold ${
                 analytics.totals.net >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'
               }`}>
@@ -409,7 +418,7 @@ export function Reports() {
       {analytics.goals && analytics.goals.length > 0 && (
         <div className="card p-5 mb-6">
           <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4 flex items-center gap-2">
-            <span>🎯</span> Прогресс по целям
+            <span>🎯</span> {t.reports.goalsProgress}
           </h2>
           <div className="space-y-4">
             {analytics.goals.map((goal) => {
@@ -448,13 +457,13 @@ export function Reports() {
                   
                   <div className="grid grid-cols-2 gap-3 text-xs">
                     <div>
-                      <span className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">За период:</span>
+                      <span className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{t.reports.savedInPeriod}</span>
                       <span className="ml-2 font-semibold text-green-600 dark:text-green-400">
                         +{Math.round(goal.saved_in_period).toLocaleString()} {goal.currency}
                       </span>
                     </div>
                     <div>
-                      <span className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">Осталось:</span>
+                      <span className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{t.reports.remaining}</span>
                       <span className="ml-2 font-semibold text-telegram-text dark:text-telegram-dark-text">
                         {Math.round(goal.remaining).toLocaleString()} {goal.currency}
                       </span>
@@ -471,7 +480,7 @@ export function Reports() {
       {analytics.facts.length > 0 && (
         <div className="card p-5 mb-6">
           <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4 flex items-center gap-2">
-            <span>💡</span> Интересные факты
+            <span>💡</span> {t.reports.interestingFacts}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {analytics.facts.map((fact, index) => (
@@ -507,7 +516,7 @@ export function Reports() {
       {dailyFlowData.length > 0 && (
         <div className="card p-5 mb-6">
           <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
-            Динамика доходов и расходов
+            {t.reports.dailyFlow}
           </h2>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={dailyFlowData}>
@@ -528,7 +537,7 @@ export function Reports() {
               <Legend />
               <Line 
                 type="monotone" 
-                dataKey="Доходы" 
+                dataKey={t.reports.income} 
                 stroke="#4CAF50" 
                 strokeWidth={2}
                 dot={{ fill: '#4CAF50', r: 4 }}
@@ -536,7 +545,7 @@ export function Reports() {
               />
               <Line 
                 type="monotone" 
-                dataKey="Расходы" 
+                dataKey={t.reports.expenses} 
                 stroke="#F44336" 
                 strokeWidth={2}
                 dot={{ fill: '#F44336', r: 4 }}
@@ -551,7 +560,7 @@ export function Reports() {
       {monthlyData.length > 0 && (
         <div className="card p-5 mb-6">
           <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
-            Сравнение по месяцам
+            {t.reports.monthlyComparison}
           </h2>
           <ResponsiveContainer width="100%" height={period === 'year' ? 350 : 300}>
             <BarChart data={monthlyData} margin={{ top: 5, right: 10, left: 0, bottom: period === 'year' ? 60 : 20 }}>
@@ -573,8 +582,8 @@ export function Reports() {
               />
               <Tooltip content={<CustomTooltip />} />
               <Legend />
-              <Bar dataKey="Доходы" fill="#4CAF50" radius={[8, 8, 0, 0]} />
-              <Bar dataKey="Расходы" fill="#F44336" radius={[8, 8, 0, 0]} />
+              <Bar dataKey={t.reports.income} fill="#4CAF50" radius={[8, 8, 0, 0]} />
+              <Bar dataKey={t.reports.expenses} fill="#F44336" radius={[8, 8, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -586,7 +595,7 @@ export function Reports() {
         {analytics.top_expense_categories.length > 0 && (
           <div className="card p-5">
             <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
-              Расходы по категориям
+              {t.reports.expenseCategories}
             </h2>
             <ResponsiveContainer width="100%" height={250}>
               <PieChart>
@@ -634,7 +643,7 @@ export function Reports() {
         {analytics.top_expense_categories.length > 0 && (
           <div className="card p-5">
             <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
-              Топ категорий расходов
+              {t.reports.topExpenseCategories}
             </h2>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart 

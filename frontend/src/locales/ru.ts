@@ -37,6 +37,9 @@ export const ru = {
     reports: 'Отчёты',
     profile: 'Профиль',
     settings: 'Настройки',
+    quests: 'Задания',
+    achievements: 'Достижения',
+    analytics: 'Аналитика',
   },
   
   // Dashboard
@@ -122,6 +125,31 @@ export const ru = {
     color: 'Цвет',
     favorite: 'Избранное',
     noCategories: 'Нет категорий',
+  },
+  
+  // Reports
+  reports: {
+    title: 'Финансовая аналитика',
+    download: 'Скачать',
+    downloading: 'Загрузка...',
+    downloadReport: 'Скачать отчет',
+    week: 'Неделя',
+    month: 'Месяц',
+    year: 'Год',
+    income: 'Доходы',
+    expenses: 'Расходы',
+    total: 'Итого',
+    dailyFlow: 'Динамика доходов и расходов',
+    monthlyComparison: 'Сравнение по месяцам',
+    expenseCategories: 'Расходы по категориям',
+    topExpenseCategories: 'Топ категорий расходов',
+    interestingFacts: 'Интересные факты',
+    goalsProgress: 'Прогресс по целям',
+    savedInPeriod: 'За период:',
+    remaining: 'Осталось:',
+    loading: 'Загрузка аналитики...',
+    error: 'Ошибка загрузки данных',
+    noData: 'Нет данных для отображения',
   },
   
   // Goals

@@ -16,6 +16,38 @@ interface Category {
   updated_at: string
 }
 
+// Функция для извлечения только первого эмодзи из строки
+const getFirstEmoji = (text: string): string => {
+  if (!text) return ''
+  
+  // Используем Array.from для правильной работы с Unicode (включая эмодзи)
+  // Это правильно обрабатывает суррогатные пары и последовательности эмодзи
+  const chars = Array.from(text)
+  
+  if (chars.length === 0) return ''
+  
+  // Берем первый символ
+  let firstChar = chars[0]
+  
+  // Проверяем, является ли это частью последовательности эмодзи
+  // Эмодзи могут состоять из нескольких символов (например, с модификаторами кожи или флагами)
+  // Но для простоты берем только первый визуальный символ
+  
+  // Если следующий символ - это модификатор (например, для составных эмодзи), включаем его
+  if (chars.length > 1) {
+    const secondChar = chars[1]
+    // Проверяем, является ли второй символ частью эмодзи (модификатор, zero-width joiner и т.д.)
+    const emojiModifiers = /[\u{FE0F}\u{200D}\u{20E3}]/u
+    if (emojiModifiers.test(secondChar)) {
+      // Это может быть составной эмодзи, но для простоты берем только первый символ
+      // В большинстве случаев достаточно одного эмодзи
+    }
+  }
+  
+  // Возвращаем только первый символ (эмодзи)
+  return firstChar
+}
+
 export function Categories() {
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
@@ -377,11 +409,25 @@ export function Categories() {
               <input
                 type="text"
                 value={formData.icon}
-                onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
+                onChange={(e) => {
+                  // Извлекаем только первый эмодзи из введенного текста
+                  const firstEmoji = getFirstEmoji(e.target.value)
+                  setFormData({ ...formData, icon: firstEmoji })
+                }}
+                onPaste={(e) => {
+                  // Обрабатываем вставку из буфера обмена
+                  e.preventDefault()
+                  const pastedText = e.clipboardData.getData('text')
+                  const firstEmoji = getFirstEmoji(pastedText)
+                  setFormData({ ...formData, icon: firstEmoji })
+                }}
                 className="input"
                 placeholder="📦"
-                maxLength={2}
+                maxLength={10}
               />
+              <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
+                Можно использовать только один эмодзи
+              </p>
             </div>
 
             <div>

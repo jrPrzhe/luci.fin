@@ -37,6 +37,9 @@ export const en = {
     reports: 'Reports',
     profile: 'Profile',
     settings: 'Settings',
+    quests: 'Quests',
+    achievements: 'Achievements',
+    analytics: 'Analytics',
   },
   
   // Dashboard
@@ -122,6 +125,31 @@ export const en = {
     color: 'Color',
     favorite: 'Favorite',
     noCategories: 'No categories',
+  },
+  
+  // Reports
+  reports: {
+    title: 'Financial Analytics',
+    download: 'Download',
+    downloading: 'Downloading...',
+    downloadReport: 'Download Report',
+    week: 'Week',
+    month: 'Month',
+    year: 'Year',
+    income: 'Income',
+    expenses: 'Expenses',
+    total: 'Total',
+    dailyFlow: 'Income and Expense Trends',
+    monthlyComparison: 'Monthly Comparison',
+    expenseCategories: 'Expenses by Category',
+    topExpenseCategories: 'Top Expense Categories',
+    interestingFacts: 'Interesting Facts',
+    goalsProgress: 'Goals Progress',
+    savedInPeriod: 'Saved in Period:',
+    remaining: 'Remaining:',
+    loading: 'Loading analytics...',
+    error: 'Error loading data',
+    noData: 'No data to display',
   },
   
   // Goals

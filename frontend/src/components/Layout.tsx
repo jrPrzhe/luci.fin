@@ -330,15 +330,15 @@ export function Layout() {
     { path: '/', label: t.nav.dashboard, icon: '📊' },
     { path: '/transactions', label: t.nav.transactions, icon: '💸' },
     { path: '/accounts', label: t.nav.accounts, icon: '💳' },
-    { path: '/quests', label: 'Задания', icon: '🎯' },
-    { path: '/achievements', label: 'Достижения', icon: '🏆' },
+    { path: '/quests', label: t.nav.quests, icon: '🎯' },
+    { path: '/achievements', label: t.nav.achievements, icon: '🏆' },
     { path: '/categories', label: t.nav.categories, icon: '📦' },
     { path: '/goals', label: t.nav.goals, icon: '🎯' },
     { path: '/shared-budgets', label: t.nav.budgets, icon: '👥' },
     { path: '/reports', label: t.nav.reports, icon: '📈' },
     { path: '/profile', label: t.nav.profile, icon: '⚙️' },
     { path: '/about', label: t.profile.about, icon: '📚' },
-    ...(user?.is_admin ? [{ path: '/analytics', label: 'Аналитика', icon: '📊' }] : []),
+    ...(user?.is_admin ? [{ path: '/analytics', label: t.nav.analytics, icon: '📊' }] : []),
   ]
 
   return (
