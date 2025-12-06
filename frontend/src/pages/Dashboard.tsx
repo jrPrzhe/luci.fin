@@ -499,8 +499,8 @@ export function Dashboard() {
       {/* Quick Form Modal */}
       {showQuickForm && quickFormType && (
         <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="card max-w-md sm:max-w-lg md:max-w-xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
+          <div className="card max-w-md sm:max-w-lg md:max-w-xl w-full max-h-[90vh] flex flex-col">
+            <div className="flex justify-between items-center mb-4 flex-shrink-0">
               <div className="flex items-center gap-2">
                 {quickFormStep === 'category' && (
                   <button
@@ -540,7 +540,7 @@ export function Dashboard() {
 
             {/* Category Selection Step */}
             {quickFormStep === 'category' && quickFormType !== 'transfer' && (
-              <div>
+              <div className="flex-1 overflow-y-auto min-h-0">
                 {categoriesLoading ? (
                   <div className="text-center py-8">
                     <LoadingSpinner fullScreen={false} size="sm" />
@@ -622,7 +622,8 @@ export function Dashboard() {
 
             {/* Form Step */}
             {quickFormStep === 'form' && (
-              <form onSubmit={handleQuickSubmit} className="space-y-3">
+              <form onSubmit={handleQuickSubmit} className="flex flex-col flex-1 min-h-0">
+                <div className="space-y-3 flex-1 overflow-y-auto min-h-0 pr-2">
               {/* Show selected category - compact display */}
               {quickFormType !== 'transfer' && quickFormData.category_id && (
                 <div className="bg-telegram-surface dark:bg-telegram-dark-surface p-2 rounded-telegram mb-2 flex items-center gap-2">
@@ -792,8 +793,9 @@ export function Dashboard() {
                   )}
                 </div>
               )}
-
-                <div className="flex gap-3">
+                </div>
+                
+                <div className="flex gap-3 mt-4 pt-4 border-t border-telegram-border dark:border-telegram-dark-border flex-shrink-0">
                   <button 
                     type="submit" 
                     className="btn-primary flex-1 flex items-center justify-center gap-2"
