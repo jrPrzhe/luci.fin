@@ -650,16 +650,16 @@ export function SharedBudgets() {
                   onClick={() => handleViewBudget(budget)}
                 >
                   <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-telegram-primary to-telegram-primary/70 flex items-center justify-center text-2xl">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-telegram-primary to-telegram-primary/70 flex items-center justify-center text-2xl flex-shrink-0">
                         💼
                       </div>
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-lg text-telegram-text dark:text-telegram-dark-text mb-1 group-hover:text-telegram-primary dark:group-hover:text-telegram-dark-primary transition-colors">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-lg text-telegram-text dark:text-telegram-dark-text mb-1 group-hover:text-telegram-primary dark:group-hover:text-telegram-dark-primary transition-colors truncate" title={budget.name}>
                           {budget.name}
                         </h3>
                         {budget.description && (
-                          <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary line-clamp-2">{budget.description}</p>
+                          <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary line-clamp-2 break-words">{budget.description}</p>
                         )}
                       </div>
                     </div>

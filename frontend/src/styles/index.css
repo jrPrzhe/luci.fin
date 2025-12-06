@@ -126,19 +126,20 @@
     padding-right: 2.5rem !important;
   }
   
-  /* Стилизуем кнопку календаря */
+  /* Стилизуем кнопку календаря - светлая тема (темная иконка) */
   input[type="datetime-local"]::-webkit-calendar-picker-indicator,
   input[type="date"]::-webkit-calendar-picker-indicator,
   input[type="time"]::-webkit-calendar-picker-indicator {
     cursor: pointer;
-    opacity: 0.7;
+    opacity: 0.6;
+    filter: brightness(0) saturate(100%);
   }
   
-  /* Адаптация иконки календаря для темной темы */
+  /* Адаптация иконки календаря для темной темы (светлая иконка) */
   .dark input[type="datetime-local"]::-webkit-calendar-picker-indicator,
   .dark input[type="date"]::-webkit-calendar-picker-indicator,
   .dark input[type="time"]::-webkit-calendar-picker-indicator {
-    filter: invert(1) brightness(1.2);
+    filter: invert(1) brightness(1.5);
     opacity: 0.8;
   }
   
@@ -151,21 +152,23 @@
       padding-right: 2.75rem !important;
     }
     
-    /* Стилизуем кнопку календаря на мобильных */
+    /* Стилизуем кнопку календаря на мобильных - светлая тема (темная иконка) */
     input[type="datetime-local"]::-webkit-calendar-picker-indicator,
     input[type="date"]::-webkit-calendar-picker-indicator,
     input[type="time"]::-webkit-calendar-picker-indicator {
       width: 20px;
       height: 20px;
-      opacity: 0.7;
+      opacity: 0.6;
       cursor: pointer;
       margin-right: 4px;
+      filter: brightness(0) saturate(100%);
     }
     
+    /* Адаптация иконки календаря для темной темы на мобильных (светлая иконка) */
     .dark input[type="datetime-local"]::-webkit-calendar-picker-indicator,
     .dark input[type="date"]::-webkit-calendar-picker-indicator,
     .dark input[type="time"]::-webkit-calendar-picker-indicator {
-      filter: invert(1) brightness(1.2);
+      filter: invert(1) brightness(1.5);
       opacity: 0.8;
     }
   }
