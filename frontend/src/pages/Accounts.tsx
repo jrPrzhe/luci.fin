@@ -585,7 +585,7 @@ export function Accounts() {
                     onChange={(e) =>
                       setFormData({ ...formData, description: e.target.value })
                     }
-                    className="input"
+                    className="input resize-y max-h-32"
                     rows={3}
                     placeholder="Дополнительная информация о счете"
                     maxLength={500}
