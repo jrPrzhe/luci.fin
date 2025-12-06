@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { api } from '../services/api'
@@ -90,6 +90,7 @@ export function Transactions() {
   const [showDateFilter, setShowDateFilter] = useState(savedFilters.showDateFilter)
   const [filtersExpanded, setFiltersExpanded] = useState(false)
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null)
+  const accountIdFromNavigation = useRef<number | null>(null)
 
   const [goals, setGoals] = useState<any[]>([])
   const [hasMore, setHasMore] = useState(true)
@@ -238,19 +239,33 @@ export function Transactions() {
   // Check if we came from Accounts page with accountId
   useEffect(() => {
     const state = location.state as { accountId?: number } | null
-    if (state?.accountId) {
-      setSelectedAccountId(state.accountId)
+    if (state?.accountId && !accountIdFromNavigation.current) {
+      // Save accountId from navigation
+      const accountId = state.accountId
+      accountIdFromNavigation.current = accountId
+      setSelectedAccountId(accountId)
       // Clear state to avoid re-applying on re-render
       window.history.replaceState({}, document.title)
-      // Load data with the account filter
-      loadData(true)
     }
   }, [location.state])
 
-  // Load data only on initial mount
+  // Load data when selectedAccountId changes (after it's set from location.state)
+  useEffect(() => {
+    // Only load if selectedAccountId was set from navigation
+    if (selectedAccountId !== null && accountIdFromNavigation.current === selectedAccountId) {
+      // Load data with the account filter
+      loadData(true)
+      // Clear the ref to prevent re-loading
+      accountIdFromNavigation.current = null
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAccountId])
+
+  // Load data only on initial mount (if no accountId in location.state)
   useEffect(() => {
     // Only load if we didn't come from Accounts page (which will trigger loadData in the effect above)
-    if (!location.state || !(location.state as { accountId?: number }).accountId) {
+    const state = location.state as { accountId?: number } | null
+    if (!state?.accountId) {
       loadData()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
