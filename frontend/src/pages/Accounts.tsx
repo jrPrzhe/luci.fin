@@ -246,13 +246,7 @@ export function Accounts() {
 
       {accounts.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-4">У вас пока нет счетов</p>
-          <button
-            onClick={() => setShowForm(true)}
-            className="btn-primary"
-          >
-            Создать первый счет
-          </button>
+          <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">У вас пока нет счетов</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

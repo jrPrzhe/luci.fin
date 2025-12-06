@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../services/api'
 import { useToast } from '../contexts/ToastContext'
 import { useI18n } from '../contexts/I18nContext'
+import { LoadingSpinner } from '../components/LoadingSpinner'
 
 interface Goal {
   id: number
@@ -54,14 +55,7 @@ export function Goals() {
   }
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-telegram-primary mb-4"></div>
-          <p className="text-telegram-textSecondary">{t.common.loading}</p>
-        </div>
-      </div>
-    )
+    return <LoadingSpinner fullScreen={true} size="md" />
   }
 
   return (

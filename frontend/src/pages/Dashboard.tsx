@@ -7,6 +7,7 @@ import { AchievementModal } from '../components/AchievementModal'
 import { LevelUpModal } from '../components/LevelUpModal'
 import { UserStatsCard } from '../components/UserStatsCard'
 import { useToast } from '../contexts/ToastContext'
+import { LoadingSpinner } from '../components/LoadingSpinner'
 
 interface Account {
   id: number
@@ -536,15 +537,14 @@ export function Dashboard() {
               <div>
                 {categoriesLoading ? (
                   <div className="text-center py-8">
-                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-telegram-primary dark:border-telegram-dark-primary mb-4"></div>
-                    <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-3">{t.common.loading}</p>
+                    <LoadingSpinner fullScreen={false} size="sm" />
                     <button
                       onClick={() => {
                         console.log('[UI] User cancelled loading')
                         setCategoriesLoading(false)
                         setShowQuickForm(false)
                       }}
-                      className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary underline hover:text-telegram-text dark:hover:text-telegram-dark-text"
+                      className="mt-4 text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary underline hover:text-telegram-text dark:hover:text-telegram-dark-text"
                     >
                       {t.common.cancel}
                     </button>

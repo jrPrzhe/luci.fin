@@ -6,6 +6,7 @@ import { useTheme } from '../hooks/useTheme'
 import { useNewYearTheme } from '../contexts/NewYearContext'
 import { useI18n } from '../contexts/I18nContext'
 import { useToast } from '../contexts/ToastContext'
+import { LoadingSpinner } from '../components/LoadingSpinner'
 
 export function Profile() {
   const queryClient = useQueryClient()
@@ -108,14 +109,7 @@ export function Profile() {
   }
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen p-4 md:p-6 flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-telegram-primary dark:border-telegram-dark-primary mb-4"></div>
-          <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">Загрузка...</p>
-        </div>
-      </div>
-    )
+    return <LoadingSpinner fullScreen={true} size="md" />
   }
 
   return (

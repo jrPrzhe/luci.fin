@@ -5,6 +5,7 @@ import { isTelegramWebApp, waitForInitData } from '../utils/telegram'
 import { isVKWebApp, getVKLaunchParams, initVKWebApp, getVKUser } from '../utils/vk'
 import { storageSync } from '../utils/storage'
 import { useToast } from '../contexts/ToastContext'
+import { LoadingSpinner } from '../components/LoadingSpinner'
 
 export function Login() {
   const { showError } = useToast()
@@ -244,12 +245,7 @@ export function Login() {
   if ((isTelegram || isVK) && (authMethod === 'select' || isLoading)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-telegram-bg dark:bg-telegram-dark-bg p-4">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-telegram-primary dark:border-telegram-dark-primary mb-4"></div>
-          <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-            Загрузка...
-          </p>
-        </div>
+        <LoadingSpinner fullScreen={false} size="md" />
       </div>
     )
   }

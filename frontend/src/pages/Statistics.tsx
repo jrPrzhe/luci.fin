@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../services/api'
+import { LoadingSpinner } from '../components/LoadingSpinner'
 
 export function Statistics() {
   const queryClient = useQueryClient()
@@ -124,14 +125,7 @@ export function Statistics() {
   }
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen p-4 md:p-6 flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-telegram-primary dark:border-telegram-dark-primary mb-4"></div>
-          <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">Загрузка...</p>
-        </div>
-      </div>
-    )
+    return <LoadingSpinner fullScreen={true} size="md" />
   }
 
   if (error) {
