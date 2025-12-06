@@ -203,7 +203,33 @@ export function Categories() {
       )
       
       await Promise.all(promises)
-      showSuccess(t.categories.form.toggleAllConfirm.replace('{count}', visibleCategories.length.toString()))
+      
+      // Правильное склонение слова "категория" в зависимости от числа
+      const count = visibleCategories.length
+      let categoryWord = 'категорий' // по умолчанию множественное число
+      if (count === 1) {
+        categoryWord = 'категории'
+      } else if (count >= 2 && count <= 4) {
+        categoryWord = 'категории'
+      } else if (count >= 5 && count <= 20) {
+        categoryWord = 'категорий'
+      } else {
+        // Для чисел больше 20 проверяем последнюю цифру
+        const lastDigit = count % 10
+        const lastTwoDigits = count % 100
+        if (lastTwoDigits >= 11 && lastTwoDigits <= 14) {
+          categoryWord = 'категорий'
+        } else if (lastDigit === 1) {
+          categoryWord = 'категории'
+        } else if (lastDigit >= 2 && lastDigit <= 4) {
+          categoryWord = 'категории'
+        } else {
+          categoryWord = 'категорий'
+        }
+      }
+      
+      const message = `Статус избранного изменен для ${count} ${categoryWord}`
+      showSuccess(message)
       await loadCategories()
     } catch (err: any) {
       showError(err.message || 'Ошибка изменения статуса категорий')
