@@ -190,6 +190,10 @@ export function translateError(error: any): string {
     return 'У вас нет доступа к этому бюджету.'
   }
 
+  if (errorLower.includes('last_admin_cannot_leave') || errorMessage.includes('LAST_ADMIN_CANNOT_LEAVE')) {
+    return 'LAST_ADMIN_CANNOT_LEAVE'
+  }
+
   // Ошибки импорта
   if (errorLower.includes('import') || errorLower.includes('upload')) {
     return 'Ошибка при импорте данных. Проверьте формат файла и попробуйте снова.'

@@ -886,7 +886,7 @@ async def leave_budget(
         if other_admins == 0 and other_members > 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Нельзя покинуть бюджет как последний администратор, пока есть другие участники. Сначала передайте права или удалите всех участников."
+                detail="LAST_ADMIN_CANNOT_LEAVE"
             )
     
     # Remove membership

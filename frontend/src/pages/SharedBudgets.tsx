@@ -508,22 +508,26 @@ export function SharedBudgets() {
                 </div>
               </div>
               <button
-                onClick={() => {
-                  setConfirmModal({
-                    show: true,
-                    message: 'Вы уверены, что хотите выйти из этого бюджета?',
-                    onConfirm: async () => {
-                      try {
-                        await api.leaveBudget(selectedBudget.id)
-                        setSelectedBudget(null)
-                        await loadData()
-                        setConfirmModal({ show: false, message: '', onConfirm: () => {} })
-                      } catch (err: any) {
-                        setError(err.message || 'Ошибка выхода из бюджета')
-                        setConfirmModal({ show: false, message: '', onConfirm: () => {} })
-                      }
-                    },
-                  })
+                onClick={async () => {
+                  try {
+                    await api.leaveBudget(selectedBudget.id)
+                    setSelectedBudget(null)
+                    await loadData()
+                    showSuccess('Вы успешно вышли из бюджета')
+                  } catch (err: any) {
+                    // Check if error is about being the last admin
+                    if (err.message && (err.message.includes('LAST_ADMIN_CANNOT_LEAVE') || err.message.includes('последний администратор'))) {
+                      setConfirmModal({
+                        show: true,
+                        message: 'Вы не можете выйти из бюджета, так как являетесь единственным администратором.\n\nПеред выходом необходимо назначить другого участника администратором. Для этого нажмите на кнопку "⭐ Сделать админом" рядом с нужным участником.',
+                        onConfirm: () => {
+                          setConfirmModal({ show: false, message: '', onConfirm: () => {} })
+                        },
+                      })
+                    } else {
+                      setError(err.message || 'Ошибка выхода из бюджета')
+                    }
+                  }
                 }}
                 className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium whitespace-nowrap"
               >
@@ -972,6 +976,53 @@ export function SharedBudgets() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {confirmModal.show && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 dark:bg-black dark:bg-opacity-70 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-telegram-dark-surface rounded-lg shadow-xl max-w-md w-full p-6">
+            <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
+              {confirmModal.message.includes('не можете выйти') ? 'Внимание' : 'Подтверждение'}
+            </h2>
+            <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-6 whitespace-pre-line">
+              {confirmModal.message}
+            </p>
+            <div className="flex gap-3">
+              {confirmModal.message.includes('не можете выйти') ? (
+                // Информационное сообщение - только кнопка "Понятно"
+                <button
+                  onClick={() => {
+                    setConfirmModal({ show: false, message: '', onConfirm: () => {} })
+                  }}
+                  className="flex-1 btn-primary text-sm md:text-base py-2.5 md:py-3"
+                >
+                  Понятно
+                </button>
+              ) : (
+                // Обычное подтверждение - кнопки "Да" и "Отмена"
+                <>
+                  <button
+                    onClick={() => {
+                      confirmModal.onConfirm()
+                    }}
+                    className="flex-1 btn-primary text-sm md:text-base py-2.5 md:py-3"
+                  >
+                    Да
+                  </button>
+                  <button
+                    onClick={() => {
+                      setConfirmModal({ show: false, message: '', onConfirm: () => {} })
+                    }}
+                    className="flex-1 btn-secondary text-sm md:text-base py-2.5 md:py-3"
+                  >
+                    Отмена
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
