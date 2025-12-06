@@ -104,17 +104,17 @@ export function Categories() {
     e.preventDefault()
 
     if (!formData.name.trim()) {
-      showError('Название категории обязательно')
+      showError(t.categories.form.nameRequired)
       return
     }
 
     try {
       if (editingCategory) {
         await api.updateCategory(editingCategory.id, formData)
-        showSuccess('Категория успешно обновлена')
+        showSuccess(t.categories.form.updated)
       } else {
         await api.createCategory(formData)
-        showSuccess('Категория успешно создана')
+        showSuccess(t.categories.form.created)
       }
       resetForm()
       await loadCategories()
@@ -139,11 +139,11 @@ export function Categories() {
   const handleDelete = (id: number) => {
     setConfirmModal({
       show: true,
-      message: 'Вы уверены, что хотите удалить эту категорию?',
+      message: t.categories.form.deleteConfirm,
       onConfirm: async () => {
         try {
           await api.deleteCategory(id)
-          showSuccess('Категория успешно удалена')
+          showSuccess(t.categories.form.deleted)
           await loadCategories()
           setConfirmModal({ show: false, message: '', onConfirm: () => {} })
         } catch (err: any) {
@@ -183,7 +183,7 @@ export function Categories() {
       }
       
       if (visibleCategories.length === 0) {
-        showError('Нет категорий для изменения')
+        showError(t.categories.form.noCategoriesToChange)
         return
       }
       
@@ -197,7 +197,7 @@ export function Categories() {
       )
       
       await Promise.all(promises)
-      showSuccess(`Статус избранного изменен для ${visibleCategories.length} категорий`)
+      showSuccess(t.categories.form.toggleAllConfirm.replace('{count}', visibleCategories.length.toString()))
       await loadCategories()
     } catch (err: any) {
       showError(err.message || 'Ошибка изменения статуса категорий')
@@ -259,7 +259,7 @@ export function Categories() {
       <div className="p-4 md:p-8">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-telegram-primary mb-4"></div>
-          <p className="text-telegram-textSecondary">Загрузка...</p>
+          <p className="text-telegram-textSecondary">{t.common.loading}</p>
         </div>
       </div>
     )
@@ -268,7 +268,7 @@ export function Categories() {
   return (
     <div className="p-4 md:p-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-telegram-text dark:text-telegram-dark-text">Категории</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-telegram-text dark:text-telegram-dark-text">{t.categories.title}</h1>
         <div className="flex gap-2">
           <button
             onClick={() => setIsEditingMode(!isEditingMode)}

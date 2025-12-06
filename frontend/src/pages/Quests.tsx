@@ -1,7 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../services/api'
+import { useI18n } from '../contexts/I18nContext'
 
 export function Quests() {
+  const { t } = useI18n()
   const { data: quests, isLoading } = useQuery({
     queryKey: ['daily-quests'],
     queryFn: () => api.getDailyQuests(),
@@ -11,7 +13,7 @@ export function Quests() {
   if (isLoading) {
     return (
       <div className="quests-page loading p-4">
-        <h1 className="text-2xl font-bold mb-4">Задания</h1>
+        <h1 className="text-2xl font-bold mb-4">{t.quests.title}</h1>
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
             <div key={i} className="card animate-pulse">
@@ -27,15 +29,15 @@ export function Quests() {
     return (
       <div className="quests-page empty p-4">
         <h1 className="text-2xl font-bold mb-4 text-telegram-text dark:text-telegram-dark-text">
-          Задания
+          {t.quests.title}
         </h1>
         <div className="card p-8 text-center">
           <div className="text-6xl mb-4">📝</div>
           <p className="text-lg font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-            На сегодня квестов нет
+            {t.quests.noQuests}
           </p>
           <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-            Задания появятся завтра
+            {t.quests.noQuestsDesc}
           </p>
         </div>
       </div>
@@ -69,13 +71,13 @@ export function Quests() {
   return (
     <div className="quests-page p-4 md:p-6">
       <h1 className="text-2xl font-bold mb-4 text-telegram-text dark:text-telegram-dark-text">
-        Задания
+        {t.quests.title}
       </h1>
 
       {activeQuests.length > 0 && (
         <div className="mb-6">
           <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-3">
-            Активные задания ({activeQuests.length})
+            {t.quests.active} ({activeQuests.length})
           </h2>
           <div className="space-y-3">
             {activeQuests.map((quest) => (
@@ -99,7 +101,7 @@ export function Quests() {
                     <div className="quest-progress">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-xs font-medium text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-                          Прогресс
+                          {t.quests.progress}
                         </span>
                         <span className="text-xs font-bold text-telegram-text dark:text-telegram-dark-text">
                           {quest.progress}%
@@ -128,7 +130,7 @@ export function Quests() {
       {completedQuests.length > 0 && (
         <div>
           <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-3">
-            Выполненные задания ({completedQuests.length})
+            {t.quests.completed} ({completedQuests.length})
           </h2>
           <div className="space-y-3">
             {completedQuests.map((quest) => (
@@ -152,7 +154,7 @@ export function Quests() {
                     <div className="quest-progress">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-xs font-medium text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-                          Выполнено
+                          {t.quests.completedStatus}
                         </span>
                         <span className="text-xs font-bold text-green-600 dark:text-green-400">
                           100%

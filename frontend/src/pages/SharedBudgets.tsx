@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { api } from '../services/api'
 import { getTelegramWebApp } from '../utils/telegram'
 import { useToast } from '../contexts/ToastContext'
+import { useI18n } from '../contexts/I18nContext'
 
 interface SharedBudget {
   id: number
@@ -68,6 +69,7 @@ const getParticipantWord = (count: number): string => {
 
 export function SharedBudgets() {
   const { showSuccess } = useToast()
+  const { t } = useI18n()
   const [budgets, setBudgets] = useState<SharedBudget[]>([])
   const [invitations, setInvitations] = useState<Invitation[]>([])
   const [loading, setLoading] = useState(true)
@@ -152,13 +154,13 @@ export function SharedBudgets() {
     setError('')
 
     if (!createFormData.name.trim()) {
-      setError('Название бюджета обязательно')
+      setError(t.sharedBudgets.nameRequired)
       return
     }
 
     const trimmedName = createFormData.name.trim()
     if (trimmedName.length > 100) {
-      setError('Название бюджета не должно превышать 100 символов')
+      setError(t.sharedBudgets.nameMaxLength)
       return
     }
 
@@ -211,7 +213,7 @@ export function SharedBudgets() {
   const handleRemoveMember = async (budgetId: number, userId: number) => {
     setConfirmModal({
       show: true,
-      message: 'Вы уверены, что хотите удалить этого участника?',
+      message: t.sharedBudgets.removeMemberConfirm,
       onConfirm: async () => {
         try {
           await api.removeMember(budgetId, userId)
@@ -228,10 +230,10 @@ export function SharedBudgets() {
   }
 
   const handleUpdateRole = async (budgetId: number, userId: number, newRole: 'admin' | 'member') => {
-    const roleName = newRole === 'admin' ? 'администратором' : 'участником'
+    const roleName = newRole === 'admin' ? t.sharedBudgets.admin : t.sharedBudgets.member
     setConfirmModal({
       show: true,
-      message: `Вы уверены, что хотите назначить этого пользователя ${roleName}?`,
+      message: t.sharedBudgets.updateRoleConfirm.replace('{role}', roleName),
       onConfirm: async () => {
         try {
           await api.updateMemberRole(budgetId, userId, newRole)
@@ -252,7 +254,7 @@ export function SharedBudgets() {
     setError('')
 
     if (!joinCode.trim()) {
-      setError('Введите код приглашения')
+      setError(t.sharedBudgets.codeRequired)
       return
     }
 
@@ -325,7 +327,7 @@ export function SharedBudgets() {
     return (
       <div className="p-8">
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-lg">Загрузка...</div>
+          <div className="text-lg">{t.common.loading}</div>
         </div>
       </div>
     )
@@ -338,7 +340,7 @@ export function SharedBudgets() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="card p-6 max-w-md w-full">
             <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
-              Подтверждение
+              {t.common.confirm}
             </h2>
             <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-6">
               {confirmModal.message}
@@ -350,7 +352,7 @@ export function SharedBudgets() {
                 }}
                 className="flex-1 btn-primary text-sm md:text-base py-2.5 md:py-3"
               >
-                Да
+                {t.common.yes}
               </button>
               <button
                 onClick={() => {
@@ -358,7 +360,7 @@ export function SharedBudgets() {
                 }}
                 className="flex-1 btn-secondary text-sm md:text-base py-2.5 md:py-3"
               >
-                Отмена
+                {t.common.cancel}
               </button>
             </div>
           </div>
@@ -368,8 +370,8 @@ export function SharedBudgets() {
     <div className="p-4 md:p-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-telegram-text dark:text-telegram-dark-text mb-1">💼 Совместные бюджеты</h1>
-          <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">Управляйте общими финансами с друзьями и семьей</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-telegram-text dark:text-telegram-dark-text mb-1">💼 {t.sharedBudgets.title}</h1>
+          <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{t.sharedBudgets.noBudgetsDesc}</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
           <button

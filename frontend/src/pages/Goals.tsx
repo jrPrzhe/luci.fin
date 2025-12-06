@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../services/api'
 import { useToast } from '../contexts/ToastContext'
+import { useI18n } from '../contexts/I18nContext'
 
 interface Goal {
   id: number
@@ -21,6 +22,7 @@ interface Goal {
 export function Goals() {
   const queryClient = useQueryClient()
   const { showError } = useToast()
+  const { t } = useI18n()
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [confirmModal, setConfirmModal] = useState<{
@@ -56,7 +58,7 @@ export function Goals() {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-telegram-primary mb-4"></div>
-          <p className="text-telegram-textSecondary">Загрузка целей...</p>
+          <p className="text-telegram-textSecondary">{t.common.loading}</p>
         </div>
       </div>
     )
@@ -68,10 +70,10 @@ export function Goals() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-telegram-text dark:text-telegram-dark-text">
-            🎯 Мои цели
+            🎯 {t.goals.title}
           </h1>
           <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
-            Достигайте финансовых целей с удовольствием!
+            {t.goals.subtitle}
           </p>
         </div>
         <button
@@ -79,7 +81,7 @@ export function Goals() {
           className="btn-primary flex items-center gap-2 px-4 py-2"
         >
           <span className="text-xl">+</span>
-          <span>Новая цель</span>
+          <span>{t.goals.newGoal}</span>
         </button>
       </div>
 
@@ -87,7 +89,7 @@ export function Goals() {
       {activeGoals.length > 0 && (
         <div className="space-y-4">
           <h2 className="text-xl font-bold text-telegram-text dark:text-telegram-dark-text">
-            🎮 Активные цели
+            🎮 {t.goals.activeGoals}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {activeGoals.map((goal: Goal) => {
@@ -125,7 +127,7 @@ export function Goals() {
                       🗑️
                     </button>
                     <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold px-3 py-1 rounded-full">
-                      Уровень {Math.floor(goal.progress_percentage / 25) + 1}
+                      {t.goals.form.level} {Math.floor(goal.progress_percentage / 25) + 1}
                     </div>
                   </div>
                   
@@ -143,7 +145,7 @@ export function Goals() {
                   <div className="mb-4">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-semibold text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-                        Прогресс
+                        {t.goals.form.progress}
                       </span>
                       <span className="text-xl font-bold bg-gradient-to-r from-telegram-primary to-telegram-primaryLight bg-clip-text text-transparent">
                         {goal.progress_percentage}%
@@ -177,7 +179,7 @@ export function Goals() {
                       <div className="bg-gradient-to-br from-blue-50 dark:from-blue-900/20 to-cyan-50 dark:to-cyan-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
                         <div className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-1 flex items-center gap-1">
                           <span>⏰</span>
-                          <span>Дней осталось</span>
+                          <span>{t.goals.form.daysRemaining}</span>
                         </div>
                         <div className="text-xl font-bold text-blue-600 dark:text-blue-400">
                           {daysRemaining}
@@ -187,7 +189,7 @@ export function Goals() {
                     <div className="bg-gradient-to-br from-orange-50 dark:from-orange-900/20 to-red-50 dark:to-red-900/20 rounded-lg p-3 border border-orange-200 dark:border-orange-800">
                       <div className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-1 flex items-center gap-1">
                         <span>💰</span>
-                        <span>Осталось</span>
+                        <span>{t.goals.form.remaining}</span>
                       </div>
                       <div className="text-xl font-bold text-orange-600 dark:text-orange-400">
                         {Math.round(goal.target_amount - goal.current_amount).toLocaleString()} {goal.currency}

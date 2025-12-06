@@ -564,7 +564,7 @@ export function Layout() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => setLanguage('ru')}
-                    className={`px-2 py-1 rounded-telegram text-xs font-medium transition-colors ${
+                    className={`min-w-[3rem] px-2 py-1 rounded-telegram text-xs font-medium transition-colors ${
                       language === 'ru'
                         ? 'bg-telegram-primary text-white dark:bg-telegram-dark-primary'
                         : 'bg-telegram-border hover:bg-telegram-hover dark:bg-telegram-dark-border dark:hover:bg-telegram-dark-hover'
@@ -574,7 +574,7 @@ export function Layout() {
                   </button>
                   <button
                     onClick={() => setLanguage('en')}
-                    className={`px-2 py-1 rounded-telegram text-xs font-medium transition-colors ${
+                    className={`min-w-[3rem] px-2 py-1 rounded-telegram text-xs font-medium transition-colors ${
                       language === 'en'
                         ? 'bg-telegram-primary text-white dark:bg-telegram-dark-primary'
                         : 'bg-telegram-border hover:bg-telegram-hover dark:bg-telegram-dark-border dark:hover:bg-telegram-dark-hover'

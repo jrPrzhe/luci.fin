@@ -275,7 +275,7 @@ export function Profile() {
             <div className="flex gap-2">
               <button
                 onClick={() => setLanguage('ru')}
-                className={`px-3 py-1.5 rounded-telegram text-sm font-medium transition-colors ${
+                className={`min-w-[3.5rem] px-3 py-1.5 rounded-telegram text-sm font-medium transition-colors ${
                   language === 'ru'
                     ? 'bg-telegram-primary text-white dark:bg-telegram-dark-primary'
                     : 'bg-telegram-border hover:bg-telegram-hover dark:bg-telegram-dark-border dark:hover:bg-telegram-dark-hover'
@@ -285,7 +285,7 @@ export function Profile() {
               </button>
               <button
                 onClick={() => setLanguage('en')}
-                className={`px-3 py-1.5 rounded-telegram text-sm font-medium transition-colors ${
+                className={`min-w-[3.5rem] px-3 py-1.5 rounded-telegram text-sm font-medium transition-colors ${
                   language === 'en'
                     ? 'bg-telegram-primary text-white dark:bg-telegram-dark-primary'
                     : 'bg-telegram-border hover:bg-telegram-hover dark:bg-telegram-dark-border dark:hover:bg-telegram-dark-hover'

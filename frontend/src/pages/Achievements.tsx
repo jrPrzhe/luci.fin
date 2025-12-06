@@ -1,7 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../services/api'
+import { useI18n } from '../contexts/I18nContext'
 
 export function Achievements() {
+  const { t } = useI18n()
   const { data: achievements, isLoading } = useQuery({
     queryKey: ['achievements'],
     queryFn: () => api.getAchievements(),
@@ -13,10 +15,10 @@ export function Achievements() {
       <div className="achievements-page p-4 md:p-6">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-telegram-text dark:text-telegram-dark-text mb-2">
-            Достижения
+            {t.achievements.title}
           </h1>
           <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-            Ваши награды и успехи
+            {t.achievements.subtitle}
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -80,13 +82,7 @@ export function Achievements() {
   }
 
   const getRarityLabel = (rarity: string) => {
-    const labels: Record<string, string> = {
-      common: 'Обычное',
-      rare: 'Редкое',
-      epic: 'Эпическое',
-      legendary: 'Легендарное',
-    }
-    return labels[rarity] || rarity
+    return t.achievements.rarity[rarity as keyof typeof t.achievements.rarity] || rarity
   }
 
   return (
@@ -97,10 +93,10 @@ export function Achievements() {
           <span className="text-4xl">🏆</span>
           <div>
             <h1 className="text-3xl font-bold text-telegram-text dark:text-telegram-dark-text">
-              Достижения
+              {t.achievements.title}
             </h1>
             <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-              {unlocked.length} из {achievements.length} разблокировано
+              {t.achievements.unlockedCount.replace('{unlocked}', unlocked.length.toString()).replace('{total}', achievements.length.toString())}
             </p>
           </div>
         </div>
@@ -109,7 +105,7 @@ export function Achievements() {
         <div className="mt-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-medium text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-              Прогресс коллекции
+              {t.achievements.progress}
             </span>
             <span className="text-xs font-bold text-telegram-text dark:text-telegram-dark-text">
               {Math.round((unlocked.length / achievements.length) * 100)}%
@@ -130,7 +126,7 @@ export function Achievements() {
           <div className="flex items-center gap-2 mb-4">
             <span className="text-2xl">✨</span>
             <h2 className="text-xl font-bold text-telegram-text dark:text-telegram-dark-text">
-              Разблокировано ({unlocked.length})
+              {t.achievements.unlocked} ({unlocked.length})
             </h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -171,7 +167,7 @@ export function Achievements() {
                     <div className="flex items-center justify-between pt-3 border-t border-white/10 dark:border-white/5">
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-                          Награда:
+                          {t.achievements.reward}
                         </span>
                         <span className="px-3 py-1 bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-lg text-sm font-bold shadow-md">
                           +{achievement.xp_reward} XP
@@ -200,7 +196,7 @@ export function Achievements() {
           <div className="flex items-center gap-2 mb-4">
             <span className="text-2xl">🔒</span>
             <h2 className="text-xl font-bold text-telegram-text dark:text-telegram-dark-text">
-              Заблокировано ({locked.length})
+              {t.achievements.locked} ({locked.length})
             </h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -243,7 +239,7 @@ export function Achievements() {
                     <div className="flex items-center justify-between pt-3 border-t border-white/10 dark:border-white/5">
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary opacity-50">
-                          Награда:
+                          {t.achievements.reward}
                         </span>
                         <span className="px-3 py-1 bg-gray-400 text-white rounded-lg text-sm font-bold opacity-50">
                           +{achievement.xp_reward} XP
@@ -263,10 +259,10 @@ export function Achievements() {
         <div className="card p-12 text-center">
           <div className="text-6xl mb-4">🎯</div>
           <h3 className="text-xl font-bold text-telegram-text dark:text-telegram-dark-text mb-2">
-            Пока нет достижений
+            {t.achievements.noAchievements}
           </h3>
           <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-            Выполняйте задания и ведите учёт, чтобы разблокировать достижения!
+            {t.achievements.noAchievementsDesc}
           </p>
         </div>
       )}
