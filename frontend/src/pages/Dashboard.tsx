@@ -340,7 +340,7 @@ export function Dashboard() {
         queryClient.refetchQueries({ queryKey: ['goals'], type: 'active' }),
       ]).catch(console.error) // Don't block UI on refetch errors
       
-      showSuccess(t.dashboard.quickActions[quickFormType || 'expense'] + ' добавлено')
+      showSuccess(t.dashboard.quickActions[quickFormType || 'expense'] + ' добавлен')
     } catch (err: any) {
       const { translateError } = await import('../utils/errorMessages')
       const errorMessage = translateError(err)

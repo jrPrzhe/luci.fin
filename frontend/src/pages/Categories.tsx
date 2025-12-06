@@ -474,7 +474,7 @@ export function Categories() {
       {/* Categories List */}
       {categories.length === 0 ? (
         <div className="text-center py-16">
-          <div className="inline-block w-24 h-24 rounded-full bg-gradient-to-br from-telegram-primaryLight/30 to-telegram-primaryLight/10 flex items-center justify-center text-5xl mb-6">
+          <div className="inline-block mx-auto w-24 h-24 rounded-full bg-gradient-to-br from-telegram-primaryLight/30 to-telegram-primaryLight/10 flex items-center justify-center text-5xl mb-6">
             📦
           </div>
           <h3 className="text-xl font-semibold text-telegram-text dark:text-telegram-dark-text mb-2">Нет категорий</h3>
