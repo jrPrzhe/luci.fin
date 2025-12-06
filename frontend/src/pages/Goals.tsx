@@ -750,6 +750,7 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
   const [loading, setLoading] = useState(false)
   const [generatingRoadmap, setGeneratingRoadmap] = useState(false)
   const [roadmapStatus, setRoadmapStatus] = useState<string>('')
+  const [amountError, setAmountError] = useState<string>('')
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -760,14 +761,58 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
 
   const { showError, showSuccess } = useToast()
 
+  // Validate amount input
+  const validateAmount = (value: string): boolean => {
+    if (!value || value.trim() === '') {
+      setAmountError('')
+      return false
+    }
+    
+    // Check if value is a valid number
+    const numValue = value.replace(/,/g, '.').replace(/\s/g, '') // Replace comma with dot and remove spaces
+    const parsed = parseFloat(numValue)
+    
+    if (isNaN(parsed) || !isFinite(parsed)) {
+      setAmountError('Введите число')
+      return false
+    }
+    
+    if (parsed <= 0) {
+      setAmountError('Стоимость должна быть больше нуля')
+      return false
+    }
+    
+    // Validate amount: max 13 digits before decimal point (NUMERIC(15, 2) constraint)
+    const parts = numValue.split('.')
+    const integerPart = parts[0].replace(/[^0-9]/g, '')
+    if (integerPart.length > 13) {
+      setAmountError('Сумма слишком большая. Максимум 13 цифр перед запятой.')
+      return false
+    }
+    
+    setAmountError('')
+    return true
+  }
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setFormData({ ...formData, target_amount: value })
+    validateAmount(value)
+  }
+
   const handleCreate = async () => {
     if (!formData.name || !formData.target_amount) {
       showError('Заполните обязательные поля')
       return
     }
 
+    // Validate amount before proceeding
+    if (!validateAmount(formData.target_amount)) {
+      return
+    }
+
     // Validate amount: max 13 digits before decimal point (NUMERIC(15, 2) constraint)
-    const amountStr = formData.target_amount.toString()
+    const amountStr = formData.target_amount.toString().replace(/,/g, '.').replace(/\s/g, '')
     const parts = amountStr.split('.')
     const integerPart = parts[0].replace(/[^0-9]/g, '') // Remove any non-digits
     if (integerPart.length > 13) {
@@ -808,9 +853,10 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
 
         // Generate roadmap with timeout
         setRoadmapStatus('Создаю индивидуальный план через AI...')
+        const cleanAmount = formData.target_amount.replace(/,/g, '.').replace(/\s/g, '')
         const roadmapPromise = api.generateRoadmap({
           goal_name: formData.name,
-          target_amount: parseFloat(formData.target_amount),
+          target_amount: parseFloat(cleanAmount),
           currency: formData.currency,
           transactions,
           balance: balance.total,
@@ -866,10 +912,11 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
 
       // Create goal (with or without roadmap)
       setRoadmapStatus('Создаю цель...')
+      const cleanAmount = formData.target_amount.replace(/,/g, '.').replace(/\s/g, '')
       const goalData: any = {
         name: formData.name,
         description: formData.description || undefined,
-        target_amount: parseFloat(formData.target_amount),
+        target_amount: parseFloat(cleanAmount),
         currency: formData.currency,
         target_date: formData.target_date || undefined,
       }
@@ -948,12 +995,20 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
               Стоимость *
             </label>
             <input
-              type="number"
+              type="text"
+              inputMode="decimal"
               value={formData.target_amount}
-              onChange={(e) => setFormData({ ...formData, target_amount: e.target.value })}
-              className="w-full px-4 py-2 rounded-lg bg-telegram-hover dark:bg-telegram-dark-hover border border-telegram-border dark:border-telegram-dark-border text-telegram-text dark:text-telegram-dark-text"
+              onChange={handleAmountChange}
+              className={`w-full px-4 py-2 rounded-lg bg-telegram-hover dark:bg-telegram-dark-hover border ${
+                amountError 
+                  ? 'border-red-500 dark:border-red-500' 
+                  : 'border-telegram-border dark:border-telegram-dark-border'
+              } text-telegram-text dark:text-telegram-dark-text`}
               placeholder="2000000"
             />
+            {amountError && (
+              <p className="mt-1 text-sm text-red-500 dark:text-red-400">{amountError}</p>
+            )}
           </div>
 
           <div>
@@ -1017,7 +1072,7 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
           <button
             onClick={handleCreate}
             className="flex-1 btn-primary"
-            disabled={loading || generatingRoadmap}
+            disabled={loading || generatingRoadmap || !!amountError || !formData.name || !formData.target_amount}
           >
             {loading ? (generatingRoadmap ? roadmapStatus || 'Создание...' : 'Создание...') : 'Создать'}
           </button>
