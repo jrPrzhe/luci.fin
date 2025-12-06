@@ -333,16 +333,17 @@ export function Dashboard() {
       queryClient.invalidateQueries({ queryKey: ['goals'] })
       queryClient.invalidateQueries({ queryKey: ['gamification-status'] })
       queryClient.invalidateQueries({ queryKey: ['daily-quests'] })
-      // Invalidate all analytics queries (with any period parameter)
-      queryClient.invalidateQueries({ queryKey: ['analytics'] })
+      // Invalidate all analytics queries (with any period parameter: week, month, year)
+      // Using exact: false to match all queries starting with ['analytics']
+      queryClient.invalidateQueries({ queryKey: ['analytics'], exact: false })
       
       // Optionally refetch critical data in background (non-blocking)
       Promise.all([
         queryClient.refetchQueries({ queryKey: ['balance'], type: 'active' }),
         queryClient.refetchQueries({ queryKey: ['recent-transactions'], type: 'active' }),
         queryClient.refetchQueries({ queryKey: ['goals'], type: 'active' }),
-        // Force refetch analytics to update Reports page immediately
-        queryClient.refetchQueries({ queryKey: ['analytics'], type: 'active' }),
+        // Force refetch all analytics queries (week, month, year) to update Reports page immediately
+        queryClient.refetchQueries({ queryKey: ['analytics'], exact: false, type: 'active' }),
       ]).catch(console.error) // Don't block UI on refetch errors
       
       showSuccess(t.dashboard.quickActions[quickFormType || 'expense'] + ' добавлен')

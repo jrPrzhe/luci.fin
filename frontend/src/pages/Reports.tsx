@@ -128,8 +128,9 @@ export function Reports() {
   const { data: analytics, isLoading, error } = useQuery<AnalyticsData>({
     queryKey: ['analytics', period],
     queryFn: () => api.getAnalytics(period),
-    staleTime: 60000, // 1 minute
+    staleTime: 0, // Always consider data stale to allow immediate updates
     refetchOnWindowFocus: false,
+    refetchOnMount: 'always', // Always refetch when component mounts
   })
 
   const { data: user } = useQuery({
