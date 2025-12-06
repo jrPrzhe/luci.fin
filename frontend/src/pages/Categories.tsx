@@ -125,6 +125,11 @@ export function Categories() {
   }
 
   const handleEdit = (category: Category) => {
+    // Не позволяем редактировать системные категории
+    if (category.is_system) {
+      showError('Системные категории нельзя редактировать')
+      return
+    }
     setEditingCategory(category)
     setFormData({
       name: category.name,
@@ -514,8 +519,8 @@ export function Categories() {
                         borderLeft: `3px solid ${category.color || '#4CAF50'}`,
                       }}
                     >
-                      {/* Кнопка редактирования в правом верхнем углу */}
-                      {isEditingMode && (
+                      {/* Кнопка редактирования в правом верхнем углу - только для несистемных категорий */}
+                      {isEditingMode && !category.is_system && (
                         <button
                           onClick={() => handleEdit(category)}
                           className="absolute top-2 right-2 p-1.5 text-telegram-primary hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover rounded-full transition-all active:scale-95"
