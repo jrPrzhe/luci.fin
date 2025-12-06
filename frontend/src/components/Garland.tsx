@@ -37,7 +37,7 @@ export function Garland() {
   }, [])
 
   return (
-    <div className="fixed top-0 left-0 right-0 h-8 overflow-hidden pointer-events-none z-50">
+    <div className="fixed top-0 left-0 right-0 h-8 overflow-hidden pointer-events-none z-0">
       <svg 
         className="w-full h-full absolute top-0 left-0"
         viewBox="0 0 100 8"

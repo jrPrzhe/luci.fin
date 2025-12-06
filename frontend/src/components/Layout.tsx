@@ -350,7 +350,7 @@ export function Layout() {
       {newYearEnabled && <Garland />}
       
       {/* Desktop Sidebar - скрыт на мобильных и планшетах, показывается только на больших экранах (xl: 1280px+) */}
-      <aside className="hidden xl:flex w-64 flex-col bg-telegram-surface dark:bg-telegram-dark-surface border-r border-telegram-border dark:border-telegram-dark-border flex-shrink-0">
+      <aside className="hidden xl:flex w-64 flex-col bg-telegram-surface dark:bg-telegram-dark-surface border-r border-telegram-border dark:border-telegram-dark-border flex-shrink-0 relative z-10">
         <div className="p-4 border-b border-telegram-border dark:border-telegram-dark-border">
           <div className="flex items-center gap-3">
             <button
