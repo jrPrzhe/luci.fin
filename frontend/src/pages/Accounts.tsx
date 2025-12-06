@@ -51,6 +51,7 @@ export function Accounts() {
   const [showForm, setShowForm] = useState(false)
   const [editingAccount, setEditingAccount] = useState<Account | null>(null)
   const [expandedDescriptions, setExpandedDescriptions] = useState<Set<number>>(new Set())
+  const [isDeleting, setIsDeleting] = useState(false)
   
   // Confirmation modal state
   const [confirmModal, setConfirmModal] = useState<{
@@ -383,6 +384,8 @@ export function Accounts() {
                             show: true,
                             message,
                             onConfirm: async () => {
+                              if (isDeleting) return // Prevent multiple clicks
+                              setIsDeleting(true)
                               try {
                                 await api.deleteAccount(account.id)
                                 await loadAccounts()
@@ -396,6 +399,8 @@ export function Accounts() {
                               } catch (err: any) {
                                 showError(err.message || 'Ошибка удаления счета')
                                 setConfirmModal({ show: false, message: '', onConfirm: () => {} })
+                              } finally {
+                                setIsDeleting(false)
                               }
                             },
                           })
@@ -405,6 +410,8 @@ export function Accounts() {
                             show: true,
                             message: 'Вы уверены, что хотите удалить этот счет? Все связанные транзакции также будут удалены.',
                             onConfirm: async () => {
+                              if (isDeleting) return // Prevent multiple clicks
+                              setIsDeleting(true)
                               try {
                                 await api.deleteAccount(account.id)
                                 await loadAccounts()
@@ -417,6 +424,8 @@ export function Accounts() {
                               } catch (err: any) {
                                 showError(err.message || 'Ошибка удаления счета')
                                 setConfirmModal({ show: false, message: '', onConfirm: () => {} })
+                              } finally {
+                                setIsDeleting(false)
                               }
                             },
                           })
@@ -635,15 +644,18 @@ export function Accounts() {
                 onClick={() => {
                   confirmModal.onConfirm()
                 }}
-                className="flex-1 btn-primary text-sm md:text-base py-2.5 md:py-3"
+                disabled={isDeleting}
+                className="flex-1 btn-primary text-sm md:text-base py-2.5 md:py-3 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Да
+                {isDeleting ? 'Удаление...' : 'Да'}
               </button>
               <button
                 onClick={() => {
                   setConfirmModal({ show: false, message: '', onConfirm: () => {} })
+                  setIsDeleting(false)
                 }}
-                className="flex-1 btn-secondary text-sm md:text-base py-2.5 md:py-3"
+                disabled={isDeleting}
+                className="flex-1 btn-secondary text-sm md:text-base py-2.5 md:py-3 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Отмена
               </button>
