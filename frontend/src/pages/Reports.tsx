@@ -62,7 +62,7 @@ const MONTH_MAPPING: Record<string, string> = {
   'May': 'Май', 'Jun': 'Июн', 'Jul': 'Июл', 'Aug': 'Авг',
   'Sep': 'Сен', 'Oct': 'Окт', 'Nov': 'Ноя', 'Dec': 'Дек',
   'January': 'Январь', 'February': 'Февраль', 'March': 'Март', 'April': 'Апрель',
-  'May': 'Май', 'June': 'Июнь', 'July': 'Июль', 'August': 'Август',
+  'June': 'Июнь', 'July': 'Июль', 'August': 'Август',
   'September': 'Сентябрь', 'October': 'Октябрь', 'November': 'Ноябрь', 'December': 'Декабрь'
 }
 
