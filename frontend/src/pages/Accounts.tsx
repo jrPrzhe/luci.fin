@@ -16,6 +16,7 @@ interface Account {
   created_at?: string
   shared_budget_id?: number
   shared_budget_name?: string
+  shared_budget_description?: string
   is_shared?: boolean
 }
 
