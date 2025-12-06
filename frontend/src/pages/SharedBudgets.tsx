@@ -550,11 +550,29 @@ export function SharedBudgets() {
               </button>
             </div>
             {sharedAccounts.length === 0 ? (
-              <div className="card p-6 text-center bg-gray-50 border-2 border-dashed border-gray-300">
-                <div className="text-4xl mb-3">💳</div>
-                <p className="text-telegram-text dark:text-telegram-dark-text font-medium mb-2">Нет совместных счетов</p>
-                <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">Создайте счет в разделе "Счета", выбрав этот бюджет</p>
-              </div>
+              (() => {
+                // Check if current user is admin of this budget
+                const currentUserMember = members.find(m => currentUser && m.user_id === currentUser.id)
+                const currentUserIsAdmin = currentUserMember?.role === 'admin'
+                
+                // Only show the hint to admins
+                if (!currentUserIsAdmin) {
+                  return (
+                    <div className="card p-6 text-center bg-gray-50 border-2 border-dashed border-gray-300">
+                      <div className="text-4xl mb-3">💳</div>
+                      <p className="text-telegram-text dark:text-telegram-dark-text font-medium mb-2">Нет совместных счетов</p>
+                    </div>
+                  )
+                }
+                
+                return (
+                  <div className="card p-6 text-center bg-gray-50 border-2 border-dashed border-gray-300">
+                    <div className="text-4xl mb-3">💳</div>
+                    <p className="text-telegram-text dark:text-telegram-dark-text font-medium mb-2">Нет совместных счетов</p>
+                    <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">Создайте счет в разделе "Счета", выбрав этот бюджет</p>
+                  </div>
+                )
+              })()
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {sharedAccounts.map((account) => (
