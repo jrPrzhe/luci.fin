@@ -21,6 +21,8 @@ export function Import() {
 
   useEffect(() => {
     loadSources()
+    // Скроллим к началу страницы при открытии
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [])
 
   const loadSources = async () => {
