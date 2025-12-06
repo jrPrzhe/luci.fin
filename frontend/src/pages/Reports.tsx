@@ -131,6 +131,7 @@ export function Reports() {
     staleTime: 0, // Always consider data stale to allow immediate updates
     refetchOnWindowFocus: false,
     refetchOnMount: 'always', // Always refetch when component mounts
+    refetchInterval: false, // Don't auto-refetch on interval
   })
 
   const { data: user } = useQuery({

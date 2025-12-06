@@ -342,8 +342,9 @@ export function Dashboard() {
         queryClient.refetchQueries({ queryKey: ['balance'], type: 'active' }),
         queryClient.refetchQueries({ queryKey: ['recent-transactions'], type: 'active' }),
         queryClient.refetchQueries({ queryKey: ['goals'], type: 'active' }),
-        // Force refetch all analytics queries (week, month, year) to update Reports page immediately
-        queryClient.refetchQueries({ queryKey: ['analytics'], exact: false, type: 'active' }),
+        // Force refetch all analytics queries (week, month, year) - both active and inactive
+        // This ensures Reports page updates even if it's not currently open
+        queryClient.refetchQueries({ queryKey: ['analytics'], exact: false }),
       ]).catch(console.error) // Don't block UI on refetch errors
       
       showSuccess(t.dashboard.quickActions[quickFormType || 'expense'] + ' добавлен')
