@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, extract, and_, or_, text as sa_text
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
 import logging
 from app.core.database import get_db
 from app.api.v1.auth import get_current_user
@@ -290,8 +291,9 @@ async def get_analytics(
     months_count = 12 if period == "year" else 3
     monthly_data = []
     for i in range(months_count):
-        month_start = (end_date.replace(day=1) - timedelta(days=32*i)).replace(day=1)
-        month_end = (month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+        # Используем relativedelta для правильного вычисления месяцев
+        month_start = (end_date.replace(day=1) - relativedelta(months=i))
+        month_end = (month_start + relativedelta(months=1)) - timedelta(days=1)
         
         # Get month transactions using raw SQL
         if not all_account_ids:

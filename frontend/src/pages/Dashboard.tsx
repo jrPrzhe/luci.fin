@@ -26,7 +26,7 @@ interface Category {
 }
 
 export function Dashboard() {
-  const { t } = useI18n()
+  const { t, translateCategoryName } = useI18n()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const { showError, showSuccess } = useToast()
@@ -600,7 +600,7 @@ export function Dashboard() {
                                 {category.icon || '📦'}
                               </div>
                               <span className="font-medium text-sm text-telegram-text dark:text-telegram-dark-text text-center">
-                                {category.name}
+                                {translateCategoryName(category.name)}
                               </span>
                               {category.is_favorite && (
                                 <span className="text-xs text-yellow-500">⭐</span>

@@ -47,6 +47,7 @@ export function Accounts() {
   const [sharedBudgets, setSharedBudgets] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
+  const [editingAccount, setEditingAccount] = useState<Account | null>(null)
   
   // Confirmation modal state
   const [confirmModal, setConfirmModal] = useState<{
@@ -106,14 +107,27 @@ export function Accounts() {
     }
 
     try {
-      await api.createAccount({
-        name: formData.name.trim(),
-        account_type: formData.account_type,
-        currency: formData.currency,
-        initial_balance: parseFloat(formData.initial_balance) || 0,
-        description: formData.description.trim() || undefined,
-        shared_budget_id: formData.shared_budget_id ? parseInt(formData.shared_budget_id) : undefined,
-      })
+      if (editingAccount) {
+        // Update existing account
+        await api.updateAccount(editingAccount.id, {
+          name: formData.name.trim(),
+          account_type: formData.account_type,
+          currency: formData.currency,
+          description: formData.description.trim() || undefined,
+        })
+        showSuccess('Счет обновлен')
+      } else {
+        // Create new account
+        await api.createAccount({
+          name: formData.name.trim(),
+          account_type: formData.account_type,
+          currency: formData.currency,
+          initial_balance: parseFloat(formData.initial_balance) || 0,
+          description: formData.description.trim() || undefined,
+          shared_budget_id: formData.shared_budget_id ? parseInt(formData.shared_budget_id) : undefined,
+        })
+        showSuccess('Счет создан')
+      }
 
       // Reset form
       setFormData({
@@ -125,12 +139,25 @@ export function Accounts() {
         shared_budget_id: '',
       })
       setShowForm(false)
+      setEditingAccount(null)
       await loadAccounts()
-      showSuccess('Счет создан')
     } catch (err: any) {
       const { translateError } = await import('../utils/errorMessages')
       showError(translateError(err))
     }
+  }
+
+  const handleEdit = (account: Account) => {
+    setEditingAccount(account)
+    setFormData({
+      name: account.name,
+      account_type: account.type,
+      currency: account.currency,
+      initial_balance: account.initial_balance.toString(),
+      description: account.description || '',
+      shared_budget_id: account.shared_budget_id?.toString() || '',
+    })
+    setShowForm(true)
   }
 
   const formatBalance = (balance: number, currency: string) => {
@@ -249,31 +276,40 @@ export function Accounts() {
                       </div>
                     )}
                   </div>
-                  <button
-                    onClick={() => {
-                      setConfirmModal({
-                        show: true,
-                        message: 'Вы уверены, что хотите удалить этот счет?',
-                        onConfirm: async () => {
-                          try {
-                            await api.deleteAccount(account.id)
-                            await loadAccounts()
-                            // Also invalidate goals query in case this was a goal account
-                            queryClient.invalidateQueries({ queryKey: ['goals'] })
-                            showSuccess('Счет удален')
-                            setConfirmModal({ show: false, message: '', onConfirm: () => {} })
-                          } catch (err: any) {
-                            showError(err.message || 'Ошибка удаления счета')
-                            setConfirmModal({ show: false, message: '', onConfirm: () => {} })
-                          }
-                        },
-                      })
-                    }}
-                    className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 px-2 py-1 text-sm"
-                    title="Удалить счет"
-                  >
-                    🗑️
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleEdit(account)}
+                      className="text-telegram-primary dark:text-telegram-dark-primary hover:text-telegram-primary/80 dark:hover:text-telegram-dark-primary/80 px-2 py-1 text-sm"
+                      title="Редактировать счет"
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      onClick={() => {
+                        setConfirmModal({
+                          show: true,
+                          message: 'Вы уверены, что хотите удалить этот счет?',
+                          onConfirm: async () => {
+                            try {
+                              await api.deleteAccount(account.id)
+                              await loadAccounts()
+                              // Also invalidate goals query in case this was a goal account
+                              queryClient.invalidateQueries({ queryKey: ['goals'] })
+                              showSuccess('Счет удален')
+                              setConfirmModal({ show: false, message: '', onConfirm: () => {} })
+                            } catch (err: any) {
+                              showError(err.message || 'Ошибка удаления счета')
+                              setConfirmModal({ show: false, message: '', onConfirm: () => {} })
+                            }
+                          },
+                        })
+                      }}
+                      className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 px-2 py-1 text-sm"
+                      title="Удалить счет"
+                    >
+                      🗑️
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -289,6 +325,7 @@ export function Accounts() {
             // Close modal when clicking outside
             if (e.target === e.currentTarget) {
               setShowForm(false)
+              setEditingAccount(null)
               setFormData({
                 name: '',
                 account_type: 'cash',
@@ -306,10 +343,13 @@ export function Accounts() {
           >
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-telegram-text dark:text-telegram-dark-text">Добавить счет</h2>
+                <h2 className="text-2xl font-bold text-telegram-text dark:text-telegram-dark-text">
+                  {editingAccount ? 'Редактировать счет' : 'Добавить счет'}
+                </h2>
                 <button
                   onClick={() => {
                     setShowForm(false)
+                    setEditingAccount(null)
                     setFormData({
                       name: '',
                       account_type: 'cash',
@@ -378,52 +418,56 @@ export function Accounts() {
                   </select>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
-                    Начальный баланс
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={formData.initial_balance}
-                    onChange={(e) =>
-                      setFormData({ ...formData, initial_balance: e.target.value })
-                    }
-                    className="input"
-                    placeholder="0.00"
-                  />
-                </div>
+                {!editingAccount && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
+                        Начальный баланс
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={formData.initial_balance}
+                        onChange={(e) =>
+                          setFormData({ ...formData, initial_balance: e.target.value })
+                        }
+                        className="input"
+                        placeholder="0.00"
+                      />
+                    </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
-                    Совместный бюджет (необязательно)
-                  </label>
-                  <select
-                    value={formData.shared_budget_id}
-                    onChange={(e) =>
-                      setFormData({ ...formData, shared_budget_id: e.target.value })
-                    }
-                    className="input"
-                  >
-                    <option value="">Личный счет</option>
-                    {sharedBudgets && Array.isArray(sharedBudgets) && sharedBudgets.length > 0
-                      ? sharedBudgets
-                          .filter(() => {
-                            // Only show budgets where user is admin (only admins can create shared accounts)
-                            // We'll check this on backend, but filter on frontend for UX
-                            return true // Show all budgets user is member of
-                          })
-                          .map((budget) => (
-                            <option key={budget.id} value={budget.id}>
-                              {budget.name}
-                            </option>
-                          ))
-                      : null}
-                  </select>
-                  <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
-                    Выберите совместный бюджет для создания общего счета. Только администраторы могут создавать совместные счета.
-                  </p>
-                </div>
+                    <div>
+                      <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
+                        Совместный бюджет (необязательно)
+                      </label>
+                      <select
+                        value={formData.shared_budget_id}
+                        onChange={(e) =>
+                          setFormData({ ...formData, shared_budget_id: e.target.value })
+                        }
+                        className="input"
+                      >
+                        <option value="">Личный счет</option>
+                        {sharedBudgets && Array.isArray(sharedBudgets) && sharedBudgets.length > 0
+                          ? sharedBudgets
+                              .filter(() => {
+                                // Only show budgets where user is admin (only admins can create shared accounts)
+                                // We'll check this on backend, but filter on frontend for UX
+                                return true // Show all budgets user is member of
+                              })
+                              .map((budget) => (
+                                <option key={budget.id} value={budget.id}>
+                                  {budget.name}
+                                </option>
+                              ))
+                          : null}
+                      </select>
+                      <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
+                        Выберите совместный бюджет для создания общего счета. Только администраторы могут создавать совместные счета.
+                      </p>
+                    </div>
+                  </>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
@@ -446,6 +490,7 @@ export function Accounts() {
                     type="button"
                     onClick={() => {
                       setShowForm(false)
+                      setEditingAccount(null)
                       setFormData({
                         name: '',
                         account_type: 'cash',
@@ -463,7 +508,7 @@ export function Accounts() {
                     type="submit"
                     className="flex-1 btn-primary"
                   >
-                    Создать счет
+                    {editingAccount ? 'Сохранить изменения' : 'Создать счет'}
                   </button>
                 </div>
               </form>

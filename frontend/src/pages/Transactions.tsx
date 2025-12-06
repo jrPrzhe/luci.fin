@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { api } from '../services/api'
 import { useToast } from '../contexts/ToastContext'
+import { useI18n } from '../contexts/I18nContext'
 
 interface Transaction {
   id: number
@@ -42,6 +43,7 @@ interface Category {
 export function Transactions() {
   const location = useLocation()
   const { showError, showSuccess } = useToast()
+  const { translateCategoryName } = useI18n()
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
   const [categories, setCategories] = useState<Category[]>([])
@@ -923,7 +925,7 @@ export function Transactions() {
                     {transaction.category_name && (
                       <div className="flex items-center gap-1">
                         <span>{transaction.category_icon || '📦'}</span>
-                        <span>{transaction.category_name}</span>
+                        <span>{translateCategoryName(transaction.category_name)}</span>
                       </div>
                     )}
                     {transaction.description && (

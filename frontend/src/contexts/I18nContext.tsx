@@ -13,6 +13,7 @@ interface I18nContextType {
   language: Language
   setLanguage: (lang: Language) => Promise<void>
   t: Translations
+  translateCategoryName: (name: string) => string
 }
 
 const I18nContext = createContext<I18nContextType | undefined>(undefined)
@@ -161,12 +162,22 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     return null // Or a loading spinner
   }
 
+  const translateCategoryName = (name: string): string => {
+    // Если название категории есть в маппинге, возвращаем перевод
+    if (translations[language].categories.names && translations[language].categories.names[name as keyof typeof translations[language].categories.names]) {
+      return translations[language].categories.names[name as keyof typeof translations[language].categories.names] as string
+    }
+    // Иначе возвращаем оригинальное название
+    return name
+  }
+
   return (
     <I18nContext.Provider
       value={{
         language,
         setLanguage,
         t: translations[language],
+        translateCategoryName,
       }}
     >
       {children}

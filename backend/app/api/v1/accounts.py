@@ -271,6 +271,104 @@ async def create_account(
     }
 
 
+class AccountUpdate(BaseModel):
+    name: Optional[str] = None
+    account_type: Optional[str] = None
+    currency: Optional[str] = None
+    description: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+@router.put("/{account_id}", response_model=dict)
+async def update_account(
+    account_id: int,
+    account_update: AccountUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Update an account"""
+    # Verify account belongs to user or user has access through shared budget
+    account = db.query(Account).filter(Account.id == account_id).first()
+    
+    if not account:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Счет не найден"
+        )
+    
+    # Check access: either owner or admin member of shared budget
+    has_access = False
+    is_admin = False
+    if account.user_id == current_user.id:
+        has_access = True
+        is_admin = True  # Owner is admin
+    elif account.shared_budget_id:
+        from app.models.shared_budget import SharedBudgetMember, MemberRole
+        membership = db.query(SharedBudgetMember).filter(
+            SharedBudgetMember.shared_budget_id == account.shared_budget_id,
+            SharedBudgetMember.user_id == current_user.id
+        ).first()
+        if membership:
+            has_access = True
+            is_admin = membership.role == MemberRole.ADMIN
+    
+    if not has_access:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="У вас нет доступа к этому счету"
+        )
+    
+    # For shared accounts, only admins can update
+    if account.shared_budget_id and not is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Только администраторы могут редактировать общие счета"
+        )
+    
+    # Update fields
+    if account_update.name is not None:
+        account.name = account_update.name
+    if account_update.account_type is not None:
+        try:
+            account.account_type = AccountType(account_update.account_type)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Неверный тип счета. Должен быть одним из: {[e.value for e in AccountType]}"
+            )
+    if account_update.currency is not None:
+        account.currency = account_update.currency
+    if account_update.description is not None:
+        account.description = account_update.description
+    if account_update.is_active is not None:
+        account.is_active = account_update.is_active
+    
+    db.commit()
+    db.refresh(account)
+    
+    # Get shared budget name if applicable
+    shared_budget_name = None
+    if account.shared_budget_id:
+        from app.models.shared_budget import SharedBudget
+        shared_budget = db.query(SharedBudget).filter(SharedBudget.id == account.shared_budget_id).first()
+        shared_budget_name = shared_budget.name if shared_budget else None
+    
+    return {
+        "id": account.id,
+        "name": account.name,
+        "type": account.account_type.value,
+        "currency": account.currency,
+        "balance": float(account.initial_balance),  # Will be recalculated on next fetch
+        "initial_balance": float(account.initial_balance),
+        "is_active": account.is_active,
+        "description": account.description,
+        "created_at": account.created_at.isoformat() if account.created_at else None,
+        "shared_budget_id": account.shared_budget_id,
+        "shared_budget_name": shared_budget_name,
+        "is_shared": account.shared_budget_id is not None
+    }
+
+
 @router.delete("/{account_id}", response_model=dict)
 async def delete_account(
     account_id: int,

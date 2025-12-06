@@ -533,6 +533,19 @@ class ApiClient {
     })
   }
 
+  async updateAccount(accountId: number, data: {
+    name?: string
+    account_type?: string
+    currency?: string
+    description?: string
+    is_active?: boolean
+  }) {
+    return this.request<any>(`/api/v1/accounts/${accountId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  }
+
   async deleteAccount(accountId: number) {
     return this.request<void>(`/api/v1/accounts/${accountId}`, {
       method: 'DELETE',

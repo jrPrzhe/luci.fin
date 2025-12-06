@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { api } from '../services/api'
 import { useToast } from '../contexts/ToastContext'
+import { useI18n } from '../contexts/I18nContext'
 
 interface Category {
   id: number
@@ -60,6 +61,7 @@ export function Categories() {
   const [showFavoritesSection, setShowFavoritesSection] = useState(true)
   const [showAllCategoriesSection, setShowAllCategoriesSection] = useState(true)
   const { showError, showSuccess } = useToast()
+  const { translateCategoryName } = useI18n()
 
   // Confirmation modal state
   const [confirmModal, setConfirmModal] = useState<{
@@ -535,7 +537,7 @@ export function Categories() {
                         {/* Название категории */}
                         <div className="w-full text-center">
                           <h4 className="font-semibold text-telegram-text dark:text-telegram-dark-text truncate text-sm md:text-base lg:text-lg mb-1 pr-8">
-                            {category.name}
+                            {translateCategoryName(category.name)}
                           </h4>
                           <p className="text-xs md:text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-1">
                             {getTransactionTypeIcon(category.transaction_type)} {getTransactionTypeLabel(category.transaction_type)}
@@ -635,7 +637,7 @@ export function Categories() {
                       {/* Название категории */}
                       <div className="w-full text-center">
                         <h4 className="font-semibold text-telegram-text dark:text-telegram-dark-text truncate text-sm md:text-base lg:text-lg mb-1 pr-8">
-                          {category.name}
+                          {translateCategoryName(category.name)}
                         </h4>
                         <p className="text-xs md:text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-1">
                           {getTransactionTypeIcon(category.transaction_type)} {getTransactionTypeLabel(category.transaction_type)}
