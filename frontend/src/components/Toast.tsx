@@ -39,36 +39,36 @@ export function ToastItem({ toast, onClose }: ToastProps) {
     }
   }
 
-  const getStyles = () => {
+  const getBorderColor = () => {
     switch (toast.type) {
       case 'success':
-        return 'bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-800 text-green-700 dark:text-green-300'
+        return 'border-l-green-500 dark:border-l-green-400'
       case 'error':
-        return 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300'
+        return 'border-l-red-500 dark:border-l-red-400'
       case 'warning':
-        return 'bg-yellow-50 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-800 text-yellow-700 dark:text-yellow-300'
+        return 'border-l-yellow-500 dark:border-l-yellow-400'
       case 'info':
-        return 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300'
+        return 'border-l-blue-500 dark:border-l-blue-400'
       default:
-        return 'bg-gray-50 dark:bg-gray-900/30 border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300'
+        return 'border-l-telegram-primary dark:border-l-telegram-dark-primary'
     }
   }
 
   return (
     <div
-      className={`${getStyles()} border rounded-telegram px-4 py-3 mb-3 shadow-lg flex items-start gap-3 animate-slide-down min-w-[300px] max-w-[500px]`}
+      className={`bg-telegram-surface dark:bg-telegram-dark-surface border border-telegram-border dark:border-telegram-dark-border border-l-4 ${getBorderColor()} rounded-telegram-lg px-4 py-3 mb-3 shadow-telegram flex items-start gap-3 animate-slide-down min-w-[280px] max-w-[400px]`}
       role="alert"
     >
-      <span className="text-xl flex-shrink-0">{getIcon()}</span>
-      <div className="flex-1">
-        <p className="text-sm font-medium">{toast.message}</p>
+      <span className="text-xl flex-shrink-0 mt-0.5">{getIcon()}</span>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-telegram-text dark:text-telegram-dark-text break-words">{toast.message}</p>
       </div>
       <button
         onClick={() => onClose(toast.id)}
-        className="flex-shrink-0 text-current opacity-60 hover:opacity-100 transition-opacity"
+        className="flex-shrink-0 text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text transition-colors p-1 rounded-full hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover"
         aria-label="Закрыть"
       >
-        ✕
+        <span className="text-lg leading-none">×</span>
       </button>
     </div>
   )
