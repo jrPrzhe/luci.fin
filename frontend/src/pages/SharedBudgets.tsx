@@ -156,9 +156,15 @@ export function SharedBudgets() {
       return
     }
 
+    const trimmedName = createFormData.name.trim()
+    if (trimmedName.length > 100) {
+      setError('Название бюджета не должно превышать 100 символов')
+      return
+    }
+
     try {
       await api.createSharedBudget({
-        name: createFormData.name.trim(),
+        name: trimmedName,
         description: createFormData.description.trim() || undefined,
         currency: createFormData.currency,
       })
@@ -449,15 +455,15 @@ export function SharedBudgets() {
           
           <div className="card mb-6 bg-gradient-to-br from-telegram-primaryLight/10 to-white border-2 border-telegram-primary/20">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-3 mb-2">
+              <div className="flex-1 min-w-0 w-full">
+                <div className="flex items-start gap-3 mb-2">
                   <div className="w-14 h-14 rounded-full bg-gradient-to-br from-telegram-primary to-telegram-primary/70 flex items-center justify-center text-3xl flex-shrink-0">
                     💼
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h2 className="text-2xl md:text-3xl font-bold text-telegram-text dark:text-telegram-dark-text mb-1 truncate break-words" title={selectedBudget.name}>{selectedBudget.name}</h2>
+                  <div className="flex-1 min-w-0 overflow-hidden">
+                    <h2 className="text-2xl md:text-3xl font-bold text-telegram-text dark:text-telegram-dark-text mb-1 break-words" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }} title={selectedBudget.name}>{selectedBudget.name}</h2>
                     {selectedBudget.description && (
-                      <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary break-words">{selectedBudget.description}</p>
+                      <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary break-words" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>{selectedBudget.description}</p>
                     )}
                   </div>
                 </div>
@@ -731,8 +737,12 @@ export function SharedBudgets() {
                     }
                     className="w-full px-4 py-2 border border-gray-300 dark:border-telegram-dark-border rounded-lg focus:ring-2 focus:ring-telegram-primary dark:focus:ring-telegram-dark-primary focus:border-transparent bg-white dark:bg-telegram-dark-bg text-telegram-text dark:text-telegram-dark-text"
                     placeholder="Например: Семейный бюджет"
+                    maxLength={100}
                     required
                   />
+                  <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
+                    {createFormData.name.length}/100 символов
+                  </p>
                 </div>
 
                 <div>

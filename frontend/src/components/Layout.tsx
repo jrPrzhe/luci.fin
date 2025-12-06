@@ -342,15 +342,15 @@ export function Layout() {
   ]
 
   return (
-    <div className={`min-h-screen flex flex-col bg-telegram-bg dark:bg-telegram-dark-bg ${newYearEnabled ? 'new-year-mode' : ''}`}>
+    <div className={`min-h-screen flex flex-col xl:flex-row bg-telegram-bg dark:bg-telegram-dark-bg ${newYearEnabled ? 'new-year-mode' : ''}`}>
       {/* Новогодний снег */}
       {newYearEnabled && <SnowEffect />}
       
       {/* Гирлянда в верхнем меню */}
       {newYearEnabled && <Garland />}
       
-      {/* Desktop Sidebar - скрыт на мобильных */}
-      <aside className="hidden lg:flex w-64 flex-col bg-telegram-surface dark:bg-telegram-dark-surface border-r border-telegram-border dark:border-telegram-dark-border flex-shrink-0">
+      {/* Desktop Sidebar - скрыт на мобильных и планшетах, показывается только на больших экранах (xl: 1280px+) */}
+      <aside className="hidden xl:flex w-64 flex-col bg-telegram-surface dark:bg-telegram-dark-surface border-r border-telegram-border dark:border-telegram-dark-border flex-shrink-0">
         <div className="p-4 border-b border-telegram-border dark:border-telegram-dark-border">
           <div className="flex items-center gap-3">
             <button
@@ -460,8 +460,8 @@ export function Layout() {
         </div>
       </aside>
 
-      {/* Mobile/Tablet Header - скрыт на desktop (lg+) */}
-      <header className="lg:hidden bg-telegram-surface dark:bg-telegram-dark-surface border-b border-telegram-border dark:border-telegram-dark-border px-4 py-3 flex items-center justify-between sticky top-0 z-10 relative">
+      {/* Mobile/Tablet Header - скрыт на больших экранах (xl+) */}
+      <header className="xl:hidden bg-telegram-surface dark:bg-telegram-dark-surface border-b border-telegram-border dark:border-telegram-dark-border px-4 py-3 flex items-center justify-between sticky top-0 z-10 relative">
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowStories(true)}
@@ -497,7 +497,7 @@ export function Layout() {
       {/* Mobile/Tablet Menu Overlay */}
       {mobileMenuOpen && (
         <div 
-          className="lg:hidden fixed inset-0 bg-black/50 z-20"
+          className="xl:hidden fixed inset-0 bg-black/50 z-20"
           onClick={() => setMobileMenuOpen(false)}
         >
           <div 
@@ -599,7 +599,7 @@ export function Layout() {
       )}
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto pb-16 lg:pb-0">
+      <main className="flex-1 overflow-auto pb-16 xl:pb-0 w-full">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 lg:py-6 w-full">
           <Outlet />
         </div>
@@ -607,7 +607,7 @@ export function Layout() {
 
       {/* Mobile Bottom Navigation - только в Mini App на мобильных */}
       {isMiniApp && (
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-telegram-surface dark:bg-telegram-dark-surface border-t border-telegram-border dark:border-telegram-dark-border px-2 py-2 safe-area-inset-bottom z-10">
+        <nav className="xl:hidden fixed bottom-0 left-0 right-0 bg-telegram-surface dark:bg-telegram-dark-surface border-t border-telegram-border dark:border-telegram-dark-border px-2 py-2 safe-area-inset-bottom z-10">
           <div className="flex items-center justify-around">
             {/* Дашборд, Транзакции, Счета, Отчеты */}
             {navItems.filter(item => 
@@ -651,7 +651,7 @@ export function Layout() {
       
       {/* Mobile Bottom Navigation - для всех мобильных устройств (не только Mini App) */}
       {!isMiniApp && (
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-telegram-surface dark:bg-telegram-dark-surface border-t border-telegram-border dark:border-telegram-dark-border px-2 py-2 safe-area-inset-bottom z-10 shadow-lg">
+        <nav className="xl:hidden fixed bottom-0 left-0 right-0 bg-telegram-surface dark:bg-telegram-dark-surface border-t border-telegram-border dark:border-telegram-dark-border px-2 py-2 safe-area-inset-bottom z-10 shadow-lg">
           <div className="flex items-center justify-around">
             {/* Дашборд, Транзакции, Счета, Отчеты */}
             {navItems.filter(item => 
