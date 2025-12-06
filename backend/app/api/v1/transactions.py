@@ -633,13 +633,25 @@ async def create_transaction(
                 (:user_id, :account_id, :transaction_type, :amount, :currency, :description, :transaction_date, :to_account_id, :shared_budget_id, :goal_id)
                 RETURNING id, created_at, updated_at
             """
+            # Get to_account for description
+            to_account = db.query(Account).filter(Account.id == transaction_data.to_account_id).first()
+            to_account_name = to_account.name if to_account else "счет"
+            
+            # Create description for transfer transaction
+            # Use format similar to income transaction: "Перевод из {account.name}" or "Перевод из {account.name}: {user_description}"
+            # This makes it clear that this is a transfer transaction
+            if transaction_data.description and transaction_data.description.strip():
+                transfer_description = f"Перевод из {final_account.name}: {transaction_data.description}"
+            else:
+                transfer_description = f"Перевод из {final_account.name}"
+            
             source_params = {
                 "user_id": current_user.id,
                 "account_id": final_account_id,
                 "transaction_type": "transfer",  # lowercase
                 "amount": transaction_data.amount,
                 "currency": transaction_data.currency or final_account.currency,
-                "description": transaction_data.description,
+                "description": transfer_description,
                 "transaction_date": transaction_data.transaction_date or datetime.utcnow(),
                 "to_account_id": transaction_data.to_account_id,
                 "shared_budget_id": transaction_data.shared_budget_id,
