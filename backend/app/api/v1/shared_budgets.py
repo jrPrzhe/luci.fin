@@ -859,7 +859,7 @@ async def leave_budget(
             detail="Вы не являетесь участником этого бюджета"
         )
     
-    # Check if user is the creator/admin and there are other members
+    # Check if user is an admin and there are other members
     budget = db.query(SharedBudget).filter(SharedBudget.id == budget_id).first()
     if not budget:
         raise HTTPException(
@@ -867,18 +867,26 @@ async def leave_budget(
             detail="Бюджет не найден"
         )
     
-    # Check if user is the creator
-    if budget.created_by == current_user.id:
-        # Count other members
+    # Check if user is an admin (not just the creator - role matters!)
+    if membership.role == MemberRole.ADMIN:
+        # Count other admins
+        other_admins = db.query(SharedBudgetMember).filter(
+            SharedBudgetMember.shared_budget_id == budget_id,
+            SharedBudgetMember.user_id != current_user.id,
+            SharedBudgetMember.role == MemberRole.ADMIN
+        ).count()
+        
+        # Count other members (any role)
         other_members = db.query(SharedBudgetMember).filter(
             SharedBudgetMember.shared_budget_id == budget_id,
             SharedBudgetMember.user_id != current_user.id
         ).count()
         
-        if other_members > 0:
+        # If user is the last admin and there are other members, prevent leaving
+        if other_admins == 0 and other_members > 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Нельзя покинуть бюджет как создатель, пока есть другие участники. Сначала передайте права или удалите всех участников."
+                detail="Нельзя покинуть бюджет как последний администратор, пока есть другие участники. Сначала передайте права или удалите всех участников."
             )
     
     # Remove membership
