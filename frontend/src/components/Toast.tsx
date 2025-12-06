@@ -56,10 +56,10 @@ export function ToastItem({ toast, onClose }: ToastProps) {
 
   return (
     <div
-      className={`bg-telegram-surface dark:bg-telegram-dark-surface border border-telegram-border dark:border-telegram-dark-border border-l-4 ${getBorderColor()} rounded-telegram-lg px-4 py-3 mb-3 shadow-telegram flex items-start gap-3 animate-slide-down min-w-[280px] max-w-[400px]`}
+      className={`bg-telegram-surface dark:bg-telegram-dark-surface border border-telegram-border dark:border-telegram-dark-border border-l-4 ${getBorderColor()} rounded-telegram-lg px-4 py-3 mb-3 shadow-telegram flex items-center gap-3 animate-slide-down min-w-[280px] max-w-[400px]`}
       role="alert"
     >
-      <span className="text-xl flex-shrink-0 mt-0.5">{getIcon()}</span>
+      <span className="text-xl flex-shrink-0">{getIcon()}</span>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-telegram-text dark:text-telegram-dark-text break-words">{toast.message}</p>
       </div>
