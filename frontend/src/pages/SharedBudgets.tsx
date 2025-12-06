@@ -401,10 +401,10 @@ export function SharedBudgets() {
             {invitations.map((invitation) => (
               <div key={invitation.id} className="card border-l-4 border-l-orange-500 bg-gradient-to-r from-orange-50 to-white">
                 <div className="flex items-start justify-between">
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-2xl">🎯</span>
-                      <h3 className="font-semibold text-lg text-telegram-text dark:text-telegram-dark-text">
+                      <span className="text-2xl flex-shrink-0">🎯</span>
+                      <h3 className="font-semibold text-lg text-telegram-text dark:text-telegram-dark-text truncate break-words" title={invitation.shared_budget_name}>
                         {invitation.shared_budget_name}
                       </h3>
                     </div>
@@ -449,15 +449,15 @@ export function SharedBudgets() {
           
           <div className="card mb-6 bg-gradient-to-br from-telegram-primaryLight/10 to-white border-2 border-telegram-primary/20">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-telegram-primary to-telegram-primary/70 flex items-center justify-center text-3xl">
+                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-telegram-primary to-telegram-primary/70 flex items-center justify-center text-3xl flex-shrink-0">
                     💼
                   </div>
-                  <div>
-                    <h2 className="text-2xl md:text-3xl font-bold text-telegram-text dark:text-telegram-dark-text mb-1">{selectedBudget.name}</h2>
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-2xl md:text-3xl font-bold text-telegram-text dark:text-telegram-dark-text mb-1 truncate break-words" title={selectedBudget.name}>{selectedBudget.name}</h2>
                     {selectedBudget.description && (
-                      <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{selectedBudget.description}</p>
+                      <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary break-words">{selectedBudget.description}</p>
                     )}
                   </div>
                 </div>

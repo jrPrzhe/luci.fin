@@ -139,8 +139,8 @@
   .dark input[type="datetime-local"]::-webkit-calendar-picker-indicator,
   .dark input[type="date"]::-webkit-calendar-picker-indicator,
   .dark input[type="time"]::-webkit-calendar-picker-indicator {
-    filter: invert(1) brightness(1.5);
-    opacity: 0.8;
+    filter: invert(1) brightness(2);
+    opacity: 1;
   }
   
   /* На мобильных устройствах уменьшаем размер шрифта */
@@ -168,8 +168,8 @@
     .dark input[type="datetime-local"]::-webkit-calendar-picker-indicator,
     .dark input[type="date"]::-webkit-calendar-picker-indicator,
     .dark input[type="time"]::-webkit-calendar-picker-indicator {
-      filter: invert(1) brightness(1.5);
-      opacity: 0.8;
+      filter: invert(1) brightness(2);
+      opacity: 1;
     }
   }
   
