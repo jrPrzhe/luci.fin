@@ -120,10 +120,15 @@ async def get_analytics(
         
         # Exclude income transactions that are part of a transfer
         # They either have parent_transaction_id (new transfers) or description starting with "Перевод из" (old transfers)
-        is_transfer_income = (
-            parent_transaction_id is not None or 
-            (description and description.startswith('Перевод из'))
-        )
+        is_transfer_income = False
+        if parent_transaction_id is not None:
+            # New transfers have parent_transaction_id set
+            is_transfer_income = True
+        elif description:
+            # Old transfers have description starting with "Перевод из"
+            description_lower = description.strip().lower()
+            if description_lower.startswith('перевод из'):
+                is_transfer_income = True
         
         if trans_type == 'income' and not is_transfer_income:
             total_income += amount
