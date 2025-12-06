@@ -518,7 +518,7 @@ export function Categories() {
                       {isEditingMode && (
                         <button
                           onClick={() => handleEdit(category)}
-                          className="absolute top-2 right-2 p-1.5 text-telegram-primary hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover rounded-full transition-all active:scale-95 z-10"
+                          className="absolute top-2 right-2 p-1.5 text-telegram-primary hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover rounded-full transition-all active:scale-95"
                           title="Редактировать"
                         >
                           <span className="text-base">✏️</span>
@@ -618,7 +618,7 @@ export function Categories() {
                     {isEditingMode && (
                       <button
                         onClick={() => handleEdit(category)}
-                        className="absolute top-2 right-2 p-1.5 text-telegram-primary hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover rounded-full transition-all active:scale-95 z-10"
+                        className="absolute top-2 right-2 p-1.5 text-telegram-primary hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover rounded-full transition-all active:scale-95"
                         title="Редактировать"
                       >
                         <span className="text-base">✏️</span>
