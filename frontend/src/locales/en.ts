@@ -364,7 +364,6 @@ export const en = {
       'Create specific categories (e.g., "Cafes" instead of "Food")',
       'Use icons and colors for quick identification',
       'Add categories to favorites for quick access',
-      'Create subcategories for detailed tracking',
     ],
     goalTips: 'Goal Tips',
     goalTipsDesc: 'How to effectively use goals:',
