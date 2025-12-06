@@ -672,6 +672,23 @@ export function Dashboard() {
                       </option>
                     ))}
                   </select>
+                  {(!accounts || (accounts as Account[]).length === 0) && !accountsLoading && (
+                    <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                      <p className="text-xs text-blue-700 dark:text-blue-300 mb-2">
+                        💡 У вас пока нет счетов. Создайте счет, чтобы начать работу.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowQuickForm(false)
+                          navigate('/accounts')
+                        }}
+                        className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 underline font-medium"
+                      >
+                        ➕ Создать счет
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {quickFormType === 'transfer' ? (
@@ -695,6 +712,25 @@ export function Dashboard() {
                           </option>
                         ))}
                     </select>
+                    {(!accounts || (accounts as Account[]).length < 2) && !accountsLoading && (
+                      <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                        <p className="text-xs text-blue-700 dark:text-blue-300 mb-2">
+                          💡 Для перевода нужно минимум 2 счета. {!accounts || (accounts as Account[]).length === 0 
+                            ? 'Создайте счета, чтобы начать работу.' 
+                            : 'Создайте еще один счет для перевода.'}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowQuickForm(false)
+                            navigate('/accounts')
+                          }}
+                          className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 underline font-medium"
+                        >
+                          ➕ Создать счет
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ) : null}
 
