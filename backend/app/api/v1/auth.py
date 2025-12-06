@@ -1437,9 +1437,8 @@ async def reset_account(
                 db.delete(member)
                 logger.info(f"Removed user from shared budget {member.shared_budget_id}")
         
-        # Reset user settings to defaults (but keep authentication data)
-        current_user.first_name = None
-        current_user.last_name = None
+        # Reset user settings to defaults (but keep authentication data and user name)
+        # Keep first_name and last_name - they are not part of financial data
         current_user.timezone = "UTC"
         current_user.default_currency = "RUB" if current_user.telegram_id else "USD"
         current_user.language = "en"

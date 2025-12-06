@@ -229,7 +229,11 @@ export function Profile() {
                 </p>
               </div>
             </div>
-            <div className="relative w-12 h-6 bg-telegram-border dark:bg-telegram-dark-border rounded-full transition-colors">
+            <div className={`relative w-12 h-6 rounded-full transition-colors ${
+              theme === 'dark' 
+                ? 'bg-telegram-primary dark:bg-telegram-dark-primary' 
+                : 'bg-telegram-border dark:bg-telegram-dark-border'
+            }`}>
               <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-200 ${
                 theme === 'dark' ? 'translate-x-6' : 'translate-x-0'
               }`}></div>
@@ -248,7 +252,11 @@ export function Profile() {
                 </p>
               </div>
             </div>
-            <div className="relative w-12 h-6 bg-telegram-border dark:bg-telegram-dark-border rounded-full transition-colors">
+            <div className={`relative w-12 h-6 rounded-full transition-colors ${
+              newYearEnabled 
+                ? 'bg-telegram-primary dark:bg-telegram-dark-primary' 
+                : 'bg-telegram-border dark:bg-telegram-dark-border'
+            }`}>
               <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-200 ${
                 newYearEnabled ? 'translate-x-6' : 'translate-x-0'
               }`}></div>
