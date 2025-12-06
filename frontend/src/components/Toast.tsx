@@ -84,7 +84,7 @@ export function ToastContainer({ toasts, onClose }: ToastContainerProps) {
 
   return (
     <div 
-      className="fixed right-4 z-[9999] flex flex-col items-end pointer-events-none lg:top-4 top-20"
+      className="fixed right-4 z-[9999] flex flex-col items-end pointer-events-none lg:top-4 top-28"
       style={{
         position: 'fixed',
         right: '1rem',
