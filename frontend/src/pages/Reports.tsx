@@ -217,7 +217,7 @@ export function Reports() {
   }
 
   if (isLoading) {
-    return <LoadingSpinner fullScreen={true} />
+    return <LoadingSpinner />
   }
 
   if (error || !analytics) {

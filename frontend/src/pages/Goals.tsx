@@ -55,7 +55,7 @@ export function Goals() {
   }
 
   if (isLoading) {
-    return <LoadingSpinner fullScreen={true} size="md" />
+    return <LoadingSpinner />
   }
 
   return (
