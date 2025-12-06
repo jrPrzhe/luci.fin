@@ -304,6 +304,14 @@ export function Transactions() {
       goal_id: (transaction as any).goal_id?.toString() || '',
     })
     setShowForm(true)
+    
+    // Прокручиваем к форме редактирования после небольшой задержки для рендеринга
+    setTimeout(() => {
+      const formElement = document.getElementById(`edit-form-${transaction.id}`)
+      if (formElement) {
+        formElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    }, 100)
   }
 
   const handleDelete = (id: number) => {
@@ -680,11 +688,11 @@ export function Transactions() {
         )}
       </div>
 
-      {showForm && (
+      {showForm && !editingTransaction && (
         <div className="card mb-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold text-telegram-text dark:text-telegram-dark-text">
-              {editingTransaction ? 'Редактировать транзакцию' : 'Новая транзакция'}
+              Новая транзакция
             </h2>
             <button
               onClick={() => {
@@ -890,10 +898,11 @@ export function Transactions() {
       ) : (
         <div className="space-y-3">
           {transactions.map(transaction => (
-            <div
-              key={transaction.id}
-              className="card p-4 hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors"
-            >
+            <div key={`transaction-wrapper-${transaction.id}`}>
+              <div
+                id={`transaction-${transaction.id}`}
+                className="card p-4 hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors"
+              >
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2">
@@ -954,6 +963,209 @@ export function Transactions() {
                   </button>
                 </div>
               </div>
+            </div>
+              
+            {/* Форма редактирования показывается сразу под редактируемой транзакцией */}
+            {editingTransaction && editingTransaction.id === transaction.id && (
+                <div id={`edit-form-${transaction.id}`} className="card mb-3 mt-3">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-semibold text-telegram-text dark:text-telegram-dark-text">
+                      Редактировать транзакцию
+                    </h2>
+                    <button
+                      onClick={() => {
+                        setShowForm(false)
+                        resetForm()
+                      }}
+                      className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text"
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
+                        Тип транзакции
+                      </label>
+                      <select
+                        value={formData.transaction_type}
+                        onChange={(e) => handleTransactionTypeChange(e.target.value as any)}
+                        className="input"
+                        required
+                      >
+                        <option value="income">💰 Доход</option>
+                        <option value="expense">💸 Расход</option>
+                        <option value="transfer">↔️ Перевод</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
+                        {formData.transaction_type === 'transfer' ? 'Счет отправления' : 'Счет'}
+                      </label>
+                      <select
+                        value={formData.account_id}
+                        onChange={(e) => setFormData({ ...formData, account_id: e.target.value })}
+                        className="input"
+                        required
+                      >
+                        <option value="">Выберите счет</option>
+                        {accounts.map(account => (
+                          <option key={account.id} value={account.id}>
+                            {account.name} ({formatAmount(account.balance, account.currency)})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {formData.transaction_type === 'transfer' && (
+                      <div>
+                        <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
+                          Счет получателя
+                        </label>
+                        <select
+                          value={formData.to_account_id}
+                          onChange={(e) => setFormData({ ...formData, to_account_id: e.target.value })}
+                          className="input"
+                          required
+                        >
+                          <option value="">Выберите счет</option>
+                          {accounts
+                            .filter(account => account.id !== parseInt(formData.account_id || '0'))
+                            .map(account => (
+                              <option key={account.id} value={account.id}>
+                                {account.name} ({formatAmount(account.balance, account.currency)})
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {formData.transaction_type !== 'transfer' && categories.length > 0 && (
+                      <div>
+                        <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
+                          Категория
+                        </label>
+                        <select
+                          value={formData.category_id}
+                          onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
+                          className="input"
+                        >
+                          <option value="">Без категории</option>
+                          {categories
+                            .sort((a, b) => (b.is_favorite ? 1 : 0) - (a.is_favorite ? 1 : 0))
+                            .map(category => (
+                              <option key={category.id} value={category.id}>
+                                {category.icon || '📦'} {category.name} {category.is_favorite ? '⭐' : ''}
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {formData.transaction_type === 'income' && goals.length > 0 && (
+                      <div>
+                        <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
+                          🎯 Добавить к цели (опционально)
+                        </label>
+                        <select
+                          value={formData.goal_id}
+                          onChange={(e) => setFormData({ ...formData, goal_id: e.target.value })}
+                          className="input"
+                        >
+                          <option value="">Не добавлять к цели</option>
+                          {goals.map(goal => (
+                            <option key={goal.id} value={goal.id}>
+                              {goal.name} ({Math.round(goal.current_amount).toLocaleString()} / {Math.round(goal.target_amount).toLocaleString()} {goal.currency})
+                            </option>
+                          ))}
+                        </select>
+                        {formData.goal_id && (
+                          <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
+                            Эта сумма будет добавлена к выбранной цели
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
+                        Сумма
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        value={formData.amount}
+                        onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                        className="input"
+                        placeholder="0.00"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
+                        Валюта
+                      </label>
+                      <select
+                        value={formData.currency}
+                        onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+                        className="input"
+                        required
+                      >
+                        <option value="RUB">RUB</option>
+                        <option value="USD">USD</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
+                        Дата и время
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="datetime-local"
+                          value={formData.transaction_date}
+                          onChange={(e) => setFormData({ ...formData, transaction_date: e.target.value })}
+                          className="input pr-10"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
+                        Описание
+                      </label>
+                      <textarea
+                        value={formData.description}
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        className="input"
+                        rows={3}
+                        placeholder="Описание транзакции (необязательно)"
+                      />
+                    </div>
+
+                    <div className="flex gap-3">
+                      <button type="submit" className="btn-primary flex-1">
+                        Сохранить
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowForm(false)
+                          resetForm()
+                        }}
+                        className="btn-secondary"
+                      >
+                        Отмена
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
             </div>
           ))}
           
