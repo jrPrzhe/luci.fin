@@ -838,10 +838,10 @@ export function Dashboard() {
                       {transaction.category_name || transaction.description || t.dashboard.form.category}
                     </p>
                   </div>
-                  <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+                  <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary truncate">
                     {new Date(transaction.transaction_date).toLocaleDateString('ru-RU')}
                     {transaction.description && transaction.category_name && (
-                      <span className="ml-2">• {transaction.description}</span>
+                      <span className="ml-2">• <span className="truncate">{transaction.description}</span></span>
                     )}
                   </p>
                 </div>

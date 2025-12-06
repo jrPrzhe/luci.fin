@@ -893,7 +893,7 @@ export function Transactions() {
               className="card p-4 hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors"
             >
               <div className="flex items-start justify-between">
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-2xl">{getTransactionTypeIcon(transaction.transaction_type)}</span>
                     <span className="font-semibold text-telegram-text dark:text-telegram-dark-text">
@@ -911,25 +911,25 @@ export function Transactions() {
                   </div>
                   
                   <div className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span>Счет: {getAccountName(transaction.account_id)}</span>
+                    <div className="flex items-center gap-2 flex-wrap min-w-0">
+                      <span className="truncate min-w-0 flex-1">Счет: <span className="truncate">{getAccountName(transaction.account_id)}</span></span>
                       {isSharedTransaction(transaction) && (
-                        <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-xs font-medium">
+                        <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-xs font-medium flex-shrink-0">
                           👥 Общий
                         </span>
                       )}
                     </div>
                     {transaction.transaction_type === 'transfer' && transaction.to_account_id && (
-                      <div>→ {getAccountName(transaction.to_account_id)}</div>
+                      <div className="truncate">→ {getAccountName(transaction.to_account_id)}</div>
                     )}
                     {transaction.category_name && (
-                      <div className="flex items-center gap-1">
-                        <span>{transaction.category_icon || '📦'}</span>
-                        <span>{translateCategoryName(transaction.category_name)}</span>
+                      <div className="flex items-center gap-1 min-w-0">
+                        <span className="flex-shrink-0">{transaction.category_icon || '📦'}</span>
+                        <span className="truncate">{translateCategoryName(transaction.category_name)}</span>
                       </div>
                     )}
                     {transaction.description && (
-                      <div>{transaction.description}</div>
+                      <div className="truncate">{transaction.description}</div>
                     )}
                     <div>{formatDate(transaction.transaction_date)}</div>
                   </div>
