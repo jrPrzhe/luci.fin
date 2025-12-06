@@ -97,7 +97,7 @@ async def get_analytics(
             SELECT 
                 id, account_id, transaction_type::text, amount, currency,
                 category_id, description, goal_id, transaction_date,
-                amount_in_default_currency
+                amount_in_default_currency, parent_transaction_id
             FROM transactions
             WHERE account_id IN ({placeholders})
             AND transaction_date >= :start_date
@@ -115,8 +115,17 @@ async def get_analytics(
     for row in transactions_data:
         trans_type = row[2].lower() if row[2] else ''
         amount = float(row[3]) if row[3] else 0.0
+        description = row[6] if len(row) > 6 else None
+        parent_transaction_id = row[10] if len(row) > 10 else None  # parent_transaction_id is at index 10
         
-        if trans_type == 'income':
+        # Exclude income transactions that are part of a transfer
+        # They either have parent_transaction_id (new transfers) or description starting with "Перевод из" (old transfers)
+        is_transfer_income = (
+            parent_transaction_id is not None or 
+            (description and description.startswith('Перевод из'))
+        )
+        
+        if trans_type == 'income' and not is_transfer_income:
             total_income += amount
         elif trans_type == 'expense':
             total_expense += amount

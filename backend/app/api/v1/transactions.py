@@ -649,11 +649,12 @@ async def create_transaction(
             source_updated_at = source_row[2]
             
             # Insert destination transaction (income) using raw SQL
+            # Use parent_transaction_id to link it to the transfer transaction
             to_transaction_sql = """
                 INSERT INTO transactions 
-                (user_id, account_id, transaction_type, amount, currency, description, transaction_date, shared_budget_id, goal_id)
+                (user_id, account_id, transaction_type, amount, currency, description, transaction_date, shared_budget_id, goal_id, parent_transaction_id)
                 VALUES 
-                (:user_id, :account_id, :transaction_type, :amount, :currency, :description, :transaction_date, :shared_budget_id, :goal_id)
+                (:user_id, :account_id, :transaction_type, :amount, :currency, :description, :transaction_date, :shared_budget_id, :goal_id, :parent_transaction_id)
                 RETURNING id, created_at, updated_at
             """
             to_params = {
@@ -665,7 +666,8 @@ async def create_transaction(
                 "description": f"Перевод из {account.name}" + (f": {transaction_data.description}" if transaction_data.description else ""),
                 "transaction_date": transaction_data.transaction_date or datetime.utcnow(),
                 "shared_budget_id": transaction_data.shared_budget_id,
-                "goal_id": transaction_data.goal_id
+                "goal_id": transaction_data.goal_id,
+                "parent_transaction_id": source_transaction_id  # Link to transfer transaction
             }
             to_result = db.execute(sa_text(to_transaction_sql), to_params)
             to_row = to_result.first()
