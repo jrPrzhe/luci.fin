@@ -59,6 +59,7 @@ class TransactionResponse(BaseModel):
     goal_name: Optional[str] = None
     transaction_date: datetime
     to_account_id: Optional[int] = None
+    parent_transaction_id: Optional[int] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
     user_id: Optional[int] = None
@@ -110,6 +111,7 @@ async def get_transactions(
             t.id, t.account_id, t.transaction_type::text, t.amount, t.currency,
             t.category_id, t.description, t.shared_budget_id, t.goal_id,
             t.transaction_date, t.to_account_id, t.created_at, t.updated_at, t.user_id,
+            t.parent_transaction_id,
             a.shared_budget_id as account_shared_budget_id,
             c.name as category_name, c.icon as category_icon,
             g.name as goal_name
@@ -225,10 +227,11 @@ async def get_transactions(
                 "created_at": row[11],
                 "updated_at": row[12],
                 "user_id": row[13],
-                "is_shared": row[14] is not None if row[14] is not None else False,
-                "category_name": row[15],
-                "category_icon": row[16],
-                "goal_name": row[17],
+                "parent_transaction_id": row[14],
+                "is_shared": row[15] is not None if row[15] is not None else False,
+                "category_name": row[16],
+                "category_icon": row[17],
+                "goal_name": row[18],
             }
             
             result.append(TransactionResponse(**trans_dict))

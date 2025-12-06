@@ -18,6 +18,7 @@ interface Transaction {
   description?: string
   transaction_date: string
   to_account_id?: number
+  parent_transaction_id?: number
   created_at: string
   updated_at?: string
   is_shared?: boolean
@@ -954,7 +955,23 @@ export function Transactions() {
         </div>
       ) : (
         <div className="space-y-3">
-          {transactions.map(transaction => (
+          {transactions
+            .filter(transaction => {
+              // Hide income transactions that are part of a transfer (they have parent_transaction_id)
+              // These are the "income" side of transfers and should not be shown separately
+              if (transaction.transaction_type === 'income' && transaction.parent_transaction_id) {
+                return false
+              }
+              // Also hide old transfer income transactions by description (for backward compatibility)
+              if (transaction.transaction_type === 'income' && transaction.description) {
+                const descLower = transaction.description.toLowerCase().trim()
+                if (descLower.startsWith('перевод из')) {
+                  return false
+                }
+              }
+              return true
+            })
+            .map(transaction => (
             <div key={`transaction-wrapper-${transaction.id}`}>
               <div
                 id={`transaction-${transaction.id}`}

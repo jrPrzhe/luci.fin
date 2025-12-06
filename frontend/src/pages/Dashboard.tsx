@@ -857,7 +857,22 @@ export function Dashboard() {
           </div>
         ) : recentTransactions && recentTransactions.length > 0 ? (
           <div className="space-y-1 md:space-y-2">
-            {recentTransactions.map((transaction: any) => (
+            {recentTransactions
+              .filter((transaction: any) => {
+                // Hide income transactions that are part of a transfer (they have parent_transaction_id)
+                if (transaction.transaction_type === 'income' && transaction.parent_transaction_id) {
+                  return false
+                }
+                // Also hide old transfer income transactions by description (for backward compatibility)
+                if (transaction.transaction_type === 'income' && transaction.description) {
+                  const descLower = transaction.description.toLowerCase().trim()
+                  if (descLower.startsWith('перевод из')) {
+                    return false
+                  }
+                }
+                return true
+              })
+              .map((transaction: any) => (
               <div 
                 key={transaction.id} 
                 className="flex items-center gap-3 md:gap-4 p-2 md:p-3 rounded-telegram active:bg-telegram-hover transition-colors group"
