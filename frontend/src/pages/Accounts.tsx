@@ -368,24 +368,59 @@ export function Accounts() {
                       ✏️
                     </button>
                     <button
-                      onClick={() => {
-                        setConfirmModal({
-                          show: true,
-                          message: 'Вы уверены, что хотите удалить этот счет?',
-                          onConfirm: async () => {
-                            try {
-                              await api.deleteAccount(account.id)
-                              await loadAccounts()
-                              // Also invalidate goals query in case this was a goal account
-                              queryClient.invalidateQueries({ queryKey: ['goals'] })
-                              showSuccess('Счет удален')
-                              setConfirmModal({ show: false, message: '', onConfirm: () => {} })
-                            } catch (err: any) {
-                              showError(err.message || 'Ошибка удаления счета')
-                              setConfirmModal({ show: false, message: '', onConfirm: () => {} })
-                            }
-                          },
-                        })
+                      onClick={async () => {
+                        try {
+                          // Получаем количество транзакций перед удалением
+                          const transactionInfo = await api.getAccountTransactionCount(account.id)
+                          const transactionCount = transactionInfo.transaction_count
+                          
+                          let message = 'Вы уверены, что хотите удалить этот счет?'
+                          if (transactionCount > 0) {
+                            message = `Вы уверены, что хотите удалить этот счет?\n\nВнимание: вместе со счетом будут удалены все связанные транзакции (${transactionCount} ${transactionCount === 1 ? 'транзакция' : transactionCount < 5 ? 'транзакции' : 'транзакций'}). Это действие нельзя отменить.`
+                          }
+                          
+                          setConfirmModal({
+                            show: true,
+                            message,
+                            onConfirm: async () => {
+                              try {
+                                await api.deleteAccount(account.id)
+                                await loadAccounts()
+                                // Also invalidate goals query in case this was a goal account
+                                queryClient.invalidateQueries({ queryKey: ['goals'] })
+                                queryClient.invalidateQueries({ queryKey: ['transactions'] })
+                                queryClient.invalidateQueries({ queryKey: ['analytics'] })
+                                queryClient.invalidateQueries({ queryKey: ['balance'] })
+                                showSuccess('Счет и все связанные транзакции удалены')
+                                setConfirmModal({ show: false, message: '', onConfirm: () => {} })
+                              } catch (err: any) {
+                                showError(err.message || 'Ошибка удаления счета')
+                                setConfirmModal({ show: false, message: '', onConfirm: () => {} })
+                              }
+                            },
+                          })
+                        } catch (err: any) {
+                          // Если не удалось получить количество транзакций, показываем стандартное предупреждение
+                          setConfirmModal({
+                            show: true,
+                            message: 'Вы уверены, что хотите удалить этот счет? Все связанные транзакции также будут удалены.',
+                            onConfirm: async () => {
+                              try {
+                                await api.deleteAccount(account.id)
+                                await loadAccounts()
+                                queryClient.invalidateQueries({ queryKey: ['goals'] })
+                                queryClient.invalidateQueries({ queryKey: ['transactions'] })
+                                queryClient.invalidateQueries({ queryKey: ['analytics'] })
+                                queryClient.invalidateQueries({ queryKey: ['balance'] })
+                                showSuccess('Счет удален')
+                                setConfirmModal({ show: false, message: '', onConfirm: () => {} })
+                              } catch (err: any) {
+                                showError(err.message || 'Ошибка удаления счета')
+                                setConfirmModal({ show: false, message: '', onConfirm: () => {} })
+                              }
+                            },
+                          })
+                        }
                       }}
                       className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 px-2 py-1 text-sm"
                       title="Удалить счет"
@@ -592,9 +627,9 @@ export function Accounts() {
             <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
               Подтверждение
             </h2>
-            <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-6">
+            <div className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-6 whitespace-pre-line">
               {confirmModal.message}
-            </p>
+            </div>
             <div className="flex gap-3">
               <button
                 onClick={() => {

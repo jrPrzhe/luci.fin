@@ -547,9 +547,18 @@ class ApiClient {
   }
 
   async deleteAccount(accountId: number) {
-    return this.request<void>(`/api/v1/accounts/${accountId}`, {
+    return this.request<any>(`/api/v1/accounts/${accountId}`, {
       method: 'DELETE',
     })
+  }
+
+  async getAccountTransactionCount(accountId: number): Promise<{
+    account_id: number
+    transaction_count: number
+    source_transactions: number
+    destination_transactions: number
+  }> {
+    return this.request(`/api/v1/accounts/${accountId}/transaction-count`)
   }
 
   // Transactions
