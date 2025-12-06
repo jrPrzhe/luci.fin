@@ -192,20 +192,22 @@ export function Accounts() {
               className="card hover:shadow-lg transition-shadow"
             >
               <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-3xl">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <span className="text-3xl flex-shrink-0">
                     {accountTypeIcons[account.type] || '📦'}
                   </span>
-                  <div>
-                    <h3 className="font-semibold text-lg text-telegram-text dark:text-telegram-dark-text">
-                      {account.name}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-semibold text-lg text-telegram-text dark:text-telegram-dark-text truncate flex-1 min-w-0">
+                        {account.name}
+                      </h3>
                       {account.is_shared && (
-                        <span className="ml-2 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded">
+                        <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded flex-shrink-0">
                           Совместный
                         </span>
                       )}
-                    </h3>
-                    <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+                    </div>
+                    <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary truncate">
                       {accountTypeLabels[account.type] || account.type}
                       {account.shared_budget_name && (
                         <span className="ml-2">• {account.shared_budget_name}</span>
@@ -220,7 +222,7 @@ export function Accounts() {
                   {formatBalance(account.balance, account.currency)}
                 </p>
                 {account.description && (
-                  <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-2">
+                  <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-2 line-clamp-2 break-words">
                     {account.description}
                   </p>
                 )}
@@ -336,6 +338,7 @@ export function Accounts() {
                     }
                     className="input"
                     placeholder="Например: Основной счёт"
+                    maxLength={50}
                     required
                   />
                 </div>
@@ -434,6 +437,7 @@ export function Accounts() {
                     className="input"
                     rows={3}
                     placeholder="Дополнительная информация о счёте"
+                    maxLength={200}
                   />
                 </div>
 

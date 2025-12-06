@@ -834,13 +834,15 @@ export function Transactions() {
               <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
                 Дата и время
               </label>
-              <input
-                type="datetime-local"
-                value={formData.transaction_date}
-                onChange={(e) => setFormData({ ...formData, transaction_date: e.target.value })}
-                className="input"
-                required
-              />
+              <div className="relative">
+                <input
+                  type="datetime-local"
+                  value={formData.transaction_date}
+                  onChange={(e) => setFormData({ ...formData, transaction_date: e.target.value })}
+                  className="input pr-10"
+                  required
+                />
+              </div>
             </div>
 
             <div>

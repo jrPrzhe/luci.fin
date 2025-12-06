@@ -95,6 +95,58 @@
            text-telegram-dark-text;
   }
   
+  /* Стили для select элементов - равномерные отступы */
+  select {
+    padding-right: 2.5rem !important;
+  }
+  
+  /* Убираем стандартную иконку браузера и добавляем свою с правильным отступом */
+  select:not([multiple]) {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 1em;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+  }
+  
+  .dark select:not([multiple]) {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23ccc' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  }
+  
+  /* Специальные стили для datetime-local на мобильных устройствах */
+  input[type="datetime-local"],
+  input[type="date"],
+  input[type="time"] {
+    @apply text-sm md:text-base;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding-right: 2.5rem !important;
+  }
+  
+  /* На мобильных устройствах уменьшаем размер шрифта */
+  @media (max-width: 640px) {
+    input[type="datetime-local"],
+    input[type="date"],
+    input[type="time"] {
+      font-size: 14px !important;
+      padding-right: 2.75rem !important;
+    }
+    
+    /* Стилизуем кнопку календаря на мобильных */
+    input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+    input[type="date"]::-webkit-calendar-picker-indicator,
+    input[type="time"]::-webkit-calendar-picker-indicator {
+      width: 20px;
+      height: 20px;
+      opacity: 0.7;
+      cursor: pointer;
+      margin-right: 4px;
+    }
+  }
+  
   /* Navigation items */
   .nav-item {
     @apply flex items-center gap-2 md:gap-3 px-3 md:px-4 py-2 md:py-3 rounded-telegram 

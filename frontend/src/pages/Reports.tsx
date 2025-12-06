@@ -56,6 +56,60 @@ interface AnalyticsData {
 
 const COLORS = ['#3390EC', '#6CC3F2', '#4CAF50', '#FF9800', '#9C27B0', '#F44336', '#00BCD4', '#FFC107', '#607D8B', '#E91E63']
 
+// Маппинг английских названий месяцев на русские
+const MONTH_MAPPING: Record<string, string> = {
+  'Jan': 'Янв', 'Feb': 'Фев', 'Mar': 'Мар', 'Apr': 'Апр',
+  'May': 'Май', 'Jun': 'Июн', 'Jul': 'Июл', 'Aug': 'Авг',
+  'Sep': 'Сен', 'Oct': 'Окт', 'Nov': 'Ноя', 'Dec': 'Дек',
+  'January': 'Январь', 'February': 'Февраль', 'March': 'Март', 'April': 'Апрель',
+  'May': 'Май', 'June': 'Июнь', 'July': 'Июль', 'August': 'Август',
+  'September': 'Сентябрь', 'October': 'Октябрь', 'November': 'Ноябрь', 'December': 'Декабрь'
+}
+
+// Функция для локализации названия месяца
+const localizeMonth = (monthStr: string): string => {
+  if (!monthStr) return monthStr
+  
+  // Если уже на русском, возвращаем как есть
+  if (monthStr.match(/[А-Яа-я]/)) {
+    return monthStr
+  }
+  
+  // Убираем лишние пробелы
+  const trimmed = monthStr.trim()
+  
+  // Пробуем найти точное совпадение в маппинге
+  if (MONTH_MAPPING[trimmed]) {
+    return MONTH_MAPPING[trimmed]
+  }
+  
+  // Пробуем найти месяц в строке (для случаев типа "Dec 2024" или "December 2024")
+  const monthMatch = trimmed.match(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|January|February|March|April|May|June|July|August|September|October|November|December)\b/i)
+  if (monthMatch) {
+    const englishMonth = monthMatch[1]
+    const capitalized = englishMonth.charAt(0).toUpperCase() + englishMonth.slice(1).toLowerCase()
+    if (MONTH_MAPPING[capitalized]) {
+      // Заменяем английское название на русское в исходной строке
+      return trimmed.replace(monthMatch[1], MONTH_MAPPING[capitalized])
+    }
+  }
+  
+  // Пробуем распарсить как дату
+  try {
+    const date = new Date(trimmed + ' 1, 2024')
+    if (!isNaN(date.getTime())) {
+      const localized = date.toLocaleDateString('ru-RU', { month: 'short' })
+      // Убираем точку в конце, если есть (например, "сен." -> "сен")
+      return localized.replace(/\.$/, '')
+    }
+  } catch (e) {
+    // Игнорируем ошибки
+  }
+  
+  // Если ничего не помогло, возвращаем как есть
+  return monthStr
+}
+
 export function Reports() {
   const [period, setPeriod] = useState<'week' | 'month' | 'year'>('month')
   const [showPremiumModal, setShowPremiumModal] = useState(false)
@@ -182,7 +236,7 @@ export function Reports() {
   }))
 
   const monthlyData = analytics.monthly_comparison.map(item => ({
-    month: item.month_short,
+    month: localizeMonth(item.month_short),
     Доходы: item.income,
     Расходы: item.expense,
   }))
@@ -198,7 +252,7 @@ export function Reports() {
     if (active && payload && payload.length) {
       return (
         <div className="bg-white dark:bg-telegram-dark-surface p-3 rounded-lg shadow-lg border border-telegram-border dark:border-telegram-dark-border">
-          <p className="font-semibold mb-2 text-telegram-text dark:text-telegram-dark-text">{label}</p>
+          <p className="font-semibold mb-2 text-telegram-text dark:text-telegram-dark-text">{localizeMonth(label)}</p>
           {payload.map((entry: any, index: number) => (
             <p key={index} className="text-sm text-telegram-text dark:text-telegram-dark-text" style={{ color: entry.color }}>
               {entry.name}: {formatCurrency(entry.value)}

@@ -552,7 +552,7 @@ export function Dashboard() {
                 ) : categories.length === 0 ? (
                   <div className="text-center py-8">
                     <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-4">
-                      {t.dashboard.form.noCategories} {quickFormType === 'income' ? t.dashboard.income.toLowerCase() : t.dashboard.expenses.toLowerCase()}
+                      {t.dashboard.form.noCategories} {quickFormType === 'income' ? t.dashboard.incomeGenitive : t.dashboard.expensesGenitive}
                     </p>
                     <button
                       onClick={() => {

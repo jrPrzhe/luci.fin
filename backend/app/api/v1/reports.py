@@ -19,6 +19,26 @@ import io
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+# Russian month names
+RUSSIAN_MONTHS = {
+    1: 'Январь', 2: 'Февраль', 3: 'Март', 4: 'Апрель',
+    5: 'Май', 6: 'Июнь', 7: 'Июль', 8: 'Август',
+    9: 'Сентябрь', 10: 'Октябрь', 11: 'Ноябрь', 12: 'Декабрь'
+}
+
+RUSSIAN_MONTHS_SHORT = {
+    1: 'Янв', 2: 'Фев', 3: 'Мар', 4: 'Апр',
+    5: 'Май', 6: 'Июн', 7: 'Июл', 8: 'Авг',
+    9: 'Сен', 10: 'Окт', 11: 'Ноя', 12: 'Дек'
+}
+
+def format_month_russian(date: datetime, short: bool = False) -> str:
+    """Format month name in Russian"""
+    month_num = date.month
+    if short:
+        return RUSSIAN_MONTHS_SHORT[month_num]
+    return RUSSIAN_MONTHS[month_num]
+
 
 @router.get("/analytics", response_model=Dict[str, Any])
 async def get_analytics(
@@ -305,8 +325,8 @@ async def get_analytics(
                 month_expense += amount
         
         monthly_data.append({
-            "month": month_start.strftime("%B %Y"),
-            "month_short": month_start.strftime("%b"),
+            "month": f"{format_month_russian(month_start)} {month_start.year}",
+            "month_short": format_month_russian(month_start, short=True),
             "income": month_income,
             "expense": month_expense,
             "net": month_income - month_expense

@@ -42,6 +42,30 @@ interface Invitation {
   expires_at?: string
 }
 
+// Функция для правильного склонения слова "участник"
+const getParticipantWord = (count: number): string => {
+  const lastDigit = count % 10
+  const lastTwoDigits = count % 100
+  
+  // Для чисел 11-14 всегда "участников"
+  if (lastTwoDigits >= 11 && lastTwoDigits <= 14) {
+    return 'участников'
+  }
+  
+  // Для чисел, оканчивающихся на 1 - "участник"
+  if (lastDigit === 1) {
+    return 'участник'
+  }
+  
+  // Для чисел, оканчивающихся на 2, 3, 4 - "участника"
+  if (lastDigit >= 2 && lastDigit <= 4) {
+    return 'участника'
+  }
+  
+  // Для остальных - "участников"
+  return 'участников'
+}
+
 export function SharedBudgets() {
   const { showSuccess } = useToast()
   const [budgets, setBudgets] = useState<SharedBudget[]>([])
@@ -444,7 +468,7 @@ export function SharedBudgets() {
                   </div>
                   <div className="flex items-center gap-2 px-3 py-1 bg-telegram-primaryLight/20 dark:bg-telegram-dark-primary/20 rounded-full">
                     <span>👥</span>
-                    <span className="text-sm font-medium text-telegram-text dark:text-telegram-dark-text">{selectedBudget.member_count} участников</span>
+                    <span className="text-sm font-medium text-telegram-text dark:text-telegram-dark-text">{selectedBudget.member_count} {getParticipantWord(selectedBudget.member_count)}</span>
                   </div>
                 </div>
               </div>
@@ -603,7 +627,7 @@ export function SharedBudgets() {
         <>
           {budgets.length === 0 ? (
             <div className="text-center py-16">
-              <div className="inline-block w-24 h-24 rounded-full bg-gradient-to-br from-telegram-primaryLight/30 to-telegram-primaryLight/10 flex items-center justify-center text-5xl mb-6">
+              <div className="inline-block mx-auto w-24 h-24 rounded-full bg-gradient-to-br from-telegram-primaryLight/30 to-telegram-primaryLight/10 flex items-center justify-center text-5xl mb-6">
                 💼
               </div>
               <h3 className="text-xl font-semibold text-telegram-text dark:text-telegram-dark-text mb-2">Нет совместных бюджетов</h3>
@@ -645,7 +669,7 @@ export function SharedBudgets() {
                     <div className="flex items-center gap-2 px-3 py-1 bg-telegram-primaryLight/20 dark:bg-telegram-dark-primary/20 rounded-full">
                       <span>👥</span>
                       <span className="font-medium text-telegram-text dark:text-telegram-dark-text">{budget.member_count}</span>
-                      <span className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">участников</span>
+                      <span className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{getParticipantWord(budget.member_count)}</span>
                     </div>
                     <div className="px-3 py-1 bg-gray-100 dark:bg-telegram-dark-surface rounded-full font-medium text-telegram-text dark:text-telegram-dark-text">
                       {budget.currency}
