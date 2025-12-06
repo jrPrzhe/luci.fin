@@ -814,6 +814,19 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
       return
     }
 
+    // Validate target_date if provided - cannot be in the past
+    if (formData.target_date) {
+      const selectedDate = new Date(formData.target_date)
+      const today = new Date()
+      today.setHours(0, 0, 0, 0) // Reset time to compare only dates
+      selectedDate.setHours(0, 0, 0, 0)
+      
+      if (selectedDate < today) {
+        showError('Нельзя выбрать прошедшую дату для дедлайна')
+        return
+      }
+    }
+
     setLoading(true)
     try {
       let roadmap: string | undefined = undefined
@@ -1027,8 +1040,14 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
               type="date"
               value={formData.target_date}
               onChange={(e) => setFormData({ ...formData, target_date: e.target.value })}
+              min={new Date().toISOString().split('T')[0]}
               className="w-full px-4 py-2 rounded-lg bg-telegram-hover dark:bg-telegram-dark-hover border border-telegram-border dark:border-telegram-dark-border text-telegram-text dark:text-telegram-dark-text"
             />
+            {formData.target_date && new Date(formData.target_date) < new Date() && (
+              <p className="mt-1 text-sm text-red-500 dark:text-red-400">
+                Нельзя выбрать прошедшую дату
+              </p>
+            )}
           </div>
 
           <div>
