@@ -60,11 +60,11 @@ export function QuestNotifications({ variant = 'header' }: QuestNotificationsPro
         {/* Modal для отображения квестов */}
         {showModal && (
           <div 
-            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4"
             onClick={() => setShowModal(false)}
           >
             <div 
-              className="bg-telegram-surface dark:bg-telegram-dark-surface rounded-2xl shadow-2xl max-w-md w-full max-h-[80vh] overflow-hidden"
+              className="bg-telegram-surface dark:bg-telegram-dark-surface rounded-2xl shadow-2xl max-w-md w-full max-h-[80vh] overflow-hidden relative z-[10000]"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="p-4 border-b border-telegram-border dark:border-telegram-dark-border flex items-center justify-between">
