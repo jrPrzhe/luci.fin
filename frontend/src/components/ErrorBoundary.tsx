@@ -1,4 +1,4 @@
-import React, { Component, ErrorInfo, ReactNode } from 'react'
+import { Component, ErrorInfo, ReactNode } from 'react'
 
 interface Props {
   children: ReactNode
@@ -62,7 +62,7 @@ export class ErrorBoundary extends Component<Props, State> {
             >
               Перезагрузить страницу
             </button>
-            {process.env.NODE_ENV === 'development' && this.state.errorInfo && (
+            {import.meta.env.DEV && this.state.errorInfo && (
               <details className="mt-4 text-left">
                 <summary className="cursor-pointer text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
                   Детали ошибки
