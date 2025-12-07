@@ -78,6 +78,18 @@ export function translateError(error: any): string {
     return 'Неверный email или пароль.'
   }
 
+  // Ошибки валидации Pydantic
+  if (errorLower.includes('greater_than') || errorLower.includes('input should be greater than')) {
+    if (errorLower.includes('target_amount') || errorLower.includes('amount')) {
+      return 'Стоимость должна быть больше 0'
+    }
+    return 'Значение должно быть больше 0'
+  }
+
+  if (errorLower.includes('less_than') || errorLower.includes('input should be less than')) {
+    return 'Значение слишком большое. Проверьте введенные данные.'
+  }
+
   // Ошибки валидации
   if (errorLower.includes('validation error') || errorLower.includes('invalid')) {
     return 'Ошибка валидации данных. Проверьте правильность введенных данных.'

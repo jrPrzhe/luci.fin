@@ -955,7 +955,22 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     } catch (error: any) {
       console.error('Error creating goal:', error)
       const { translateError } = await import('../utils/errorMessages')
-      showError(translateError(error))
+      
+      // Если ошибка содержит response.data (массив ошибок валидации Pydantic), обрабатываем его
+      let errorToTranslate = error
+      if (error?.response?.data && Array.isArray(error.response.data)) {
+        // Это массив ошибок валидации Pydantic
+        const validationErrors = error.response.data.map((err: any) => {
+          if (err.loc && err.msg) {
+            const field = err.loc[err.loc.length - 1]
+            return `${field}: ${err.msg}`
+          }
+          return err.msg || JSON.stringify(err)
+        })
+        errorToTranslate = validationErrors.join('; ')
+      }
+      
+      showError(translateError(errorToTranslate))
     } finally {
       setLoading(false)
       setGeneratingRoadmap(false)

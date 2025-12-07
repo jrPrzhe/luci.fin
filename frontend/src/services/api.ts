@@ -353,12 +353,28 @@ class ApiClient {
           this.setToken(null, null)
         }
         const error = await response.json().catch(() => ({ detail: 'Ошибка запроса' }))
-        const errorMessage = error.detail || `HTTP error! status: ${response.status}`
+        
+        // Обработка ошибок валидации Pydantic (массив ошибок)
+        let errorMessage: string
+        if (Array.isArray(error)) {
+          // Это массив ошибок валидации Pydantic
+          const validationErrors = error.map((err: any) => {
+            if (err.loc && err.msg) {
+              const field = err.loc[err.loc.length - 1] // Последний элемент - название поля
+              return `${field}: ${err.msg}`
+            }
+            return err.msg || JSON.stringify(err)
+          })
+          errorMessage = validationErrors.join('; ')
+        } else {
+          errorMessage = error.detail || error.message || `HTTP error! status: ${response.status}`
+        }
+        
         // Импортируем функцию перевода ошибок
         const { translateError } = await import('../utils/errorMessages')
-        const errorObj = new Error(translateError(errorMessage))
-        // Сохраняем статус ответа для проверки на фронтенде
-        ;(errorObj as any).response = { status: response.status }
+        const errorObj = new Error(translateError(errorMessage || error))
+        // Сохраняем статус ответа и оригинальную ошибку для проверки на фронтенде
+        ;(errorObj as any).response = { status: response.status, data: error }
         throw errorObj
       }
 
