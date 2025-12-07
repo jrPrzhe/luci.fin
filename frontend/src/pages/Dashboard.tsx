@@ -544,16 +544,6 @@ export function Dashboard() {
                 {categoriesLoading ? (
                   <div className="text-center py-8">
                     <LoadingSpinner fullScreen={false} size="sm" />
-                    <button
-                      onClick={() => {
-                        console.log('[UI] User cancelled loading')
-                        setCategoriesLoading(false)
-                        setShowQuickForm(false)
-                      }}
-                      className="mt-4 text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary underline hover:text-telegram-text dark:hover:text-telegram-dark-text"
-                    >
-                      {t.common.cancel}
-                    </button>
                   </div>
                 ) : categories.length === 0 ? (
                   <div className="text-center py-8">
