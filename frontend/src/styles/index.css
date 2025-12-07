@@ -118,6 +118,9 @@
   /* Стили для select элементов - равномерные отступы */
   select {
     padding-right: 2.5rem !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   
   /* Убираем стандартную иконку браузера и добавляем свою с правильным отступом */

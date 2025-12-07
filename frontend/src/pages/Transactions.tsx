@@ -298,6 +298,14 @@ export function Transactions() {
       return
     }
 
+    // Validate transaction date: cannot be in the future
+    const transactionDate = new Date(formData.transaction_date)
+    const now = new Date()
+    if (transactionDate > now) {
+      showError('Дата транзакции не может быть в будущем. Выберите текущую или прошедшую дату.')
+      return
+    }
+
     try {
       // Validate category for income/expense transactions
       if ((formData.transaction_type === 'income' || formData.transaction_type === 'expense') && !formData.category_id) {
@@ -962,6 +970,7 @@ export function Transactions() {
                   value={formData.transaction_date}
                   onChange={(e) => setFormData({ ...formData, transaction_date: e.target.value })}
                   className="input pr-10"
+                  max={new Date().toISOString().slice(0, 16)}
                   required
                 />
               </div>
@@ -1257,6 +1266,7 @@ export function Transactions() {
                           value={formData.transaction_date}
                           onChange={(e) => setFormData({ ...formData, transaction_date: e.target.value })}
                           className="input pr-10"
+                          max={new Date().toISOString().slice(0, 16)}
                           required
                         />
                       </div>

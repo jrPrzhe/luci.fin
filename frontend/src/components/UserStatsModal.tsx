@@ -128,24 +128,86 @@ export const UserStatsModal = memo(function UserStatsModal({ status, onClose }: 
       window.removeEventListener('scroll', preventScroll, { capture: true } as EventListenerOptions)
       
       // Восстанавливаем оригинальные стили
-      document.body.style.overflow = originalBodyOverflow
-      document.body.style.position = originalBodyPosition
-      document.body.style.top = originalBodyTop
-      document.body.style.left = originalBodyLeft
-      document.body.style.width = originalBodyWidth
-      document.body.style.height = originalBodyHeight
-      document.body.style.touchAction = originalBodyTouchAction
+      // Если стиль был пустым, удаляем свойство полностью
+      if (originalBodyOverflow) {
+        document.body.style.overflow = originalBodyOverflow
+      } else {
+        document.body.style.removeProperty('overflow')
+      }
+      if (originalBodyPosition) {
+        document.body.style.position = originalBodyPosition
+      } else {
+        document.body.style.removeProperty('position')
+      }
+      if (originalBodyTop) {
+        document.body.style.top = originalBodyTop
+      } else {
+        document.body.style.removeProperty('top')
+      }
+      if (originalBodyLeft) {
+        document.body.style.left = originalBodyLeft
+      } else {
+        document.body.style.removeProperty('left')
+      }
+      if (originalBodyWidth) {
+        document.body.style.width = originalBodyWidth
+      } else {
+        document.body.style.removeProperty('width')
+      }
+      if (originalBodyHeight) {
+        document.body.style.height = originalBodyHeight
+      } else {
+        document.body.style.removeProperty('height')
+      }
+      if (originalBodyTouchAction) {
+        document.body.style.touchAction = originalBodyTouchAction
+      } else {
+        document.body.style.removeProperty('touch-action')
+      }
       
-      document.documentElement.style.overflow = originalHtmlOverflow
-      document.documentElement.style.position = originalHtmlPosition
-      document.documentElement.style.top = originalHtmlTop
-      document.documentElement.style.left = originalHtmlLeft
-      document.documentElement.style.width = originalHtmlWidth
-      document.documentElement.style.height = originalHtmlHeight
-      document.documentElement.style.touchAction = originalHtmlTouchAction
+      if (originalHtmlOverflow) {
+        document.documentElement.style.overflow = originalHtmlOverflow
+      } else {
+        document.documentElement.style.removeProperty('overflow')
+      }
+      if (originalHtmlPosition) {
+        document.documentElement.style.position = originalHtmlPosition
+      } else {
+        document.documentElement.style.removeProperty('position')
+      }
+      if (originalHtmlTop) {
+        document.documentElement.style.top = originalHtmlTop
+      } else {
+        document.documentElement.style.removeProperty('top')
+      }
+      if (originalHtmlLeft) {
+        document.documentElement.style.left = originalHtmlLeft
+      } else {
+        document.documentElement.style.removeProperty('left')
+      }
+      if (originalHtmlWidth) {
+        document.documentElement.style.width = originalHtmlWidth
+      } else {
+        document.documentElement.style.removeProperty('width')
+      }
+      if (originalHtmlHeight) {
+        document.documentElement.style.height = originalHtmlHeight
+      } else {
+        document.documentElement.style.removeProperty('height')
+      }
+      if (originalHtmlTouchAction) {
+        document.documentElement.style.touchAction = originalHtmlTouchAction
+      } else {
+        document.documentElement.style.removeProperty('touch-action')
+      }
       
-      // Восстанавливаем позицию прокрутки
-      window.scrollTo(scrollX, scrollY)
+      // Восстанавливаем позицию прокрутки после того, как браузер пересчитает layout
+      // Используем requestAnimationFrame для гарантии, что стили применены
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          window.scrollTo(scrollX, scrollY)
+        })
+      })
     }
   }, [])
 
@@ -253,7 +315,9 @@ export const UserStatsModal = memo(function UserStatsModal({ status, onClose }: 
                   </span>
                 </div>
                 <div className={`h-3 rounded-full overflow-hidden ${
-                  isDarkMode ? 'bg-telegram-dark-border' : 'bg-telegram-border'
+                  isDarkMode 
+                    ? 'bg-gray-700/50 border border-gray-600/50' 
+                    : 'bg-telegram-border'
                 }`}>
                   <div 
                     className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-500 shadow-md" 
