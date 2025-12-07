@@ -1069,7 +1069,6 @@ export function Transactions() {
                     const formElement = textarea.closest('form')
                     if (formElement) {
                       const rect = textarea.getBoundingClientRect()
-                      const formRect = formElement.getBoundingClientRect()
                       const offset = 100 // Отступ сверху для кнопок
                       if (rect.bottom > window.innerHeight - offset) {
                         window.scrollBy({
