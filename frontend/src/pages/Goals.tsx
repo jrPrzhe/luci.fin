@@ -214,7 +214,7 @@ export function Goals() {
       {completedGoals.length > 0 && (
         <div className="space-y-4">
           <h2 className="text-xl font-bold text-telegram-text dark:text-telegram-dark-text">
-            🏆 Достигнутые цели
+            🏆 {t.goals.completedGoals}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {completedGoals.map((goal: Goal) => (
@@ -254,7 +254,7 @@ export function Goals() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 text-green-600 dark:text-green-400 font-semibold">
-                  <span>✅ Достигнуто</span>
+                  <span>{t.goals.achieved}</span>
                   <span>{goal.created_at ? formatDate(goal.created_at) : ''}</span>
                 </div>
               </div>
@@ -304,7 +304,7 @@ export function Goals() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="card p-6 max-w-md w-full">
             <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
-              Подтверждение
+              {t.goals.confirm}
             </h2>
             <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-6">
               {confirmModal.message}
@@ -316,7 +316,7 @@ export function Goals() {
                 }}
                 className="flex-1 btn-primary text-sm md:text-base py-2.5 md:py-3"
               >
-                Да
+                {t.goals.yes}
               </button>
               <button
                 onClick={() => {
@@ -324,7 +324,7 @@ export function Goals() {
                 }}
                 className="flex-1 btn-secondary text-sm md:text-base py-2.5 md:py-3"
               >
-                Отмена
+                {t.goals.no}
               </button>
             </div>
           </div>
@@ -336,6 +336,7 @@ export function Goals() {
 
 // Goal Detail Modal Component
 function GoalDetailModal({ goal, onClose, onDelete }: { goal: Goal; onClose: () => void; onDelete: () => void }) {
+  const { t } = useI18n()
   const roadmap = parseRoadmap(goal.roadmap)
   const daysRemaining = getDaysRemaining(goal.target_date)
   const progressColor = getProgressColor(goal.progress_percentage)
@@ -557,7 +558,7 @@ function GoalDetailModal({ goal, onClose, onDelete }: { goal: Goal; onClose: () 
             <div className="space-y-2">
               <div className="flex items-center justify-between p-3 bg-telegram-hover dark:bg-telegram-dark-hover rounded-lg">
                 <span className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-                  Начало
+                  {t.goals.startDate}
                 </span>
                 <span className="font-semibold text-telegram-text dark:text-telegram-dark-text">
                   {formatDate(goal.start_date)}
@@ -566,7 +567,7 @@ function GoalDetailModal({ goal, onClose, onDelete }: { goal: Goal; onClose: () 
               {goal.target_date && (
                 <div className="flex items-center justify-between p-3 bg-telegram-hover dark:bg-telegram-dark-hover rounded-lg">
                   <span className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-                    Дедлайн
+                    {t.goals.deadline}
                   </span>
                   <span className="font-semibold text-telegram-text dark:text-telegram-dark-text">
                     {formatDate(goal.target_date)}
@@ -576,7 +577,7 @@ function GoalDetailModal({ goal, onClose, onDelete }: { goal: Goal; onClose: () 
               {daysRemaining !== null && (
                 <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 dark:from-blue-900/20 to-cyan-50 dark:to-cyan-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                   <span className="text-blue-600 dark:text-blue-400 font-semibold">
-                    ⏰ Осталось дней
+                    {t.goals.daysRemaining}
                   </span>
                   <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                     {daysRemaining}
@@ -590,7 +591,7 @@ function GoalDetailModal({ goal, onClose, onDelete }: { goal: Goal; onClose: () 
           {roadmap?.monthly_plan && roadmap.monthly_plan.length > 0 && (
             <div className="mb-6">
               <h3 className="text-lg font-bold text-telegram-text dark:text-telegram-dark-text mb-3">
-                📊 Месячный план накоплений
+                {t.goals.monthlyPlan}
               </h3>
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {roadmap.monthly_plan.map((month: any, index: number) => {
@@ -710,7 +711,7 @@ function GoalDetailModal({ goal, onClose, onDelete }: { goal: Goal; onClose: () 
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
           <div className="card p-6 max-w-md w-full">
             <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
-              Подтверждение
+              {t.goals.confirm}
             </h2>
             <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-6">
               Вы уверены, что хотите удалить эту цель? Это действие нельзя отменить.
@@ -740,6 +741,7 @@ function GoalDetailModal({ goal, onClose, onDelete }: { goal: Goal; onClose: () 
 
 // Create Goal Modal Component
 function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const { t } = useI18n()
   const [loading, setLoading] = useState(false)
   const [generatingRoadmap, setGeneratingRoadmap] = useState(false)
   const [roadmapStatus, setRoadmapStatus] = useState<string>('')
@@ -766,12 +768,12 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     const parsed = parseFloat(numValue)
     
     if (isNaN(parsed) || !isFinite(parsed)) {
-      setAmountError('Введите число')
+      setAmountError(t.goals.form.enterNumber || 'Enter a number')
       return false
     }
     
     if (parsed <= 0) {
-      setAmountError('Стоимость должна быть больше нуля')
+      setAmountError(t.goals.form.amountMustBePositive || 'Amount must be greater than zero')
       return false
     }
     
@@ -779,7 +781,7 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     const parts = numValue.split('.')
     const integerPart = parts[0].replace(/[^0-9]/g, '')
     if (integerPart.length > 13) {
-      setAmountError('Сумма слишком большая. Максимум 13 цифр перед запятой.')
+      setAmountError(t.goals.form.amountTooLarge || 'Amount is too large. Maximum 13 digits before decimal point.')
       return false
     }
     
@@ -795,7 +797,7 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
 
   const handleCreate = async () => {
     if (!formData.name || !formData.target_amount) {
-      showError('Заполните обязательные поля')
+      showError(t.goals.form.fillRequired || 'Please fill in required fields')
       return
     }
 
@@ -809,7 +811,7 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     const parts = amountStr.split('.')
     const integerPart = parts[0].replace(/[^0-9]/g, '') // Remove any non-digits
     if (integerPart.length > 13) {
-      showError('Сумма слишком большая. Максимум 13 цифр перед запятой.')
+      showError(t.goals.form.amountTooLarge || 'Amount is too large. Maximum 13 digits before decimal point.')
       return
     }
 
@@ -821,7 +823,7 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
       selectedDate.setHours(0, 0, 0, 0)
       
       if (selectedDate < today) {
-        showError('Нельзя выбрать прошедшую дату для дедлайна')
+        showError(t.goals.targetDatePastError)
         return
       }
     }
@@ -833,7 +835,7 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
       // Generate roadmap with user feedback
       try {
         setGeneratingRoadmap(true)
-        setRoadmapStatus('Получаю данные о транзакциях...')
+        setRoadmapStatus(t.goals.form.gettingTransactions || 'Getting transaction data...')
         
         const balancePromise = api.getBalance()
         const transactionsPromise = api.getTransactions(100)
@@ -843,7 +845,7 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
           setTimeout(() => reject(new Error('Timeout')), 15000) // 15 seconds timeout
         )
         
-        setRoadmapStatus('Анализирую ваши транзакции...')
+        setRoadmapStatus(t.goals.form.analyzingTransactions || 'Analyzing your transactions...')
         const [balance, transactions] = await Promise.race([
           Promise.all([balancePromise, transactionsPromise]),
           timeoutPromise
@@ -858,7 +860,7 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
           .reduce((sum: number, t: any) => sum + t.amount, 0)
 
         // Generate roadmap with timeout
-        setRoadmapStatus('Создаю индивидуальный план через AI...')
+        setRoadmapStatus(t.goals.form.creatingPlan || 'Creating personalized plan via AI...')
         const cleanAmount = formData.target_amount.replace(/,/g, '.').replace(/\s/g, '')
         const roadmapPromise = api.generateRoadmap({
           goal_name: formData.name,
@@ -900,7 +902,7 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
           console.warn('Roadmap response missing roadmap field:', roadmapResponse)
           roadmap = undefined
         }
-        setRoadmapStatus('Дорожная карта успешно создана!')
+        setRoadmapStatus(t.goals.form.roadmapCreated || 'Roadmap created successfully!')
       } catch (roadmapError: any) {
         console.error('Roadmap generation failed or timed out, creating goal without roadmap:', roadmapError)
         console.error('Roadmap error details:', {
@@ -908,7 +910,7 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
           stack: roadmapError?.stack,
           response: roadmapError?.response
         })
-        setRoadmapStatus('Не удалось создать дорожную карту, создаю цель без неё...')
+        setRoadmapStatus(t.goals.form.roadmapFailed || 'Failed to create roadmap, creating goal without it...')
         // Continue without roadmap - goal can be created without it
         // Wait a bit to show the message
         await new Promise(resolve => setTimeout(resolve, 1000))
@@ -917,7 +919,7 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
       }
 
       // Create goal (with or without roadmap)
-      setRoadmapStatus('Создаю цель...')
+      setRoadmapStatus(t.goals.form.creatingGoal || 'Creating goal...')
       const cleanAmount = formData.target_amount.replace(/,/g, '.').replace(/\s/g, '')
       const goalData: any = {
         name: formData.name,
@@ -950,7 +952,7 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
       
       await api.createGoal(goalData)
 
-      showSuccess(roadmap ? 'Цель успешно создана с дорожной картой!' : 'Цель успешно создана')
+      showSuccess(roadmap ? t.goals.goalCreatedWithRoadmap : t.goals.goalCreated)
       onSuccess()
     } catch (error: any) {
       console.error('Error creating goal:', error)
@@ -986,7 +988,7 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
       >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-bold text-telegram-text dark:text-telegram-dark-text">
-            Новая цель
+            {t.goals.newGoalTitle}
           </h2>
           <button
             onClick={onClose}
@@ -1000,20 +1002,20 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
-              Название цели *
+              {t.goals.goalNameLabel} *
             </label>
             <input
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className="w-full px-4 py-2 rounded-lg bg-telegram-hover dark:bg-telegram-dark-hover border border-telegram-border dark:border-telegram-dark-border text-telegram-text dark:text-telegram-dark-text"
-              placeholder="Например: Машина"
+              placeholder={t.goals.goalNamePlaceholder}
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
-              Стоимость *
+              {t.goals.targetAmountLabel} *
             </label>
             <input
               type="text"
@@ -1034,7 +1036,7 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
 
           <div>
             <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
-              Валюта
+              {t.goals.currencyLabel}
             </label>
             <select
               value={formData.currency}
@@ -1048,7 +1050,7 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
 
           <div>
             <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
-              Дедлайн (опционально)
+              {t.goals.targetDateLabel}
             </label>
             <input
               type="date"
@@ -1059,14 +1061,14 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
             />
             {formData.target_date && new Date(formData.target_date) < new Date() && (
               <p className="mt-1 text-sm text-red-500 dark:text-red-400">
-                Нельзя выбрать прошедшую дату
+                {t.goals.targetDatePastError}
               </p>
             )}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
-              Описание
+              {t.goals.descriptionLabel}
             </label>
             <textarea
               value={formData.description}
@@ -1074,7 +1076,7 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
               className="w-full px-4 py-2 rounded-lg bg-telegram-hover dark:bg-telegram-dark-hover border border-telegram-border dark:border-telegram-dark-border text-telegram-text dark:text-telegram-dark-text resize-none overflow-y-auto"
               rows={3}
               style={{ maxHeight: '120px', minHeight: '80px', resize: 'none' }}
-              placeholder="Описание цели..."
+              placeholder={t.goals.descriptionPlaceholder}
             />
           </div>
         </div>
@@ -1086,10 +1088,10 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
               <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 dark:border-blue-400"></div>
               <div className="flex-1">
                 <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                  {roadmapStatus || 'Генерация дорожной карты...'}
+                  {roadmapStatus || t.goals.generatingRoadmap}
                 </p>
                 <p className="text-xs text-blue-500 dark:text-blue-500 mt-1">
-                  ⏳ Пожалуйста, подождите. Это может занять некоторое время...
+                  ⏳ {t.goals.pleaseWait || 'Please wait. This may take some time...'}
                 </p>
               </div>
             </div>
@@ -1102,7 +1104,7 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
             className="flex-1 btn-primary"
             disabled={loading || generatingRoadmap || !!amountError || !formData.name || !formData.target_amount}
           >
-            {loading ? (generatingRoadmap ? roadmapStatus || 'Создание...' : 'Создание...') : 'Создать'}
+            {loading ? (generatingRoadmap ? roadmapStatus || t.goals.creating : t.goals.creating) : t.goals.createButton}
           </button>
         </div>
       </div>

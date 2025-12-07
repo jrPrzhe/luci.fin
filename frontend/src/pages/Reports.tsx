@@ -68,17 +68,20 @@ const MONTH_MAPPING: Record<string, string> = {
   'September': 'Сентябрь', 'October': 'Октябрь', 'November': 'Ноябрь', 'December': 'Декабрь'
 }
 
-// Функция для локализации названия месяца (использует текущую локаль)
-const localizeMonth = (monthStr: string, locale: string = 'ru-RU'): string => {
+// Функция для локализации названия месяца (использует системную локаль)
+const localizeMonth = (monthStr: string, locale: string = 'en-US'): string => {
   if (!monthStr) return monthStr
   
+  // Используем системную локаль браузера
+  const systemLocale = navigator.language || 'en-US'
+  
   // Если локаль английская, возвращаем как есть (месяцы уже на английском)
-  if (locale === 'en-US') {
+  if (systemLocale.startsWith('en') || locale === 'en-US') {
     return monthStr
   }
   
   // Для русской локали - переводим месяцы
-  if (locale === 'ru-RU') {
+  if (systemLocale.startsWith('ru') || locale === 'ru-RU') {
     // Если уже на русском, возвращаем как есть
     if (monthStr.match(/[А-Яа-я]/)) {
       return monthStr
@@ -124,6 +127,42 @@ export function Reports() {
   const [showPremiumModal, setShowPremiumModal] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
   const locale = language === 'ru' ? 'ru-RU' : 'en-US'
+  
+  // Function to translate Interesting Facts texts
+  const translateFactText = (text: string): string => {
+    if (language === 'ru') return text
+    
+    // Pattern-based translations for common fact texts
+    const factTranslations: Record<string, string> = {
+      'Средний расход в день:': 'Average daily expense:',
+      'Накопления:': 'Savings:',
+      'от дохода': 'of income',
+      'Расходы превышают доходы на': 'Expenses exceed income by',
+      'Больше всего тратите на': 'You spend the most on',
+      'Средний чек:': 'Average transaction:',
+      'Расходы снизились на': 'Expenses decreased by',
+      'Расходы выросли на': 'Expenses increased by',
+      'по сравнению с предыдущим месяцем': 'compared to the previous month',
+    }
+    
+    // Try to translate known patterns
+    let translatedText = text
+    for (const [ruPattern, enPattern] of Object.entries(factTranslations)) {
+      if (translatedText.includes(ruPattern)) {
+        translatedText = translatedText.replace(ruPattern, enPattern)
+      }
+    }
+    
+    // Translate category names in facts (pattern: "на CategoryName:")
+    const categoryMatch = translatedText.match(/на ([^:]+):/)
+    if (categoryMatch) {
+      const categoryName = categoryMatch[1].trim()
+      const translatedCategory = translateCategoryName(categoryName)
+      translatedText = translatedText.replace(categoryName, translatedCategory)
+    }
+    
+    return translatedText
+  }
   
   const { data: analytics, isLoading, error } = useQuery<AnalyticsData>({
     queryKey: ['analytics', period],
@@ -219,7 +258,8 @@ export function Reports() {
   
   const formatCurrency = useCallback((amount: number) => {
     const currency = analytics?.totals?.currency || 'RUB'
-    return new Intl.NumberFormat('ru-RU', {
+    const systemLocale = navigator.language || 'en-US'
+    return new Intl.NumberFormat(systemLocale, {
       style: 'currency',
       currency: currency,
       minimumFractionDigits: 0,
@@ -232,10 +272,11 @@ export function Reports() {
       if (!dateString) return ''
       const date = new Date(dateString)
       if (isNaN(date.getTime())) return dateString // Return original if invalid date
+      const systemLocale = navigator.language || 'en-US'
       if (period === 'week') {
-        return date.toLocaleDateString('ru-RU', { weekday: 'short' })
+        return date.toLocaleDateString(systemLocale, { weekday: 'short' })
       }
-      return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
+      return date.toLocaleDateString(systemLocale, { day: 'numeric', month: 'short' })
     } catch (error) {
       console.error('Error formatting date:', error)
       return dateString || ''
@@ -250,7 +291,8 @@ export function Reports() {
         if (active && payload && Array.isArray(payload) && payload.length > 0) {
           const currency = analytics?.totals?.currency || 'RUB'
           const formatValue = (value: number) => {
-            return new Intl.NumberFormat('ru-RU', {
+            const systemLocale = navigator.language || 'en-US'
+            return new Intl.NumberFormat(systemLocale, {
               style: 'currency',
               currency: currency,
               minimumFractionDigits: 0,
@@ -260,7 +302,20 @@ export function Reports() {
           return (
             <div className="bg-white dark:bg-telegram-dark-surface p-3 rounded-lg shadow-lg border border-telegram-border dark:border-telegram-dark-border pointer-events-none">
               <p className="font-semibold mb-2 text-telegram-text dark:text-telegram-dark-text">
-                {label ? localizeMonth(String(label), locale) : ''}
+                {label ? (() => {
+                  const systemLocale = navigator.language || 'en-US'
+                  const labelStr = String(label)
+                  // Если это дата, форматируем её согласно системной локали
+                  if (labelStr.match(/^\d{4}-\d{2}-\d{2}/)) {
+                    try {
+                      const date = new Date(labelStr)
+                      if (!isNaN(date.getTime())) {
+                        return date.toLocaleDateString(systemLocale, { day: 'numeric', month: 'short' })
+                      }
+                    } catch (e) {}
+                  }
+                  return localizeMonth(labelStr, locale)
+                })() : ''}
               </p>
               {payload.map((entry: any, index: number) => (
                 <p key={index} className="text-sm text-telegram-text dark:text-telegram-dark-text" style={{ color: entry.color || '#000' }}>
@@ -313,14 +368,30 @@ export function Reports() {
     [t.reports.expenses]: item.expense || 0,
   }))
 
-  const monthlyData = (analytics.monthly_comparison || []).map(item => ({
-    month: localizeMonth(item.month_short || '', locale),
-    [t.reports.income]: item.income || 0,
-    [t.reports.expenses]: item.expense || 0,
-  }))
+  const monthlyData = (analytics.monthly_comparison || []).map(item => {
+    // Форматируем месяц с использованием системной локали
+    const systemLocale = navigator.language || 'en-US'
+    let monthLabel = item.month_short || ''
+    if (monthLabel && !monthLabel.match(/[А-Яа-я]/)) {
+      // Если месяц на английском, форматируем его согласно системной локали
+      try {
+        const date = new Date(`2000-${monthLabel}-01`)
+        if (!isNaN(date.getTime())) {
+          monthLabel = date.toLocaleDateString(systemLocale, { month: 'short' })
+        }
+      } catch (e) {
+        // Если не удалось, используем оригинальное значение
+      }
+    }
+    return {
+      month: localizeMonth(monthLabel, locale),
+      [t.reports.income]: item.income || 0,
+      [t.reports.expenses]: item.expense || 0,
+    }
+  })
 
   const expensePieData = (analytics.top_expense_categories || []).slice(0, 5).map(cat => ({
-    name: cat.name || 'Без названия',
+    name: translateCategoryName(cat.name || 'Без названия'),
     value: cat.amount || 0,
     icon: cat.icon || '📦',
     color: cat.color || '#607D8B',
@@ -491,7 +562,7 @@ export function Reports() {
                         {goal.name}
                       </h3>
                       <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-                        Накоплено: {Math.round(goal.current_amount).toLocaleString()} / {Math.round(goal.target_amount).toLocaleString()} {goal.currency}
+                        {t.reports.saved} {Math.round(goal.current_amount).toLocaleString()} / {Math.round(goal.target_amount).toLocaleString()} {goal.currency}
                       </p>
                     </div>
                     <span className="text-lg font-bold bg-gradient-to-r from-telegram-primary to-telegram-primaryLight bg-clip-text text-transparent">
@@ -558,7 +629,7 @@ export function Reports() {
                   fact.type === 'trend' 
                     ? 'text-blue-900 dark:text-blue-200' :
                   'text-telegram-text dark:text-telegram-dark-text'
-                }`}>{fact.text}</p>
+                }`}>{translateFactText(fact.text)}</p>
               </div>
             ))}
           </div>
@@ -716,7 +787,7 @@ export function Reports() {
                 <div key={index} className="flex items-center justify-between p-2 rounded-telegram hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">{cat.icon}</span>
-                    <span className="text-sm text-telegram-text dark:text-telegram-dark-text">{cat.name}</span>
+                    <span className="text-sm text-telegram-text dark:text-telegram-dark-text">{translateCategoryName(cat.name)}</span>
                   </div>
                   <span className="text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
                     {formatCurrency(cat.amount)}

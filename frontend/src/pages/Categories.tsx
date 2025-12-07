@@ -429,11 +429,11 @@ export function Categories() {
             } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             {isTogglingAll ? (
-              '⏳ Обработка...'
+              t.categories.filters.processing
             ) : filteredCategories.filter(cat => !cat.is_system).every(cat => cat.is_favorite) ? (
-              '⭐ Убрать все из избранного'
+              t.categories.filters.removeAllFromFavorites
             ) : (
-              '⭐ Добавить все в избранное'
+              t.categories.filters.addAllToFavorites
             )}
           </button>
         )}
@@ -457,14 +457,14 @@ export function Categories() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                Название *
+                {t.categories.form.nameLabel} *
               </label>
               <input
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 className="input"
-                placeholder="Название категории"
+                placeholder={t.categories.form.namePlaceholder}
                 maxLength={60}
                 required
               />
@@ -475,7 +475,7 @@ export function Categories() {
 
             <div>
               <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                Тип транзакций *
+                {t.categories.form.typeLabel} *
               </label>
               <select
                 value={formData.transaction_type}
@@ -491,7 +491,7 @@ export function Categories() {
 
             <div>
               <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                Иконка (эмодзи)
+                {t.categories.form.iconLabel}
               </label>
               <div className="relative emoji-picker-container">
                 <button
@@ -526,13 +526,13 @@ export function Categories() {
                 )}
               </div>
               <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
-                Выберите эмодзи из списка
+                {t.categories.form.iconHint}
               </p>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                Цвет
+                {t.categories.form.colorLabel}
               </label>
               <input
                 type="color"
@@ -551,20 +551,20 @@ export function Categories() {
                 className="w-4 h-4 rounded"
               />
               <label htmlFor="is_favorite" className="text-sm text-telegram-text dark:text-telegram-dark-text">
-                ⭐ Добавить в избранные (топ категории)
+                {t.categories.form.favoriteLabel}
               </label>
             </div>
 
             <div className="flex gap-3">
               <button type="submit" className="btn-primary flex-1">
-                {editingCategory ? 'Сохранить' : 'Создать'}
+                {editingCategory ? t.categories.form.save : t.categories.form.create}
               </button>
               <button
                 type="button"
                 onClick={resetForm}
                 className="btn-secondary"
               >
-                Отмена
+                {t.categories.form.cancel}
               </button>
             </div>
           </form>
