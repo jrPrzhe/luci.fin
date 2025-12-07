@@ -983,7 +983,7 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
   return (
     <div 
       className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" 
-      onClick={(e) => {
+      onClick={() => {
         // Don't close modal during loading
         if (!loading && !generatingRoadmap) {
           onClose()
