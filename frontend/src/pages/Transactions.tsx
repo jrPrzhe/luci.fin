@@ -312,13 +312,11 @@ export function Transactions() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Validate amount: max 13 digits before decimal point (NUMERIC(15, 2) constraint)
-    // Replace comma with dot for validation (Russian locale uses comma)
-    const amountStr = formData.amount.toString().replace(',', '.')
-    const parts = amountStr.split('.')
-    const integerPart = parts[0].replace(/[^0-9]/g, '') // Remove any non-digits
-    if (integerPart.length > 13) {
-      showError('Сумма слишком большая. Максимум 13 цифр перед запятой.')
+    // Validate amount: max 13 digits (integer only)
+    const amountStr = formData.amount.toString().trim()
+    const integerPart = amountStr.replace(/[^0-9-]/g, '') // Remove any non-digits except minus
+    if (integerPart.replace('-', '').length > 13) {
+      showError('Сумма слишком большая. Максимум 13 цифр.')
       return
     }
 
@@ -337,12 +335,20 @@ export function Transactions() {
         return
       }
 
-      // Replace comma with dot for decimal separator (Russian locale uses comma)
-      const amountValue = formData.amount.toString().replace(',', '.')
+      // Parse as integer (whole number only)
+      const amountValue = formData.amount.toString().trim()
+      const amountNumber = parseInt(amountValue, 10)
+      
+      // Validate amount is a valid integer
+      if (isNaN(amountNumber)) {
+        showError('Введите корректное целое число для суммы')
+        return
+      }
+      
       const submitData: any = {
         account_id: parseInt(formData.account_id),
         transaction_type: formData.transaction_type,
-        amount: parseFloat(amountValue),
+        amount: amountNumber,
         currency: formData.currency,
         description: formData.description || undefined,
         transaction_date: new Date(formData.transaction_date).toISOString(),
@@ -395,7 +401,7 @@ export function Transactions() {
     setFormData({
       account_id: transaction.account_id.toString(),
       transaction_type: transaction.transaction_type,
-      amount: transaction.amount.toString(),
+      amount: Math.round(transaction.amount).toString(), // Round to integer
       currency: transaction.currency,
       category_id: transaction.category_id?.toString() || '',
       description: transaction.description || '',
@@ -969,26 +975,32 @@ export function Transactions() {
                 {t.transactions.amount}
               </label>
               <input
-                type="text"
-                inputMode="decimal"
+                type="number"
+                step="1"
                 value={formData.amount}
                 onChange={(e) => {
-                  // Allow both comma and dot as decimal separator
-                  // Replace comma with dot for internal storage, but allow user to type comma
+                  // Only allow whole numbers (integers)
                   let value = e.target.value
-                  // Replace comma with dot
-                  value = value.replace(',', '.')
-                  // Remove any non-numeric characters except dot
-                  value = value.replace(/[^0-9.]/g, '')
-                  // Ensure only one dot
-                  const parts = value.split('.')
-                  if (parts.length > 2) {
-                    value = parts[0] + '.' + parts.slice(1).join('')
+                  // Remove any non-numeric characters (including dots and commas)
+                  value = value.replace(/[^0-9-]/g, '')
+                  // Ensure only one minus sign at the start
+                  if (value.includes('-')) {
+                    const parts = value.split('-')
+                    value = parts.length > 1 ? '-' + parts.slice(1).join('').replace(/-/g, '') : value.replace(/-/g, '')
+                    if (!value.startsWith('-')) {
+                      value = '-' + value.replace(/-/g, '')
+                    }
                   }
                   setFormData({ ...formData, amount: value })
                 }}
+                onKeyDown={(e) => {
+                  // Prevent decimal point, comma, and 'e' key
+                  if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') {
+                    e.preventDefault()
+                  }
+                }}
                 className="input"
-                placeholder="0.00"
+                placeholder="0"
                 required
               />
             </div>
@@ -1279,12 +1291,31 @@ export function Transactions() {
                       </label>
                       <input
                         type="number"
-                        step="0.01"
-                        min="0.01"
+                        step="1"
                         value={formData.amount}
-                        onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                        onChange={(e) => {
+                          // Only allow whole numbers (integers)
+                          let value = e.target.value
+                          // Remove any non-numeric characters (including dots and commas)
+                          value = value.replace(/[^0-9-]/g, '')
+                          // Ensure only one minus sign at the start
+                          if (value.includes('-')) {
+                            const parts = value.split('-')
+                            value = parts.length > 1 ? '-' + parts.slice(1).join('').replace(/-/g, '') : value.replace(/-/g, '')
+                            if (!value.startsWith('-')) {
+                              value = '-' + value.replace(/-/g, '')
+                            }
+                          }
+                          setFormData({ ...formData, amount: value })
+                        }}
+                        onKeyDown={(e) => {
+                          // Prevent decimal point, comma, and 'e' key
+                          if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') {
+                            e.preventDefault()
+                          }
+                        }}
                         className="input"
-                        placeholder="0.00"
+                        placeholder="0"
                         required
                       />
                     </div>

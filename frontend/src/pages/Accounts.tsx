@@ -197,27 +197,27 @@ export function Accounts() {
         showSuccess('Счет обновлен')
       } else {
         // Create new account
-        // Replace comma with dot for decimal separator (Russian locale uses comma)
-        const balanceValue = formData.initial_balance.replace(',', '.')
-        const balanceNumber = parseFloat(balanceValue)
+        // Parse as integer (whole number only)
+        const balanceValue = formData.initial_balance.trim()
+        const balanceNumber = parseInt(balanceValue, 10)
         
         // Validate balance value
         if (isNaN(balanceNumber)) {
-          showError('Введите корректное число для начального баланса')
+          showError('Введите корректное целое число для начального баланса')
           setIsSubmitting(false)
           return
         }
         
         if (!isFinite(balanceNumber)) {
-          showError('Сумма слишком большая. Максимальная сумма: 999 999 999 999 999.99')
+          showError('Сумма слишком большая. Максимальная сумма: 999 999 999 999 999')
           setIsSubmitting(false)
           return
         }
         
-        // Maximum value for Numeric(15, 2): 999,999,999,999,999.99
-        const MAX_BALANCE = 999999999999999.99
+        // Maximum value for integer: 999,999,999,999,999
+        const MAX_BALANCE = 999999999999999
         if (Math.abs(balanceNumber) > MAX_BALANCE) {
-          showError('Сумма слишком большая. Максимальная сумма: 999 999 999 999 999.99')
+          showError('Сумма слишком большая. Максимальная сумма: 999 999 999 999 999')
           setIsSubmitting(false)
           return
         }
@@ -597,26 +597,32 @@ export function Accounts() {
                         Начальный баланс
                       </label>
                       <input
-                        type="text"
-                        inputMode="decimal"
+                        type="number"
+                        step="1"
                         value={formData.initial_balance}
                         onChange={(e) => {
-                          // Allow both comma and dot as decimal separator
-                          // Replace comma with dot for internal storage, but allow user to type comma
+                          // Only allow whole numbers (integers)
                           let value = e.target.value
-                          // Replace comma with dot
-                          value = value.replace(',', '.')
-                          // Remove any non-numeric characters except dot
-                          value = value.replace(/[^0-9.]/g, '')
-                          // Ensure only one dot
-                          const parts = value.split('.')
-                          if (parts.length > 2) {
-                            value = parts[0] + '.' + parts.slice(1).join('')
+                          // Remove any non-numeric characters (including dots and commas)
+                          value = value.replace(/[^0-9-]/g, '')
+                          // Ensure only one minus sign at the start
+                          if (value.includes('-')) {
+                            const parts = value.split('-')
+                            value = parts.length > 1 ? '-' + parts.slice(1).join('').replace(/-/g, '') : value.replace(/-/g, '')
+                            if (!value.startsWith('-')) {
+                              value = '-' + value.replace(/-/g, '')
+                            }
                           }
                           setFormData({ ...formData, initial_balance: value })
                         }}
+                        onKeyDown={(e) => {
+                          // Prevent decimal point, comma, and 'e' key
+                          if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') {
+                            e.preventDefault()
+                          }
+                        }}
                         className="input"
-                        placeholder="0.00"
+                        placeholder="0"
                       />
                     </div>
 
