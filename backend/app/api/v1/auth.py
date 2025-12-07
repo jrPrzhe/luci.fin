@@ -101,9 +101,25 @@ def get_current_user(
 
 
 def get_current_admin(
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ) -> User:
     """Get current user and verify admin status"""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    # Синхронизируем статус админа для пользователей с Telegram ID
+    if current_user.telegram_id:
+        from app.core.config import settings
+        should_be_admin = str(current_user.telegram_id) in settings.ADMIN_TELEGRAM_IDS
+        
+        if current_user.is_admin != should_be_admin:
+            logger.info(f"Syncing admin status for user {current_user.id}: telegram_id={current_user.telegram_id}, current={current_user.is_admin}, should_be={should_be_admin}")
+            current_user.is_admin = should_be_admin
+            db.commit()
+            db.refresh(current_user)
+            logger.info(f"Updated admin status for user {current_user.id}: is_admin={should_be_admin}")
+    
     if not current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
