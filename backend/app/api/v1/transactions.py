@@ -1352,4 +1352,3 @@ async def delete_transaction(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred while deleting the transaction"
         )
-
