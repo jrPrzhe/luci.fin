@@ -121,10 +121,19 @@ export function Dashboard() {
           api.getTransactions(1000, 0, undefined, undefined, 'expense', startDate, endDate),
         ])
         
-        // Исключаем транзакции перевода из доходов (транзакции с to_account_id - это переводы)
+        // Исключаем транзакции перевода из доходов
+        // Transfer income transactions have parent_transaction_id set (new transfers) or description starting with "Перевод из" (old transfers)
         // В расходах переводы учитываем (перевод из личного счета = расход)
         const income = (incomeTransactions || [])
-          .filter((t: any) => !t.to_account_id) // Исключаем переводы
+          .filter((t: any) => {
+            // Exclude if it has parent_transaction_id (new transfer format)
+            if (t.parent_transaction_id) return false
+            // Exclude if description starts with "Перевод из" (old transfer format)
+            if (t.description && t.description.trim().toLowerCase().startsWith('перевод из')) return false
+            // Exclude if it has to_account_id (legacy check)
+            if (t.to_account_id) return false
+            return true
+          })
           .reduce((sum: number, t: any) => sum + (parseFloat(t.amount) || 0), 0)
         const expense = (expenseTransactions || []).reduce((sum: number, t: any) => sum + (parseFloat(t.amount) || 0), 0)
         

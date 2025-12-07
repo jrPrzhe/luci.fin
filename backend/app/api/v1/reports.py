@@ -203,7 +203,19 @@ async def get_analytics(
         for row in transactions_data:
             if row[7] == goal.id:  # goal_id
                 trans_type = row[2].lower() if row[2] else ''
-                if trans_type == 'income':
+                description = row[6] if len(row) > 6 else None
+                parent_transaction_id = row[10] if len(row) > 10 else None
+                
+                # Exclude transfer income transactions
+                is_transfer_income = False
+                if parent_transaction_id is not None:
+                    is_transfer_income = True
+                elif description:
+                    description_lower = description.strip().lower()
+                    if description_lower.startswith('перевод из'):
+                        is_transfer_income = True
+                
+                if trans_type == 'income' and not is_transfer_income:
                     goal_income += float(row[3]) if row[3] else 0.0
         
         goals_info.append({
@@ -254,8 +266,19 @@ async def get_analytics(
     for row in transactions_data:
         trans_type = row[2].lower() if row[2] else ''
         category_id = row[5]
+        description = row[6] if len(row) > 6 else None
+        parent_transaction_id = row[10] if len(row) > 10 else None
         
-        if trans_type == 'income' and category_id and category_id in categories_map:
+        # Exclude transfer income transactions
+        is_transfer_income = False
+        if parent_transaction_id is not None:
+            is_transfer_income = True
+        elif description:
+            description_lower = description.strip().lower()
+            if description_lower.startswith('перевод из'):
+                is_transfer_income = True
+        
+        if trans_type == 'income' and not is_transfer_income and category_id and category_id in categories_map:
             cat_info = categories_map[category_id]
             cat_name = cat_info["name"]
             # Use amount_in_default_currency if available, otherwise use amount
@@ -286,13 +309,24 @@ async def get_analytics(
         trans_type = row[2].lower() if row[2] else ''
         transaction_date = row[8]  # transaction_date
         amount = float(row[3]) if row[3] else 0.0
+        description = row[6] if len(row) > 6 else None
+        parent_transaction_id = row[10] if len(row) > 10 else None
+        
+        # Exclude transfer income transactions
+        is_transfer_income = False
+        if parent_transaction_id is not None:
+            is_transfer_income = True
+        elif description:
+            description_lower = description.strip().lower()
+            if description_lower.startswith('перевод из'):
+                is_transfer_income = True
         
         if transaction_date:
             date_key = transaction_date.date().isoformat() if hasattr(transaction_date, 'date') else str(transaction_date)[:10]
             if date_key not in daily_flow:
                 daily_flow[date_key] = {"date": date_key, "income": 0, "expense": 0}
             
-            if trans_type == 'income':
+            if trans_type == 'income' and not is_transfer_income:
                 daily_flow[date_key]["income"] += amount
             elif trans_type == 'expense':
                 daily_flow[date_key]["expense"] += amount
@@ -319,7 +353,7 @@ async def get_analytics(
             month_params["month_end"] = month_end
             
             month_sql = f"""
-                SELECT transaction_type::text, amount
+                SELECT transaction_type::text, amount, description, parent_transaction_id
                 FROM transactions
                 WHERE account_id IN ({placeholders})
                 AND transaction_date >= :month_start
@@ -334,8 +368,19 @@ async def get_analytics(
         for row in month_transactions_data:
             trans_type = row[0].lower() if row[0] else ''
             amount = float(row[1]) if row[1] else 0.0
+            description = row[2] if len(row) > 2 else None
+            parent_transaction_id = row[3] if len(row) > 3 else None
             
-            if trans_type == 'income':
+            # Exclude transfer income transactions
+            is_transfer_income = False
+            if parent_transaction_id is not None:
+                is_transfer_income = True
+            elif description:
+                description_lower = description.strip().lower()
+                if description_lower.startswith('перевод из'):
+                    is_transfer_income = True
+            
+            if trans_type == 'income' and not is_transfer_income:
                 month_income += amount
             elif trans_type == 'expense':
                 month_expense += amount
