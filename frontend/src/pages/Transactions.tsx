@@ -132,6 +132,16 @@ export function Transactions() {
     onConfirm: () => {},
   })
 
+  // Helper function to format local datetime for datetime-local input
+  const formatLocalDateTime = (date: Date): string => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const hours = String(date.getHours()).padStart(2, '0')
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    return `${year}-${month}-${day}T${hours}:${minutes}`
+  }
+
   // Form state
   const [formData, setFormData] = useState({
     account_id: '',
@@ -140,7 +150,7 @@ export function Transactions() {
     currency: 'RUB',
     category_id: '',
     description: '',
-    transaction_date: new Date().toISOString().slice(0, 16),
+    transaction_date: formatLocalDateTime(new Date()),
     to_account_id: '',
     goal_id: '',
   })
@@ -344,13 +354,19 @@ export function Transactions() {
         return
       }
       
+      // Parse transaction_date from local datetime format (YYYY-MM-DDTHH:mm)
+      // This is interpreted as local time, then converted to ISO string for backend
+      const localDate = new Date(formData.transaction_date)
+      // Convert local time to ISO string (UTC) for backend
+      const transactionDateISO = localDate.toISOString()
+      
       const submitData: any = {
         account_id: parseInt(formData.account_id),
         transaction_type: formData.transaction_type,
         amount: amountNumber,
         currency: formData.currency,
         description: formData.description || undefined,
-        transaction_date: new Date(formData.transaction_date).toISOString(),
+        transaction_date: transactionDateISO,
       }
 
       if (formData.transaction_type === 'transfer') {
@@ -397,6 +413,8 @@ export function Transactions() {
   const handleEdit = async (transaction: Transaction) => {
     setEditingTransaction(transaction)
     await loadCategories(transaction.transaction_type)
+    // Convert transaction_date from ISO string to local datetime format
+    const transactionDate = new Date(transaction.transaction_date)
     setFormData({
       account_id: transaction.account_id.toString(),
       transaction_type: transaction.transaction_type,
@@ -404,7 +422,7 @@ export function Transactions() {
       currency: transaction.currency,
       category_id: transaction.category_id?.toString() || '',
       description: transaction.description || '',
-      transaction_date: new Date(transaction.transaction_date).toISOString().slice(0, 16),
+      transaction_date: formatLocalDateTime(transactionDate),
       to_account_id: transaction.to_account_id?.toString() || '',
       goal_id: (transaction as any).goal_id?.toString() || '',
     })
@@ -462,7 +480,7 @@ export function Transactions() {
       currency: 'RUB',
       category_id: '',
       description: '',
-      transaction_date: new Date().toISOString().slice(0, 16),
+      transaction_date: formatLocalDateTime(new Date()),
       to_account_id: '',
       goal_id: '',
     })
