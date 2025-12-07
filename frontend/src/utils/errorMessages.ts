@@ -109,13 +109,14 @@ export function translateError(error: any): string {
   if (errorLower.includes('max_length') || errorLower.includes('too long') || errorLower.includes('exceeds') || 
       errorLower.includes('string_too_long') || errorLower.includes('ensure this value has at most')) {
     // Проверяем, не является ли сообщение уже правильным русским текстом
-    if (errorMessage.includes('Название бюджета не должно превышать 100 символов')) {
+    if (errorMessage.includes('Максимальная длина названия — 100 символов') || 
+        errorMessage.includes('Название бюджета не должно превышать 100 символов')) {
       return errorMessage
     }
     if (errorLower.includes('name') || errorLower.includes('название')) {
       // Проверяем, относится ли это к бюджету (100 символов) или к счету (255 символов)
       if (errorLower.includes('100') || errorMessage.includes('100')) {
-        return 'Название бюджета не должно превышать 100 символов'
+        return 'Максимальная длина названия — 100 символов'
       }
       return 'Название счета не может превышать 255 символов.'
     }

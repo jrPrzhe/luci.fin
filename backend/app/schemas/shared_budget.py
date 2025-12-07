@@ -13,7 +13,7 @@ class SharedBudgetBase(BaseModel):
     def validate_name_length(cls, v: str) -> str:
         """Validate budget name length"""
         if len(v) > 100:
-            raise ValueError('Название бюджета не должно превышать 100 символов')
+            raise ValueError('Максимальная длина названия — 100 символов')
         return v
 
 
@@ -25,6 +25,14 @@ class SharedBudgetUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     is_active: Optional[bool] = None
+    
+    @field_validator('name')
+    @classmethod
+    def validate_name_length(cls, v: Optional[str]) -> Optional[str]:
+        """Validate budget name length"""
+        if v is not None and len(v) > 100:
+            raise ValueError('Максимальная длина названия — 100 символов')
+        return v
 
 
 class SharedBudgetResponse(SharedBudgetBase):
