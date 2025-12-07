@@ -403,7 +403,7 @@ async def sync_admin_status(
     db: Session = Depends(get_db)
 ):
     """
-    Sync admin status for current user based on ADMIN_TELEGRAM_IDS
+    Sync admin status for current user based on ADMIN_TELEGRAM_USERNAMES
     This endpoint can be called by any authenticated user to update their admin status
     """
     import logging
@@ -411,15 +411,16 @@ async def sync_admin_status(
     
     logger = logging.getLogger(__name__)
     
-    if not current_user.telegram_id:
+    if not current_user.telegram_username:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="This endpoint is only for Telegram users"
+            detail="This endpoint is only for Telegram users with username"
         )
     
-    should_be_admin = str(current_user.telegram_id) in settings.ADMIN_TELEGRAM_IDS
+    username_lower = current_user.telegram_username.lower().lstrip('@')
+    should_be_admin = username_lower in settings.ADMIN_TELEGRAM_USERNAMES
     
-    logger.info(f"Syncing admin status for user {current_user.id}, telegram_id={current_user.telegram_id}, should_be_admin={should_be_admin}, current_is_admin={current_user.is_admin}")
+    logger.info(f"Syncing admin status for user {current_user.id}, telegram_username={current_user.telegram_username}, should_be_admin={should_be_admin}, current_is_admin={current_user.is_admin}")
     
     if current_user.is_admin != should_be_admin:
         current_user.is_admin = should_be_admin
@@ -429,9 +430,9 @@ async def sync_admin_status(
     
     return {
         "is_admin": current_user.is_admin,
-        "telegram_id": current_user.telegram_id,
+        "telegram_username": current_user.telegram_username,
         "in_admin_list": should_be_admin,
-        "admin_list": settings.ADMIN_TELEGRAM_IDS
+        "admin_list": settings.ADMIN_TELEGRAM_USERNAMES
     }
 
 

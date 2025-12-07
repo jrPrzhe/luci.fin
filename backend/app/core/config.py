@@ -44,9 +44,9 @@ class Settings(BaseSettings):
     # Telegram
     TELEGRAM_BOT_TOKEN: str = ""
     TELEGRAM_WEBHOOK_URL: str = ""
-    ADMIN_TELEGRAM_IDS: Union[List[str], str] = Field(
+    ADMIN_TELEGRAM_USERNAMES: Union[List[str], str] = Field(
         default=[],
-        description="List of Telegram IDs that should have admin access"
+        description="List of Telegram usernames (without @) that should have admin access"
     )
     
     # VK
@@ -88,9 +88,9 @@ class Settings(BaseSettings):
             return v
         return []
     
-    @field_validator('ADMIN_TELEGRAM_IDS', mode='before')
+    @field_validator('ADMIN_TELEGRAM_USERNAMES', mode='before')
     @classmethod
-    def parse_admin_ids(cls, v):
+    def parse_admin_usernames(cls, v):
         result = []
         if isinstance(v, str):
             # Try to parse as JSON first
@@ -103,7 +103,7 @@ class Settings(BaseSettings):
             except (json.JSONDecodeError, ValueError):
                 # If not JSON, parse as comma-separated string
                 if v.strip():
-                    result = [id.strip() for id in v.split(',') if id.strip()]
+                    result = [username.strip() for username in v.split(',') if username.strip()]
                 else:
                     return []
         elif isinstance(v, list):
@@ -111,9 +111,15 @@ class Settings(BaseSettings):
         else:
             return []
         
-        # Normalize all IDs to strings (important for comparison)
-        # This handles cases where JSON contains numbers like [440543986, 7295487724]
-        normalized = [str(id).strip() for id in result if id is not None]
+        # Normalize all usernames: remove @ if present and convert to lowercase
+        normalized = []
+        for username in result:
+            if username is not None:
+                # Remove @ if present
+                username = str(username).strip().lstrip('@')
+                # Convert to lowercase for case-insensitive comparison
+                if username:
+                    normalized.append(username.lower())
         return normalized
     
     model_config = SettingsConfigDict(

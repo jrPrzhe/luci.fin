@@ -96,12 +96,13 @@ def get_current_user(
             # Устанавливаем значение по умолчанию
             user.is_premium = False
     
-    # Синхронизируем статус админа для пользователей с Telegram ID
-    if user.telegram_id:
-        should_be_admin = str(user.telegram_id) in settings.ADMIN_TELEGRAM_IDS
+    # Синхронизируем статус админа для пользователей с Telegram username
+    if user.telegram_username:
+        username_lower = user.telegram_username.lower().lstrip('@')
+        should_be_admin = username_lower in settings.ADMIN_TELEGRAM_USERNAMES
         
         if user.is_admin != should_be_admin:
-            logger.info(f"Syncing admin status in get_current_user for user {user.id}: telegram_id={user.telegram_id}, current={user.is_admin}, should_be={should_be_admin}")
+            logger.info(f"Syncing admin status in get_current_user for user {user.id}: telegram_username={user.telegram_username}, current={user.is_admin}, should_be={should_be_admin}")
             user.is_admin = should_be_admin
             db.commit()
             db.refresh(user)
@@ -119,13 +120,14 @@ def get_current_admin(
     import logging
     logger = logging.getLogger(__name__)
     
-    # Синхронизируем статус админа для пользователей с Telegram ID
-    if current_user.telegram_id:
+    # Синхронизируем статус админа для пользователей с Telegram username
+    if current_user.telegram_username:
         from app.core.config import settings
-        should_be_admin = str(current_user.telegram_id) in settings.ADMIN_TELEGRAM_IDS
+        username_lower = current_user.telegram_username.lower().lstrip('@')
+        should_be_admin = username_lower in settings.ADMIN_TELEGRAM_USERNAMES
         
         if current_user.is_admin != should_be_admin:
-            logger.info(f"Syncing admin status for user {current_user.id}: telegram_id={current_user.telegram_id}, current={current_user.is_admin}, should_be={should_be_admin}")
+            logger.info(f"Syncing admin status for user {current_user.id}: telegram_username={current_user.telegram_username}, current={current_user.is_admin}, should_be={should_be_admin}")
             current_user.is_admin = should_be_admin
             db.commit()
             db.refresh(current_user)
@@ -541,13 +543,14 @@ async def login_telegram(
             
             # Check if user is admin
             from app.core.config import settings
-            is_admin = str(telegram_id) in settings.ADMIN_TELEGRAM_IDS
+            username_lower = (telegram_username or '').lower().lstrip('@')
+            is_admin = username_lower in settings.ADMIN_TELEGRAM_USERNAMES if username_lower else False
             logger.info("=" * 60)
             logger.info("ADMIN STATUS CHECK (New User)")
             logger.info("=" * 60)
-            logger.info(f"telegram_id = {telegram_id} (type: {type(telegram_id)})")
-            logger.info(f"ADMIN_TELEGRAM_IDS = {settings.ADMIN_TELEGRAM_IDS} (type: {type(settings.ADMIN_TELEGRAM_IDS)})")
-            logger.info(f"str(telegram_id) in ADMIN_TELEGRAM_IDS = {is_admin}")
+            logger.info(f"telegram_username = {telegram_username} (type: {type(telegram_username)})")
+            logger.info(f"ADMIN_TELEGRAM_USERNAMES = {settings.ADMIN_TELEGRAM_USERNAMES} (type: {type(settings.ADMIN_TELEGRAM_USERNAMES)})")
+            logger.info(f"username_lower in ADMIN_TELEGRAM_USERNAMES = {is_admin}")
             logger.info(f"✅ New user will be created with is_admin = {is_admin}")
             logger.info("=" * 60)
             
@@ -581,13 +584,16 @@ async def login_telegram(
             
             # Update admin status based on config
             from app.core.config import settings
-            should_be_admin = str(telegram_id) in settings.ADMIN_TELEGRAM_IDS
+            # Use telegram_username from user or from request
+            check_username = user.telegram_username or telegram_username
+            username_lower = (check_username or '').lower().lstrip('@')
+            should_be_admin = username_lower in settings.ADMIN_TELEGRAM_USERNAMES if username_lower else False
             logger.info("=" * 60)
             logger.info("ADMIN STATUS CHECK (Existing User)")
             logger.info("=" * 60)
-            logger.info(f"telegram_id = {telegram_id} (type: {type(telegram_id)})")
-            logger.info(f"ADMIN_TELEGRAM_IDS = {settings.ADMIN_TELEGRAM_IDS} (type: {type(settings.ADMIN_TELEGRAM_IDS)})")
-            logger.info(f"str(telegram_id) in ADMIN_TELEGRAM_IDS = {should_be_admin}")
+            logger.info(f"telegram_username = {check_username} (type: {type(check_username)})")
+            logger.info(f"ADMIN_TELEGRAM_USERNAMES = {settings.ADMIN_TELEGRAM_USERNAMES} (type: {type(settings.ADMIN_TELEGRAM_USERNAMES)})")
+            logger.info(f"username_lower in ADMIN_TELEGRAM_USERNAMES = {should_be_admin}")
             logger.info(f"current_is_admin = {user.is_admin}")
             logger.info(f"should_be_admin = {should_be_admin}")
             if user.is_admin != should_be_admin:
@@ -1349,12 +1355,13 @@ async def get_current_user_info(
     auth_header = request.headers.get("authorization")
     logger.info(f"/me endpoint called, Authorization header present: {bool(auth_header)}, value: {auth_header[:50] + '...' if auth_header and len(auth_header) > 50 else auth_header}")
     
-    # Синхронизируем статус админа для пользователей с Telegram ID
-    if current_user.telegram_id:
-        should_be_admin = str(current_user.telegram_id) in settings.ADMIN_TELEGRAM_IDS
+    # Синхронизируем статус админа для пользователей с Telegram username
+    if current_user.telegram_username:
+        username_lower = current_user.telegram_username.lower().lstrip('@')
+        should_be_admin = username_lower in settings.ADMIN_TELEGRAM_USERNAMES
         
         if current_user.is_admin != should_be_admin:
-            logger.info(f"Syncing admin status in /me for user {current_user.id}: telegram_id={current_user.telegram_id}, current={current_user.is_admin}, should_be={should_be_admin}")
+            logger.info(f"Syncing admin status in /me for user {current_user.id}: telegram_username={current_user.telegram_username}, current={current_user.is_admin}, should_be={should_be_admin}")
             current_user.is_admin = should_be_admin
             db.commit()
             db.refresh(current_user)

@@ -316,13 +316,13 @@ try:
 {'=' * 60}
 ADMIN CONFIGURATION CHECK
 {'=' * 60}
-ADMIN_TELEGRAM_IDS = {settings.ADMIN_TELEGRAM_IDS}
-Type: {type(settings.ADMIN_TELEGRAM_IDS)}
-Count: {len(settings.ADMIN_TELEGRAM_IDS) if isinstance(settings.ADMIN_TELEGRAM_IDS, list) else 'N/A'}
+ADMIN_TELEGRAM_USERNAMES = {settings.ADMIN_TELEGRAM_USERNAMES}
+Type: {type(settings.ADMIN_TELEGRAM_USERNAMES)}
+Count: {len(settings.ADMIN_TELEGRAM_USERNAMES) if isinstance(settings.ADMIN_TELEGRAM_USERNAMES, list) else 'N/A'}
 """
-    if isinstance(settings.ADMIN_TELEGRAM_IDS, list):
-        for admin_id in settings.ADMIN_TELEGRAM_IDS:
-            admin_config_msg += f"  - Admin ID: {admin_id} (type: {type(admin_id)})\n"
+    if isinstance(settings.ADMIN_TELEGRAM_USERNAMES, list):
+        for admin_username in settings.ADMIN_TELEGRAM_USERNAMES:
+            admin_config_msg += f"  - Admin Username: @{admin_username} (type: {type(admin_username)})\n"
     admin_config_msg += "=" * 60
     
     print(admin_config_msg)  # Print for guaranteed output
