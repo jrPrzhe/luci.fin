@@ -57,6 +57,8 @@ export function Accounts() {
   const [expandedDescriptions, setExpandedDescriptions] = useState<Set<number>>(new Set())
   const [isDeleting, setIsDeleting] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [currentUser, setCurrentUser] = useState<any>(null)
+  const [budgetMembers, setBudgetMembers] = useState<Record<number, any[]>>({})
   
   // Confirmation modal state
   const [confirmModal, setConfirmModal] = useState<{
@@ -88,6 +90,14 @@ export function Accounts() {
 
   useEffect(() => {
     const initialize = async () => {
+      // Загружаем текущего пользователя
+      try {
+        const user = await api.getCurrentUser()
+        setCurrentUser(user)
+      } catch (err) {
+        console.error('Failed to load current user:', err)
+      }
+      
       const budgets = await loadSharedBudgets()
       if (budgets) {
         await loadAccounts(budgets)
@@ -97,6 +107,48 @@ export function Accounts() {
     }
     initialize()
   }, [])
+  
+  // Загружаем участников бюджетов после загрузки пользователя и счетов
+  useEffect(() => {
+    if (currentUser && accounts.length > 0) {
+      const sharedAccounts = accounts.filter((acc: Account) => acc.shared_budget_id)
+      if (sharedAccounts.length > 0) {
+        // Проверяем, нужно ли загружать участников (если еще не загружены)
+        const sharedBudgetIds = new Set(
+          sharedAccounts.map((acc: Account) => acc.shared_budget_id!)
+        )
+        const missingBudgetIds = Array.from(sharedBudgetIds).filter(
+          (budgetId) => !budgetMembers[budgetId]
+        )
+        
+        if (missingBudgetIds.length > 0) {
+          // Загружаем участников бюджетов для совместных счетов
+          const loadBudgetMembers = async () => {
+            const membersPromises = missingBudgetIds.map(async (budgetId) => {
+              try {
+                const members = await api.getBudgetMembers(budgetId)
+                return { budgetId, members }
+              } catch (err) {
+                console.error(`Failed to load members for budget ${budgetId}:`, err)
+                return { budgetId, members: [] }
+              }
+            })
+            
+            const membersResults = await Promise.all(membersPromises)
+            setBudgetMembers((prev) => {
+              const newMembersMap = { ...prev }
+              membersResults.forEach(({ budgetId, members }) => {
+                newMembersMap[budgetId] = members
+              })
+              return newMembersMap
+            })
+          }
+          loadBudgetMembers()
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser?.id, accounts.length])
 
   const loadSharedBudgets = async () => {
     try {
@@ -136,6 +188,15 @@ export function Accounts() {
     } finally {
       setLoading(false)
     }
+  }
+  
+  // Функция для проверки, является ли текущий пользователь администратором бюджета
+  const isUserAdminOfBudget = (budgetId?: number): boolean => {
+    if (!currentUser || !budgetId) return false
+    const members = budgetMembers[budgetId]
+    if (!members) return false
+    const userMember = members.find((m: any) => m.user_id === currentUser.id)
+    return userMember?.role === 'admin'
   }
 
   const toggleDescription = (accountId: number) => {
@@ -415,6 +476,8 @@ export function Accounts() {
                     >
                       ✏️
                     </button>
+                    {/* Показываем кнопку удаления только для личных счетов или если пользователь администратор совместного бюджета */}
+                    {(!account.shared_budget_id || isUserAdminOfBudget(account.shared_budget_id)) && (
                     <button
                       onClick={async () => {
                         try {
@@ -490,6 +553,7 @@ export function Accounts() {
                     >
                       🗑️
                     </button>
+                    )}
                   </div>
                 </div>
               </div>
