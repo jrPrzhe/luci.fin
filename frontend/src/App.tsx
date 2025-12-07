@@ -27,6 +27,7 @@ import { NewYearProvider } from './contexts/NewYearContext'
 import { I18nProvider } from './contexts/I18nContext'
 import { ToastProvider } from './contexts/ToastContext'
 import { LoadingSpinner } from './components/LoadingSpinner'
+import { ErrorBoundary } from './components/ErrorBoundary'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -508,7 +509,11 @@ function App() {
               <Route path="accounts" element={<Accounts />} />
               <Route path="categories" element={<Categories />} />
               <Route path="goals" element={<Goals />} />
-              <Route path="reports" element={<Reports />} />
+              <Route path="reports" element={
+                <ErrorBoundary>
+                  <Reports />
+                </ErrorBoundary>
+              } />
               <Route path="shared-budgets" element={<SharedBudgets />} />
               <Route path="profile" element={<Profile />} />
               <Route path="statistics" element={<Statistics />} />

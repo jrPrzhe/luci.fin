@@ -225,11 +225,18 @@ export function Reports() {
   }
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    if (period === 'week') {
-      return date.toLocaleDateString('ru-RU', { weekday: 'short' })
+    try {
+      if (!dateString) return ''
+      const date = new Date(dateString)
+      if (isNaN(date.getTime())) return dateString // Return original if invalid date
+      if (period === 'week') {
+        return date.toLocaleDateString('ru-RU', { weekday: 'short' })
+      }
+      return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
+    } catch (error) {
+      console.error('Error formatting date:', error)
+      return dateString || ''
     }
-    return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
   }
 
   if (isLoading) {
@@ -282,22 +289,29 @@ export function Reports() {
   // Create a stable component reference that only changes when locale changes
   const CustomTooltip = useMemo(() => {
     const TooltipComponent = ({ active, payload, label }: any) => {
-      if (active && payload && payload.length) {
-        return (
-          <div className="bg-white dark:bg-telegram-dark-surface p-3 rounded-lg shadow-lg border border-telegram-border dark:border-telegram-dark-border pointer-events-none">
-            <p className="font-semibold mb-2 text-telegram-text dark:text-telegram-dark-text">{localizeMonth(label, locale)}</p>
-            {payload.map((entry: any, index: number) => (
-              <p key={index} className="text-sm text-telegram-text dark:text-telegram-dark-text" style={{ color: entry.color }}>
-                {entry.name}: {formatCurrency(entry.value)}
+      try {
+        if (active && payload && Array.isArray(payload) && payload.length > 0) {
+          return (
+            <div className="bg-white dark:bg-telegram-dark-surface p-3 rounded-lg shadow-lg border border-telegram-border dark:border-telegram-dark-border pointer-events-none">
+              <p className="font-semibold mb-2 text-telegram-text dark:text-telegram-dark-text">
+                {label ? localizeMonth(String(label), locale) : ''}
               </p>
-            ))}
-          </div>
-        )
+              {payload.map((entry: any, index: number) => (
+                <p key={index} className="text-sm text-telegram-text dark:text-telegram-dark-text" style={{ color: entry.color || '#000' }}>
+                  {entry.name || ''}: {formatCurrency(entry.value || 0)}
+                </p>
+              ))}
+            </div>
+          )
+        }
+        return null
+      } catch (error) {
+        console.error('Error rendering tooltip:', error)
+        return null
       }
-      return null
     }
     return TooltipComponent
-  }, [locale])
+  }, [locale, formatCurrency])
 
   return (
     <div className="min-h-screen p-4 md:p-6 animate-fade-in max-w-7xl mx-auto w-full">
@@ -539,7 +553,7 @@ export function Reports() {
       )}
 
       {/* Daily Flow Chart */}
-      {dailyFlowData.length > 0 && (
+      {dailyFlowData && Array.isArray(dailyFlowData) && dailyFlowData.length > 0 && (
         <div className="card p-5 mb-6">
           <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
             {t.reports.dailyFlow}
@@ -583,7 +597,7 @@ export function Reports() {
       )}
 
       {/* Monthly Comparison */}
-      {monthlyData.length > 0 && (
+      {monthlyData && Array.isArray(monthlyData) && monthlyData.length > 0 && (
         <div className="card p-5 mb-6">
           <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
             {t.reports.monthlyComparison}
@@ -661,7 +675,7 @@ export function Reports() {
             <ResponsiveContainer width="100%" height={300}>
               <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
                 <Pie
-                  data={expensePieData}
+                  data={expensePieData && Array.isArray(expensePieData) ? expensePieData : []}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
@@ -672,7 +686,7 @@ export function Reports() {
                   fill="#8884d8"
                   dataKey="value"
                 >
-                  {expensePieData.map((entry, index) => (
+                  {(expensePieData && Array.isArray(expensePieData) ? expensePieData : []).map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
@@ -685,7 +699,7 @@ export function Reports() {
             
             {/* Category List */}
             <div className="mt-4 space-y-2">
-              {analytics.top_expense_categories.slice(0, 5).map((cat, index) => (
+              {(analytics.top_expense_categories && Array.isArray(analytics.top_expense_categories) ? analytics.top_expense_categories.slice(0, 5) : []).map((cat, index) => (
                 <div key={index} className="flex items-center justify-between p-2 rounded-telegram hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">{cat.icon}</span>
@@ -708,11 +722,11 @@ export function Reports() {
             </h2>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart 
-                data={analytics.top_expense_categories.slice(0, 5).map(cat => ({
-                  name: cat.icon + ' ' + translateCategoryName(cat.name),
-                  originalName: cat.name,
-                  amount: cat.amount,
-                  color: cat.color,
+                data={(analytics.top_expense_categories && Array.isArray(analytics.top_expense_categories) ? analytics.top_expense_categories.slice(0, 5) : []).map(cat => ({
+                  name: (cat.icon || '📦') + ' ' + translateCategoryName(cat.name || 'Без названия'),
+                  originalName: cat.name || 'Без названия',
+                  amount: cat.amount || 0,
+                  color: cat.color || '#607D8B',
                 }))}
                 layout="vertical"
               >
@@ -734,33 +748,38 @@ export function Reports() {
                 />
                 <Tooltip 
                   content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      return (
-                        <div className="bg-white dark:bg-telegram-dark-surface p-3 rounded-lg shadow-lg border border-telegram-border dark:border-telegram-dark-border">
-                          {payload.map((entry: any, index: number) => {
-                            // Extract category name from entry.name (format: "icon translatedName")
-                            // entry.name already contains translated name, but we need to extract it without icon
-                            const categoryName = entry.payload?.originalName 
-                              ? translateCategoryName(entry.payload.originalName)
-                              : (entry.name ? entry.name.replace(/^[^\s]+\s/, '') : (language === 'ru' ? 'Категория' : 'Category'))
-                            return (
-                              <p key={index} className="text-sm text-telegram-text dark:text-telegram-dark-text">
-                                <span className="font-semibold">{categoryName}:</span>{' '}
-                                <span className="font-bold">{formatCurrency(entry.value)}</span>
-                              </p>
-                            )
-                          })}
-                        </div>
-                      )
+                    try {
+                      if (active && payload && Array.isArray(payload) && payload.length > 0) {
+                        return (
+                          <div className="bg-white dark:bg-telegram-dark-surface p-3 rounded-lg shadow-lg border border-telegram-border dark:border-telegram-dark-border">
+                            {payload.map((entry: any, index: number) => {
+                              // Extract category name from entry.name (format: "icon translatedName")
+                              // entry.name already contains translated name, but we need to extract it without icon
+                              const categoryName = entry.payload?.originalName 
+                                ? translateCategoryName(entry.payload.originalName)
+                                : (entry.name ? entry.name.replace(/^[^\s]+\s/, '') : (language === 'ru' ? 'Категория' : 'Category'))
+                              return (
+                                <p key={index} className="text-sm text-telegram-text dark:text-telegram-dark-text">
+                                  <span className="font-semibold">{categoryName || 'Категория'}:</span>{' '}
+                                  <span className="font-bold">{formatCurrency(entry.value || 0)}</span>
+                                </p>
+                              )
+                            })}
+                          </div>
+                        )
+                      }
+                      return null
+                    } catch (error) {
+                      console.error('Error rendering tooltip:', error)
+                      return null
                     }
-                    return null
                   }}
                 />
                 <Bar 
                   dataKey="amount" 
                   radius={[0, 8, 8, 0]}
                 >
-                  {analytics.top_expense_categories.slice(0, 5).map((cat, index) => (
+                  {(analytics.top_expense_categories && Array.isArray(analytics.top_expense_categories) ? analytics.top_expense_categories.slice(0, 5) : []).map((cat, index) => (
                     <Cell key={`cell-${index}`} fill={cat.color || COLORS[index % COLORS.length]} />
                   ))}
                 </Bar>
