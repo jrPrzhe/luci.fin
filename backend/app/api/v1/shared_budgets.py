@@ -753,6 +753,14 @@ async def update_member_role(
             detail="Только администраторы могут изменять роли участников"
         )
     
+    # Get budget to check creator
+    budget = db.query(SharedBudget).filter(SharedBudget.id == budget_id).first()
+    if not budget:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Бюджет не найден"
+        )
+    
     # Check if target member exists
     target_membership = db.query(SharedBudgetMember).filter(
         SharedBudgetMember.shared_budget_id == budget_id,
@@ -764,6 +772,15 @@ async def update_member_role(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Участник не найден"
         )
+    
+    # Prevent demoting or removing the budget creator
+    if user_id == budget.created_by:
+        if new_role == MemberRole.MEMBER:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Создатель бюджета не может быть понижен до участника"
+            )
+        # Creator should always remain admin, but we allow keeping admin role
     
     # Check if trying to change own role (admins can't demote themselves if they're the only admin)
     if user_id == current_user.id:
@@ -816,11 +833,26 @@ async def remove_member(
             detail="Только администраторы могут удалять участников"
         )
     
+    # Get budget to check creator
+    budget = db.query(SharedBudget).filter(SharedBudget.id == budget_id).first()
+    if not budget:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Бюджет не найден"
+        )
+    
     # Cannot remove yourself
     if user_id == current_user.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Нельзя удалить самого себя"
+        )
+    
+    # Prevent removing the budget creator
+    if user_id == budget.created_by:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Создатель бюджета не может быть удален из бюджета"
         )
     
     member = db.query(SharedBudgetMember).filter(
@@ -865,6 +897,13 @@ async def leave_budget(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Бюджет не найден"
+        )
+    
+    # Prevent the budget creator from leaving the budget
+    if current_user.id == budget.created_by:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Создатель бюджета не может покинуть бюджет"
         )
     
     # Check if user is an admin (not just the creator - role matters!)

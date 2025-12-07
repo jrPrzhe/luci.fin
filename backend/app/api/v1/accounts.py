@@ -122,27 +122,60 @@ async def get_balance(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get total balance across all accounts"""
+    """Get total balance across all accounts (including shared accounts)"""
+    # Get user's own accounts
     accounts = db.query(Account).filter(
         Account.user_id == current_user.id,
-        Account.is_archived == False
+        Account.is_archived == False,
+        Account.shared_budget_id == None  # Personal accounts only
     ).all()
+    
+    # Get shared accounts from budgets where user is a member
+    from app.models.shared_budget import SharedBudgetMember
+    budget_memberships = db.query(SharedBudgetMember).filter(
+        SharedBudgetMember.user_id == current_user.id
+    ).all()
+    budget_ids = [m.shared_budget_id for m in budget_memberships]
+    
+    shared_accounts = []
+    if budget_ids:
+        shared_accounts = db.query(Account).filter(
+            Account.shared_budget_id.in_(budget_ids),
+            Account.is_archived == False
+        ).all()
+    
+    # Combine personal and shared accounts
+    all_accounts = list(accounts) + list(shared_accounts)
     
     total_balance = Decimal("0")
     account_balances = []
     
-    for account in accounts:
+    for account in all_accounts:
         try:
-            # Calculate balance - filter transactions by both account and user for security
+            # Calculate balance
+            # For shared accounts, count ALL transactions (from all members)
+            # For personal accounts, count only user's transactions
             # Use raw SQL to avoid enum conversion issues
-            transactions_result = db.execute(
-                sa_text("""
-                    SELECT transaction_type::text, amount 
-                    FROM transactions 
-                    WHERE account_id = :account_id AND user_id = :user_id
-                """),
-                {"account_id": account.id, "user_id": current_user.id}
-            )
+            if account.shared_budget_id:
+                # Shared account: count all transactions
+                transactions_result = db.execute(
+                    sa_text("""
+                        SELECT transaction_type::text, amount 
+                        FROM transactions 
+                        WHERE account_id = :account_id
+                    """),
+                    {"account_id": account.id}
+                )
+            else:
+                # Personal account: count only user's transactions
+                transactions_result = db.execute(
+                    sa_text("""
+                        SELECT transaction_type::text, amount 
+                        FROM transactions 
+                        WHERE account_id = :account_id AND user_id = :user_id
+                    """),
+                    {"account_id": account.id, "user_id": current_user.id}
+                )
             
             balance = Decimal(str(account.initial_balance)) if account.initial_balance else Decimal("0")
             for row in transactions_result:
