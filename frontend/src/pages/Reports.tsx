@@ -620,17 +620,17 @@ export function Reports() {
             <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
               {t.reports.expenseCategories}
             </h2>
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
                 <Pie
                   data={expensePieData}
                   cx="50%"
-                  cy="45%"
+                  cy="50%"
                   labelLine={false}
                   label={({ icon, percent }) => 
                     `${icon} ${(percent * 100).toFixed(0)}%`
                   }
-                  outerRadius={70}
+                  outerRadius={75}
                   fill="#8884d8"
                   dataKey="value"
                 >
@@ -692,7 +692,7 @@ export function Reports() {
                   stroke="#707579"
                   className="dark:stroke-telegram-dark-textSecondary"
                   style={{ fontSize: '12px' }}
-                  width={120}
+                  width={150}
                 />
                 <Tooltip 
                   content={({ active, payload }) => {

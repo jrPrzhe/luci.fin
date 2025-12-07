@@ -193,19 +193,20 @@ export function Dashboard() {
     }
   }
 
-  const handleQuickAction = async (type: 'income' | 'expense' | 'transfer') => {
+  const handleQuickAction = (type: 'income' | 'expense' | 'transfer') => {
     console.log(`[handleQuickAction] Starting for type: ${type}`)
-    setQuickFormType(type)
     
-    // Reset categories first
+    // Set form type and show modal immediately (synchronous operations)
+    setQuickFormType(type)
+    setShowQuickForm(true)
+    setQuickFormStep(type === 'transfer' ? 'form' : 'category')
+    
+    // Reset categories and set loading state
     setCategories([])
     setCategoriesLoading(true)
     console.log(`[handleQuickAction] Set categoriesLoading = true`)
     
-    // Show form immediately with loading state
-    setShowQuickForm(true)
-    setQuickFormStep(type === 'transfer' ? 'form' : 'category')
-    
+    // Reset form data
     setQuickFormData({
       category_id: '',
       account_id: accounts && accounts.length > 0 ? accounts[0].id.toString() : '',
@@ -215,20 +216,23 @@ export function Dashboard() {
       goal_id: '',
     })
     
-    // Load categories for income/expense
+    // Load categories asynchronously (non-blocking) for income/expense
     if (type === 'income' || type === 'expense') {
-      try {
-        console.log(`[handleQuickAction] Loading categories for ${type}...`)
-        await loadCategories(type)
-        console.log(`[handleQuickAction] Categories loaded successfully`)
-      } catch (err: any) {
-        console.error('[handleQuickAction] Error loading categories:', err)
-        showError(err.message || t.errors.networkError)
-      } finally {
-        // Always reset loading state
-        console.log(`[handleQuickAction] Setting categoriesLoading = false`)
-        setCategoriesLoading(false)
-      }
+      // Use setTimeout to defer category loading, allowing modal to render first
+      setTimeout(async () => {
+        try {
+          console.log(`[handleQuickAction] Loading categories for ${type}...`)
+          await loadCategories(type)
+          console.log(`[handleQuickAction] Categories loaded successfully`)
+        } catch (err: any) {
+          console.error('[handleQuickAction] Error loading categories:', err)
+          showError(err.message || t.errors.networkError)
+        } finally {
+          // Always reset loading state
+          console.log(`[handleQuickAction] Setting categoriesLoading = false`)
+          setCategoriesLoading(false)
+        }
+      }, 0)
     } else {
       console.log(`[handleQuickAction] Transfer type, skipping categories`)
       setCategoriesLoading(false)
@@ -386,6 +390,14 @@ export function Dashboard() {
     }
   }
 
+  // Показываем общий LoadingSpinner при первой загрузке основных данных
+  // Это предотвращает "дополнительную загрузку" после холодного старта
+  const isInitialLoading = balanceLoading || accountsLoading || transactionsLoading
+
+  if (isInitialLoading) {
+    return <LoadingSpinner fullScreen={true} size="md" />
+  }
+
   return (
     <div className="min-h-screen animate-fade-in w-full">
       {/* Header - скрыт на мобильных, так как есть в Layout */}
@@ -516,8 +528,8 @@ export function Dashboard() {
 
       {/* Quick Form Modal */}
       {showQuickForm && quickFormType && (
-        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="card max-w-md sm:max-w-lg md:max-w-xl w-full max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-[9999] p-4">
+          <div className="card max-w-md sm:max-w-lg md:max-w-xl w-full max-h-[90vh] flex flex-col z-[10000]">
             <div className="flex justify-between items-center mb-4 flex-shrink-0">
               <div className="flex items-center gap-2">
                 {quickFormStep === 'category' && (

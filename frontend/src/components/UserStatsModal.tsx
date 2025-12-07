@@ -19,31 +19,86 @@ interface UserStatsModalProps {
 
 export const UserStatsModal = memo(function UserStatsModal({ status, onClose }: UserStatsModalProps) {
   useEffect(() => {
-    // Prevent body scroll when modal is open
-    const originalOverflow = document.body.style.overflow
-    const originalPosition = document.body.style.position
-    const originalTop = document.body.style.top
-    const originalWidth = document.body.style.width
-    
     // Save current scroll position
     const scrollY = window.scrollY
     
-    // Apply styles to prevent scrolling
-    document.body.style.overflow = 'hidden'
-    document.body.style.position = 'fixed'
-    document.body.style.top = `-${scrollY}px`
-    document.body.style.width = '100%'
+    // Save original styles for body and html
+    const originalBodyOverflow = document.body.style.overflow
+    const originalBodyPosition = document.body.style.position
+    const originalBodyTop = document.body.style.top
+    const originalBodyWidth = document.body.style.width
+    const originalBodyTouchAction = document.body.style.touchAction
     
-    // Prevent touch scrolling on mobile
-    document.body.style.touchAction = 'none'
+    const originalHtmlOverflow = document.documentElement.style.overflow
+    const originalHtmlPosition = document.documentElement.style.position
+    const originalHtmlTop = document.documentElement.style.top
+    const originalHtmlWidth = document.documentElement.style.width
+    const originalHtmlTouchAction = document.documentElement.style.touchAction
+    
+    // Apply styles to prevent scrolling on both body and html
+    const preventScrollStyles = {
+      overflow: 'hidden',
+      position: 'fixed',
+      top: `-${scrollY}px`,
+      width: '100%',
+      touchAction: 'none',
+    }
+    
+    Object.assign(document.body.style, preventScrollStyles)
+    Object.assign(document.documentElement.style, preventScrollStyles)
+    
+    // Prevent scroll events with event listeners
+    const preventDefault = (e: Event) => {
+      e.preventDefault()
+      e.stopPropagation()
+      return false
+    }
+    
+    const preventWheel = (e: WheelEvent) => {
+      // Allow scrolling inside modal content
+      const target = e.target as HTMLElement
+      const modalContent = target.closest('.modal-content-scrollable')
+      if (!modalContent) {
+        e.preventDefault()
+        e.stopPropagation()
+        return false
+      }
+    }
+    
+    const preventTouchMove = (e: TouchEvent) => {
+      // Allow scrolling inside modal content
+      const target = e.target as HTMLElement
+      const modalContent = target.closest('.modal-content-scrollable')
+      if (!modalContent) {
+        e.preventDefault()
+        e.stopPropagation()
+        return false
+      }
+    }
+    
+    // Add event listeners with passive: false to allow preventDefault
+    document.addEventListener('wheel', preventWheel, { passive: false, capture: true })
+    document.addEventListener('touchmove', preventTouchMove, { passive: false, capture: true })
+    document.addEventListener('scroll', preventDefault, { passive: false, capture: true })
     
     return () => {
+      // Remove event listeners
+      document.removeEventListener('wheel', preventWheel, { capture: true } as EventListenerOptions)
+      document.removeEventListener('touchmove', preventTouchMove, { capture: true } as EventListenerOptions)
+      document.removeEventListener('scroll', preventDefault, { capture: true } as EventListenerOptions)
+      
       // Restore original styles
-      document.body.style.overflow = originalOverflow
-      document.body.style.position = originalPosition
-      document.body.style.top = originalTop
-      document.body.style.width = originalWidth
-      document.body.style.touchAction = ''
+      document.body.style.overflow = originalBodyOverflow
+      document.body.style.position = originalBodyPosition
+      document.body.style.top = originalBodyTop
+      document.body.style.width = originalBodyWidth
+      document.body.style.touchAction = originalBodyTouchAction
+      
+      document.documentElement.style.overflow = originalHtmlOverflow
+      document.documentElement.style.position = originalHtmlPosition
+      document.documentElement.style.top = originalHtmlTop
+      document.documentElement.style.width = originalHtmlWidth
+      document.documentElement.style.touchAction = originalHtmlTouchAction
       
       // Restore scroll position
       window.scrollTo(0, scrollY)
@@ -103,7 +158,7 @@ export const UserStatsModal = memo(function UserStatsModal({ status, onClose }: 
         </div>
 
         {/* Content */}
-        <div className="p-4 md:p-5 overflow-y-auto max-h-[calc(85vh-80px)]">
+        <div className="p-4 md:p-5 overflow-y-auto max-h-[calc(85vh-80px)] modal-content-scrollable">
           <div className="space-y-4 md:space-y-5">
             {/* Level Section */}
             <div className="card p-4 bg-gradient-to-br from-purple-500/10 via-blue-500/10 to-pink-500/10 dark:from-purple-600/20 dark:via-blue-600/20 dark:to-pink-600/20 border border-purple-200/20 dark:border-purple-700/30">
