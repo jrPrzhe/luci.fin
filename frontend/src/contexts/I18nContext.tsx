@@ -14,8 +14,8 @@ interface I18nContextType {
   setLanguage: (lang: Language) => Promise<void>
   t: Translations
   translateCategoryName: (name: string) => string
-  translateQuest: (title: string, description?: string) => { title: string; description?: string }
-  translateAchievement: (title: string, description?: string) => { title: string; description?: string }
+  translateQuest: (title: string, description?: string | null) => { title: string; description?: string }
+  translateAchievement: (title: string, description?: string | null) => { title: string; description?: string }
 }
 
 const I18nContext = createContext<I18nContextType | undefined>(undefined)
@@ -149,19 +149,19 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     return name
   }
 
-  const translateQuest = (title: string, description?: string): { title: string; description?: string } => {
+  const translateQuest = (title: string, description?: string | null): { title: string; description?: string } => {
     const questTranslations = translations[language].quests.translations
     return {
       title: questTranslations && title in questTranslations ? questTranslations[title as keyof typeof questTranslations] as string : title,
-      description: description && questTranslations && description in questTranslations ? questTranslations[description as keyof typeof questTranslations] as string : description,
+      description: description && questTranslations && description in questTranslations ? questTranslations[description as keyof typeof questTranslations] as string : description || undefined,
     }
   }
 
-  const translateAchievement = (title: string, description?: string): { title: string; description?: string } => {
+  const translateAchievement = (title: string, description?: string | null): { title: string; description?: string } => {
     const achievementTranslations = translations[language].achievements.translations
     return {
       title: achievementTranslations && title in achievementTranslations ? achievementTranslations[title as keyof typeof achievementTranslations] as string : title,
-      description: description && achievementTranslations && description in achievementTranslations ? achievementTranslations[description as keyof typeof achievementTranslations] as string : description,
+      description: description && achievementTranslations && description in achievementTranslations ? achievementTranslations[description as keyof typeof achievementTranslations] as string : description || undefined,
     }
   }
 
