@@ -85,6 +85,116 @@ export function Stories({ isOpen, onClose }: StoriesProps) {
     return () => window.removeEventListener('keydown', handleEscape)
   }, [isOpen, onClose])
 
+  // Блокировка прокрутки фона при открытии модального окна
+  useEffect(() => {
+    if (!isOpen) return
+
+    // Сохраняем текущую позицию прокрутки
+    const scrollY = window.scrollY
+    const scrollX = window.scrollX
+    
+    // Сохраняем оригинальные стили для body и html
+    const originalBodyOverflow = document.body.style.overflow
+    const originalBodyPosition = document.body.style.position
+    const originalBodyTop = document.body.style.top
+    const originalBodyLeft = document.body.style.left
+    const originalBodyWidth = document.body.style.width
+    const originalBodyHeight = document.body.style.height
+    const originalBodyTouchAction = document.body.style.touchAction
+    
+    const originalHtmlOverflow = document.documentElement.style.overflow
+    const originalHtmlPosition = document.documentElement.style.position
+    const originalHtmlTop = document.documentElement.style.top
+    const originalHtmlLeft = document.documentElement.style.left
+    const originalHtmlWidth = document.documentElement.style.width
+    const originalHtmlHeight = document.documentElement.style.height
+    const originalHtmlTouchAction = document.documentElement.style.touchAction
+    
+    // Применяем стили для предотвращения прокрутки на body и html
+    const preventScrollStyles = {
+      overflow: 'hidden',
+      position: 'fixed',
+      top: `-${scrollY}px`,
+      left: `-${scrollX}px`,
+      width: '100%',
+      height: '100%',
+      touchAction: 'none',
+    }
+    
+    Object.assign(document.body.style, preventScrollStyles)
+    Object.assign(document.documentElement.style, preventScrollStyles)
+    
+    // Предотвращаем события прокрутки с помощью обработчиков событий
+    const preventWheel = (e: WheelEvent) => {
+      // Разрешаем прокрутку только внутри модального окна
+      const target = e.target as HTMLElement
+      const modalContent = target.closest('.stories-modal-content')
+      if (!modalContent) {
+        e.preventDefault()
+        e.stopPropagation()
+        e.stopImmediatePropagation()
+        return false
+      }
+    }
+    
+    const preventTouchMove = (e: TouchEvent) => {
+      // Разрешаем прокрутку только внутри модального окна
+      const target = e.target as HTMLElement
+      const modalContent = target.closest('.stories-modal-content')
+      if (!modalContent) {
+        e.preventDefault()
+        e.stopPropagation()
+        e.stopImmediatePropagation()
+        return false
+      }
+    }
+    
+    const preventScroll = (e: Event) => {
+      const target = e.target as HTMLElement
+      const modalContent = target.closest('.stories-modal-content')
+      if (!modalContent && target !== document.body && target !== document.documentElement) {
+        e.preventDefault()
+        e.stopPropagation()
+        e.stopImmediatePropagation()
+        return false
+      }
+    }
+    
+    // Добавляем обработчики событий с passive: false для возможности preventDefault
+    document.addEventListener('wheel', preventWheel, { passive: false, capture: true })
+    document.addEventListener('touchmove', preventTouchMove, { passive: false, capture: true })
+    document.addEventListener('scroll', preventScroll, { passive: false, capture: true })
+    window.addEventListener('scroll', preventScroll, { passive: false, capture: true })
+    
+    return () => {
+      // Удаляем обработчики событий
+      document.removeEventListener('wheel', preventWheel, { capture: true } as EventListenerOptions)
+      document.removeEventListener('touchmove', preventTouchMove, { capture: true } as EventListenerOptions)
+      document.removeEventListener('scroll', preventScroll, { capture: true } as EventListenerOptions)
+      window.removeEventListener('scroll', preventScroll, { capture: true } as EventListenerOptions)
+      
+      // Восстанавливаем оригинальные стили
+      document.body.style.overflow = originalBodyOverflow
+      document.body.style.position = originalBodyPosition
+      document.body.style.top = originalBodyTop
+      document.body.style.left = originalBodyLeft
+      document.body.style.width = originalBodyWidth
+      document.body.style.height = originalBodyHeight
+      document.body.style.touchAction = originalBodyTouchAction
+      
+      document.documentElement.style.overflow = originalHtmlOverflow
+      document.documentElement.style.position = originalHtmlPosition
+      document.documentElement.style.top = originalHtmlTop
+      document.documentElement.style.left = originalHtmlLeft
+      document.documentElement.style.width = originalHtmlWidth
+      document.documentElement.style.height = originalHtmlHeight
+      document.documentElement.style.touchAction = originalHtmlTouchAction
+      
+      // Восстанавливаем позицию прокрутки
+      window.scrollTo(scrollX, scrollY)
+    }
+  }, [isOpen])
+
   const handleNext = () => {
     if (isLastPage) {
       onClose()
@@ -131,7 +241,7 @@ export function Stories({ isOpen, onClose }: StoriesProps) {
   const currentPageData = infoPages[currentPage]
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 animate-fade-in" style={{ backdropFilter: 'blur(10px)' }}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 animate-fade-in stories-modal-content" style={{ backdropFilter: 'blur(10px)' }}>
       {/* Progress Bar вверху */}
       <div className="absolute top-0 left-0 right-0 h-1 bg-black/30 z-10">
         <div className="flex gap-1 p-1">

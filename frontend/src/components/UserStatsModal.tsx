@@ -19,89 +19,109 @@ interface UserStatsModalProps {
 
 export const UserStatsModal = memo(function UserStatsModal({ status, onClose }: UserStatsModalProps) {
   useEffect(() => {
-    // Save current scroll position
+    // Сохраняем текущую позицию прокрутки
     const scrollY = window.scrollY
+    const scrollX = window.scrollX
     
-    // Save original styles for body and html
+    // Сохраняем оригинальные стили для body и html
     const originalBodyOverflow = document.body.style.overflow
     const originalBodyPosition = document.body.style.position
     const originalBodyTop = document.body.style.top
+    const originalBodyLeft = document.body.style.left
     const originalBodyWidth = document.body.style.width
+    const originalBodyHeight = document.body.style.height
     const originalBodyTouchAction = document.body.style.touchAction
     
     const originalHtmlOverflow = document.documentElement.style.overflow
     const originalHtmlPosition = document.documentElement.style.position
     const originalHtmlTop = document.documentElement.style.top
+    const originalHtmlLeft = document.documentElement.style.left
     const originalHtmlWidth = document.documentElement.style.width
+    const originalHtmlHeight = document.documentElement.style.height
     const originalHtmlTouchAction = document.documentElement.style.touchAction
     
-    // Apply styles to prevent scrolling on both body and html
+    // Применяем стили для предотвращения прокрутки на body и html
     const preventScrollStyles = {
       overflow: 'hidden',
       position: 'fixed',
       top: `-${scrollY}px`,
+      left: `-${scrollX}px`,
       width: '100%',
+      height: '100%',
       touchAction: 'none',
     }
     
     Object.assign(document.body.style, preventScrollStyles)
     Object.assign(document.documentElement.style, preventScrollStyles)
     
-    // Prevent scroll events with event listeners
-    const preventDefault = (e: Event) => {
-      e.preventDefault()
-      e.stopPropagation()
-      return false
-    }
-    
+    // Предотвращаем события прокрутки с помощью обработчиков событий
     const preventWheel = (e: WheelEvent) => {
-      // Allow scrolling inside modal content
+      // Разрешаем прокрутку только внутри модального контента
       const target = e.target as HTMLElement
       const modalContent = target.closest('.modal-content-scrollable')
       if (!modalContent) {
         e.preventDefault()
         e.stopPropagation()
+        e.stopImmediatePropagation()
         return false
       }
     }
     
     const preventTouchMove = (e: TouchEvent) => {
-      // Allow scrolling inside modal content
+      // Разрешаем прокрутку только внутри модального контента
       const target = e.target as HTMLElement
       const modalContent = target.closest('.modal-content-scrollable')
       if (!modalContent) {
         e.preventDefault()
         e.stopPropagation()
+        e.stopImmediatePropagation()
         return false
       }
     }
     
-    // Add event listeners with passive: false to allow preventDefault
+    const preventScroll = (e: Event) => {
+      const target = e.target as HTMLElement
+      const modalContent = target.closest('.modal-content-scrollable')
+      if (!modalContent && target !== document.body && target !== document.documentElement) {
+        e.preventDefault()
+        e.stopPropagation()
+        e.stopImmediatePropagation()
+        return false
+      }
+    }
+    
+    // Добавляем обработчики событий с passive: false для возможности preventDefault
     document.addEventListener('wheel', preventWheel, { passive: false, capture: true })
     document.addEventListener('touchmove', preventTouchMove, { passive: false, capture: true })
-    document.addEventListener('scroll', preventDefault, { passive: false, capture: true })
+    document.addEventListener('scroll', preventScroll, { passive: false, capture: true })
+    window.addEventListener('scroll', preventScroll, { passive: false, capture: true })
     
     return () => {
-      // Remove event listeners
+      // Удаляем обработчики событий
       document.removeEventListener('wheel', preventWheel, { capture: true } as EventListenerOptions)
       document.removeEventListener('touchmove', preventTouchMove, { capture: true } as EventListenerOptions)
-      document.removeEventListener('scroll', preventDefault, { capture: true } as EventListenerOptions)
+      document.removeEventListener('scroll', preventScroll, { capture: true } as EventListenerOptions)
+      window.removeEventListener('scroll', preventScroll, { capture: true } as EventListenerOptions)
       
-      // Restore original styles
+      // Восстанавливаем оригинальные стили
       document.body.style.overflow = originalBodyOverflow
       document.body.style.position = originalBodyPosition
       document.body.style.top = originalBodyTop
+      document.body.style.left = originalBodyLeft
       document.body.style.width = originalBodyWidth
+      document.body.style.height = originalBodyHeight
       document.body.style.touchAction = originalBodyTouchAction
       
       document.documentElement.style.overflow = originalHtmlOverflow
       document.documentElement.style.position = originalHtmlPosition
       document.documentElement.style.top = originalHtmlTop
+      document.documentElement.style.left = originalHtmlLeft
       document.documentElement.style.width = originalHtmlWidth
+      document.documentElement.style.height = originalHtmlHeight
       document.documentElement.style.touchAction = originalHtmlTouchAction
       
-      // Restore scroll position
-      window.scrollTo(0, scrollY)
+      // Восстанавливаем позицию прокрутки
+      window.scrollTo(scrollX, scrollY)
     }
   }, [])
 
