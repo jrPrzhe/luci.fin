@@ -91,23 +91,30 @@ class Settings(BaseSettings):
     @field_validator('ADMIN_TELEGRAM_IDS', mode='before')
     @classmethod
     def parse_admin_ids(cls, v):
+        result = []
         if isinstance(v, str):
             # Try to parse as JSON first
             try:
                 parsed = json.loads(v)
                 if isinstance(parsed, list):
-                    return parsed
+                    result = parsed
+                else:
+                    return []
             except (json.JSONDecodeError, ValueError):
-                pass
-            
-            # If not JSON, parse as comma-separated string
-            if v.strip():
-                ids = [id.strip() for id in v.split(',') if id.strip()]
-                return ids
-            return []
+                # If not JSON, parse as comma-separated string
+                if v.strip():
+                    result = [id.strip() for id in v.split(',') if id.strip()]
+                else:
+                    return []
         elif isinstance(v, list):
-            return v
-        return []
+            result = v
+        else:
+            return []
+        
+        # Normalize all IDs to strings (important for comparison)
+        # This handles cases where JSON contains numbers like [440543986, 7295487724]
+        normalized = [str(id).strip() for id in result if id is not None]
+        return normalized
     
     model_config = SettingsConfigDict(
         env_file=".env",
