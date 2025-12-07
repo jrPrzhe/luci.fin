@@ -254,6 +254,12 @@ export function Dashboard() {
       return
     }
 
+    // Validate category for income/expense transactions
+    if ((quickFormType === 'income' || quickFormType === 'expense') && !quickFormData.category_id) {
+      showError(t.dashboard.form.selectCategory)
+      return
+    }
+
     if (quickFormType === 'transfer' && !quickFormData.to_account_id) {
       showError(t.dashboard.form.toAccount)
       return

@@ -298,6 +298,12 @@ export function Transactions() {
     }
 
     try {
+      // Validate category for income/expense transactions
+      if ((formData.transaction_type === 'income' || formData.transaction_type === 'expense') && !formData.category_id) {
+        showError('Выберите категорию')
+        return
+      }
+
       const submitData: any = {
         account_id: parseInt(formData.account_id),
         transaction_type: formData.transaction_type,
@@ -313,7 +319,8 @@ export function Transactions() {
           return
         }
         submitData.to_account_id = parseInt(formData.to_account_id)
-      } else if (formData.category_id) {
+      } else {
+        // Category is already validated above, so we can safely add it
         submitData.category_id = parseInt(formData.category_id)
       }
 
