@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { api } from '../services/api'
@@ -253,21 +253,26 @@ export function Reports() {
     color: cat.color,
   }))
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white dark:bg-telegram-dark-surface p-3 rounded-lg shadow-lg border border-telegram-border dark:border-telegram-dark-border">
-          <p className="font-semibold mb-2 text-telegram-text dark:text-telegram-dark-text">{localizeMonth(label, locale)}</p>
-          {payload.map((entry: any, index: number) => (
-            <p key={index} className="text-sm text-telegram-text dark:text-telegram-dark-text" style={{ color: entry.color }}>
-              {entry.name}: {formatCurrency(entry.value)}
-            </p>
-          ))}
-        </div>
-      )
+  // Memoize CustomTooltip to prevent re-renders and jittering
+  // Create a stable component reference that only changes when locale changes
+  const CustomTooltip = useMemo(() => {
+    const TooltipComponent = ({ active, payload, label }: any) => {
+      if (active && payload && payload.length) {
+        return (
+          <div className="bg-white dark:bg-telegram-dark-surface p-3 rounded-lg shadow-lg border border-telegram-border dark:border-telegram-dark-border pointer-events-none">
+            <p className="font-semibold mb-2 text-telegram-text dark:text-telegram-dark-text">{localizeMonth(label, locale)}</p>
+            {payload.map((entry: any, index: number) => (
+              <p key={index} className="text-sm text-telegram-text dark:text-telegram-dark-text" style={{ color: entry.color }}>
+                {entry.name}: {formatCurrency(entry.value)}
+              </p>
+            ))}
+          </div>
+        )
+      }
+      return null
     }
-    return null
-  }
+    return TooltipComponent
+  }, [locale])
 
   return (
     <div className="min-h-screen p-4 md:p-6 animate-fade-in max-w-7xl mx-auto w-full">
@@ -587,7 +592,13 @@ export function Reports() {
                   tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
                   width={50}
                 />
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip 
+                  content={CustomTooltip}
+                  cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }}
+                  animationDuration={0}
+                  allowEscapeViewBox={{ x: false, y: false }}
+                  wrapperStyle={{ pointerEvents: 'none' }}
+                />
                 <Legend 
                   wrapperStyle={{ paddingTop: '10px', paddingBottom: '10px' }}
                   iconSize={14}
@@ -599,12 +610,14 @@ export function Reports() {
                   fill="#4CAF50" 
                   radius={[8, 8, 0, 0]}
                   name={t.reports.income}
+                  isAnimationActive={false}
                 />
                 <Bar 
                   dataKey={t.reports.expenses} 
                   fill="#F44336" 
                   radius={[8, 8, 0, 0]}
                   name={t.reports.expenses}
+                  isAnimationActive={false}
                 />
               </BarChart>
             </ResponsiveContainer>

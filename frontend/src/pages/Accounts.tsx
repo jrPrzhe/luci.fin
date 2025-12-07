@@ -179,8 +179,8 @@ export function Accounts() {
 
     // Trim description and validate length (check after trim to match backend validation)
     const trimmedDescription = formData.description ? formData.description.trim() : ''
-    if (trimmedDescription.length > 500) {
-      showError('Описание не может превышать 500 символов')
+    if (trimmedDescription.length > 250) {
+      showError('Описание не может превышать 250 символов')
       return
     }
 
@@ -642,10 +642,10 @@ export function Accounts() {
                     className="input resize-y max-h-32"
                     rows={3}
                     placeholder="Дополнительная информация о счете"
-                    maxLength={500}
+                    maxLength={250}
                   />
                   <div className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1 text-right">
-                    {formData.description.length}/500
+                    {formData.description.length}/250
                   </div>
                 </div>
 

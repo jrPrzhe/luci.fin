@@ -1,4 +1,4 @@
-import { useEffect, useMemo, memo } from 'react'
+import { useEffect, useMemo, memo, useState } from 'react'
 
 interface UserStatsModalProps {
   status: {
@@ -18,6 +18,30 @@ interface UserStatsModalProps {
 }
 
 export const UserStatsModal = memo(function UserStatsModal({ status, onClose }: UserStatsModalProps) {
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    // Check theme immediately on component mount
+    return document.documentElement.classList.contains('dark')
+  })
+
+  // Check theme when modal opens and listen for theme changes
+  useEffect(() => {
+    const checkTheme = () => {
+      setIsDarkMode(document.documentElement.classList.contains('dark'))
+    }
+    
+    // Check immediately
+    checkTheme()
+    
+    // Listen for theme changes
+    const observer = new MutationObserver(checkTheme)
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    })
+    
+    return () => observer.disconnect()
+  }, [])
+
   useEffect(() => {
     // Сохраняем текущую позицию прокрутки
     const scrollY = window.scrollY
@@ -159,18 +183,28 @@ export const UserStatsModal = memo(function UserStatsModal({ status, onClose }: 
       onClick={onClose}
     >
       <div 
-        className="bg-telegram-surface dark:bg-telegram-dark-surface rounded-2xl shadow-2xl max-w-md w-full max-h-[85vh] overflow-hidden relative z-[10000]"
+        className={`rounded-2xl shadow-2xl max-w-md w-full max-h-[85vh] overflow-hidden relative z-[10000] ${
+          isDarkMode ? 'bg-telegram-dark-surface' : 'bg-telegram-surface'
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="p-4 md:p-5 border-b border-telegram-border dark:border-telegram-dark-border">
+        <div className={`p-4 md:p-5 border-b ${
+          isDarkMode ? 'border-telegram-dark-border' : 'border-telegram-border'
+        }`}>
           <div className="flex items-center justify-between">
-            <h2 className="text-lg md:text-xl font-bold text-telegram-text dark:text-telegram-dark-text">
+            <h2 className={`text-lg md:text-xl font-bold ${
+              isDarkMode ? 'text-telegram-dark-text' : 'text-telegram-text'
+            }`}>
               📊 Статистика
             </h2>
             <button
               onClick={onClose}
-              className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text text-xl"
+              className={`text-xl ${
+                isDarkMode 
+                  ? 'text-telegram-dark-textSecondary hover:text-telegram-dark-text' 
+                  : 'text-telegram-textSecondary hover:text-telegram-text'
+              }`}
             >
               ✕
             </button>
@@ -181,17 +215,25 @@ export const UserStatsModal = memo(function UserStatsModal({ status, onClose }: 
         <div className="p-4 md:p-5 overflow-y-auto max-h-[calc(85vh-80px)] modal-content-scrollable">
           <div className="space-y-4 md:space-y-5">
             {/* Level Section */}
-            <div className="card p-4 bg-gradient-to-br from-purple-500/10 via-blue-500/10 to-pink-500/10 dark:from-purple-600/20 dark:via-blue-600/20 dark:to-pink-600/20 border border-purple-200/20 dark:border-purple-700/30">
+            <div className={`card p-4 border ${
+              isDarkMode
+                ? 'bg-gradient-to-br from-purple-600/20 via-blue-600/20 to-pink-600/20 border-purple-700/30'
+                : 'bg-gradient-to-br from-purple-500/10 via-blue-500/10 to-pink-500/10 border-purple-200/20'
+            }`}>
               <div className="flex items-center gap-4 mb-4">
                 <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-br from-yellow-400 to-orange-500 flex flex-col items-center justify-center shadow-lg">
                   <span className="text-2xl md:text-3xl font-bold text-white">{profile.level}</span>
                   <span className="text-xs md:text-sm text-white/90 font-medium">Уровень</span>
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-base md:text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-1">
+                  <h3 className={`text-base md:text-lg font-semibold mb-1 ${
+                    isDarkMode ? 'text-telegram-dark-text' : 'text-telegram-text'
+                  }`}>
                     Текущий уровень
                   </h3>
-                  <p className="text-xs md:text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+                  <p className={`text-xs md:text-sm ${
+                    isDarkMode ? 'text-telegram-dark-textSecondary' : 'text-telegram-textSecondary'
+                  }`}>
                     {currentLevelXP} / {nextLevelXP} XP
                   </p>
                 </div>
@@ -199,14 +241,20 @@ export const UserStatsModal = memo(function UserStatsModal({ status, onClose }: 
               
               <div className="mb-2">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-telegram-text dark:text-telegram-dark-text">
+                  <span className={`text-sm font-medium ${
+                    isDarkMode ? 'text-telegram-dark-text' : 'text-telegram-text'
+                  }`}>
                     Прогресс до уровня {profile.level + 1}
                   </span>
-                  <span className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+                  <span className={`text-xs ${
+                    isDarkMode ? 'text-telegram-dark-textSecondary' : 'text-telegram-textSecondary'
+                  }`}>
                     {xpNeeded} XP осталось
                   </span>
                 </div>
-                <div className="h-3 bg-telegram-border dark:bg-telegram-dark-border rounded-full overflow-hidden">
+                <div className={`h-3 rounded-full overflow-hidden ${
+                  isDarkMode ? 'bg-telegram-dark-border' : 'bg-telegram-border'
+                }`}>
                   <div 
                     className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-500 shadow-md" 
                     style={{ width: `${xpPercentage}%` }}
@@ -220,19 +268,29 @@ export const UserStatsModal = memo(function UserStatsModal({ status, onClose }: 
               <div className="flex items-center gap-3 mb-3">
                 <span className="text-2xl md:text-3xl">🔥</span>
                 <div>
-                  <h3 className="text-base md:text-lg font-semibold text-telegram-text dark:text-telegram-dark-text">
+                  <h3 className={`text-base md:text-lg font-semibold ${
+                    isDarkMode ? 'text-telegram-dark-text' : 'text-telegram-text'
+                  }`}>
                     Серия дней
                   </h3>
-                  <p className="text-xs md:text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+                  <p className={`text-xs md:text-sm ${
+                    isDarkMode ? 'text-telegram-dark-textSecondary' : 'text-telegram-textSecondary'
+                  }`}>
                     {streakInfo}
                   </p>
                 </div>
               </div>
-              <div className="bg-orange-500/10 dark:bg-orange-500/20 rounded-xl p-3 text-center">
-                <div className="text-3xl md:text-4xl font-bold text-orange-600 dark:text-orange-400 mb-1">
+              <div className={`rounded-xl p-3 text-center ${
+                isDarkMode ? 'bg-orange-500/20' : 'bg-orange-500/10'
+              }`}>
+                <div className={`text-3xl md:text-4xl font-bold mb-1 ${
+                  isDarkMode ? 'text-orange-400' : 'text-orange-600'
+                }`}>
                   {profile.streak_days}
                 </div>
-                <div className="text-xs md:text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+                <div className={`text-xs md:text-sm ${
+                  isDarkMode ? 'text-telegram-dark-textSecondary' : 'text-telegram-textSecondary'
+                }`}>
                   дней подряд
                 </div>
               </div>
@@ -243,24 +301,36 @@ export const UserStatsModal = memo(function UserStatsModal({ status, onClose }: 
               <div className="flex items-center gap-3 mb-3">
                 <span className="text-2xl md:text-3xl">❤️</span>
                 <div>
-                  <h3 className="text-base md:text-lg font-semibold text-telegram-text dark:text-telegram-dark-text">
+                  <h3 className={`text-base md:text-lg font-semibold ${
+                    isDarkMode ? 'text-telegram-dark-text' : 'text-telegram-text'
+                  }`}>
                     Сердце Люси
                   </h3>
-                  <p className="text-xs md:text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+                  <p className={`text-xs md:text-sm ${
+                    isDarkMode ? 'text-telegram-dark-textSecondary' : 'text-telegram-textSecondary'
+                  }`}>
                     {heartCooldown}
                   </p>
                 </div>
               </div>
-              <div className="bg-pink-500/10 dark:bg-pink-500/20 rounded-xl p-3">
+              <div className={`rounded-xl p-3 ${
+                isDarkMode ? 'bg-pink-500/20' : 'bg-pink-500/10'
+              }`}>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-telegram-text dark:text-telegram-dark-text">
+                  <span className={`text-sm font-medium ${
+                    isDarkMode ? 'text-telegram-dark-text' : 'text-telegram-text'
+                  }`}>
                     Текущий уровень
                   </span>
-                  <span className="text-sm font-bold text-pink-600 dark:text-pink-400">
+                  <span className={`text-sm font-bold ${
+                    isDarkMode ? 'text-pink-400' : 'text-pink-600'
+                  }`}>
                     {profile.heart_level} / 100
                   </span>
                 </div>
-                <div className="h-3 bg-telegram-border dark:bg-telegram-dark-border rounded-full overflow-hidden">
+                <div className={`h-3 rounded-full overflow-hidden ${
+                  isDarkMode ? 'bg-telegram-dark-border' : 'bg-telegram-border'
+                }`}>
                   <div 
                     className="h-full bg-gradient-to-r from-pink-500 to-red-500 rounded-full transition-all duration-500" 
                     style={{ width: `${profile.heart_level}%` }}
@@ -272,18 +342,26 @@ export const UserStatsModal = memo(function UserStatsModal({ status, onClose }: 
             {/* Additional Stats */}
             <div className="grid grid-cols-2 gap-3">
               <div className="card p-3 text-center">
-                <div className="text-2xl md:text-3xl font-bold text-telegram-text dark:text-telegram-dark-text mb-1">
+                <div className={`text-2xl md:text-3xl font-bold mb-1 ${
+                  isDarkMode ? 'text-telegram-dark-text' : 'text-telegram-text'
+                }`}>
                   {profile.total_xp_earned}
                 </div>
-                <div className="text-xs md:text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+                <div className={`text-xs md:text-sm ${
+                  isDarkMode ? 'text-telegram-dark-textSecondary' : 'text-telegram-textSecondary'
+                }`}>
                   Всего XP заработано
                 </div>
               </div>
               <div className="card p-3 text-center">
-                <div className="text-2xl md:text-3xl font-bold text-telegram-text dark:text-telegram-dark-text mb-1">
+                <div className={`text-2xl md:text-3xl font-bold mb-1 ${
+                  isDarkMode ? 'text-telegram-dark-text' : 'text-telegram-text'
+                }`}>
                   {profile.total_quests_completed}
                 </div>
-                <div className="text-xs md:text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+                <div className={`text-xs md:text-sm ${
+                  isDarkMode ? 'text-telegram-dark-textSecondary' : 'text-telegram-textSecondary'
+                }`}>
                   Заданий выполнено
                 </div>
               </div>

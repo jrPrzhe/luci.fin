@@ -75,7 +75,7 @@ export function About() {
 
   const handleNext = () => {
     if (isLastPage) {
-      setCurrentPage(0)
+      navigate('/')
     } else {
       setCurrentPage(currentPage + 1)
     }
@@ -146,17 +146,42 @@ export function About() {
           {/* Additional Content List */}
           {currentPageData.content && currentPageData.content.length > 0 && (
             <div className="mt-6 text-left">
-              <ul className="space-y-2">
-                {currentPageData.content.map((item, index) => (
-                  <li 
-                    key={index}
-                    className="text-sm md:text-base text-telegram-textSecondary dark:text-telegram-dark-textSecondary flex items-start gap-2"
-                  >
-                    <span className="text-telegram-primary dark:text-telegram-dark-primary mt-1">•</span>
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
+              {currentPage === 0 ? (
+                // Первый слайд - все элементы с маркерами (маркированный список)
+                <ul className="space-y-2">
+                  {currentPageData.content.map((item, index) => (
+                    <li 
+                      key={index}
+                      className="text-sm md:text-base text-telegram-textSecondary dark:text-telegram-dark-textSecondary flex items-start gap-2"
+                    >
+                      <span className="text-telegram-primary dark:text-telegram-dark-primary mt-1">•</span>
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                // Остальные слайды - первый элемент без маркера (описание), остальные с маркерами
+                <>
+                  {currentPageData.content[0] && (
+                    <p className="text-sm md:text-base text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-3">
+                      {currentPageData.content[0]}
+                    </p>
+                  )}
+                  {currentPageData.content.length > 1 && (
+                    <ul className="space-y-2">
+                      {currentPageData.content.slice(1).map((item, index) => (
+                        <li 
+                          key={index + 1}
+                          className="text-sm md:text-base text-telegram-textSecondary dark:text-telegram-dark-textSecondary flex items-start gap-2"
+                        >
+                          <span className="text-telegram-primary dark:text-telegram-dark-primary mt-1">•</span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
+              )}
             </div>
           )}
         </div>
