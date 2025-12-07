@@ -72,9 +72,9 @@ export function Goals() {
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="btn-primary"
+          className="btn-primary flex items-center gap-1"
         >
-          ➕ {t.goals.newGoal}
+          <span>➕</span> {t.goals.newGoal}
         </button>
       </div>
 

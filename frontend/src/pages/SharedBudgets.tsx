@@ -624,7 +624,7 @@ export function SharedBudgets() {
               {members.map((member) => (
                 <div key={member.id} className="card hover:shadow-lg transition-shadow">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <div className="flex items-start gap-3 flex-1">
                       <div className={`w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold flex-shrink-0 ${
                         member.role === 'admin' 
                           ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-white' 
@@ -635,6 +635,7 @@ export function SharedBudgets() {
                       <div className="flex-1 min-w-0">
                         <h4 
                           className="font-semibold text-telegram-text dark:text-telegram-dark-text break-words"
+                          style={{ wordBreak: 'break-word', overflowWrap: 'break-word', lineHeight: '1.5' }}
                           title={member.user_name || member.user_email || `Пользователь #${member.user_id}`}
                         >
                           {member.user_name || member.user_email || `Пользователь #${member.user_id}`}

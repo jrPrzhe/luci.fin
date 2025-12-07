@@ -796,9 +796,17 @@ export function Transactions() {
                       {customStartDate && (
                         <button
                           type="button"
-                          onClick={() => setCustomStartDate('')}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text text-sm font-medium"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            setCustomStartDate('')
+                          }}
+                          onTouchStart={(e) => {
+                            e.stopPropagation()
+                          }}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text text-base font-bold z-20 cursor-pointer p-1 min-w-[24px] min-h-[24px] flex items-center justify-center"
                           title="Сбросить"
+                          aria-label="Сбросить дату"
                         >
                           ✕
                         </button>
@@ -821,9 +829,17 @@ export function Transactions() {
                       {customEndDate && (
                         <button
                           type="button"
-                          onClick={() => setCustomEndDate('')}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text text-sm font-medium"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            setCustomEndDate('')
+                          }}
+                          onTouchStart={(e) => {
+                            e.stopPropagation()
+                          }}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text text-base font-bold z-20 cursor-pointer p-1 min-w-[24px] min-h-[24px] flex items-center justify-center"
                           title="Сбросить"
+                          aria-label="Сбросить дату"
                         >
                           ✕
                         </button>
@@ -1043,6 +1059,27 @@ export function Transactions() {
               <textarea
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onFocus={(e) => {
+                  // Прокручиваем textarea в видимую область, чтобы оно не скрывалось за кнопками
+                  setTimeout(() => {
+                    const textarea = e.target as HTMLTextAreaElement
+                    // Прокручиваем с небольшим отступом сверху, чтобы поле было видно над клавиатурой
+                    textarea.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' })
+                    // Дополнительная прокрутка для мобильных устройств
+                    const formElement = textarea.closest('form')
+                    if (formElement) {
+                      const rect = textarea.getBoundingClientRect()
+                      const formRect = formElement.getBoundingClientRect()
+                      const offset = 100 // Отступ сверху для кнопок
+                      if (rect.bottom > window.innerHeight - offset) {
+                        window.scrollBy({
+                          top: rect.bottom - (window.innerHeight - offset),
+                          behavior: 'smooth'
+                        })
+                      }
+                    }
+                  }, 150)
+                }}
                 className="input resize-none"
                 rows={3}
                 style={{ resize: 'none', maxHeight: '120px', overflowY: 'auto' }}
@@ -1358,6 +1395,26 @@ export function Transactions() {
                       <textarea
                         value={formData.description}
                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        onFocus={(e) => {
+                          // Прокручиваем textarea в видимую область, чтобы оно не скрывалось за кнопками
+                          setTimeout(() => {
+                            const textarea = e.target as HTMLTextAreaElement
+                            // Прокручиваем с небольшим отступом сверху, чтобы поле было видно над клавиатурой
+                            textarea.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' })
+                            // Дополнительная прокрутка для мобильных устройств
+                            const formElement = textarea.closest('form')
+                            if (formElement) {
+                              const rect = textarea.getBoundingClientRect()
+                              const offset = 100 // Отступ сверху для кнопок
+                              if (rect.bottom > window.innerHeight - offset) {
+                                window.scrollBy({
+                                  top: rect.bottom - (window.innerHeight - offset),
+                                  behavior: 'smooth'
+                                })
+                              }
+                            }
+                          }, 150)
+                        }}
                         className="input"
                         rows={3}
                         placeholder="Описание транзакции (необязательно)"
