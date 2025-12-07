@@ -18,37 +18,60 @@ interface Category {
   updated_at: string
 }
 
-// Функция для извлечения только первого эмодзи из строки
-const getFirstEmoji = (text: string): string => {
-  if (!text) return ''
-  
-  // Используем Array.from для правильной работы с Unicode (включая эмодзи)
-  // Это правильно обрабатывает суррогатные пары и последовательности эмодзи
-  const chars = Array.from(text)
-  
-  if (chars.length === 0) return ''
-  
-  // Берем первый символ
-  let firstChar = chars[0]
-  
-  // Проверяем, является ли это частью последовательности эмодзи
-  // Эмодзи могут состоять из нескольких символов (например, с модификаторами кожи или флагами)
-  // Но для простоты берем только первый визуальный символ
-  
-  // Если следующий символ - это модификатор (например, для составных эмодзи), включаем его
-  if (chars.length > 1) {
-    const secondChar = chars[1]
-    // Проверяем, является ли второй символ частью эмодзи (модификатор, zero-width joiner и т.д.)
-    const emojiModifiers = /[\u{FE0F}\u{200D}\u{20E3}]/u
-    if (emojiModifiers.test(secondChar)) {
-      // Это может быть составной эмодзи, но для простоты берем только первый символ
-      // В большинстве случаев достаточно одного эмодзи
-    }
-  }
-  
-  // Возвращаем только первый символ (эмодзи)
-  return firstChar
-}
+// Список доступных эмодзи для категорий (уникальные, без дубликатов)
+const AVAILABLE_EMOJIS = [
+  // Базовые финансы
+  '📦', '💰', '💸', '💵', '💳', '💴', '💶', '💷', '💎', '💍',
+  // Еда и напитки
+  '🍔', '🍕', '🍟', '🌮', '🌯', '🥗', '🍱', '🍜', '🍝', '🍛',
+  '🍲', '🍳', '🥘', '🍗', '🥩', '🍖', '🥓', '🌭', '🍞', '🥐',
+  '🥨', '🥯', '🥞', '🧇', '🧀', '🍰', '🎂', '🍪', '🍩', '🍫',
+  '🍬', '🍭', '🍮', '🍯', '🍼', '🥛', '☕', '🍵', '🍶', '🍷',
+  '🍸', '🍹', '🍺', '🍻', '🥂', '🥃', '🧃', '🧉', '🧊',
+  // Транспорт
+  '🚗', '🚕', '🚙', '🚌', '🚎', '🏎️', '🚓', '🚑', '🚒', '🚐',
+  '🚚', '🚛', '🚜', '🛴', '🚲', '🛵', '🏍️', '🛺', '🚨', '🚔',
+  '🚍', '🚘', '🚖', '🚡', '🚠', '🚟', '🚃', '🚋', '🚞', '🚝',
+  '🚄', '🚅', '🚈', '🚂', '🚆', '🚇', '🚊', '🚉', '✈️', '🛫',
+  '🛬', '🛩️', '💺', '🚁', '🚀', '🛸', '🚤', '⛵', '🛥️',
+  '🛳️', '⛴️', '🚢', '⚓', '⛽', '🚧', '🚦', '🚥', '🗺️', '🧭',
+  // Покупки и услуги
+  '🛍️', '🛒', '🛏️', '🛋️', '🪑', '🚪', '🪟', '🪞', '🛁',
+  '🛀', '🧴', '🧷', '🧹', '🧺', '🧻', '🧼', '🧽', '🧯',
+  '🏪', '🏬', '🏫', '🏩', '🏨', '🏦', '🏥', '🏤', '🏢',
+  '🏗️', '🏭', '🏯', '🏰', '⛪', '🕌', '🛕', '🕍', '⛩️', '🕋',
+  // Развлечения и хобби
+  '🎮', '🎯', '🎲', '🃏', '🀄', '🎴', '🎭', '🎨', '🖼️',
+  '🎬', '🎤', '🎧', '🎼', '🎵', '🎶', '🎹', '🥁', '🎷', '🎺',
+  '🎸', '🪕', '🎻', '🎪',
+  // Здоровье и спорт
+  '🏃', '🏃‍♂️', '🏃‍♀️', '🚶', '🚶‍♂️', '🚶‍♀️', '🧍', '🧍‍♂️', '🧍‍♀️', '🧎',
+  '🧎‍♂️', '🧎‍♀️', '🏋️', '🏋️‍♂️', '🏋️‍♀️', '🤼', '🤼‍♂️', '🤼‍♀️', '🤸', '🤸‍♂️',
+  '🤸‍♀️', '🤺', '🤾', '🤾‍♂️', '🤾‍♀️', '🏌️', '🏌️‍♂️', '🏌️‍♀️', '🏇', '🧘',
+  '🧘‍♂️', '🧘‍♀️', '🏄', '🏄‍♂️', '🏄‍♀️', '🏊', '🏊‍♂️', '🏊‍♀️', '🤽', '🤽‍♂️',
+  '🤽‍♀️', '🚣', '🚣‍♂️', '🚣‍♀️', '🧗', '🧗‍♂️', '🧗‍♀️', '🚵', '🚵‍♂️', '🚵‍♀️',
+  '🚴', '🚴‍♂️', '🚴‍♀️', '🏂', '⛷️',
+  // Образование и работа
+  '📚', '📖', '📗', '📘', '📙', '📕', '📓', '📔', '📒', '📃',
+  '📜', '📄', '📑', '🧾', '📊', '📈', '📉', '🗂️', '📅', '📆',
+  '🗒️', '🗓️', '📇', '📋', '📌', '📍', '📎', '🖇️', '📏', '📐',
+  '✂️', '🗑️', '🔒', '🔓', '🔏', '🔐', '🔑', '🗝️', '💼', '👜',
+  '👝', '👛', '🎒', '🧳', '☂️', '🌂', '🧵', '🧶',
+  // Технологии
+  '💻', '🖥️', '🖨️', '⌨️', '🖱️', '🖲️', '🕹️', '🗜️', '💾', '💿',
+  '📀', '📱', '📲', '☎️', '📞', '📟', '📠', '📺', '📻', '🎙️',
+  '🎚️', '🎛️', '⏱️', '⏲️', '⏰', '🕰️', '⌛', '⏳', '📡', '🔋',
+  '🔌', '💡', '🔦', '🕯️', '🛢️', '⚖️', '🛠️', '🔨', '⚒️', '🔧',
+  '🔩', '⚙️', '⚡', '🔥', '💧', '🌊', '☄️', '🌟', '⭐', '✨', '💫', '💥',
+  // Дом и быт
+  '🏠', '🏡', '🏘️', '🏚️', '💒', '🗼', '🗽', '⛲', '⛺', '🌁',
+  '🌃', '🏙️', '🌄', '🌅', '🌆', '🌇', '🌉', '♨️', '🎠', '🎡',
+  '🎢', '💈',
+  // Праздники и подарки
+  '🎁', '🎀', '🎃', '🎄', '🎅', '🎆', '🎇', '🎈',
+  '🎉', '🎊', '🎋', '🎌', '🎍', '🎎', '🎏', '🎐', '🎑', '🧧',
+]
+
 
 export function Categories() {
   const [categories, setCategories] = useState<Category[]>([])
@@ -82,10 +105,25 @@ export function Categories() {
     color: '#4CAF50',
     is_favorite: false,
   })
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
 
   useEffect(() => {
     loadCategories()
   }, [filterType, showFavoritesOnly])
+
+  // Закрываем выбор эмодзи при клике вне области
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement
+      if (showEmojiPicker && !target.closest('.emoji-picker-container')) {
+        setShowEmojiPicker(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showEmojiPicker])
 
   const loadCategories = async () => {
     try {
@@ -252,6 +290,7 @@ export function Categories() {
     })
     setEditingCategory(null)
     setShowForm(false)
+    setShowEmojiPicker(false)
   }
 
   const getTransactionTypeLabel = (type: string) => {
@@ -437,27 +476,40 @@ export function Categories() {
               <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
                 Иконка (эмодзи)
               </label>
-              <input
-                type="text"
-                value={formData.icon}
-                onChange={(e) => {
-                  // Извлекаем только первый эмодзи из введенного текста
-                  const firstEmoji = getFirstEmoji(e.target.value)
-                  setFormData({ ...formData, icon: firstEmoji })
-                }}
-                onPaste={(e) => {
-                  // Обрабатываем вставку из буфера обмена
-                  e.preventDefault()
-                  const pastedText = e.clipboardData.getData('text')
-                  const firstEmoji = getFirstEmoji(pastedText)
-                  setFormData({ ...formData, icon: firstEmoji })
-                }}
-                className="input"
-                placeholder="📦"
-                maxLength={10}
-              />
+              <div className="relative emoji-picker-container">
+                <button
+                  type="button"
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  className="w-full input flex items-center justify-between cursor-pointer hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors"
+                >
+                  <span className="text-2xl">{formData.icon || '📦'}</span>
+                  <span className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+                    {showEmojiPicker ? '▼' : '▶'}
+                  </span>
+                </button>
+                {showEmojiPicker && (
+                  <div className="absolute z-50 mt-2 w-full bg-telegram-surface dark:bg-telegram-dark-surface border border-telegram-border dark:border-telegram-dark-border rounded-telegram shadow-lg max-h-64 overflow-y-auto">
+                    <div className="p-2 sm:p-3 grid grid-cols-6 sm:grid-cols-8 gap-1 sm:gap-2">
+                      {AVAILABLE_EMOJIS.map((emoji, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => {
+                            setFormData({ ...formData, icon: emoji })
+                            setShowEmojiPicker(false)
+                          }}
+                          className="text-xl sm:text-2xl p-1.5 sm:p-2 hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover rounded-telegram transition-colors active:scale-95"
+                          title={emoji}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
               <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
-                Можно использовать только один эмодзи
+                Выберите эмодзи из списка
               </p>
             </div>
 
