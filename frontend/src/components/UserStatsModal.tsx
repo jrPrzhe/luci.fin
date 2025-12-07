@@ -1,3 +1,6 @@
+import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
+
 interface UserStatsModalProps {
   status: {
     profile: {
@@ -16,6 +19,13 @@ interface UserStatsModalProps {
 }
 
 export function UserStatsModal({ status, onClose }: UserStatsModalProps) {
+  useEffect(() => {
+    // Prevent body scroll when modal is open
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = 'unset'
+    }
+  }, [])
   const { profile, next_level_xp } = status
   
   const xpPercentage = profile.xp_to_next_level > 0 
@@ -37,13 +47,13 @@ export function UserStatsModal({ status, onClose }: UserStatsModalProps) {
     ? `Выполняйте задания каждый день, чтобы увеличить серию!`
     : 'Начните выполнять задания, чтобы создать серию!'
 
-  return (
+  const modalContent = (
     <div 
-      className="fixed inset-0 bg-black/50 dark:bg-black/70 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/50 dark:bg-black/70 z-50 flex items-center justify-center p-4 animate-fade-in"
       onClick={onClose}
     >
       <div 
-        className="bg-telegram-surface dark:bg-telegram-dark-surface rounded-2xl shadow-2xl max-w-md w-full max-h-[85vh] overflow-hidden"
+        className="bg-telegram-surface dark:bg-telegram-dark-surface rounded-2xl shadow-2xl max-w-md w-full max-h-[85vh] overflow-hidden animate-slide-up"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -177,5 +187,7 @@ export function UserStatsModal({ status, onClose }: UserStatsModalProps) {
       </div>
     </div>
   )
+
+  return createPortal(modalContent, document.body)
 }
 

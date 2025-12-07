@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../services/api'
 import { UserStatsModal } from './UserStatsModal'
@@ -12,6 +12,14 @@ export function UserStatsCard() {
     staleTime: 30000, // 30 seconds
     refetchOnWindowFocus: true,
   })
+
+  const handleOpenModal = useCallback(() => {
+    setShowModal(true)
+  }, [])
+
+  const handleCloseModal = useCallback(() => {
+    setShowModal(false)
+  }, [])
 
   if (isLoading) {
     return (
@@ -39,7 +47,7 @@ export function UserStatsCard() {
   return (
     <>
       <button
-        onClick={() => setShowModal(true)}
+        onClick={handleOpenModal}
         className="card p-3 md:p-4 hover:shadow-lg transition-all active:scale-[0.98] cursor-pointer w-full text-left"
       >
         <div className="flex items-center gap-3 md:gap-4">
@@ -108,10 +116,10 @@ export function UserStatsCard() {
       </button>
 
       {/* Modal */}
-      {showModal && (
+      {showModal && status && (
         <UserStatsModal
           status={status}
-          onClose={() => setShowModal(false)}
+          onClose={handleCloseModal}
         />
       )}
     </>
