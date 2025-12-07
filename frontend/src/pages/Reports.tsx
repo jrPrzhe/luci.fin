@@ -383,11 +383,14 @@ export function Reports() {
         // Если не удалось, используем оригинальное значение
       }
     }
+    // Ensure both income and expense are numbers, not null or undefined
+    const incomeValue = typeof item.income === 'number' ? item.income : (parseFloat(item.income) || 0)
+    const expenseValue = typeof item.expense === 'number' ? item.expense : (parseFloat(item.expense) || 0)
     return {
       month: localizeMonth(monthLabel, locale),
       // Use static keys for data to avoid issues on mobile devices
-      income: item.income || 0,
-      expense: item.expense || 0,
+      income: incomeValue,
+      expense: expenseValue,
     }
   })
 
@@ -697,8 +700,8 @@ export function Reports() {
                   left: 10, 
                   bottom: period === 'year' ? 60 : 30 
                 }}
-                barCategoryGap="20%"
-                barSize={undefined}
+                barCategoryGap="30%"
+                barGap={10}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E5E5" className="dark:stroke-telegram-dark-border" />
                 <XAxis 
