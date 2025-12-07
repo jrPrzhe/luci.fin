@@ -34,7 +34,25 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const loadLanguage = async () => {
       try {
-        // Priority 1: Check localStorage first (user's explicit choice)
+        // Priority 1: Try to get from async storage first (for VK/Telegram)
+        // This ensures we get the latest value even if syncCache is empty
+        try {
+          const asyncLang = await storage.getItem('language')
+          if (asyncLang && (asyncLang === 'ru' || asyncLang === 'en')) {
+            setLanguageState(asyncLang as Language)
+            languageRef.current = asyncLang as Language
+            // Update sync cache
+            storageSync.setItem('language', asyncLang)
+            setIsLoading(false)
+            // Sync with profile in background (don't wait for it)
+            syncLanguageToProfile(asyncLang as Language).catch(console.error)
+            return
+          }
+        } catch (error) {
+          console.log('Could not load language from async storage:', error)
+        }
+
+        // Priority 2: Check localStorage/sync cache (for web or cached values)
         const savedLang = storageSync.getItem('language') as Language | null
         if (savedLang && (savedLang === 'ru' || savedLang === 'en')) {
           setLanguageState(savedLang)
@@ -45,7 +63,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
           return
         }
 
-        // Priority 2: If in VK Mini App and no saved language, check vk_language from launch params
+        // Priority 3: If in VK Mini App and no saved language, check vk_language from launch params
         if (isVKWebApp()) {
           const vkLang = getVKLanguage()
           if (vkLang && (vkLang === 'ru' || vkLang === 'en')) {
@@ -60,7 +78,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
           }
         }
 
-        // Priority 3: Try to get from user profile (only if no saved language)
+        // Priority 4: Try to get from user profile (only if no saved language)
         await loadLanguageFromProfile()
       } catch (error) {
         console.error('Error loading language:', error)
@@ -74,7 +92,16 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
     const loadLanguageFromProfile = async () => {
       try {
-        const token = storageSync.getItem('token')
+        // Try to get token from async storage first (for VK/Telegram)
+        let token = storageSync.getItem('token')
+        if (!token) {
+          try {
+            token = await storage.getItem('token')
+          } catch (error) {
+            console.log('Could not get token from async storage:', error)
+          }
+        }
+
         if (token) {
           const user = await api.getCurrentUser()
           if (user?.language) {
@@ -104,7 +131,14 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     const syncLanguageToProfile = async (lang: Language) => {
       // Only sync to profile, don't overwrite localStorage
       try {
-        const token = storageSync.getItem('token')
+        let token = storageSync.getItem('token')
+        if (!token) {
+          try {
+            token = await storage.getItem('token')
+          } catch (error) {
+            console.log('Could not get token from async storage:', error)
+          }
+        }
         if (token) {
           await api.updateUser({ language: lang })
         }
@@ -117,15 +151,23 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   }, []) // Only run once on mount
 
   const setLanguage = async (lang: Language) => {
-    // Save to localStorage immediately (highest priority)
+    // Save to localStorage/sync cache immediately (highest priority)
     setLanguageState(lang)
     languageRef.current = lang
     storageSync.setItem('language', lang)
+    // Also save to async storage (for VK/Telegram)
     storage.setItem('language', lang).catch(console.error)
     
     // Update user profile if logged in (sync in background)
     try {
-      const token = storageSync.getItem('token')
+      let token = storageSync.getItem('token')
+      if (!token) {
+        try {
+          token = await storage.getItem('token')
+        } catch (error) {
+          console.log('Could not get token from async storage:', error)
+        }
+      }
       if (token) {
         await api.updateUser({ language: lang })
       }
