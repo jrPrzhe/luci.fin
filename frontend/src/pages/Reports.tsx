@@ -385,8 +385,9 @@ export function Reports() {
     }
     return {
       month: localizeMonth(monthLabel, locale),
-      [t.reports.income]: item.income || 0,
-      [t.reports.expenses]: item.expense || 0,
+      // Use static keys for data to avoid issues on mobile devices
+      income: item.income || 0,
+      expense: item.expense || 0,
     }
   })
 
@@ -686,7 +687,7 @@ export function Reports() {
           <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
             {t.reports.monthlyComparison}
           </h2>
-          <div className="w-full" style={{ minHeight: '300px' }}>
+          <div className="w-full" style={{ minHeight: '300px', minWidth: '100%' }}>
             <ResponsiveContainer width="100%" height={period === 'year' ? 350 : 300} minHeight={300}>
               <BarChart 
                 data={monthlyData} 
@@ -697,6 +698,7 @@ export function Reports() {
                   bottom: period === 'year' ? 60 : 30 
                 }}
                 barCategoryGap="20%"
+                barSize={undefined}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E5E5" className="dark:stroke-telegram-dark-border" />
                 <XAxis 
@@ -729,14 +731,14 @@ export function Reports() {
                   verticalAlign="top"
                 />
                 <Bar 
-                  dataKey={t.reports.income} 
+                  dataKey="income" 
                   fill="#4CAF50" 
                   radius={[8, 8, 0, 0]}
                   name={t.reports.income}
                   isAnimationActive={false}
                 />
                 <Bar 
-                  dataKey={t.reports.expenses} 
+                  dataKey="expense" 
                   fill="#F44336" 
                   radius={[8, 8, 0, 0]}
                   name={t.reports.expenses}
