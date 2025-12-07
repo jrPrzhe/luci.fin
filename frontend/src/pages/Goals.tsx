@@ -72,10 +72,9 @@ export function Goals() {
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="btn-primary flex items-center gap-2 px-4 py-2"
+          className="btn-primary"
         >
-          <span className="text-xl">+</span>
-          <span>{t.goals.newGoal}</span>
+          ➕ {t.goals.newGoal}
         </button>
       </div>
 
