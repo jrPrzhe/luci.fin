@@ -147,12 +147,25 @@ export function Categories() {
       return
     }
 
+    // Валидация длины названия
+    const trimmedName = formData.name.trim()
+    if (trimmedName.length > 60) {
+      showError('Название категории не может превышать 60 символов')
+      return
+    }
+
     try {
       if (editingCategory) {
-        await api.updateCategory(editingCategory.id, formData)
+        await api.updateCategory(editingCategory.id, {
+          ...formData,
+          name: trimmedName
+        })
         showSuccess(t.categories.form.updated)
       } else {
-        await api.createCategory(formData)
+        await api.createCategory({
+          ...formData,
+          name: trimmedName
+        })
         showSuccess(t.categories.form.created)
       }
       resetForm()
@@ -452,8 +465,12 @@ export function Categories() {
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 className="input"
                 placeholder="Название категории"
+                maxLength={60}
                 required
               />
+              <div className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1 text-right">
+                {formData.name.length}/60
+              </div>
             </div>
 
             <div>
