@@ -401,7 +401,7 @@ export function Categories() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                Название
+                Название *
               </label>
               <input
                 type="text"
@@ -415,7 +415,7 @@ export function Categories() {
 
             <div>
               <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                Тип транзакций
+                Тип транзакций *
               </label>
               <select
                 value={formData.transaction_type}
