@@ -45,7 +45,11 @@ export function translateError(error: any): string {
       errorMessage.includes('обязательные поля') ||
       errorMessage.includes('успешно') ||
       errorMessage.includes('не найдено') ||
-      errorMessage.includes('недоступен')) {
+      errorMessage.includes('недоступен') ||
+      errorMessage.includes('не может превышать') ||
+      errorMessage.includes('превышает максимальную длину') ||
+      errorMessage.includes('описание:') ||
+      errorMessage.includes('название:')) {
     return errorMessage
   }
 
@@ -100,12 +104,18 @@ export function translateError(error: any): string {
   }
 
   // Ошибки длины полей
-  if (errorLower.includes('max_length') || errorLower.includes('too long') || errorLower.includes('exceeds')) {
+  if (errorLower.includes('max_length') || errorLower.includes('too long') || errorLower.includes('exceeds') || 
+      errorLower.includes('string_too_long') || errorLower.includes('ensure this value has at most')) {
     if (errorLower.includes('name') || errorLower.includes('название')) {
       return 'Название счета не может превышать 255 символов.'
     }
     if (errorLower.includes('description') || errorLower.includes('описание')) {
       return 'Описание не может превышать 500 символов.'
+    }
+    // Извлекаем число из сообщения об ошибке, если оно есть
+    const maxLengthMatch = errorMessage.match(/(\d+)\s*(?:символ|character)/i)
+    if (maxLengthMatch) {
+      return `Превышена максимальная длина поля. Максимум ${maxLengthMatch[1]} символов.`
     }
     return 'Превышена максимальная длина поля. Проверьте введенные данные.'
   }

@@ -445,7 +445,12 @@ export function Dashboard() {
               <div className="h-5 md:h-6 w-20 md:w-24 bg-white/20 rounded animate-pulse"></div>
             ) : (
               <p className="text-base md:text-lg font-semibold">
-                +{Math.round(monthlyStats?.income || 0).toLocaleString('ru-RU')} {balance?.currency || '₽'}
+                {(() => {
+                  const income = Math.round(monthlyStats?.income || 0)
+                  return income === 0 
+                    ? `${income.toLocaleString('ru-RU')} ${balance?.currency || '₽'}`
+                    : `+${income.toLocaleString('ru-RU')} ${balance?.currency || '₽'}`
+                })()}
               </p>
             )}
           </div>
@@ -455,7 +460,12 @@ export function Dashboard() {
               <div className="h-5 md:h-6 w-20 md:w-24 bg-white/20 rounded animate-pulse"></div>
             ) : (
               <p className="text-base md:text-lg font-semibold">
-                -{Math.round(monthlyStats?.expense || 0).toLocaleString('ru-RU')} {balance?.currency || '₽'}
+                {(() => {
+                  const expense = Math.round(monthlyStats?.expense || 0)
+                  return expense === 0 
+                    ? `${expense.toLocaleString('ru-RU')} ${balance?.currency || '₽'}`
+                    : `-${expense.toLocaleString('ru-RU')} ${balance?.currency || '₽'}`
+                })()}
               </p>
             )}
           </div>
@@ -643,7 +653,7 @@ export function Dashboard() {
             {/* Form Step */}
             {quickFormStep === 'form' && (
               <form onSubmit={handleQuickSubmit} className="flex flex-col flex-1 min-h-0">
-                <div className="space-y-3 flex-1 overflow-y-auto min-h-0 pr-2">
+                <div className="space-y-3 flex-1 overflow-y-auto min-h-0 p-2">
               {/* Show selected category - compact display */}
               {quickFormType !== 'transfer' && quickFormData.category_id && (
                 <div className="bg-telegram-surface dark:bg-telegram-dark-surface p-2 rounded-telegram mb-2 flex items-center gap-2">

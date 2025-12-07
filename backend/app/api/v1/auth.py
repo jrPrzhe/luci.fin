@@ -1420,6 +1420,11 @@ async def reset_account(
         
         logger.info(f"Starting account reset for user {current_user.id}")
         
+        # Save current language and currency before reset (these should not be reset)
+        saved_language = current_user.language or "ru"
+        saved_default_currency = current_user.default_currency or ("RUB" if current_user.telegram_id else "USD")
+        logger.info(f"Preserving user settings: language={saved_language}, currency={saved_default_currency}")
+        
         # Get user's accounts first to get account IDs
         user_accounts = db.query(Account).filter(Account.user_id == current_user.id).all()
         account_ids = [acc.id for acc in user_accounts]
@@ -1483,11 +1488,12 @@ async def reset_account(
                 db.delete(member)
                 logger.info(f"Removed user from shared budget {member.shared_budget_id}")
         
-        # Reset user settings to defaults (but keep authentication data and user name)
+        # Reset user settings to defaults (but keep authentication data, user name, language, and currency)
         # Keep first_name and last_name - they are not part of financial data
+        # Keep language and default_currency - these are user preferences, not financial data
         current_user.timezone = "UTC"
-        current_user.default_currency = "RUB" if current_user.telegram_id else "USD"
-        current_user.language = "en"
+        # Don't reset default_currency - preserve user's preference
+        # Don't reset language - preserve user's preference
         current_user.is_2fa_enabled = False
         current_user.two_factor_secret = None
         current_user.backup_codes = None

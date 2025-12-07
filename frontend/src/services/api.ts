@@ -361,13 +361,53 @@ class ApiClient {
           const validationErrors = error.map((err: any) => {
             if (err.loc && err.msg) {
               const field = err.loc[err.loc.length - 1] // Последний элемент - название поля
-              return `${field}: ${err.msg}`
+              // Переводим название поля на русский для лучшего UX
+              const fieldName = field === 'description' ? 'описание' : 
+                               field === 'name' ? 'название' : 
+                               field
+              // Извлекаем понятное сообщение об ошибке
+              let msg = err.msg
+              if (err.type === 'string_too_long' || err.msg?.includes('ensure this value has at most')) {
+                const maxLengthMatch = err.msg?.match(/(\d+)/)
+                if (maxLengthMatch) {
+                  msg = `не может превышать ${maxLengthMatch[1]} символов`
+                } else {
+                  msg = 'превышает максимальную длину'
+                }
+              }
+              return `${fieldName}: ${msg}`
             }
             return err.msg || JSON.stringify(err)
           })
           errorMessage = validationErrors.join('; ')
+        } else if (error.detail) {
+          // Проверяем, не является ли detail массивом ошибок валидации
+          if (Array.isArray(error.detail)) {
+            const validationErrors = error.detail.map((err: any) => {
+              if (err.loc && err.msg) {
+                const field = err.loc[err.loc.length - 1]
+                const fieldName = field === 'description' ? 'описание' : 
+                                 field === 'name' ? 'название' : 
+                                 field
+                let msg = err.msg
+                if (err.type === 'string_too_long' || err.msg?.includes('ensure this value has at most')) {
+                  const maxLengthMatch = err.msg?.match(/(\d+)/)
+                  if (maxLengthMatch) {
+                    msg = `не может превышать ${maxLengthMatch[1]} символов`
+                  } else {
+                    msg = 'превышает максимальную длину'
+                  }
+                }
+                return `${fieldName}: ${msg}`
+              }
+              return err.msg || JSON.stringify(err)
+            })
+            errorMessage = validationErrors.join('; ')
+          } else {
+            errorMessage = error.detail
+          }
         } else {
-          errorMessage = error.detail || error.message || `HTTP error! status: ${response.status}`
+          errorMessage = error.message || `HTTP error! status: ${response.status}`
         }
         
         // Импортируем функцию перевода ошибок

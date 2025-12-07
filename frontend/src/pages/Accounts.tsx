@@ -163,19 +163,23 @@ export function Accounts() {
       return
     }
 
-    if (formData.name.length > 255) {
+    // Trim name and validate length
+    const trimmedName = formData.name.trim()
+    if (trimmedName.length > 255) {
       showError('Название счета не может превышать 255 символов')
       return
     }
 
     // Validate name: only letters, numbers, spaces, hyphens, and underscores
     const namePattern = /^[a-zA-Zа-яА-ЯёЁ0-9\s\-_]+$/
-    if (!namePattern.test(formData.name.trim())) {
+    if (!namePattern.test(trimmedName)) {
       showError('Название счета может содержать только буквы, цифры, пробелы, дефисы и подчеркивания')
       return
     }
 
-    if (formData.description && formData.description.length > 500) {
+    // Trim description and validate length (check after trim to match backend validation)
+    const trimmedDescription = formData.description ? formData.description.trim() : ''
+    if (trimmedDescription.length > 500) {
       showError('Описание не может превышать 500 символов')
       return
     }
@@ -185,10 +189,10 @@ export function Accounts() {
       if (editingAccount) {
         // Update existing account
         await api.updateAccount(editingAccount.id, {
-          name: formData.name.trim(),
+          name: trimmedName,
           account_type: formData.account_type,
           currency: formData.currency,
-          description: formData.description.trim() || undefined,
+          description: trimmedDescription || undefined,
         })
         showSuccess('Счет обновлен')
       } else {
@@ -196,11 +200,11 @@ export function Accounts() {
         // Replace comma with dot for decimal separator (Russian locale uses comma)
         const balanceValue = formData.initial_balance.replace(',', '.')
         await api.createAccount({
-          name: formData.name.trim(),
+          name: trimmedName,
           account_type: formData.account_type,
           currency: formData.currency,
           initial_balance: parseFloat(balanceValue) || 0,
-          description: formData.description.trim() || undefined,
+          description: trimmedDescription || undefined,
           shared_budget_id: formData.shared_budget_id ? parseInt(formData.shared_budget_id) : undefined,
         })
         showSuccess(t.accounts.createdSuccess)

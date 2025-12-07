@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
@@ -10,6 +10,7 @@ interface QuestNotificationsProps {
 export function QuestNotifications({ variant = 'header' }: QuestNotificationsProps) {
   const navigate = useNavigate()
   const [showModal, setShowModal] = useState(false)
+  const [isDarkMode, setIsDarkMode] = useState(false)
 
   const { data: quests, isLoading } = useQuery({
     queryKey: ['daily-quests'],
@@ -21,8 +22,27 @@ export function QuestNotifications({ variant = 'header' }: QuestNotificationsPro
   const activeQuests = quests?.filter(q => q.status === 'pending') || []
   const activeCount = activeQuests.length
 
+  // Check theme when modal opens to prevent flickering
+  useEffect(() => {
+    if (showModal) {
+      const checkTheme = () => {
+        setIsDarkMode(document.documentElement.classList.contains('dark'))
+      }
+      checkTheme()
+      // Also listen for theme changes
+      const observer = new MutationObserver(checkTheme)
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class'],
+      })
+      return () => observer.disconnect()
+    }
+  }, [showModal])
+
   const handleClick = () => {
     if (variant === 'header') {
+      // Check theme immediately before opening modal
+      setIsDarkMode(document.documentElement.classList.contains('dark'))
       setShowModal(true)
     } else {
       navigate('/quests')
@@ -60,11 +80,13 @@ export function QuestNotifications({ variant = 'header' }: QuestNotificationsPro
         {/* Modal для отображения квестов */}
         {showModal && (
           <div 
-            className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/50 dark:bg-black/70 z-[9999] flex items-center justify-center p-4"
             onClick={() => setShowModal(false)}
           >
             <div 
-              className="bg-telegram-surface dark:bg-telegram-dark-surface rounded-2xl shadow-2xl max-w-md w-full max-h-[80vh] overflow-hidden relative z-[10000]"
+              className={`rounded-2xl shadow-2xl max-w-md w-full max-h-[80vh] overflow-hidden relative z-[10000] ${
+                isDarkMode ? 'bg-telegram-dark-surface' : 'bg-telegram-surface'
+              }`}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="p-4 border-b border-telegram-border dark:border-telegram-dark-border flex items-center justify-between">
