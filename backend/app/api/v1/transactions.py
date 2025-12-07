@@ -620,6 +620,54 @@ async def create_transaction(
             detail=f"Invalid transaction_type: {transaction_data.transaction_type}. Must be 'income', 'expense', or 'transfer'"
         )
     
+    # Check balance for expense and transfer transactions
+    if transaction_type_value in ["expense", "transfer"]:
+        # Calculate current account balance
+        # For shared accounts, count ALL transactions (from all members)
+        # For personal accounts, count only user's transactions
+        if final_account.shared_budget_id:
+            # Shared account: count all transactions
+            transactions_result = db.execute(
+                sa_text("""
+                    SELECT transaction_type::text, amount 
+                    FROM transactions 
+                    WHERE account_id = :account_id
+                """),
+                {"account_id": final_account_id}
+            )
+        else:
+            # Personal account: count only user's transactions
+            transactions_result = db.execute(
+                sa_text("""
+                    SELECT transaction_type::text, amount 
+                    FROM transactions 
+                    WHERE account_id = :account_id AND user_id = :user_id
+                """),
+                {"account_id": final_account_id, "user_id": current_user.id}
+            )
+        
+        # Calculate balance
+        balance = Decimal(str(final_account.initial_balance)) if final_account.initial_balance else Decimal("0")
+        for row in transactions_result:
+            trans_type = row[0].lower() if row[0] else ''
+            amount = Decimal(str(row[1])) if row[1] else Decimal("0")
+            
+            if trans_type == 'income':
+                balance += amount
+            elif trans_type == 'expense':
+                balance -= amount
+            elif trans_type == 'transfer':
+                # Transfer уменьшает баланс счета отправления
+                balance -= amount
+        
+        # Check if balance is sufficient
+        transaction_amount = Decimal(str(transaction_data.amount))
+        if balance < transaction_amount:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Недостаточно средств на счете. Текущий баланс: {balance:.2f}, требуется: {transaction_amount:.2f}"
+            )
+    
     # For transfers, use raw SQL to avoid enum issues completely
     if transaction_data.transaction_type == "transfer" and to_transaction:
         try:
