@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { api } from '../services/api'
@@ -214,7 +214,7 @@ export function Reports() {
     }
   }
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = useCallback((amount: number) => {
     const currency = analytics?.totals?.currency || 'RUB'
     return new Intl.NumberFormat('ru-RU', {
       style: 'currency',
@@ -222,7 +222,7 @@ export function Reports() {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(Math.round(amount || 0))
-  }
+  }, [analytics?.totals?.currency])
 
   const formatDate = (dateString: string) => {
     try {
@@ -573,7 +573,7 @@ export function Reports() {
                 style={{ fontSize: '12px' }}
                 tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
               />
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={CustomTooltip} />
               <Legend />
               <Line 
                 type="monotone" 
