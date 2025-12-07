@@ -563,3 +563,549 @@ async def restore_admin_access(
         "note": f"Add telegram_id '{telegram_id_str}' to ADMIN_TELEGRAM_IDS in Railway for automatic sync",
         "current_admin_ids": admin_ids
     }
+
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        
+        # Проверяем, существует ли столбец is_premium в базе данных
+        from sqlalchemy import inspect, text
+        from app.core.database import engine
+        
+        inspector = inspect(engine)
+        if inspector.has_table('users'):
+            columns = [col['name'] for col in inspector.get_columns('users')]
+            if 'is_premium' not in columns:
+                logger.warning(f"Column is_premium not found in users table. Adding it automatically...")
+                try:
+                    with engine.begin() as conn:
+                        conn.execute(text("ALTER TABLE users ADD COLUMN is_premium BOOLEAN DEFAULT false"))
+                        conn.execute(text("UPDATE users SET is_premium = false WHERE is_premium IS NULL"))
+                        conn.execute(text("ALTER TABLE users ALTER COLUMN is_premium SET NOT NULL"))
+                        conn.execute(text("ALTER TABLE users ALTER COLUMN is_premium SET DEFAULT false"))
+                    logger.info(f"Column is_premium successfully added to users table")
+                    # Перезагружаем пользователя после добавления столбца
+                    db.refresh(user)
+                except Exception as e:
+                    logger.error(f"Failed to add is_premium column: {e}")
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail=f"Database schema error: failed to add is_premium column. {str(e)}"
+                    )
+        
+        # Логируем текущее значение
+        # Пытаемся получить значение через SQL, если атрибут недоступен
+        try:
+            old_value = getattr(user, 'is_premium', None)
+            # Если значение None, пробуем прочитать из БД
+            if old_value is None:
+                result = db.execute(text("SELECT is_premium FROM users WHERE id = :user_id"), {"user_id": user_id})
+                row = result.first()
+                old_value = row[0] if row else False
+                # Устанавливаем значение в объект
+                user.is_premium = old_value
+        except (AttributeError, Exception) as e:
+            # Если не удалось прочитать через атрибут, читаем напрямую из БД
+            logger.warning(f"Could not read is_premium attribute, reading from DB directly: {e}")
+            result = db.execute(text("SELECT is_premium FROM users WHERE id = :user_id"), {"user_id": user_id})
+            row = result.first()
+            old_value = row[0] if row else False
+            # Устанавливаем значение в объект
+            user.is_premium = old_value
+        
+        logger.info(f"User {user_id} current is_premium: {old_value}, new value: {request.is_premium}")
+        
+        # Обновляем значение
+        user.is_premium = request.is_premium
+        
+        # Сохраняем изменения
+        db.commit()
+        
+        # Обновляем объект из БД
+        db.refresh(user)
+        
+        # Проверяем, что значение сохранилось
+        saved_value = getattr(user, 'is_premium', None)
+        logger.info(f"User {user_id} premium status saved: is_premium={saved_value}")
+        
+        if saved_value != request.is_premium:
+            logger.error(f"CRITICAL: Value mismatch! Expected {request.is_premium}, got {saved_value}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to save premium status. Expected {request.is_premium}, got {saved_value}"
+            )
+        
+        logger.info(f"Successfully updated premium status for user {user_id}: is_premium={user.is_premium}")
+        
+        # Отправляем уведомление о премиум, если статус был изменен на True
+        if request.is_premium and old_value != request.is_premium:
+            try:
+                from app.services.premium import send_premium_notification
+                import threading
+                
+                # Отправляем уведомление в фоне (не блокируем ответ)
+                def send_notification():
+                    try:
+                        send_premium_notification(user)
+                    except Exception as e:
+                        logger.error(f"Failed to send premium notification in background: {e}")
+                
+                thread = threading.Thread(target=send_notification)
+                thread.daemon = True
+                thread.start()
+            except Exception as e:
+                logger.error(f"Failed to start premium notification thread: {e}", exc_info=True)
+                # Не прерываем выполнение, если уведомление не отправилось
+        
+        return UserResponse.model_validate(user)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating premium status for user {user_id}: {str(e)}", exc_info=True)
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating premium status: {str(e)}"
+        )
+
+
+@router.get("/sync-admin-status")
+@router.post("/sync-admin-status")
+async def sync_admin_status(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Sync admin status for current user based on ADMIN_TELEGRAM_USERNAMES
+    This endpoint can be called by any authenticated user to update their admin status
+    """
+    import logging
+    from app.core.config import settings
+    
+    logger = logging.getLogger(__name__)
+    
+    if not current_user.telegram_username:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This endpoint is only for Telegram users with username"
+        )
+    
+    username_lower = current_user.telegram_username.lower().lstrip('@')
+    should_be_admin = username_lower in settings.ADMIN_TELEGRAM_USERNAMES
+    
+    logger.info(f"Syncing admin status for user {current_user.id}, telegram_username={current_user.telegram_username}, should_be_admin={should_be_admin}, current_is_admin={current_user.is_admin}")
+    
+    if current_user.is_admin != should_be_admin:
+        current_user.is_admin = should_be_admin
+        db.commit()
+        db.refresh(current_user)
+        logger.info(f"Updated admin status for user {current_user.id}: is_admin={should_be_admin}")
+    
+    return {
+        "is_admin": current_user.is_admin,
+        "telegram_username": current_user.telegram_username,
+        "in_admin_list": should_be_admin,
+        "admin_list": settings.ADMIN_TELEGRAM_USERNAMES
+    }
+
+
+class SetAdminByUsernameRequest(BaseModel):
+    telegram_username: str
+
+
+@router.post("/set-admin-by-username", response_model=UserResponse)
+async def set_admin_by_username(
+    request: SetAdminByUsernameRequest,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Set admin status for user by Telegram username
+    Only accessible by admins
+    """
+    import logging
+    from app.core.config import settings
+    
+    logger = logging.getLogger(__name__)
+    
+    # Remove @ if present
+    username = request.telegram_username.lstrip('@')
+    
+    # Find user by telegram_username
+    target_user = db.query(User).filter(
+        User.telegram_username == username
+    ).first()
+    
+    if not target_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with Telegram username @{username} not found"
+        )
+    
+    if not target_user.telegram_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"User @{username} does not have telegram_id"
+        )
+    
+    logger.info(f"Admin {current_admin.id} setting admin status for user @{username} (ID: {target_user.id}, telegram_id: {target_user.telegram_id})")
+    
+    # Set admin status
+    target_user.is_admin = True
+    db.commit()
+    db.refresh(target_user)
+    
+    # Also add to ADMIN_TELEGRAM_IDS if not already there
+    admin_ids = settings.ADMIN_TELEGRAM_IDS if isinstance(settings.ADMIN_TELEGRAM_IDS, list) else []
+    telegram_id_str = str(target_user.telegram_id)
+    
+    if telegram_id_str not in admin_ids:
+        logger.info(f"Note: User's telegram_id {telegram_id_str} should be added to ADMIN_TELEGRAM_IDS environment variable for automatic sync")
+    
+    logger.info(f"Successfully set admin status for user @{username} (ID: {target_user.id})")
+    return UserResponse.model_validate(target_user)
+
+
+@router.post("/restore-admin-access", response_model=dict)
+async def restore_admin_access(
+    request: SetAdminByUsernameRequest,
+    secret_key: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Emergency endpoint to restore admin access by username
+    Requires secret key to prevent unauthorized access
+    Use this if all admins lost access
+    """
+    import logging
+    from app.core.config import settings
+    
+    logger = logging.getLogger(__name__)
+    
+    # Simple secret key check (should match SECRET_KEY or a special restore key)
+    # In production, set RESTORE_ADMIN_SECRET in environment
+    restore_secret = os.getenv("RESTORE_ADMIN_SECRET", settings.SECRET_KEY)
+    
+    if secret_key != restore_secret:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid secret key"
+        )
+    
+    # Remove @ if present
+    username = request.telegram_username.lstrip('@')
+    
+    # Find user by telegram_username
+    target_user = db.query(User).filter(
+        User.telegram_username == username
+    ).first()
+    
+    if not target_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with Telegram username @{username} not found"
+        )
+    
+    if not target_user.telegram_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"User @{username} does not have telegram_id"
+        )
+    
+    logger.warning(f"EMERGENCY: Restoring admin access for user @{username} (ID: {target_user.id}, telegram_id: {target_user.telegram_id})")
+    
+    # Set admin status
+    target_user.is_admin = True
+    db.commit()
+    db.refresh(target_user)
+    
+    # Return info about ADMIN_TELEGRAM_IDS
+    admin_ids = settings.ADMIN_TELEGRAM_IDS if isinstance(settings.ADMIN_TELEGRAM_IDS, list) else []
+    telegram_id_str = str(target_user.telegram_id)
+    
+    return {
+        "success": True,
+        "user": {
+            "id": target_user.id,
+            "email": target_user.email,
+            "telegram_username": target_user.telegram_username,
+            "telegram_id": target_user.telegram_id,
+            "is_admin": target_user.is_admin
+        },
+        "message": f"Admin access restored for @{username}",
+        "note": f"Add telegram_id '{telegram_id_str}' to ADMIN_TELEGRAM_IDS in Railway for automatic sync",
+        "current_admin_ids": admin_ids
+    }
+
+        user = db.query(User).filter(User.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        
+        # Проверяем, существует ли столбец is_premium в базе данных
+        from sqlalchemy import inspect, text
+        from app.core.database import engine
+        
+        inspector = inspect(engine)
+        if inspector.has_table('users'):
+            columns = [col['name'] for col in inspector.get_columns('users')]
+            if 'is_premium' not in columns:
+                logger.warning(f"Column is_premium not found in users table. Adding it automatically...")
+                try:
+                    with engine.begin() as conn:
+                        conn.execute(text("ALTER TABLE users ADD COLUMN is_premium BOOLEAN DEFAULT false"))
+                        conn.execute(text("UPDATE users SET is_premium = false WHERE is_premium IS NULL"))
+                        conn.execute(text("ALTER TABLE users ALTER COLUMN is_premium SET NOT NULL"))
+                        conn.execute(text("ALTER TABLE users ALTER COLUMN is_premium SET DEFAULT false"))
+                    logger.info(f"Column is_premium successfully added to users table")
+                    # Перезагружаем пользователя после добавления столбца
+                    db.refresh(user)
+                except Exception as e:
+                    logger.error(f"Failed to add is_premium column: {e}")
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail=f"Database schema error: failed to add is_premium column. {str(e)}"
+                    )
+        
+        # Логируем текущее значение
+        # Пытаемся получить значение через SQL, если атрибут недоступен
+        try:
+            old_value = getattr(user, 'is_premium', None)
+            # Если значение None, пробуем прочитать из БД
+            if old_value is None:
+                result = db.execute(text("SELECT is_premium FROM users WHERE id = :user_id"), {"user_id": user_id})
+                row = result.first()
+                old_value = row[0] if row else False
+                # Устанавливаем значение в объект
+                user.is_premium = old_value
+        except (AttributeError, Exception) as e:
+            # Если не удалось прочитать через атрибут, читаем напрямую из БД
+            logger.warning(f"Could not read is_premium attribute, reading from DB directly: {e}")
+            result = db.execute(text("SELECT is_premium FROM users WHERE id = :user_id"), {"user_id": user_id})
+            row = result.first()
+            old_value = row[0] if row else False
+            # Устанавливаем значение в объект
+            user.is_premium = old_value
+        
+        logger.info(f"User {user_id} current is_premium: {old_value}, new value: {request.is_premium}")
+        
+        # Обновляем значение
+        user.is_premium = request.is_premium
+        
+        # Сохраняем изменения
+        db.commit()
+        
+        # Обновляем объект из БД
+        db.refresh(user)
+        
+        # Проверяем, что значение сохранилось
+        saved_value = getattr(user, 'is_premium', None)
+        logger.info(f"User {user_id} premium status saved: is_premium={saved_value}")
+        
+        if saved_value != request.is_premium:
+            logger.error(f"CRITICAL: Value mismatch! Expected {request.is_premium}, got {saved_value}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to save premium status. Expected {request.is_premium}, got {saved_value}"
+            )
+        
+        logger.info(f"Successfully updated premium status for user {user_id}: is_premium={user.is_premium}")
+        
+        # Отправляем уведомление о премиум, если статус был изменен на True
+        if request.is_premium and old_value != request.is_premium:
+            try:
+                from app.services.premium import send_premium_notification
+                import threading
+                
+                # Отправляем уведомление в фоне (не блокируем ответ)
+                def send_notification():
+                    try:
+                        send_premium_notification(user)
+                    except Exception as e:
+                        logger.error(f"Failed to send premium notification in background: {e}")
+                
+                thread = threading.Thread(target=send_notification)
+                thread.daemon = True
+                thread.start()
+            except Exception as e:
+                logger.error(f"Failed to start premium notification thread: {e}", exc_info=True)
+                # Не прерываем выполнение, если уведомление не отправилось
+        
+        return UserResponse.model_validate(user)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating premium status for user {user_id}: {str(e)}", exc_info=True)
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating premium status: {str(e)}"
+        )
+
+
+@router.get("/sync-admin-status")
+@router.post("/sync-admin-status")
+async def sync_admin_status(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Sync admin status for current user based on ADMIN_TELEGRAM_USERNAMES
+    This endpoint can be called by any authenticated user to update their admin status
+    """
+    import logging
+    from app.core.config import settings
+    
+    logger = logging.getLogger(__name__)
+    
+    if not current_user.telegram_username:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This endpoint is only for Telegram users with username"
+        )
+    
+    username_lower = current_user.telegram_username.lower().lstrip('@')
+    should_be_admin = username_lower in settings.ADMIN_TELEGRAM_USERNAMES
+    
+    logger.info(f"Syncing admin status for user {current_user.id}, telegram_username={current_user.telegram_username}, should_be_admin={should_be_admin}, current_is_admin={current_user.is_admin}")
+    
+    if current_user.is_admin != should_be_admin:
+        current_user.is_admin = should_be_admin
+        db.commit()
+        db.refresh(current_user)
+        logger.info(f"Updated admin status for user {current_user.id}: is_admin={should_be_admin}")
+    
+    return {
+        "is_admin": current_user.is_admin,
+        "telegram_username": current_user.telegram_username,
+        "in_admin_list": should_be_admin,
+        "admin_list": settings.ADMIN_TELEGRAM_USERNAMES
+    }
+
+
+class SetAdminByUsernameRequest(BaseModel):
+    telegram_username: str
+
+
+@router.post("/set-admin-by-username", response_model=UserResponse)
+async def set_admin_by_username(
+    request: SetAdminByUsernameRequest,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Set admin status for user by Telegram username
+    Only accessible by admins
+    """
+    import logging
+    from app.core.config import settings
+    
+    logger = logging.getLogger(__name__)
+    
+    # Remove @ if present
+    username = request.telegram_username.lstrip('@')
+    
+    # Find user by telegram_username
+    target_user = db.query(User).filter(
+        User.telegram_username == username
+    ).first()
+    
+    if not target_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with Telegram username @{username} not found"
+        )
+    
+    if not target_user.telegram_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"User @{username} does not have telegram_id"
+        )
+    
+    logger.info(f"Admin {current_admin.id} setting admin status for user @{username} (ID: {target_user.id}, telegram_id: {target_user.telegram_id})")
+    
+    # Set admin status
+    target_user.is_admin = True
+    db.commit()
+    db.refresh(target_user)
+    
+    # Also add to ADMIN_TELEGRAM_IDS if not already there
+    admin_ids = settings.ADMIN_TELEGRAM_IDS if isinstance(settings.ADMIN_TELEGRAM_IDS, list) else []
+    telegram_id_str = str(target_user.telegram_id)
+    
+    if telegram_id_str not in admin_ids:
+        logger.info(f"Note: User's telegram_id {telegram_id_str} should be added to ADMIN_TELEGRAM_IDS environment variable for automatic sync")
+    
+    logger.info(f"Successfully set admin status for user @{username} (ID: {target_user.id})")
+    return UserResponse.model_validate(target_user)
+
+
+@router.post("/restore-admin-access", response_model=dict)
+async def restore_admin_access(
+    request: SetAdminByUsernameRequest,
+    secret_key: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Emergency endpoint to restore admin access by username
+    Requires secret key to prevent unauthorized access
+    Use this if all admins lost access
+    """
+    import logging
+    from app.core.config import settings
+    
+    logger = logging.getLogger(__name__)
+    
+    # Simple secret key check (should match SECRET_KEY or a special restore key)
+    # In production, set RESTORE_ADMIN_SECRET in environment
+    restore_secret = os.getenv("RESTORE_ADMIN_SECRET", settings.SECRET_KEY)
+    
+    if secret_key != restore_secret:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid secret key"
+        )
+    
+    # Remove @ if present
+    username = request.telegram_username.lstrip('@')
+    
+    # Find user by telegram_username
+    target_user = db.query(User).filter(
+        User.telegram_username == username
+    ).first()
+    
+    if not target_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with Telegram username @{username} not found"
+        )
+    
+    if not target_user.telegram_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"User @{username} does not have telegram_id"
+        )
+    
+    logger.warning(f"EMERGENCY: Restoring admin access for user @{username} (ID: {target_user.id}, telegram_id: {target_user.telegram_id})")
+    
+    # Set admin status
+    target_user.is_admin = True
+    db.commit()
+    db.refresh(target_user)
+    
+    # Return info about ADMIN_TELEGRAM_IDS
+    admin_ids = settings.ADMIN_TELEGRAM_IDS if isinstance(settings.ADMIN_TELEGRAM_IDS, list) else []
+    telegram_id_str = str(target_user.telegram_id)
+    
+    return {
+        "success": True,
+        "user": {
+            "id": target_user.id,
+            "email": target_user.email,
+            "telegram_username": target_user.telegram_username,
+            "telegram_id": target_user.telegram_id,
+            "is_admin": target_user.is_admin
+        },
+        "message": f"Admin access restored for @{username}",
+        "note": f"Add telegram_id '{telegram_id_str}' to ADMIN_TELEGRAM_IDS in Railway for automatic sync",
+        "current_admin_ids": admin_ids
+    }

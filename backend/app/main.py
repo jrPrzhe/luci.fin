@@ -511,3 +511,43 @@ if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
 
+
+    app.include_router(categories.router, prefix="/api/v1/categories", tags=["Categories"])
+    app.include_router(reports.router, prefix="/api/v1/reports", tags=["Reports"])
+    app.include_router(goals.router, prefix="/api/v1/goals", tags=["Goals"])
+    app.include_router(import_router.router, prefix="/api/v1/import", tags=["Import"])
+    app.include_router(gamification.router, prefix="/api/v1/gamification", tags=["Gamification"])
+    app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["Analytics"])
+    app.include_router(admin.router, prefix="/api/v1", tags=["Admin"])
+    print("[STARTUP] All routers included, application ready!", file=sys.stderr, flush=True)
+except Exception as e:
+    print(f"[STARTUP] ERROR including routers: {e}", file=sys.stderr, flush=True)
+    import traceback
+    traceback.print_exc(file=sys.stderr)
+    raise
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+
+
+    app.include_router(categories.router, prefix="/api/v1/categories", tags=["Categories"])
+    app.include_router(reports.router, prefix="/api/v1/reports", tags=["Reports"])
+    app.include_router(goals.router, prefix="/api/v1/goals", tags=["Goals"])
+    app.include_router(import_router.router, prefix="/api/v1/import", tags=["Import"])
+    app.include_router(gamification.router, prefix="/api/v1/gamification", tags=["Gamification"])
+    app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["Analytics"])
+    app.include_router(admin.router, prefix="/api/v1", tags=["Admin"])
+    print("[STARTUP] All routers included, application ready!", file=sys.stderr, flush=True)
+except Exception as e:
+    print(f"[STARTUP] ERROR including routers: {e}", file=sys.stderr, flush=True)
+    import traceback
+    traceback.print_exc(file=sys.stderr)
+    raise
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+

@@ -575,3 +575,397 @@ async def delete_account(
         db.commit()
         return {"message": "Account deleted", "account_id": account_id}
 
+
+    }
+
+
+@router.get("/{account_id}/transaction-count", response_model=dict)
+async def get_account_transaction_count(
+    account_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get count of transactions for an account"""
+    # Verify account belongs to user or user has access through shared budget
+    account = db.query(Account).filter(Account.id == account_id).first()
+    
+    if not account:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Счет не найден"
+        )
+    
+    # Check access: either owner or member of shared budget
+    has_access = False
+    if account.user_id == current_user.id:
+        has_access = True
+    elif account.shared_budget_id:
+        from app.models.shared_budget import SharedBudgetMember
+        membership = db.query(SharedBudgetMember).filter(
+            SharedBudgetMember.shared_budget_id == account.shared_budget_id,
+            SharedBudgetMember.user_id == current_user.id
+        ).first()
+        has_access = membership is not None
+    
+    if not has_access:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="У вас нет доступа к этому счету"
+        )
+    
+    # Count transactions where account is source
+    source_count = db.query(Transaction).filter(
+        Transaction.account_id == account_id
+    ).count()
+    
+    # Count transactions where account is destination (transfers)
+    dest_count = db.query(Transaction).filter(
+        Transaction.to_account_id == account_id
+    ).count()
+    
+    total_count = source_count + dest_count
+    
+    return {
+        "account_id": account_id,
+        "transaction_count": total_count,
+        "source_transactions": source_count,
+        "destination_transactions": dest_count
+    }
+
+
+@router.delete("/{account_id}", response_model=dict)
+async def delete_account(
+    account_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Delete an account and all related transactions"""
+    # Verify account belongs to user or user has access through shared budget
+    account = db.query(Account).filter(Account.id == account_id).first()
+    
+    if not account:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Счет не найден"
+        )
+    
+    # Check access: either owner or member of shared budget
+    has_access = False
+    if account.user_id == current_user.id:
+        has_access = True
+    elif account.shared_budget_id:
+        from app.models.shared_budget import SharedBudgetMember
+        membership = db.query(SharedBudgetMember).filter(
+            SharedBudgetMember.shared_budget_id == account.shared_budget_id,
+            SharedBudgetMember.user_id == current_user.id
+        ).first()
+        has_access = membership is not None
+    
+    if not has_access:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="У вас нет доступа к этому счету"
+        )
+    
+    # For shared accounts, only admins can delete
+    if account.shared_budget_id:
+        from app.models.shared_budget import SharedBudgetMember, MemberRole
+        membership = db.query(SharedBudgetMember).filter(
+            SharedBudgetMember.shared_budget_id == account.shared_budget_id,
+            SharedBudgetMember.user_id == current_user.id,
+            SharedBudgetMember.role == MemberRole.ADMIN
+        ).first()
+        if not membership:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Только администраторы могут удалять общие счета"
+            )
+    
+    # Check if account is linked to a goal
+    from app.models.goal import Goal
+    linked_goal = db.query(Goal).filter(Goal.account_id == account_id).first()
+    
+    if linked_goal:
+        # If account is linked to a goal, we need to handle the goal first
+        # Option 1: Delete the goal (which will handle the account relationship)
+        # Option 2: Unlink the goal from the account
+        
+        # Check if account has transactions
+        transaction_count = db.query(Transaction).filter(
+            Transaction.account_id == account_id
+        ).count()
+        
+        if transaction_count > 0:
+            # Archive account and unlink goal
+            account.is_archived = True
+            account.is_active = False
+            linked_goal.account_id = None  # Unlink goal from account
+            db.commit()
+            db.refresh(account)
+            return {
+                "message": "Account archived (has transactions and was linked to a goal)", 
+                "account_id": account_id,
+                "goal_unlinked": True,
+                "goal_id": linked_goal.id
+            }
+        else:
+            # Delete the goal first (which will handle account deletion)
+            # But we need to delete the account ourselves since delete_goal handles it differently
+            # Actually, let's just unlink and delete the account
+            linked_goal.account_id = None
+            db.delete(account)
+            db.commit()
+            return {
+                "message": "Account deleted (was linked to a goal, goal unlinked)", 
+                "account_id": account_id,
+                "goal_unlinked": True,
+                "goal_id": linked_goal.id
+            }
+    
+    # Check if account has transactions
+    from app.models.transaction import Transaction
+    transactions = db.query(Transaction).filter(
+        Transaction.account_id == account_id
+    ).all()
+    
+    transaction_count = len(transactions)
+    
+    # Also check for transfer transactions where this account is the destination
+    transfer_transactions = db.query(Transaction).filter(
+        Transaction.to_account_id == account_id
+    ).all()
+    
+    all_transactions = transactions + transfer_transactions
+    total_transaction_count = len(all_transactions)
+    
+    if total_transaction_count > 0:
+        # Delete all transactions related to this account
+        # Delete transactions where account is source
+        for transaction in transactions:
+            # If it's a transfer, also delete the corresponding destination transaction
+            if transaction.transaction_type == 'transfer' and transaction.to_account_id:
+                dest_transaction = db.query(Transaction).filter(
+                    Transaction.account_id == transaction.to_account_id,
+                    Transaction.transaction_type == 'income',
+                    Transaction.amount == transaction.amount,
+                    Transaction.transaction_date == transaction.transaction_date
+                ).first()
+                if dest_transaction:
+                    db.delete(dest_transaction)
+            db.delete(transaction)
+        
+        # Delete transactions where account is destination (transfer income transactions)
+        for transaction in transfer_transactions:
+            db.delete(transaction)
+        
+        # Now delete the account
+        db.delete(account)
+        db.commit()
+        return {
+            "message": "Account and all related transactions deleted", 
+            "account_id": account_id,
+            "transactions_deleted": total_transaction_count
+        }
+    else:
+        # Delete if no transactions
+        db.delete(account)
+        db.commit()
+        return {"message": "Account deleted", "account_id": account_id}
+
+
+    }
+
+
+@router.get("/{account_id}/transaction-count", response_model=dict)
+async def get_account_transaction_count(
+    account_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get count of transactions for an account"""
+    # Verify account belongs to user or user has access through shared budget
+    account = db.query(Account).filter(Account.id == account_id).first()
+    
+    if not account:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Счет не найден"
+        )
+    
+    # Check access: either owner or member of shared budget
+    has_access = False
+    if account.user_id == current_user.id:
+        has_access = True
+    elif account.shared_budget_id:
+        from app.models.shared_budget import SharedBudgetMember
+        membership = db.query(SharedBudgetMember).filter(
+            SharedBudgetMember.shared_budget_id == account.shared_budget_id,
+            SharedBudgetMember.user_id == current_user.id
+        ).first()
+        has_access = membership is not None
+    
+    if not has_access:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="У вас нет доступа к этому счету"
+        )
+    
+    # Count transactions where account is source
+    source_count = db.query(Transaction).filter(
+        Transaction.account_id == account_id
+    ).count()
+    
+    # Count transactions where account is destination (transfers)
+    dest_count = db.query(Transaction).filter(
+        Transaction.to_account_id == account_id
+    ).count()
+    
+    total_count = source_count + dest_count
+    
+    return {
+        "account_id": account_id,
+        "transaction_count": total_count,
+        "source_transactions": source_count,
+        "destination_transactions": dest_count
+    }
+
+
+@router.delete("/{account_id}", response_model=dict)
+async def delete_account(
+    account_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Delete an account and all related transactions"""
+    # Verify account belongs to user or user has access through shared budget
+    account = db.query(Account).filter(Account.id == account_id).first()
+    
+    if not account:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Счет не найден"
+        )
+    
+    # Check access: either owner or member of shared budget
+    has_access = False
+    if account.user_id == current_user.id:
+        has_access = True
+    elif account.shared_budget_id:
+        from app.models.shared_budget import SharedBudgetMember
+        membership = db.query(SharedBudgetMember).filter(
+            SharedBudgetMember.shared_budget_id == account.shared_budget_id,
+            SharedBudgetMember.user_id == current_user.id
+        ).first()
+        has_access = membership is not None
+    
+    if not has_access:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="У вас нет доступа к этому счету"
+        )
+    
+    # For shared accounts, only admins can delete
+    if account.shared_budget_id:
+        from app.models.shared_budget import SharedBudgetMember, MemberRole
+        membership = db.query(SharedBudgetMember).filter(
+            SharedBudgetMember.shared_budget_id == account.shared_budget_id,
+            SharedBudgetMember.user_id == current_user.id,
+            SharedBudgetMember.role == MemberRole.ADMIN
+        ).first()
+        if not membership:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Только администраторы могут удалять общие счета"
+            )
+    
+    # Check if account is linked to a goal
+    from app.models.goal import Goal
+    linked_goal = db.query(Goal).filter(Goal.account_id == account_id).first()
+    
+    if linked_goal:
+        # If account is linked to a goal, we need to handle the goal first
+        # Option 1: Delete the goal (which will handle the account relationship)
+        # Option 2: Unlink the goal from the account
+        
+        # Check if account has transactions
+        transaction_count = db.query(Transaction).filter(
+            Transaction.account_id == account_id
+        ).count()
+        
+        if transaction_count > 0:
+            # Archive account and unlink goal
+            account.is_archived = True
+            account.is_active = False
+            linked_goal.account_id = None  # Unlink goal from account
+            db.commit()
+            db.refresh(account)
+            return {
+                "message": "Account archived (has transactions and was linked to a goal)", 
+                "account_id": account_id,
+                "goal_unlinked": True,
+                "goal_id": linked_goal.id
+            }
+        else:
+            # Delete the goal first (which will handle account deletion)
+            # But we need to delete the account ourselves since delete_goal handles it differently
+            # Actually, let's just unlink and delete the account
+            linked_goal.account_id = None
+            db.delete(account)
+            db.commit()
+            return {
+                "message": "Account deleted (was linked to a goal, goal unlinked)", 
+                "account_id": account_id,
+                "goal_unlinked": True,
+                "goal_id": linked_goal.id
+            }
+    
+    # Check if account has transactions
+    from app.models.transaction import Transaction
+    transactions = db.query(Transaction).filter(
+        Transaction.account_id == account_id
+    ).all()
+    
+    transaction_count = len(transactions)
+    
+    # Also check for transfer transactions where this account is the destination
+    transfer_transactions = db.query(Transaction).filter(
+        Transaction.to_account_id == account_id
+    ).all()
+    
+    all_transactions = transactions + transfer_transactions
+    total_transaction_count = len(all_transactions)
+    
+    if total_transaction_count > 0:
+        # Delete all transactions related to this account
+        # Delete transactions where account is source
+        for transaction in transactions:
+            # If it's a transfer, also delete the corresponding destination transaction
+            if transaction.transaction_type == 'transfer' and transaction.to_account_id:
+                dest_transaction = db.query(Transaction).filter(
+                    Transaction.account_id == transaction.to_account_id,
+                    Transaction.transaction_type == 'income',
+                    Transaction.amount == transaction.amount,
+                    Transaction.transaction_date == transaction.transaction_date
+                ).first()
+                if dest_transaction:
+                    db.delete(dest_transaction)
+            db.delete(transaction)
+        
+        # Delete transactions where account is destination (transfer income transactions)
+        for transaction in transfer_transactions:
+            db.delete(transaction)
+        
+        # Now delete the account
+        db.delete(account)
+        db.commit()
+        return {
+            "message": "Account and all related transactions deleted", 
+            "account_id": account_id,
+            "transactions_deleted": total_transaction_count
+        }
+    else:
+        # Delete if no transactions
+        db.delete(account)
+        db.commit()
+        return {"message": "Account deleted", "account_id": account_id}
+

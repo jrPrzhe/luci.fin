@@ -895,3 +895,19 @@ async def leave_budget(
     
     return {"message": "Successfully left the budget"}
 
+
+    
+    # Remove membership
+    db.delete(membership)
+    db.commit()
+    
+    return {"message": "Successfully left the budget"}
+
+
+    
+    # Remove membership
+    db.delete(membership)
+    db.commit()
+    
+    return {"message": "Successfully left the budget"}
+

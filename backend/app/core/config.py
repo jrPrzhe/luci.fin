@@ -131,3 +131,29 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
+
+                    normalized.append(username.lower())
+        return normalized
+    
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=True,
+        extra="ignore"
+    )
+
+
+settings = Settings()
+
+
+                    normalized.append(username.lower())
+        return normalized
+    
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=True,
+        extra="ignore"
+    )
+
+
+settings = Settings()
+

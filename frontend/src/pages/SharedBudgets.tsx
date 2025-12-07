@@ -1066,3 +1066,4 @@ export function SharedBudgets() {
     </>
   )
 }
+

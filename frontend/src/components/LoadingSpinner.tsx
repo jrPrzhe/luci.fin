@@ -39,5 +39,3 @@ export function LoadingSpinner({ message, size = 'md', fullScreen = false }: Loa
   )
 }
 
-
-
