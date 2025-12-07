@@ -1091,7 +1091,7 @@ export function Dashboard() {
               .map((transaction: any) => (
               <div 
                 key={transaction.id} 
-                className="flex items-center gap-3 md:gap-4 p-2 md:p-3 rounded-telegram active:bg-telegram-hover transition-colors group"
+                className="flex items-center gap-3 md:gap-4 p-2 md:p-3 rounded-telegram hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover active:bg-telegram-hover dark:active:bg-telegram-dark-hover transition-colors group"
               >
                 <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-base md:text-lg flex-shrink-0 ${
                   transaction.transaction_type === 'income' 

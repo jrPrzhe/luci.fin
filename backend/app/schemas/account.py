@@ -1,7 +1,7 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional
 from datetime import datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 
 class AccountBase(BaseModel):
@@ -10,6 +10,23 @@ class AccountBase(BaseModel):
     currency: str = Field(..., min_length=3, max_length=3)
     initial_balance: Decimal = Decimal("0")
     description: Optional[str] = Field(None, max_length=500, description="Account description")
+    
+    @field_validator('initial_balance')
+    @classmethod
+    def validate_initial_balance(cls, v):
+        """Validate initial_balance is within acceptable range"""
+        if not isinstance(v, Decimal):
+            try:
+                v = Decimal(str(v))
+            except (ValueError, InvalidOperation, TypeError):
+                raise ValueError("Неверное значение начального баланса")
+        
+        # Maximum value for Numeric(15, 2): 999,999,999,999,999.99
+        MAX_BALANCE = Decimal('999999999999999.99')
+        if abs(v) > MAX_BALANCE:
+            raise ValueError("Сумма слишком большая. Максимальная сумма: 999 999 999 999 999.99")
+        
+        return v
 
 
 class AccountCreate(AccountBase):

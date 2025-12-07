@@ -199,11 +199,34 @@ export function Accounts() {
         // Create new account
         // Replace comma with dot for decimal separator (Russian locale uses comma)
         const balanceValue = formData.initial_balance.replace(',', '.')
+        const balanceNumber = parseFloat(balanceValue)
+        
+        // Validate balance value
+        if (isNaN(balanceNumber)) {
+          showError('Введите корректное число для начального баланса')
+          setIsSubmitting(false)
+          return
+        }
+        
+        if (!isFinite(balanceNumber)) {
+          showError('Сумма слишком большая. Максимальная сумма: 999 999 999 999 999.99')
+          setIsSubmitting(false)
+          return
+        }
+        
+        // Maximum value for Numeric(15, 2): 999,999,999,999,999.99
+        const MAX_BALANCE = 999999999999999.99
+        if (Math.abs(balanceNumber) > MAX_BALANCE) {
+          showError('Сумма слишком большая. Максимальная сумма: 999 999 999 999 999.99')
+          setIsSubmitting(false)
+          return
+        }
+        
         await api.createAccount({
           name: trimmedName,
           account_type: formData.account_type,
           currency: formData.currency,
-          initial_balance: parseFloat(balanceValue) || 0,
+          initial_balance: balanceNumber,
           description: trimmedDescription || undefined,
           shared_budget_id: formData.shared_budget_id ? parseInt(formData.shared_budget_id) : undefined,
         })

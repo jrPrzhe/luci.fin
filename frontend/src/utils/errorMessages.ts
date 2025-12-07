@@ -42,12 +42,14 @@ export function translateError(error: any): string {
   // Проверяем, не является ли сообщение уже понятным русским текстом
   if (errorMessage.includes('Сумма слишком большая') || 
       errorMessage.includes('Максимум') ||
+      errorMessage.includes('максимальная сумма') ||
       errorMessage.includes('обязательные поля') ||
       errorMessage.includes('успешно') ||
       errorMessage.includes('не найдено') ||
       errorMessage.includes('недоступен') ||
       errorMessage.includes('не может превышать') ||
       errorMessage.includes('превышает максимальную длину') ||
+      errorMessage.includes('Неверное значение начального баланса') ||
       errorMessage.includes('описание:') ||
       errorMessage.includes('название:')) {
     return errorMessage
@@ -106,7 +108,15 @@ export function translateError(error: any): string {
   // Ошибки длины полей
   if (errorLower.includes('max_length') || errorLower.includes('too long') || errorLower.includes('exceeds') || 
       errorLower.includes('string_too_long') || errorLower.includes('ensure this value has at most')) {
+    // Проверяем, не является ли сообщение уже правильным русским текстом
+    if (errorMessage.includes('Название бюджета не должно превышать 100 символов')) {
+      return errorMessage
+    }
     if (errorLower.includes('name') || errorLower.includes('название')) {
+      // Проверяем, относится ли это к бюджету (100 символов) или к счету (255 символов)
+      if (errorLower.includes('100') || errorMessage.includes('100')) {
+        return 'Название бюджета не должно превышать 100 символов'
+      }
       return 'Название счета не может превышать 255 символов.'
     }
     if (errorLower.includes('description') || errorLower.includes('описание')) {
@@ -115,7 +125,9 @@ export function translateError(error: any): string {
     // Извлекаем число из сообщения об ошибке, если оно есть
     const maxLengthMatch = errorMessage.match(/(\d+)\s*(?:символ|character)/i)
     if (maxLengthMatch) {
-      return `Превышена максимальная длина поля. Максимум ${maxLengthMatch[1]} символов.`
+      const maxLength = parseInt(maxLengthMatch[1])
+      // Правильное склонение для "символов"
+      return `Превышена максимальная длина поля. Максимум ${maxLength} символов.`
     }
     return 'Превышена максимальная длина поля. Проверьте введенные данные.'
   }

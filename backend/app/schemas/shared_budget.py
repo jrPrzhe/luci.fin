@@ -1,12 +1,20 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
 from datetime import datetime
 
 
 class SharedBudgetBase(BaseModel):
-    name: str
+    name: str = Field(..., max_length=100, description="Budget name")
     description: Optional[str] = None
     currency: str = Field(..., min_length=3, max_length=3)
+    
+    @field_validator('name')
+    @classmethod
+    def validate_name_length(cls, v: str) -> str:
+        """Validate budget name length"""
+        if len(v) > 100:
+            raise ValueError('Название бюджета не должно превышать 100 символов')
+        return v
 
 
 class SharedBudgetCreate(SharedBudgetBase):

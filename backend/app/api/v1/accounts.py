@@ -239,21 +239,50 @@ async def create_account(
                 detail="Только администраторы могут создавать общие счета"
             )
     
-    # Create account
-    account = Account(
-        user_id=current_user.id,  # Creator
-        shared_budget_id=shared_budget_id,  # Can be None for personal accounts
-        name=account_data.name,
-        account_type=account_type,
-        currency=account_data.currency or current_user.default_currency,
-        initial_balance=Decimal(str(account_data.initial_balance)),
-        description=account_data.description,
-        is_active=True
-    )
+    # Validate initial_balance before creating account
+    try:
+        initial_balance_decimal = Decimal(str(account_data.initial_balance))
+    except (ValueError, TypeError) as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Неверное значение начального баланса"
+        )
     
-    db.add(account)
-    db.commit()
-    db.refresh(account)
+    # Maximum value for Numeric(15, 2): 999,999,999,999,999.99
+    MAX_BALANCE = Decimal('999999999999999.99')
+    if abs(initial_balance_decimal) > MAX_BALANCE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Сумма слишком большая. Максимальная сумма: 999 999 999 999 999.99"
+        )
+    
+    # Create account
+    try:
+        account = Account(
+            user_id=current_user.id,  # Creator
+            shared_budget_id=shared_budget_id,  # Can be None for personal accounts
+            name=account_data.name,
+            account_type=account_type,
+            currency=account_data.currency or current_user.default_currency,
+            initial_balance=initial_balance_decimal,
+            description=account_data.description,
+            is_active=True
+        )
+        
+        db.add(account)
+        db.commit()
+        db.refresh(account)
+    except Exception as e:
+        db.rollback()
+        # Check if it's a numeric overflow error
+        error_str = str(e).lower()
+        if 'numeric' in error_str or 'overflow' in error_str or 'value too large' in error_str or 'out of range' in error_str:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Сумма слишком большая. Максимальная сумма: 999 999 999 999 999.99"
+            )
+        # Re-raise other exceptions
+        raise
     
     # Get shared budget name if applicable
     shared_budget_name = None
