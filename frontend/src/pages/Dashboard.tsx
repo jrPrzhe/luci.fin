@@ -195,17 +195,8 @@ export function Dashboard() {
 
   const handleQuickAction = async (type: 'income' | 'expense' | 'transfer') => {
     console.log(`[handleQuickAction] Starting for type: ${type}`)
-    setQuickFormType(type)
     
-    // Reset categories first
-    setCategories([])
-    setCategoriesLoading(true)
-    console.log(`[handleQuickAction] Set categoriesLoading = true`)
-    
-    // Show form immediately with loading state
-    setShowQuickForm(true)
-    setQuickFormStep(type === 'transfer' ? 'form' : 'category')
-    
+    // Set form data first
     setQuickFormData({
       category_id: '',
       account_id: accounts && accounts.length > 0 ? accounts[0].id.toString() : '',
@@ -215,20 +206,34 @@ export function Dashboard() {
       goal_id: '',
     })
     
-    // Load categories for income/expense
+    // Reset categories and set loading state
+    setCategories([])
+    setCategoriesLoading(type !== 'transfer')
+    
+    // Set form type and step
+    setQuickFormType(type)
+    setQuickFormStep(type === 'transfer' ? 'form' : 'category')
+    
+    // Show form immediately - this should happen synchronously
+    setShowQuickForm(true)
+    
+    // Load categories for income/expense in background (non-blocking)
     if (type === 'income' || type === 'expense') {
-      try {
-        console.log(`[handleQuickAction] Loading categories for ${type}...`)
-        await loadCategories(type)
-        console.log(`[handleQuickAction] Categories loaded successfully`)
-      } catch (err: any) {
-        console.error('[handleQuickAction] Error loading categories:', err)
-        showError(err.message || t.errors.networkError)
-      } finally {
-        // Always reset loading state
-        console.log(`[handleQuickAction] Setting categoriesLoading = false`)
-        setCategoriesLoading(false)
-      }
+      // Use setTimeout to ensure modal renders first
+      setTimeout(async () => {
+        try {
+          console.log(`[handleQuickAction] Loading categories for ${type}...`)
+          await loadCategories(type)
+          console.log(`[handleQuickAction] Categories loaded successfully`)
+        } catch (err: any) {
+          console.error('[handleQuickAction] Error loading categories:', err)
+          showError(err.message || t.errors.networkError)
+        } finally {
+          // Always reset loading state
+          console.log(`[handleQuickAction] Setting categoriesLoading = false`)
+          setCategoriesLoading(false)
+        }
+      }, 0)
     } else {
       console.log(`[handleQuickAction] Transfer type, skipping categories`)
       setCategoriesLoading(false)
@@ -513,8 +518,8 @@ export function Dashboard() {
 
       {/* Quick Form Modal */}
       {showQuickForm && quickFormType && (
-        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="card max-w-md sm:max-w-lg md:max-w-xl w-full max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-[9999] p-4">
+          <div className="card max-w-md sm:max-w-lg md:max-w-xl w-full max-h-[90vh] flex flex-col relative z-[10000]">
             <div className="flex justify-between items-center mb-4 flex-shrink-0">
               <div className="flex items-center gap-2">
                 {quickFormStep === 'category' && (

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../services/api'
 import { UserStatsModal } from './UserStatsModal'
@@ -10,7 +10,7 @@ export function UserStatsCard() {
     queryKey: ['gamification-status'],
     queryFn: () => api.getGamificationStatus(),
     staleTime: 30000, // 30 seconds
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   })
 
   const handleOpenModal = useCallback(() => {
@@ -20,6 +20,9 @@ export function UserStatsCard() {
   const handleCloseModal = useCallback(() => {
     setShowModal(false)
   }, [])
+
+  // Мемоизируем статус для предотвращения лишних перерисовок модалки
+  const memoizedStatus = useMemo(() => status, [status])
 
   if (isLoading) {
     return (
@@ -116,9 +119,9 @@ export function UserStatsCard() {
       </button>
 
       {/* Modal */}
-      {showModal && status && (
+      {showModal && memoizedStatus && (
         <UserStatsModal
-          status={status}
+          status={memoizedStatus}
           onClose={handleCloseModal}
         />
       )}

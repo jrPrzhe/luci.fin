@@ -1,5 +1,4 @@
-import { useEffect } from 'react'
-import { createPortal } from 'react-dom'
+import { useEffect, useMemo, memo } from 'react'
 
 interface UserStatsModalProps {
   status: {
@@ -18,7 +17,7 @@ interface UserStatsModalProps {
   onClose: () => void
 }
 
-export function UserStatsModal({ status, onClose }: UserStatsModalProps) {
+export const UserStatsModal = memo(function UserStatsModal({ status, onClose }: UserStatsModalProps) {
   useEffect(() => {
     // Prevent body scroll when modal is open
     document.body.style.overflow = 'hidden'
@@ -26,16 +25,22 @@ export function UserStatsModal({ status, onClose }: UserStatsModalProps) {
       document.body.style.overflow = 'unset'
     }
   }, [])
+
+  // Мемоизируем вычисления для предотвращения лишних перерисовок
   const { profile, next_level_xp } = status
   
-  const xpPercentage = profile.xp_to_next_level > 0 
-    ? (profile.xp / (profile.xp + profile.xp_to_next_level)) * 100 
-    : 100
+  const xpPercentage = useMemo(() => {
+    return profile.xp_to_next_level > 0 
+      ? (profile.xp / (profile.xp + profile.xp_to_next_level)) * 100 
+      : 100
+  }, [profile.xp, profile.xp_to_next_level])
 
   // Calculate heart cooldown (if heart_level < 100, show when it will regenerate)
-  const heartCooldown = profile.heart_level < 100 
-    ? 'Сердце восстанавливается при выполнении заданий'
-    : 'Сердце на максимуме! ❤️'
+  const heartCooldown = useMemo(() => {
+    return profile.heart_level < 100 
+      ? 'Сердце восстанавливается при выполнении заданий'
+      : 'Сердце на максимуме! ❤️'
+  }, [profile.heart_level])
 
   // Calculate next level info
   const currentLevelXP = profile.xp
@@ -43,17 +48,19 @@ export function UserStatsModal({ status, onClose }: UserStatsModalProps) {
   const xpNeeded = profile.xp_to_next_level
 
   // Calculate streak info
-  const streakInfo = profile.streak_days > 0
-    ? `Выполняйте задания каждый день, чтобы увеличить серию!`
-    : 'Начните выполнять задания, чтобы создать серию!'
+  const streakInfo = useMemo(() => {
+    return profile.streak_days > 0
+      ? `Выполняйте задания каждый день, чтобы увеличить серию!`
+      : 'Начните выполнять задания, чтобы создать серию!'
+  }, [profile.streak_days])
 
-  const modalContent = (
+  return (
     <div 
-      className="fixed inset-0 bg-black/50 dark:bg-black/70 z-50 flex items-center justify-center p-4 animate-fade-in"
+      className="fixed inset-0 bg-black/50 dark:bg-black/70 z-[9999] flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div 
-        className="bg-telegram-surface dark:bg-telegram-dark-surface rounded-2xl shadow-2xl max-w-md w-full max-h-[85vh] overflow-hidden animate-slide-up"
+        className="bg-telegram-surface dark:bg-telegram-dark-surface rounded-2xl shadow-2xl max-w-md w-full max-h-[85vh] overflow-hidden relative z-[10000]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -187,7 +194,5 @@ export function UserStatsModal({ status, onClose }: UserStatsModalProps) {
       </div>
     </div>
   )
-
-  return createPortal(modalContent, document.body)
-}
+})
 
