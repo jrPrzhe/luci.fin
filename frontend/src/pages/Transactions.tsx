@@ -377,12 +377,28 @@ export function Transactions() {
       show: true,
       message: 'Вы уверены, что хотите удалить эту транзакцию?',
       onConfirm: async () => {
+        // Сохраняем текущий список транзакций для отката в случае ошибки
+        const previousTransactions = [...transactions]
+        
         try {
+          // Удаляем транзакцию на сервере
           await api.deleteTransaction(id)
-          await loadData()
+          
+          // Оптимистично удаляем транзакцию из состояния
+          setTransactions(prev => prev.filter(t => t.id !== id))
+          
+          // Перезагружаем данные для синхронизации с сервером (но не блокируем UI)
+          loadData().catch(err => {
+            console.error('Error reloading transactions after delete:', err)
+            // Если перезагрузка не удалась, но удаление прошло успешно, 
+            // транзакция уже удалена из состояния, так что просто логируем ошибку
+          })
+          
           showSuccess('Транзакция удалена')
           setConfirmModal({ show: false, message: '', onConfirm: () => {} })
         } catch (err: any) {
+          // В случае ошибки восстанавливаем предыдущее состояние
+          setTransactions(previousTransactions)
           showError(err.message || 'Ошибка удаления транзакции')
           setConfirmModal({ show: false, message: '', onConfirm: () => {} })
         }
