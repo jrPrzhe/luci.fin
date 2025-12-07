@@ -96,7 +96,18 @@ def get_current_user(
             # Устанавливаем значение по умолчанию
             user.is_premium = False
     
-    logger.info(f"User found: id={user.id}, email={user.email}, telegram_id={user.telegram_id}, is_premium={getattr(user, 'is_premium', None)}")
+    # Синхронизируем статус админа для пользователей с Telegram ID
+    if user.telegram_id:
+        should_be_admin = str(user.telegram_id) in settings.ADMIN_TELEGRAM_IDS
+        
+        if user.is_admin != should_be_admin:
+            logger.info(f"Syncing admin status in get_current_user for user {user.id}: telegram_id={user.telegram_id}, current={user.is_admin}, should_be={should_be_admin}")
+            user.is_admin = should_be_admin
+            db.commit()
+            db.refresh(user)
+            logger.info(f"Updated admin status for user {user.id}: is_admin={should_be_admin}")
+    
+    logger.info(f"User found: id={user.id}, email={user.email}, telegram_id={user.telegram_id}, is_admin={user.is_admin}, is_premium={getattr(user, 'is_premium', None)}")
     return user
 
 
@@ -1327,7 +1338,8 @@ async def get_bot_token_vk(
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(
     request: Request,
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     """Get current user information"""
     import logging
@@ -1336,6 +1348,17 @@ async def get_current_user_info(
     # Логирование заголовков для отладки
     auth_header = request.headers.get("authorization")
     logger.info(f"/me endpoint called, Authorization header present: {bool(auth_header)}, value: {auth_header[:50] + '...' if auth_header and len(auth_header) > 50 else auth_header}")
+    
+    # Синхронизируем статус админа для пользователей с Telegram ID
+    if current_user.telegram_id:
+        should_be_admin = str(current_user.telegram_id) in settings.ADMIN_TELEGRAM_IDS
+        
+        if current_user.is_admin != should_be_admin:
+            logger.info(f"Syncing admin status in /me for user {current_user.id}: telegram_id={current_user.telegram_id}, current={current_user.is_admin}, should_be={should_be_admin}")
+            current_user.is_admin = should_be_admin
+            db.commit()
+            db.refresh(current_user)
+            logger.info(f"Updated admin status for user {current_user.id}: is_admin={should_be_admin}")
     
     return UserResponse.model_validate(current_user)
 
