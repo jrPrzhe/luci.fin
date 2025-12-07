@@ -158,7 +158,7 @@ export function Accounts() {
       return
     }
 
-    if (formData.description.length > 500) {
+    if (formData.description && formData.description.length > 500) {
       showError('Описание не может превышать 500 символов')
       return
     }

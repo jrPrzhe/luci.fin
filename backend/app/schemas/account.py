@@ -13,7 +13,7 @@ class AccountBase(BaseModel):
 
 
 class AccountCreate(AccountBase):
-    pass
+    shared_budget_id: Optional[int] = None  # If provided, account belongs to shared budget
 
 
 class AccountUpdate(BaseModel):

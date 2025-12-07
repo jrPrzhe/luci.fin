@@ -2,27 +2,18 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import text as sa_text
 from typing import List, Optional
-from pydantic import BaseModel
 from app.core.database import get_db
 from app.api.v1.auth import get_current_user
 from app.models.user import User
 from app.models.account import Account, AccountType
 from app.models.transaction import Transaction, TransactionType
+from app.schemas.account import AccountCreate, AccountUpdate
 from decimal import Decimal
 import logging
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-
-class AccountCreate(BaseModel):
-    name: str
-    account_type: str = "cash"  # cash, bank_card, bank_account, etc.
-    currency: str = "RUB"
-    initial_balance: float = 0.0
-    description: Optional[str] = None
-    shared_budget_id: Optional[int] = None  # If provided, account belongs to shared budget
 
 
 @router.get("/", response_model=List[dict])
@@ -201,6 +192,13 @@ async def create_account(
             detail=f"Неверный тип счета. Должен быть одним из: {[e.value for e in AccountType]}"
         )
     
+    # Validate description length (Pydantic should handle this, but double-check)
+    if account_data.description and len(account_data.description) > 500:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Описание не может превышать 500 символов"
+        )
+    
     # If shared_budget_id is provided, verify user is a member
     shared_budget_id = account_data.shared_budget_id
     if shared_budget_id:
@@ -271,14 +269,6 @@ async def create_account(
     }
 
 
-class AccountUpdate(BaseModel):
-    name: Optional[str] = None
-    account_type: Optional[str] = None
-    currency: Optional[str] = None
-    description: Optional[str] = None
-    is_active: Optional[bool] = None
-
-
 @router.put("/{account_id}", response_model=dict)
 async def update_account(
     account_id: int,
@@ -323,6 +313,13 @@ async def update_account(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Только администраторы могут редактировать общие счета"
+        )
+    
+    # Validate description length
+    if account_update.description is not None and len(account_update.description) > 500:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Описание не может превышать 500 символов"
         )
     
     # Update fields
