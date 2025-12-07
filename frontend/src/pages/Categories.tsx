@@ -457,7 +457,7 @@ export function Categories() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                {t.categories.form.nameLabel} *
+                {t.categories.form.nameLabel} <span className="text-red-500 dark:text-red-400">*</span>
               </label>
               <input
                 type="text"
@@ -475,7 +475,7 @@ export function Categories() {
 
             <div>
               <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                {t.categories.form.typeLabel} *
+                {t.categories.form.typeLabel} <span className="text-red-500 dark:text-red-400">*</span>
               </label>
               <select
                 value={formData.transaction_type}
