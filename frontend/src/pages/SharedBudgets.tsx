@@ -609,8 +609,8 @@ export function SharedBudgets() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {members.map((member) => (
                 <div key={member.id} className="card hover:shadow-lg transition-shadow">
-                  <div className="flex items-center justify-between gap-3 min-w-0">
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
                       <div className={`w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold flex-shrink-0 ${
                         member.role === 'admin' 
                           ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-white' 
@@ -618,17 +618,17 @@ export function SharedBudgets() {
                       }`}>
                         {member.user_name?.[0]?.toUpperCase() || member.user_email?.[0]?.toUpperCase() || '👤'}
                       </div>
-                      <div className="flex-1 min-w-0 overflow-hidden">
+                      <div className="flex-1 min-w-0">
                         <h4 
-                          className="font-semibold text-telegram-text dark:text-telegram-dark-text truncate"
+                          className="font-semibold text-telegram-text dark:text-telegram-dark-text break-words"
                           title={member.user_name || member.user_email || `Пользователь #${member.user_id}`}
                         >
                           {member.user_name || member.user_email || `Пользователь #${member.user_id}`}
                         </h4>
-                        <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary truncate">
+                        <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
                           {member.role === 'admin' ? '👑 Администратор' : '👤 Участник'}
                         </p>
-                        <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1 truncate">
+                        <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
                           📅 {formatDate(member.joined_at)}
                         </p>
                       </div>
