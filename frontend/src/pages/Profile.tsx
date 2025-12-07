@@ -14,6 +14,7 @@ export function Profile() {
   const { showError, showSuccess } = useToast()
   const [firstName, setFirstName] = useState('')
   const [defaultCurrency, setDefaultCurrency] = useState('RUB')
+  const [initialCurrency, setInitialCurrency] = useState('RUB')
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const { theme, toggleTheme } = useTheme()
   const { isEnabled: newYearEnabled, toggle: toggleNewYear } = useNewYearTheme()
@@ -69,6 +70,8 @@ export function Profile() {
   const updateMutation = useMutation({
     mutationFn: api.updateUser,
     onSuccess: () => {
+      // Обновляем исходное значение после успешного сохранения
+      setInitialCurrency(defaultCurrency)
       queryClient.invalidateQueries({ queryKey: ['currentUser'] })
       showSuccess(t.profile.saved)
     },
@@ -172,7 +175,7 @@ export function Profile() {
           
           <button
             type="submit"
-            disabled={updateMutation.isPending}
+            disabled={updateMutation.isPending || defaultCurrency === initialCurrency}
             className="w-full btn-primary text-sm md:text-base py-2.5 md:py-3 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {updateMutation.isPending ? t.profile.saving : t.common.save}
@@ -360,6 +363,11 @@ export function Profile() {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+
     </div>
   )
 }
