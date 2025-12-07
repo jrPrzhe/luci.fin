@@ -47,7 +47,7 @@ export function Transactions() {
   const location = useLocation()
   const queryClient = useQueryClient()
   const { showError, showSuccess } = useToast()
-  const { translateCategoryName } = useI18n()
+  const { t, translateCategoryName } = useI18n()
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
   const [categories, setCategories] = useState<Category[]>([])
@@ -346,7 +346,7 @@ export function Transactions() {
       queryClient.invalidateQueries({ queryKey: ['balance'] })
       queryClient.invalidateQueries({ queryKey: ['recent-transactions'] })
       
-      showSuccess(editingTransaction ? 'Транзакция обновлена' : 'Транзакция добавлена')
+      showSuccess(editingTransaction ? t.transactions.updated : t.transactions.added)
     } catch (err: any) {
       const { translateError } = await import('../utils/errorMessages')
       const errorMessage = translateError(err)
@@ -401,7 +401,7 @@ export function Transactions() {
             // транзакция уже удалена из состояния, так что просто логируем ошибку
           })
           
-          showSuccess('Транзакция удалена')
+          showSuccess(t.transactions.deleted)
           setConfirmModal({ show: false, message: '', onConfirm: () => {} })
         } catch (err: any) {
           // В случае ошибки восстанавливаем предыдущее состояние
@@ -437,11 +437,11 @@ export function Transactions() {
   const getTransactionTypeLabel = (type: string) => {
     switch (type) {
       case 'income':
-        return 'Доход'
+        return t.transactions.types.income
       case 'expense':
-        return 'Расход'
+        return t.transactions.types.expense
       case 'transfer':
-        return 'Перевод'
+        return t.transactions.types.transfer
       default:
         return type
     }
@@ -462,7 +462,7 @@ export function Transactions() {
 
   const getAccountName = (accountId: number) => {
     const account = accounts.find(a => a.id === accountId)
-    return account ? account.name : `Счет #${accountId}`
+    return account ? account.name : `${t.transactions.accountPrefix}${accountId}`
   }
 
   const truncateAccountName = (name: string, maxLength: number = 30) => {
@@ -504,7 +504,7 @@ export function Transactions() {
   return (
     <div className="p-4 sm:p-6 md:p-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-telegram-text dark:text-telegram-dark-text">Транзакции</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-telegram-text dark:text-telegram-dark-text">{t.transactions.title}</h1>
         <button
           onClick={async () => {
             resetForm()
@@ -513,7 +513,7 @@ export function Transactions() {
           }}
           className="btn-primary"
         >
-          ➕ Добавить транзакцию
+          ➕ {t.transactions.addTransaction}
         </button>
       </div>
 
@@ -525,7 +525,7 @@ export function Transactions() {
             <div className="flex items-center gap-2 flex-1 min-w-0">
               <span className="flex-shrink-0">📋</span>
               <span className="text-sm text-telegram-text dark:text-telegram-dark-text flex-1 min-w-0">
-                Показаны транзакции по счету:{' '}
+                {t.transactions.accountFilter}{' '}
                 <strong 
                   className="break-words" 
                   title={getAccountName(selectedAccountId)}
@@ -541,7 +541,7 @@ export function Transactions() {
               }}
               className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 px-2 py-1 flex-shrink-0 whitespace-nowrap"
             >
-              ✕ Сбросить
+              ✕ {t.transactions.resetFilter}
             </button>
           </div>
         </div>
@@ -554,7 +554,7 @@ export function Transactions() {
           className="w-full flex items-center justify-between mb-4"
         >
           <h3 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text">
-            Фильтры
+            {t.transactions.filters.title}
           </h3>
           <span className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary text-xl">
             {filtersExpanded ? '▼' : '▶'}
@@ -566,7 +566,7 @@ export function Transactions() {
             {/* Основные фильтры - Мои/Общие */}
             <div>
               <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                Тип транзакций
+                {t.transactions.type}
               </label>
               <div className="flex gap-2 flex-wrap">
                 <button
@@ -577,7 +577,7 @@ export function Transactions() {
                       : 'bg-telegram-surface dark:bg-telegram-dark-surface text-telegram-text dark:text-telegram-dark-text hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover'
                   }`}
                 >
-                  📋 Все
+                  📋 {t.transactions.filters.all}
                 </button>
                 <button
                   onClick={() => setFilterType('own')}
@@ -587,7 +587,7 @@ export function Transactions() {
                       : 'bg-telegram-surface dark:bg-telegram-dark-surface text-telegram-text dark:text-telegram-dark-text hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover'
                   }`}
                 >
-                  👤 Мои
+                  👤 {t.transactions.filters.own}
                 </button>
                 <button
                   onClick={() => setFilterType('shared')}
@@ -597,7 +597,7 @@ export function Transactions() {
                       : 'bg-telegram-surface dark:bg-telegram-dark-surface text-telegram-text dark:text-telegram-dark-text hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover'
                   }`}
                 >
-                  👥 Общие
+                  👥 {t.transactions.filters.shared}
                 </button>
               </div>
             </div>
@@ -605,7 +605,7 @@ export function Transactions() {
             {/* Фильтр по типу - Доход/Расход */}
             <div>
               <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                Доходы / Расходы
+                {t.transactions.filters.incomeExpense}
               </label>
               <div className="flex gap-2 flex-wrap">
                 <button
@@ -616,7 +616,7 @@ export function Transactions() {
                     : 'bg-telegram-surface dark:bg-telegram-dark-surface text-telegram-text dark:text-telegram-dark-text hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover'
                 }`}
               >
-                Все
+                {t.transactions.filters.all}
               </button>
               <button
                 onClick={() => setTransactionTypeFilter('income')}
@@ -626,7 +626,7 @@ export function Transactions() {
                     : 'bg-telegram-surface dark:bg-telegram-dark-surface text-telegram-text dark:text-telegram-dark-text hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover'
                 }`}
               >
-                💰 Доходы
+                💰 {t.transactions.filters.income}
               </button>
               <button
                 onClick={() => setTransactionTypeFilter('expense')}
@@ -636,7 +636,7 @@ export function Transactions() {
                     : 'bg-telegram-surface dark:bg-telegram-dark-surface text-telegram-text dark:text-telegram-dark-text hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover'
                 }`}
               >
-                💸 Расходы
+                💸 {t.transactions.filters.expense}
               </button>
               <button
                 onClick={() => setTransactionTypeFilter('transfer')}
@@ -646,7 +646,7 @@ export function Transactions() {
                     : 'bg-telegram-surface dark:bg-telegram-dark-surface text-telegram-text dark:text-telegram-dark-text hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover'
                 }`}
               >
-                ↔️ Переводы
+                ↔️ {t.transactions.filters.transfer}
               </button>
               </div>
             </div>
@@ -654,7 +654,7 @@ export function Transactions() {
             {/* Фильтр по датам */}
             <div>
               <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                Период
+                {t.transactions.filters.period}
               </label>
               <div className="flex gap-2 flex-wrap">
                 <button
@@ -668,7 +668,7 @@ export function Transactions() {
                     : 'bg-telegram-surface dark:bg-telegram-dark-surface text-telegram-text dark:text-telegram-dark-text hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover'
                 }`}
               >
-                Все время
+                {t.transactions.filters.allTime}
               </button>
               <button
                 onClick={() => {
@@ -681,7 +681,7 @@ export function Transactions() {
                     : 'bg-telegram-surface dark:bg-telegram-dark-surface text-telegram-text dark:text-telegram-dark-text hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover'
                 }`}
               >
-                Сегодня
+                {t.transactions.filters.today}
               </button>
               <button
                 onClick={() => {
@@ -694,7 +694,7 @@ export function Transactions() {
                     : 'bg-telegram-surface dark:bg-telegram-dark-surface text-telegram-text dark:text-telegram-dark-text hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover'
                 }`}
               >
-                Неделя
+                {t.transactions.filters.week}
               </button>
               <button
                 onClick={() => {
@@ -707,7 +707,7 @@ export function Transactions() {
                     : 'bg-telegram-surface dark:bg-telegram-dark-surface text-telegram-text dark:text-telegram-dark-text hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover'
                 }`}
               >
-                Месяц
+                {t.transactions.filters.month}
               </button>
               <button
                 onClick={() => {
@@ -720,7 +720,7 @@ export function Transactions() {
                     : 'bg-telegram-surface dark:bg-telegram-dark-surface text-telegram-text dark:text-telegram-dark-text hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover'
                 }`}
               >
-                Год
+                {t.transactions.filters.year}
               </button>
               <button
                 onClick={() => {
@@ -733,7 +733,7 @@ export function Transactions() {
                     : 'bg-telegram-surface dark:bg-telegram-dark-surface text-telegram-text dark:text-telegram-dark-text hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover'
                 }`}
               >
-                📅 Свой период
+                📅 {t.transactions.filters.custom}
               </button>
               </div>
               
@@ -742,7 +742,7 @@ export function Transactions() {
                 <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-1">
-                      От
+                      {t.transactions.filters.from}
                     </label>
                     <input
                       type="date"
@@ -754,7 +754,7 @@ export function Transactions() {
                   </div>
                   <div>
                     <label className="block text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-1">
-                      До
+                      {t.transactions.filters.to}
                     </label>
                     <input
                       type="date"
@@ -786,7 +786,7 @@ export function Transactions() {
         <div className="card mb-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold text-telegram-text dark:text-telegram-dark-text">
-              Новая транзакция
+              {t.transactions.newTransaction}
             </h2>
             <button
               onClick={() => {
@@ -802,7 +802,7 @@ export function Transactions() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                Тип транзакции
+                {t.transactions.type}
               </label>
               <select
                 value={formData.transaction_type}
@@ -810,15 +810,15 @@ export function Transactions() {
                 className="input"
                 required
               >
-                <option value="income">💰 Доход</option>
-                <option value="expense">💸 Расход</option>
-                <option value="transfer">↔️ Перевод</option>
+                <option value="income">💰 {t.transactions.types.income}</option>
+                <option value="expense">💸 {t.transactions.types.expense}</option>
+                <option value="transfer">↔️ {t.transactions.types.transfer}</option>
               </select>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                {formData.transaction_type === 'transfer' ? 'Счет отправления' : 'Счет'}
+                {formData.transaction_type === 'transfer' ? t.transactions.form.fromAccount : t.transactions.form.account}
               </label>
               <select
                 value={formData.account_id}
@@ -826,7 +826,7 @@ export function Transactions() {
                 className="input"
                 required
               >
-                <option value="">Выберите счет</option>
+                <option value="">{t.transactions.form.selectAccount}</option>
                 {accounts.map(account => (
                   <option key={account.id} value={account.id}>
                     {account.name} ({formatAmount(account.balance, account.currency)})
@@ -838,7 +838,7 @@ export function Transactions() {
             {formData.transaction_type === 'transfer' && (
               <div>
                 <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                  Счет получателя
+                  {t.transactions.form.toAccount}
                 </label>
                 <select
                   value={formData.to_account_id}
@@ -846,7 +846,7 @@ export function Transactions() {
                   className="input"
                   required
                 >
-                  <option value="">Выберите счет</option>
+                  <option value="">{t.transactions.form.selectToAccount}</option>
                   {accounts
                     .filter(account => account.id !== parseInt(formData.account_id || '0'))
                     .map(account => (
@@ -861,14 +861,14 @@ export function Transactions() {
             {formData.transaction_type !== 'transfer' && categories.length > 0 && (
               <div>
                 <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                  Категория
+                  {t.transactions.category}
                 </label>
                 <select
                   value={formData.category_id}
                   onChange={(e) => setFormData({ ...formData, category_id: e.target.value })}
                   className="input"
                 >
-                  <option value="">Без категории</option>
+                  <option value="">{t.transactions.form.noCategory}</option>
                   {categories
                     .sort((a, b) => (b.is_favorite ? 1 : 0) - (a.is_favorite ? 1 : 0))
                     .map(category => (
@@ -883,14 +883,14 @@ export function Transactions() {
             {formData.transaction_type === 'income' && goals.length > 0 && (
               <div>
                 <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                  🎯 Добавить к цели (опционально)
+                  🎯 {t.transactions.form.addToGoal} ({t.common.optional})
                 </label>
                 <select
                   value={formData.goal_id}
                   onChange={(e) => setFormData({ ...formData, goal_id: e.target.value })}
                   className="input"
                 >
-                  <option value="">Не добавлять к цели</option>
+                  <option value="">{t.transactions.form.notAddToGoal}</option>
                   {goals.map(goal => (
                     <option key={goal.id} value={goal.id}>
                       {goal.name} ({Math.round(goal.current_amount).toLocaleString()} / {Math.round(goal.target_amount).toLocaleString()} {goal.currency})
@@ -899,7 +899,7 @@ export function Transactions() {
                 </select>
                 {formData.goal_id && (
                   <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
-                    Эта сумма будет добавлена к выбранной цели
+                    {t.transactions.form.goalAmountNote}
                   </p>
                 )}
               </div>
@@ -907,7 +907,7 @@ export function Transactions() {
 
             <div>
               <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                Сумма
+                {t.transactions.amount}
               </label>
               <input
                 type="number"
@@ -923,7 +923,7 @@ export function Transactions() {
 
             <div>
               <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                Валюта
+                {t.transactions.form.currency}
               </label>
               <select
                 value={formData.currency}
@@ -938,7 +938,7 @@ export function Transactions() {
 
             <div>
               <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                Дата и время
+                {t.transactions.form.dateTime}
               </label>
               <div className="relative">
                 <input
@@ -953,20 +953,20 @@ export function Transactions() {
 
             <div>
               <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                Описание
+                {t.transactions.description}
               </label>
               <textarea
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 className="input"
                 rows={3}
-                placeholder="Описание транзакции (необязательно)"
+                placeholder={t.transactions.form.descriptionPlaceholder}
               />
             </div>
 
             <div className="flex gap-3">
               <button type="submit" className="btn-primary flex-1">
-                {editingTransaction ? 'Сохранить' : 'Добавить'}
+                {editingTransaction ? t.transactions.form.save : t.transactions.form.add}
               </button>
               <button
                 type="button"
@@ -976,7 +976,7 @@ export function Transactions() {
                 }}
                 className="btn-secondary"
               >
-                Отмена
+                {t.transactions.form.cancel}
               </button>
             </div>
           </form>
@@ -986,7 +986,7 @@ export function Transactions() {
       {transactions.length === 0 ? (
         <div className="card">
           <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary text-center py-8">
-            Транзакции не найдены. Добавьте первую транзакцию!
+            {t.transactions.noTransactionsFound}
           </p>
         </div>
       ) : (
@@ -1342,4 +1342,3 @@ export function Transactions() {
     </div>
   )
 }
-
