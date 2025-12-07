@@ -127,11 +127,25 @@ export function Reports() {
   
   const { data: analytics, isLoading, error } = useQuery<AnalyticsData>({
     queryKey: ['analytics', period],
-    queryFn: () => api.getAnalytics(period),
+    queryFn: async () => {
+      try {
+        const data = await api.getAnalytics(period)
+        // Validate response structure
+        if (!data || typeof data !== 'object') {
+          throw new Error('Неверный формат данных от сервера')
+        }
+        return data
+      } catch (err: any) {
+        // Log error for debugging
+        console.error('Error fetching analytics:', err)
+        throw err
+      }
+    },
     staleTime: 0, // Always consider data stale to allow immediate updates
     refetchOnWindowFocus: false,
     refetchOnMount: 'always', // Always refetch when component mounts
     refetchInterval: false, // Don't auto-refetch on interval
+    retry: 1, // Retry once on failure
   })
 
   const { data: user } = useQuery({
@@ -201,13 +215,13 @@ export function Reports() {
   }
 
   const formatCurrency = (amount: number) => {
-    const currency = analytics?.totals.currency || 'RUB'
+    const currency = analytics?.totals?.currency || 'RUB'
     return new Intl.NumberFormat('ru-RU', {
       style: 'currency',
       currency: currency,
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(Math.round(amount))
+    }).format(Math.round(amount || 0))
   }
 
   const formatDate = (dateString: string) => {
@@ -232,25 +246,36 @@ export function Reports() {
     )
   }
 
-  // Prepare data for charts
-  const dailyFlowData = analytics.daily_flow.map(item => ({
-    date: formatDate(item.date),
-    dateFull: item.date,
-    [t.reports.income]: item.income,
-    [t.reports.expenses]: item.expense,
+  // Validate analytics data structure
+  if (!analytics.totals || !analytics.daily_flow || !analytics.monthly_comparison || !analytics.top_expense_categories) {
+    return (
+      <div className="min-h-screen p-4 md:p-6">
+        <div className="card p-6 text-center">
+          <p className="text-red-500">Ошибка: неверный формат данных аналитики</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Prepare data for charts with safe defaults
+  const dailyFlowData = (analytics.daily_flow || []).map(item => ({
+    date: formatDate(item.date || ''),
+    dateFull: item.date || '',
+    [t.reports.income]: item.income || 0,
+    [t.reports.expenses]: item.expense || 0,
   }))
 
-  const monthlyData = analytics.monthly_comparison.map(item => ({
-    month: localizeMonth(item.month_short, locale),
-    [t.reports.income]: item.income,
-    [t.reports.expenses]: item.expense,
+  const monthlyData = (analytics.monthly_comparison || []).map(item => ({
+    month: localizeMonth(item.month_short || '', locale),
+    [t.reports.income]: item.income || 0,
+    [t.reports.expenses]: item.expense || 0,
   }))
 
-  const expensePieData = analytics.top_expense_categories.slice(0, 5).map(cat => ({
-    name: cat.name,
-    value: cat.amount,
-    icon: cat.icon,
-    color: cat.color,
+  const expensePieData = (analytics.top_expense_categories || []).slice(0, 5).map(cat => ({
+    name: cat.name || 'Без названия',
+    value: cat.amount || 0,
+    icon: cat.icon || '📦',
+    color: cat.color || '#607D8B',
   }))
 
   // Memoize CustomTooltip to prevent re-renders and jittering
@@ -376,7 +401,7 @@ export function Reports() {
             <div>
               <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{t.reports.income}</p>
               <p className="text-xl font-bold text-green-600 dark:text-green-400">
-                {formatCurrency(analytics.totals.income)}
+                {formatCurrency(analytics.totals?.income || 0)}
               </p>
             </div>
           </div>
@@ -390,7 +415,7 @@ export function Reports() {
             <div>
               <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{t.reports.expenses}</p>
               <p className="text-xl font-bold text-red-600 dark:text-red-400">
-                {formatCurrency(analytics.totals.expense)}
+                {formatCurrency(analytics.totals?.expense || 0)}
               </p>
             </div>
           </div>
@@ -399,16 +424,16 @@ export function Reports() {
         <div className="card p-5">
           <div className="flex items-center gap-3 mb-2">
             <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-              analytics.totals.net >= 0 ? 'bg-blue-100' : 'bg-orange-100'
+              (analytics.totals?.net || 0) >= 0 ? 'bg-blue-100' : 'bg-orange-100'
             }`}>
               <span className="text-xl">📊</span>
             </div>
             <div>
               <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{t.reports.total}</p>
               <p className={`text-xl font-bold ${
-                analytics.totals.net >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'
+                (analytics.totals?.net || 0) >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'
               }`}>
-                {formatCurrency(analytics.totals.net)}
+                {formatCurrency(analytics.totals?.net || 0)}
               </p>
             </div>
           </div>
@@ -416,7 +441,7 @@ export function Reports() {
       </div>
 
       {/* Goals Section */}
-      {analytics.goals && analytics.goals.length > 0 && (
+      {analytics.goals && Array.isArray(analytics.goals) && analytics.goals.length > 0 && (
         <div className="card p-5 mb-6">
           <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4 flex items-center gap-2">
             <span>🎯</span> {t.reports.goalsProgress}
@@ -478,7 +503,7 @@ export function Reports() {
       )}
 
       {/* Interesting Facts */}
-      {analytics.facts.length > 0 && (
+      {analytics.facts && Array.isArray(analytics.facts) && analytics.facts.length > 0 && (
         <div className="card p-5 mb-6">
           <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4 flex items-center gap-2">
             <span>💡</span> {t.reports.interestingFacts}
@@ -628,7 +653,7 @@ export function Reports() {
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Expense Categories */}
-        {analytics.top_expense_categories.length > 0 && (
+        {analytics.top_expense_categories && Array.isArray(analytics.top_expense_categories) && analytics.top_expense_categories.length > 0 && (
           <div className="card p-5">
             <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
               {t.reports.expenseCategories}
@@ -676,7 +701,7 @@ export function Reports() {
         )}
 
         {/* Top Expense Categories Bar Chart */}
-        {analytics.top_expense_categories.length > 0 && (
+        {analytics.top_expense_categories && Array.isArray(analytics.top_expense_categories) && analytics.top_expense_categories.length > 0 && (
           <div className="card p-5">
             <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
               {t.reports.topExpenseCategories}
