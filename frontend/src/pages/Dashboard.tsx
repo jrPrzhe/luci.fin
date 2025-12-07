@@ -794,23 +794,26 @@ export function Dashboard() {
                           <button
                             key={category.id}
                             onClick={() => handleCategorySelect(category.id)}
-                            className="card p-4 text-left hover:shadow-lg transition-all active:scale-[0.98]"
+                            className="card p-4 text-left hover:shadow-lg transition-all active:scale-[0.98] min-w-0 overflow-hidden"
                             style={{
                               borderLeft: `4px solid ${category.color || '#4CAF50'}`,
                             }}
                           >
-                            <div className="flex flex-col items-center gap-2">
+                            <div className="flex flex-col items-center gap-2 min-w-0 w-full">
                               <div
-                                className="w-12 h-12 rounded-full flex items-center justify-center text-2xl"
+                                className="w-12 h-12 rounded-full flex items-center justify-center text-2xl flex-shrink-0"
                                 style={{ backgroundColor: `${category.color || '#4CAF50'}20` }}
                               >
                                 {category.icon || '📦'}
                               </div>
-                              <span className="font-medium text-sm text-telegram-text dark:text-telegram-dark-text text-center">
+                              <span 
+                                className="font-medium text-sm text-telegram-text dark:text-telegram-dark-text text-center break-words overflow-wrap-anywhere w-full"
+                                style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
+                              >
                                 {translateCategoryName(category.name)}
                               </span>
                               {category.is_favorite && (
-                                <span className="text-xs text-yellow-500">⭐</span>
+                                <span className="text-xs text-yellow-500 flex-shrink-0">⭐</span>
                               )}
                             </div>
                           </button>
@@ -827,7 +830,7 @@ export function Dashboard() {
                 <div className="space-y-3 flex-1 overflow-y-auto min-h-0 p-2 modal-content-scrollable">
               {/* Show selected category - compact display */}
               {quickFormType !== 'transfer' && quickFormData.category_id && (
-                <div className="bg-telegram-surface dark:bg-telegram-dark-surface p-2 rounded-telegram mb-2 flex items-center gap-2">
+                <div className="bg-telegram-surface dark:bg-telegram-dark-surface p-2 rounded-telegram mb-2 flex items-center gap-2 min-w-0">
                   {(() => {
                     const selectedCategory = categories.find(c => c.id === parseInt(quickFormData.category_id))
                     return selectedCategory ? (
@@ -838,14 +841,19 @@ export function Dashboard() {
                         >
                           {selectedCategory.icon || '📦'}
                         </div>
-                        <span className="font-medium text-sm text-telegram-text dark:text-telegram-dark-text">{selectedCategory.name}</span>
+                        <span 
+                          className="font-medium text-sm text-telegram-text dark:text-telegram-dark-text flex-1 min-w-0 break-words overflow-wrap-anywhere"
+                          style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
+                        >
+                          {selectedCategory.name}
+                        </span>
                         <button
                           type="button"
                           onClick={() => {
                             setQuickFormStep('category')
                             setQuickFormData({ ...quickFormData, category_id: '' })
                           }}
-                          className="ml-auto text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text"
+                          className="ml-auto text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text flex-shrink-0 whitespace-nowrap px-2 py-1"
                         >
                           {t.dashboard.form.change}
                         </button>

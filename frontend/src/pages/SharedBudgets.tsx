@@ -208,6 +208,7 @@ export function SharedBudgets() {
   }
 
   const handleViewBudget = async (budget: SharedBudget) => {
+    setError('') // Очищаем ошибку при переходе к другому бюджету
     setSelectedBudget(budget)
     await loadMembers(budget.id)
   }
@@ -416,13 +417,19 @@ export function SharedBudgets() {
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
           <button
-            onClick={() => setShowJoinForm(true)}
+            onClick={() => {
+              setError('') // Очищаем ошибку при открытии модалки присоединения
+              setShowJoinForm(true)
+            }}
             className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-medium"
           >
             🔗 Присоединиться
           </button>
           <button
-            onClick={() => setShowCreateForm(true)}
+            onClick={() => {
+              setError('') // Очищаем ошибку при открытии модалки создания
+              setShowCreateForm(true)
+            }}
             className="px-4 py-2 bg-telegram-primary text-white rounded-lg hover:bg-telegram-primary/90 transition-colors font-medium"
           >
             ➕ Создать бюджет
@@ -489,7 +496,10 @@ export function SharedBudgets() {
       {selectedBudget ? (
         <div>
           <button
-            onClick={() => setSelectedBudget(null)}
+            onClick={() => {
+              setError('') // Очищаем ошибку при переходе к списку
+              setSelectedBudget(null)
+            }}
             className="mb-4 flex items-center gap-2 text-telegram-primary hover:text-telegram-primary/80 transition-colors font-medium"
           >
             <span>←</span>
@@ -710,7 +720,10 @@ export function SharedBudgets() {
                 Создайте совместный бюджет, чтобы управлять общими финансами с друзьями или семьей
               </p>
               <button
-                onClick={() => setShowCreateForm(true)}
+                onClick={() => {
+                  setError('') // Очищаем ошибку при открытии модалки создания
+                  setShowCreateForm(true)
+                }}
                 className="px-6 py-3 bg-telegram-primary text-white rounded-lg hover:bg-telegram-primary/90 transition-colors font-medium text-lg"
               >
                 ➕ Создать первый бюджет
@@ -880,7 +893,10 @@ export function SharedBudgets() {
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-2xl font-bold text-telegram-text dark:text-telegram-dark-text">Код приглашения</h2>
                 <button
-                  onClick={() => setShowInviteCode(null)}
+                  onClick={() => {
+                    setError('') // Очищаем ошибку при закрытии модалки
+                    setShowInviteCode(null)
+                  }}
                   className="text-gray-400 dark:text-telegram-dark-textSecondary hover:text-gray-600 dark:hover:text-telegram-dark-text text-2xl"
                 >
                   ×
@@ -940,7 +956,10 @@ export function SharedBudgets() {
                   </button>
 
                   <button
-                    onClick={() => setShowInviteCode(null)}
+                    onClick={() => {
+                      setError('') // Очищаем ошибку при закрытии модалки
+                      setShowInviteCode(null)
+                    }}
                     className="w-full px-4 py-2 bg-gray-200 dark:bg-telegram-dark-surface text-gray-700 dark:text-telegram-dark-text rounded-lg hover:bg-gray-300 dark:hover:bg-telegram-dark-hover"
                   >
                     Закрыть
