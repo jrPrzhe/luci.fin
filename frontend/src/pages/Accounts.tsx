@@ -547,11 +547,11 @@ export function Accounts() {
                     }
                     className="input"
                     placeholder="Например: Основной счет"
-                    maxLength={255}
+                    maxLength={60}
                     required
                   />
                   <div className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1 text-right">
-                    {formData.name.length}/255
+                    {formData.name.length}/60
                   </div>
                 </div>
 
