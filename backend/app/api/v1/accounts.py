@@ -576,9 +576,6 @@ async def delete_account(
         return {"message": "Account deleted", "account_id": account_id}
 
 
-    }
-
-
 @router.get("/{account_id}/transaction-count", response_model=dict)
 async def get_account_transaction_count(
     account_id: int,
@@ -771,9 +768,6 @@ async def delete_account(
         db.delete(account)
         db.commit()
         return {"message": "Account deleted", "account_id": account_id}
-
-
-    }
 
 
 @router.get("/{account_id}/transaction-count", response_model=dict)

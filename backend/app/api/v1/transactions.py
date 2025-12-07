@@ -1353,37 +1353,3 @@ async def delete_transaction(
             detail="An error occurred while deleting the transaction"
         )
 
-
-                _sync_goal_with_account(account_id, current_user.id, db)
-            except Exception as e:
-                logger.error(f"Error syncing goal for account {account_id}: {e}")
-                # Don't fail the deletion if goal sync fails
-        
-        return None
-    except HTTPException:
-        raise
-    except Exception as e:
-        db.rollback()
-        logger.error(f"Unexpected error deleting transaction {transaction_id}: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred while deleting the transaction"
-        )
-
-
-                _sync_goal_with_account(account_id, current_user.id, db)
-            except Exception as e:
-                logger.error(f"Error syncing goal for account {account_id}: {e}")
-                # Don't fail the deletion if goal sync fails
-        
-        return None
-    except HTTPException:
-        raise
-    except Exception as e:
-        db.rollback()
-        logger.error(f"Unexpected error deleting transaction {transaction_id}: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred while deleting the transaction"
-        )
-

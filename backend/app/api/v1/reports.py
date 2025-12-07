@@ -880,35 +880,3 @@ async def send_report_via_bot(
             detail=f"Ошибка при генерации или отправке отчета: {str(e)}"
         )
 
-
-                )
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Не найден Telegram ID или VK ID. Пожалуйста, войдите через Telegram или VK."
-            )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error in send_report_via_bot: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Ошибка при генерации или отправке отчета: {str(e)}"
-        )
-
-
-                )
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Не найден Telegram ID или VK ID. Пожалуйста, войдите через Telegram или VK."
-            )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error in send_report_via_bot: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Ошибка при генерации или отправке отчета: {str(e)}"
-        )
-
