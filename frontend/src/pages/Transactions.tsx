@@ -189,7 +189,7 @@ export function Transactions() {
     }
   }
 
-  const loadData = async (reset: boolean = true) => {
+  const loadData = async (reset: boolean = true, accountIdOverride?: number | null) => {
     try {
       if (reset) {
         setLoading(true)
@@ -209,8 +209,11 @@ export function Transactions() {
       const limit = 25
       const offset = reset ? 0 : transactions.length
       
-      // Use selectedAccountId if set (from navigation from Accounts page)
-      const accountIdParam = selectedAccountId || undefined
+      // Use accountIdOverride if provided, otherwise use selectedAccountId
+      // Convert null to undefined for API call
+      const accountIdParam = accountIdOverride !== undefined 
+        ? (accountIdOverride ?? undefined)
+        : (selectedAccountId || undefined)
       
       const batch = await api.getTransactions(
         limit, 
@@ -264,33 +267,29 @@ export function Transactions() {
   // Check if we came from Accounts page with accountId
   useEffect(() => {
     const state = location.state as { accountId?: number } | null
-    if (state?.accountId && !accountIdFromNavigation.current) {
+    if (state?.accountId) {
       // Save accountId from navigation
       const accountId = state.accountId
       accountIdFromNavigation.current = accountId
       setSelectedAccountId(accountId)
+      // Load data immediately with the account filter (pass accountId directly to avoid state timing issues)
+      loadData(true, accountId)
       // Clear state to avoid re-applying on re-render
       window.history.replaceState({}, document.title)
-    }
-  }, [location.state])
-
-  // Load data when selectedAccountId changes (after it's set from location.state)
-  useEffect(() => {
-    // Only load if selectedAccountId was set from navigation
-    if (selectedAccountId !== null && accountIdFromNavigation.current === selectedAccountId) {
-      // Load data with the account filter
-      loadData(true)
-      // Clear the ref to prevent re-loading
-      accountIdFromNavigation.current = null
+    } else {
+      // If no accountId in state, load all transactions
+      if (selectedAccountId === null && transactions.length === 0) {
+        loadData()
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedAccountId])
+  }, [location.state])
 
   // Load data only on initial mount (if no accountId in location.state)
   useEffect(() => {
     // Only load if we didn't come from Accounts page (which will trigger loadData in the effect above)
     const state = location.state as { accountId?: number } | null
-    if (!state?.accountId) {
+    if (!state?.accountId && selectedAccountId === null) {
       loadData()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -851,12 +850,34 @@ export function Transactions() {
             </div>
             
             {/* Кнопка применения фильтров */}
-            <div className="pt-4 border-t border-telegram-border dark:border-telegram-dark-border">
+            <div className="pt-4 border-t border-telegram-border dark:border-telegram-dark-border flex gap-2">
               <button
-                onClick={() => loadData(true)}
-                className="w-full btn-primary py-3 text-base font-medium"
+                onClick={() => {
+                  // Reset account filter when manually applying filters
+                  setSelectedAccountId(null)
+                  accountIdFromNavigation.current = null
+                  loadData(true)
+                }}
+                className="flex-1 btn-primary py-3 text-base font-medium"
               >
                 🔍 Применить фильтры
+              </button>
+              <button
+                onClick={() => {
+                  // Reset all filters including account filter
+                  setFilterType('all')
+                  setTransactionTypeFilter('all')
+                  setDateFilter('all')
+                  setCustomStartDate('')
+                  setCustomEndDate('')
+                  setShowDateFilter(false)
+                  setSelectedAccountId(null)
+                  accountIdFromNavigation.current = null
+                  loadData(true)
+                }}
+                className="flex-1 btn-secondary py-3 text-base font-medium"
+              >
+                🔄 Сбросить
               </button>
             </div>
           </div>
