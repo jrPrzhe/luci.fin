@@ -536,8 +536,11 @@ export function Categories() {
               </label>
               <input
                 type="color"
-                value={formData.color}
-                onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                value={formData.color || '#4CAF50'}
+                onChange={(e) => {
+                  const colorValue = e.target.value || '#4CAF50'
+                  setFormData({ ...formData, color: colorValue })
+                }}
                 className="w-full h-12 rounded-telegram cursor-pointer"
               />
             </div>

@@ -69,9 +69,31 @@ const getParticipantWord = (count: number): string => {
   return 'участников'
 }
 
+// Account type icons mapping
+const accountTypeIcons: Record<string, string> = {
+  cash: '💵',
+  bank_card: '💳',
+  bank_account: '🏦',
+  e_wallet: '📱',
+  credit_card: '💳',
+  investment: '📈',
+  other: '📦',
+}
+
 export function SharedBudgets() {
   const { showSuccess } = useToast()
   const { t } = useI18n()
+  
+  // Account type labels mapping
+  const accountTypeLabels: Record<string, string> = {
+    cash: t.accounts.types.cash,
+    bank_card: t.accounts.types.bank_card,
+    bank_account: t.accounts.types.bank_account,
+    e_wallet: t.accounts.types.e_wallet,
+    credit_card: t.accounts.types.credit_card,
+    investment: t.accounts.types.investment,
+    other: t.accounts.types.other,
+  }
   const [budgets, setBudgets] = useState<SharedBudget[]>([])
   const [invitations, setInvitations] = useState<Invitation[]>([])
   const [loading, setLoading] = useState(true)
@@ -603,7 +625,7 @@ export function SharedBudgets() {
                   <div key={account.id} className="card hover:shadow-lg transition-shadow border-l-4 border-l-telegram-primary">
                     <div className="flex items-start justify-between mb-2">
                       <h4 className="font-semibold text-telegram-text dark:text-telegram-dark-text text-lg">{account.name}</h4>
-                      <span className="text-2xl">💵</span>
+                      <span className="text-2xl">{accountTypeIcons[account.type] || accountTypeIcons.other}</span>
                     </div>
                     <p className="text-2xl font-bold text-telegram-primary dark:text-telegram-dark-primary mb-2">
                       {new Intl.NumberFormat('ru-RU', {
@@ -614,7 +636,7 @@ export function SharedBudgets() {
                       }).format(Math.round(account.balance))}
                     </p>
                     <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-                      {account.type}
+                      {accountTypeLabels[account.type] || accountTypeLabels.other}
                     </p>
                   </div>
                 ))}
