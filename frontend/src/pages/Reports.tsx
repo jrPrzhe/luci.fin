@@ -214,6 +214,9 @@ export function Reports() {
     }
   }
 
+  // All hooks must be called before any conditional returns
+  // This is critical to avoid React error #310 (hooks order violation)
+  
   const formatCurrency = useCallback((amount: number) => {
     const currency = analytics?.totals?.currency || 'RUB'
     return new Intl.NumberFormat('ru-RU', {
@@ -224,7 +227,7 @@ export function Reports() {
     }).format(Math.round(amount || 0))
   }, [analytics?.totals?.currency])
 
-  const formatDate = (dateString: string) => {
+  const formatDate = useCallback((dateString: string) => {
     try {
       if (!dateString) return ''
       const date = new Date(dateString)
@@ -237,8 +240,46 @@ export function Reports() {
       console.error('Error formatting date:', error)
       return dateString || ''
     }
-  }
+  }, [period])
 
+  // Memoize CustomTooltip to prevent re-renders and jittering
+  // Create a stable component reference that only changes when locale changes
+  const CustomTooltip = useMemo(() => {
+    const TooltipComponent = ({ active, payload, label }: any) => {
+      try {
+        if (active && payload && Array.isArray(payload) && payload.length > 0) {
+          const currency = analytics?.totals?.currency || 'RUB'
+          const formatValue = (value: number) => {
+            return new Intl.NumberFormat('ru-RU', {
+              style: 'currency',
+              currency: currency,
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 0,
+            }).format(Math.round(value || 0))
+          }
+          return (
+            <div className="bg-white dark:bg-telegram-dark-surface p-3 rounded-lg shadow-lg border border-telegram-border dark:border-telegram-dark-border pointer-events-none">
+              <p className="font-semibold mb-2 text-telegram-text dark:text-telegram-dark-text">
+                {label ? localizeMonth(String(label), locale) : ''}
+              </p>
+              {payload.map((entry: any, index: number) => (
+                <p key={index} className="text-sm text-telegram-text dark:text-telegram-dark-text" style={{ color: entry.color || '#000' }}>
+                  {entry.name || ''}: {formatValue(entry.value || 0)}
+                </p>
+              ))}
+            </div>
+          )
+        }
+        return null
+      } catch (error) {
+        console.error('Error rendering tooltip:', error)
+        return null
+      }
+    }
+    return TooltipComponent
+  }, [locale, analytics?.totals?.currency])
+
+  // Now we can do conditional returns after all hooks
   if (isLoading) {
     return <LoadingSpinner />
   }
@@ -284,34 +325,6 @@ export function Reports() {
     icon: cat.icon || '📦',
     color: cat.color || '#607D8B',
   }))
-
-  // Memoize CustomTooltip to prevent re-renders and jittering
-  // Create a stable component reference that only changes when locale changes
-  const CustomTooltip = useMemo(() => {
-    const TooltipComponent = ({ active, payload, label }: any) => {
-      try {
-        if (active && payload && Array.isArray(payload) && payload.length > 0) {
-          return (
-            <div className="bg-white dark:bg-telegram-dark-surface p-3 rounded-lg shadow-lg border border-telegram-border dark:border-telegram-dark-border pointer-events-none">
-              <p className="font-semibold mb-2 text-telegram-text dark:text-telegram-dark-text">
-                {label ? localizeMonth(String(label), locale) : ''}
-              </p>
-              {payload.map((entry: any, index: number) => (
-                <p key={index} className="text-sm text-telegram-text dark:text-telegram-dark-text" style={{ color: entry.color || '#000' }}>
-                  {entry.name || ''}: {formatCurrency(entry.value || 0)}
-                </p>
-              ))}
-            </div>
-          )
-        }
-        return null
-      } catch (error) {
-        console.error('Error rendering tooltip:', error)
-        return null
-      }
-    }
-    return TooltipComponent
-  }, [locale, formatCurrency])
 
   return (
     <div className="min-h-screen p-4 md:p-6 animate-fade-in max-w-7xl mx-auto w-full">
