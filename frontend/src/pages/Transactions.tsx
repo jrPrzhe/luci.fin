@@ -549,7 +549,16 @@ export function Transactions() {
           onClick={async () => {
             resetForm()
             await loadCategories('expense')
+            // Close filters when opening form to ensure form is visible
+            setFiltersExpanded(false)
             setShowForm(true)
+            // Scroll to form after a short delay to ensure it's rendered
+            setTimeout(() => {
+              const formElement = document.getElementById('new-transaction-form')
+              if (formElement) {
+                formElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }
+            }, 100)
           }}
           className="btn-primary"
         >
@@ -885,7 +894,7 @@ export function Transactions() {
       </div>
 
       {showForm && !editingTransaction && (
-        <div className="card mb-6">
+        <div id="new-transaction-form" className="card mb-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold text-telegram-text dark:text-telegram-dark-text">
               {t.transactions.newTransaction}
