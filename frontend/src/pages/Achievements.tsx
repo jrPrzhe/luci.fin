@@ -3,7 +3,7 @@ import { api } from '../services/api'
 import { useI18n } from '../contexts/I18nContext'
 
 export function Achievements() {
-  const { t } = useI18n()
+  const { t, translateAchievement } = useI18n()
   const { data: achievements, isLoading } = useQuery({
     queryKey: ['achievements'],
     queryFn: () => api.getAchievements(),
@@ -155,11 +155,11 @@ export function Achievements() {
                   {/* Content */}
                   <div className="relative z-10">
                     <h3 className="text-lg font-bold text-telegram-text dark:text-telegram-dark-text mb-2">
-                      {achievement.title}
+                      {translateAchievement(achievement.title, achievement.description).title}
                     </h3>
                     {achievement.description && (
                       <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-4 leading-relaxed">
-                        {achievement.description}
+                        {translateAchievement(achievement.title, achievement.description).description || achievement.description}
                       </p>
                     )}
                     
@@ -175,7 +175,7 @@ export function Achievements() {
                       </div>
                       {achievement.unlocked_at && (
                         <span className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-                          {new Date(achievement.unlocked_at).toLocaleDateString('ru-RU', { 
+                          {new Date(achievement.unlocked_at).toLocaleDateString(navigator.language || 'en-US', { 
                             day: 'numeric', 
                             month: 'short' 
                           })}
@@ -223,13 +223,13 @@ export function Achievements() {
                   <div className="relative z-10">
                     <div className="flex items-center gap-2 mb-2">
                       <h3 className="text-lg font-bold text-telegram-text dark:text-telegram-dark-text line-through opacity-50 flex-1 min-w-0">
-                        {achievement.title}
+                        {translateAchievement(achievement.title, achievement.description).title}
                       </h3>
-                      <span className="text-2xl opacity-50 flex-shrink-0" title="Заблокировано">🔒</span>
+                      <span className="text-2xl opacity-50 flex-shrink-0" title={t.achievements.locked}>🔒</span>
                     </div>
                     {achievement.description && (
                       <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-4 leading-relaxed opacity-50">
-                        {achievement.description}
+                        {translateAchievement(achievement.title, achievement.description).description || achievement.description}
                       </p>
                     )}
                     

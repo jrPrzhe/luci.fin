@@ -3,7 +3,7 @@ import { api } from '../services/api'
 import { useI18n } from '../contexts/I18nContext'
 
 export function Quests() {
-  const { t } = useI18n()
+  const { t, translateQuest } = useI18n()
   const { data: quests, isLoading } = useQuery({
     queryKey: ['daily-quests'],
     queryFn: () => api.getDailyQuests(),
@@ -91,11 +91,11 @@ export function Quests() {
                   </div>
                   <div className="quest-content flex-1 min-w-0">
                     <div className="quest-title font-bold text-base text-telegram-text dark:text-telegram-dark-text mb-1">
-                      {quest.title}
+                      {translateQuest(quest.title, quest.description).title}
                     </div>
                     {quest.description && (
                       <div className="quest-description text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-3">
-                        {quest.description}
+                        {translateQuest(quest.title, quest.description).description || quest.description}
                       </div>
                     )}
                     <div className="quest-progress">

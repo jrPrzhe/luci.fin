@@ -208,18 +208,29 @@ export const ru = {
     form: {
       name: 'Название',
       namePlaceholder: 'Название счета',
+      nameLabel: 'Название счета',
       type: 'Тип счета',
+      typeLabel: 'Тип счета',
       currency: 'Валюта',
+      currencyLabel: 'Валюта',
       initialBalance: 'Начальный баланс',
+      initialBalanceLabel: 'Начальный баланс',
       description: 'Описание',
-      descriptionPlaceholder: 'Описание счета (необязательно)',
+      descriptionLabel: 'Описание (необязательно)',
+      descriptionPlaceholder: 'Дополнительная информация о счете',
       sharedBudget: 'Совместный бюджет',
+      sharedBudgetLabel: 'Совместный бюджет (необязательно)',
+      sharedBudgetOption: 'Личный счет',
+      sharedBudgetHint: 'Выберите совместный бюджет для создания общего счета. Только администраторы могут создавать совместные счета.',
       selectSharedBudget: 'Выберите совместный бюджет (опционально)',
       save: 'Сохранить',
-      create: 'Создать',
+      create: 'Создать счет',
       cancel: 'Отмена',
       creating: 'Создание...',
       saving: 'Сохранение...',
+      exampleName: 'Например: Основной счет',
+      invalidBalance: 'Введите корректное целое число для начального баланса',
+      balanceTooLarge: 'Сумма слишком большая. Максимальная сумма: 999 999 999 999 999',
     },
   },
   
@@ -524,6 +535,7 @@ export const ru = {
       legendary: 'Легендарное',
     },
     reward: 'Награда:',
+    translations: {},
   },
   
   // Quests
@@ -536,6 +548,7 @@ export const ru = {
     completed: 'Выполненные задания',
     progress: 'Прогресс',
     completedStatus: 'Выполнено',
+    translations: {},
   },
   
   // Shared Budgets

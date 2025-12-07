@@ -255,7 +255,7 @@ export function Accounts() {
           currency: formData.currency,
           description: trimmedDescription || undefined,
         })
-        showSuccess('Счет обновлен')
+        showSuccess(t.accounts.updated)
       } else {
         // Create new account
         // Parse as integer (whole number only)
@@ -264,13 +264,13 @@ export function Accounts() {
         
         // Validate balance value
         if (isNaN(balanceNumber)) {
-          showError('Введите корректное целое число для начального баланса')
+          showError(t.accounts.form.invalidBalance || 'Enter a valid whole number for initial balance')
           setIsSubmitting(false)
           return
         }
         
         if (!isFinite(balanceNumber)) {
-          showError('Сумма слишком большая. Максимальная сумма: 999 999 999 999 999')
+          showError(t.accounts.form.balanceTooLarge || 'Amount is too large. Maximum amount: 999,999,999,999,999')
           setIsSubmitting(false)
           return
         }
@@ -278,7 +278,7 @@ export function Accounts() {
         // Maximum value for integer: 999,999,999,999,999
         const MAX_BALANCE = 999999999999999
         if (Math.abs(balanceNumber) > MAX_BALANCE) {
-          showError('Сумма слишком большая. Максимальная сумма: 999 999 999 999 999')
+          showError(t.accounts.form.balanceTooLarge || 'Amount is too large. Maximum amount: 999,999,999,999,999')
           setIsSubmitting(false)
           return
         }
@@ -344,7 +344,7 @@ export function Accounts() {
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return ''
-    return new Date(dateString).toLocaleDateString('ru-RU', {
+    return new Date(dateString).toLocaleDateString(navigator.language || 'en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -599,7 +599,7 @@ export function Accounts() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
-                    Название счета <span className="text-red-500 dark:text-red-400">*</span>
+                    {t.accounts.form.nameLabel} <span className="text-red-500 dark:text-red-400">*</span>
                   </label>
                   <input
                     type="text"
@@ -608,7 +608,7 @@ export function Accounts() {
                       setFormData({ ...formData, name: e.target.value })
                     }
                     className="input"
-                    placeholder="Например: Основной счет"
+                    placeholder={t.accounts.form.exampleName}
                     maxLength={60}
                     required
                   />
@@ -619,7 +619,7 @@ export function Accounts() {
 
                 <div>
                   <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
-                    Тип счета <span className="text-red-500 dark:text-red-400">*</span>
+                    {t.accounts.form.typeLabel} <span className="text-red-500 dark:text-red-400">*</span>
                   </label>
                   <select
                     value={formData.account_type}
@@ -638,7 +638,7 @@ export function Accounts() {
 
                 <div>
                   <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
-                    Валюта <span className="text-red-500 dark:text-red-400">*</span>
+                    {t.accounts.form.currencyLabel} <span className="text-red-500 dark:text-red-400">*</span>
                   </label>
                   <select
                     value={formData.currency}
@@ -656,7 +656,7 @@ export function Accounts() {
                   <>
                     <div>
                       <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
-                        Начальный баланс
+                        {t.accounts.form.initialBalanceLabel}
                       </label>
                       <input
                         type="number"
@@ -690,7 +690,7 @@ export function Accounts() {
 
                     <div>
                       <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
-                        Совместный бюджет (необязательно)
+                        {t.accounts.form.sharedBudgetLabel}
                       </label>
                       <select
                         value={formData.shared_budget_id}
@@ -699,7 +699,7 @@ export function Accounts() {
                         }
                         className="input"
                       >
-                        <option value="">Личный счет</option>
+                        <option value="">{t.accounts.form.sharedBudgetOption}</option>
                         {sharedBudgets && Array.isArray(sharedBudgets) && sharedBudgets.length > 0
                           ? sharedBudgets
                               .filter(() => {
@@ -715,7 +715,7 @@ export function Accounts() {
                           : null}
                       </select>
                       <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
-                        Выберите совместный бюджет для создания общего счета. Только администраторы могут создавать совместные счета.
+                        {t.accounts.form.sharedBudgetHint}
                       </p>
                     </div>
                   </>
@@ -723,7 +723,7 @@ export function Accounts() {
 
                 <div>
                   <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
-                    Описание (необязательно)
+                    {t.accounts.form.descriptionLabel}
                   </label>
                   <textarea
                     value={formData.description}
@@ -732,7 +732,7 @@ export function Accounts() {
                     }
                     className="input resize-y max-h-32"
                     rows={3}
-                    placeholder="Дополнительная информация о счете"
+                    placeholder={t.accounts.form.descriptionPlaceholder}
                     maxLength={250}
                   />
                   <div className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1 text-right">
@@ -750,7 +750,7 @@ export function Accounts() {
                     }}
                     className="flex-1 btn-secondary"
                   >
-                    Отмена
+                    {t.accounts.form.cancel}
                   </button>
                   <button
                     type="submit"
@@ -758,8 +758,8 @@ export function Accounts() {
                     className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isSubmitting 
-                      ? (editingAccount ? 'Сохранение...' : 'Создание...') 
-                      : (editingAccount ? 'Сохранить изменения' : 'Создать счет')
+                      ? (editingAccount ? t.accounts.form.saving : t.accounts.form.creating) 
+                      : (editingAccount ? t.accounts.form.save : t.accounts.form.create)
                     }
                   </button>
                 </div>
