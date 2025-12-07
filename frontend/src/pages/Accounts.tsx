@@ -403,11 +403,9 @@ export function Accounts() {
                     {account.created_at && (
                       <div>{t.accounts.created} {formatDate(account.created_at)}</div>
                     )}
-                    {account.initial_balance !== account.balance && (
-                      <div>
-                        {t.accounts.initialBalance} {formatBalance(account.initial_balance, account.currency)}
-                      </div>
-                    )}
+                    <div>
+                      {t.accounts.initialBalance} {formatBalance(account.initial_balance ?? 0, account.currency)}
+                    </div>
                   </div>
                   <div className="flex gap-2">
                     <button
