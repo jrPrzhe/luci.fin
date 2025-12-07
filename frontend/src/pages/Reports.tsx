@@ -558,30 +558,57 @@ export function Reports() {
           <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
             {t.reports.monthlyComparison}
           </h2>
-          <ResponsiveContainer width="100%" height={period === 'year' ? 350 : 300}>
-            <BarChart data={monthlyData} margin={{ top: 5, right: 10, left: 0, bottom: period === 'year' ? 60 : 20 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E5E5" className="dark:stroke-telegram-dark-border" />
-              <XAxis 
-                dataKey="month" 
-                stroke="#707579"
-                className="dark:stroke-telegram-dark-textSecondary"
-                style={{ fontSize: '12px' }}
-                angle={period === 'year' ? -45 : 0}
-                textAnchor={period === 'year' ? 'end' : 'middle'}
-                height={period === 'year' ? 60 : 30}
-              />
-              <YAxis 
-                stroke="#707579"
-                className="dark:stroke-telegram-dark-textSecondary"
-                style={{ fontSize: '12px' }}
-                tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend />
-              <Bar dataKey={t.reports.income} fill="#4CAF50" radius={[8, 8, 0, 0]} />
-              <Bar dataKey={t.reports.expenses} fill="#F44336" radius={[8, 8, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="w-full" style={{ minHeight: '300px' }}>
+            <ResponsiveContainer width="100%" height={period === 'year' ? 350 : 300} minHeight={300}>
+              <BarChart 
+                data={monthlyData} 
+                margin={{ 
+                  top: 30, 
+                  right: 10, 
+                  left: 10, 
+                  bottom: period === 'year' ? 60 : 30 
+                }}
+                barCategoryGap="20%"
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#E5E5E5" className="dark:stroke-telegram-dark-border" />
+                <XAxis 
+                  dataKey="month" 
+                  stroke="#707579"
+                  className="dark:stroke-telegram-dark-textSecondary"
+                  style={{ fontSize: '12px' }}
+                  angle={period === 'year' ? -45 : 0}
+                  textAnchor={period === 'year' ? 'end' : 'middle'}
+                  height={period === 'year' ? 60 : 30}
+                />
+                <YAxis 
+                  stroke="#707579"
+                  className="dark:stroke-telegram-dark-textSecondary"
+                  style={{ fontSize: '12px' }}
+                  tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+                  width={50}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend 
+                  wrapperStyle={{ paddingTop: '10px', paddingBottom: '10px' }}
+                  iconSize={14}
+                  fontSize={12}
+                  verticalAlign="top"
+                />
+                <Bar 
+                  dataKey={t.reports.income} 
+                  fill="#4CAF50" 
+                  radius={[8, 8, 0, 0]}
+                  name={t.reports.income}
+                />
+                <Bar 
+                  dataKey={t.reports.expenses} 
+                  fill="#F44336" 
+                  radius={[8, 8, 0, 0]}
+                  name={t.reports.expenses}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       )}
 
