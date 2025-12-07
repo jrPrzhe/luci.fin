@@ -164,6 +164,13 @@ export function Accounts() {
       return
     }
 
+    // Validate name: only letters, numbers, spaces, hyphens, and underscores
+    const namePattern = /^[a-zA-Zа-яА-ЯёЁ0-9\s\-_]+$/
+    if (!namePattern.test(formData.name.trim())) {
+      showError('Название счета может содержать только буквы, цифры, пробелы, дефисы и подчеркивания')
+      return
+    }
+
     if (formData.description && formData.description.length > 500) {
       showError('Описание не может превышать 500 символов')
       return

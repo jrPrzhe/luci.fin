@@ -10,6 +10,7 @@ from app.models.transaction import Transaction, TransactionType
 from app.schemas.account import AccountCreate, AccountUpdate
 from decimal import Decimal
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -192,6 +193,14 @@ async def create_account(
             detail=f"Неверный тип счета. Должен быть одним из: {[e.value for e in AccountType]}"
         )
     
+    # Validate account name: only letters, numbers, spaces, hyphens, and underscores
+    name_pattern = re.compile(r'^[a-zA-Zа-яА-ЯёЁ0-9\s\-_]+$')
+    if not name_pattern.match(account_data.name.strip()):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Название счета может содержать только буквы, цифры, пробелы, дефисы и подчеркивания"
+        )
+    
     # Validate description length (Pydantic should handle this, but double-check)
     if account_data.description and len(account_data.description) > 500:
         raise HTTPException(
@@ -324,6 +333,13 @@ async def update_account(
     
     # Update fields
     if account_update.name is not None:
+        # Validate account name: only letters, numbers, spaces, hyphens, and underscores
+        name_pattern = re.compile(r'^[a-zA-Zа-яА-ЯёЁ0-9\s\-_]+$')
+        if not name_pattern.match(account_update.name.strip()):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Название счета может содержать только буквы, цифры, пробелы, дефисы и подчеркивания"
+            )
         account.name = account_update.name
     if account_update.account_type is not None:
         try:
