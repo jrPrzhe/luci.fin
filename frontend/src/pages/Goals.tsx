@@ -981,7 +981,15 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+    <div 
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" 
+      onClick={(e) => {
+        // Don't close modal during loading
+        if (!loading && !generatingRoadmap) {
+          onClose()
+        }
+      }}
+    >
       <div
         className="bg-telegram-surface dark:bg-telegram-dark-surface rounded-2xl max-w-md w-full p-6"
         onClick={(e) => e.stopPropagation()}
@@ -992,8 +1000,8 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
           </h2>
           <button
             onClick={onClose}
-            className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text text-xl"
-            disabled={loading}
+            className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text text-xl disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={loading || generatingRoadmap}
           >
             ×
           </button>
@@ -1008,8 +1016,9 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-4 py-2 rounded-lg bg-telegram-hover dark:bg-telegram-dark-hover border border-telegram-border dark:border-telegram-dark-border text-telegram-text dark:text-telegram-dark-text"
+              className="w-full px-4 py-2 rounded-lg bg-telegram-hover dark:bg-telegram-dark-hover border border-telegram-border dark:border-telegram-dark-border text-telegram-text dark:text-telegram-dark-text disabled:opacity-50 disabled:cursor-not-allowed"
               placeholder={t.goals.goalNamePlaceholder}
+              disabled={loading || generatingRoadmap}
             />
           </div>
 
@@ -1026,8 +1035,9 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
                 amountError 
                   ? 'border-red-500 dark:border-red-500' 
                   : 'border-telegram-border dark:border-telegram-dark-border'
-              } text-telegram-text dark:text-telegram-dark-text`}
+              } text-telegram-text dark:text-telegram-dark-text disabled:opacity-50 disabled:cursor-not-allowed`}
               placeholder="2000000"
+              disabled={loading || generatingRoadmap}
             />
             {amountError && (
               <p className="mt-1 text-sm text-red-500 dark:text-red-400">{amountError}</p>
@@ -1041,7 +1051,8 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
             <select
               value={formData.currency}
               onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-              className="w-full px-4 py-2 rounded-lg bg-telegram-hover dark:bg-telegram-dark-hover border border-telegram-border dark:border-telegram-dark-border text-telegram-text dark:text-telegram-dark-text"
+              className="w-full px-4 py-2 rounded-lg bg-telegram-hover dark:bg-telegram-dark-hover border border-telegram-border dark:border-telegram-dark-border text-telegram-text dark:text-telegram-dark-text disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={loading || generatingRoadmap}
             >
               <option value="RUB">₽ RUB</option>
               <option value="USD">$ USD</option>
@@ -1057,7 +1068,8 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
               value={formData.target_date}
               onChange={(e) => setFormData({ ...formData, target_date: e.target.value })}
               min={new Date().toISOString().split('T')[0]}
-              className="w-full px-4 py-2 rounded-lg bg-telegram-hover dark:bg-telegram-dark-hover border border-telegram-border dark:border-telegram-dark-border text-telegram-text dark:text-telegram-dark-text"
+              className="w-full px-4 py-2 rounded-lg bg-telegram-hover dark:bg-telegram-dark-hover border border-telegram-border dark:border-telegram-dark-border text-telegram-text dark:text-telegram-dark-text disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={loading || generatingRoadmap}
             />
             {formData.target_date && new Date(formData.target_date) < new Date() && (
               <p className="mt-1 text-sm text-red-500 dark:text-red-400">
@@ -1073,10 +1085,11 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-4 py-2 rounded-lg bg-telegram-hover dark:bg-telegram-dark-hover border border-telegram-border dark:border-telegram-dark-border text-telegram-text dark:text-telegram-dark-text resize-none overflow-y-auto"
+              className="w-full px-4 py-2 rounded-lg bg-telegram-hover dark:bg-telegram-dark-hover border border-telegram-border dark:border-telegram-dark-border text-telegram-text dark:text-telegram-dark-text resize-none overflow-y-auto disabled:opacity-50 disabled:cursor-not-allowed"
               rows={3}
               style={{ maxHeight: '120px', minHeight: '80px', resize: 'none' }}
               placeholder={t.goals.descriptionPlaceholder}
+              disabled={loading || generatingRoadmap}
             />
           </div>
         </div>
