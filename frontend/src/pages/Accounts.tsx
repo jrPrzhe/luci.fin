@@ -52,6 +52,7 @@ export function Accounts() {
   const [editingAccount, setEditingAccount] = useState<Account | null>(null)
   const [expandedDescriptions, setExpandedDescriptions] = useState<Set<number>>(new Set())
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   
   // Confirmation modal state
   const [confirmModal, setConfirmModal] = useState<{
@@ -148,6 +149,11 @@ export function Accounts() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    // Prevent multiple submissions
+    if (isSubmitting) {
+      return
+    }
+
     if (!formData.name.trim()) {
       showError('Название счета обязательно')
       return
@@ -163,6 +169,7 @@ export function Accounts() {
       return
     }
 
+    setIsSubmitting(true)
     try {
       if (editingAccount) {
         // Update existing account
@@ -205,6 +212,8 @@ export function Accounts() {
     } catch (err: any) {
       const { translateError } = await import('../utils/errorMessages')
       showError(translateError(err))
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -618,9 +627,13 @@ export function Accounts() {
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 btn-primary"
+                    disabled={isSubmitting}
+                    className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {editingAccount ? 'Сохранить изменения' : 'Создать счет'}
+                    {isSubmitting 
+                      ? (editingAccount ? 'Сохранение...' : 'Создание...') 
+                      : (editingAccount ? 'Сохранить изменения' : 'Создать счет')
+                    }
                   </button>
                 </div>
               </form>
