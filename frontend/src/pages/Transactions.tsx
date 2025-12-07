@@ -43,6 +43,30 @@ interface Category {
   is_favorite: boolean
 }
 
+// Функция для правильного склонения слова "транзакция"
+const getTransactionWord = (count: number): string => {
+  const lastDigit = count % 10
+  const lastTwoDigits = count % 100
+  
+  // Для чисел 11-14 всегда "транзакций"
+  if (lastTwoDigits >= 11 && lastTwoDigits <= 14) {
+    return 'транзакций'
+  }
+  
+  // Для чисел, оканчивающихся на 1 - "транзакция"
+  if (lastDigit === 1) {
+    return 'транзакция'
+  }
+  
+  // Для чисел, оканчивающихся на 2, 3, 4 - "транзакции"
+  if (lastDigit >= 2 && lastDigit <= 4) {
+    return 'транзакции'
+  }
+  
+  // Для остальных - "транзакций"
+  return 'транзакций'
+}
+
 export function Transactions() {
   const location = useLocation()
   const queryClient = useQueryClient()
@@ -755,26 +779,50 @@ export function Transactions() {
                     <label className="block text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-1">
                       {t.transactions.filters.from}
                     </label>
-                    <input
-                      type="date"
-                      value={customStartDate}
-                      onChange={(e) => setCustomStartDate(e.target.value)}
-                      className="input text-sm"
-                      max={customEndDate || undefined}
-                    />
+                    <div className="relative">
+                      <input
+                        type="date"
+                        value={customStartDate}
+                        onChange={(e) => setCustomStartDate(e.target.value)}
+                        className="input text-sm pr-10"
+                        max={customEndDate || undefined}
+                      />
+                      {customStartDate && (
+                        <button
+                          type="button"
+                          onClick={() => setCustomStartDate('')}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text text-sm font-medium"
+                          title="Сбросить"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div>
                     <label className="block text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-1">
                       {t.transactions.filters.to}
                     </label>
-                    <input
-                      type="date"
-                      value={customEndDate}
-                      onChange={(e) => setCustomEndDate(e.target.value)}
-                      className="input text-sm"
-                      min={customStartDate || undefined}
-                      max={new Date().toISOString().split('T')[0]}
-                    />
+                    <div className="relative">
+                      <input
+                        type="date"
+                        value={customEndDate}
+                        onChange={(e) => setCustomEndDate(e.target.value)}
+                        className="input text-sm pr-10"
+                        min={customStartDate || undefined}
+                        max={new Date().toISOString().split('T')[0]}
+                      />
+                      {customEndDate && (
+                        <button
+                          type="button"
+                          onClick={() => setCustomEndDate('')}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text text-sm font-medium"
+                          title="Сбросить"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
@@ -1329,7 +1377,7 @@ export function Transactions() {
           {/* Индикатор что все транзакции загружены */}
           {!hasMore && transactions.length > 0 && (
             <div className="text-center py-4 text-telegram-textSecondary dark:text-telegram-dark-textSecondary text-sm">
-              Показано {transactions.length} транзакций
+              Показано {transactions.length} {getTransactionWord(transactions.length)}
             </div>
           )}
         </div>

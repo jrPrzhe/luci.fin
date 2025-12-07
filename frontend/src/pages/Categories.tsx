@@ -119,6 +119,10 @@ export function Categories() {
       }
       resetForm()
       await loadCategories()
+      // Автоматически открываем секцию "Все категории" после создания новой категории
+      if (!formData.is_favorite) {
+        setShowAllCategoriesSection(true)
+      }
     } catch (err: any) {
       const { translateError } = await import('../utils/errorMessages')
       showError(translateError(err))
@@ -560,8 +564,8 @@ export function Categories() {
                         </div>
                         
                         {/* Название категории */}
-                        <div className="w-full text-center">
-                          <h4 className="font-semibold text-telegram-text dark:text-telegram-dark-text truncate text-sm md:text-base lg:text-lg mb-1 pr-8">
+                        <div className="w-full text-center px-2">
+                          <h4 className="font-semibold text-telegram-text dark:text-telegram-dark-text text-sm md:text-base lg:text-lg mb-1 text-center break-words">
                             {translateCategoryName(category.name)}
                           </h4>
                           <p className="text-xs md:text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-1">
@@ -613,12 +617,12 @@ export function Categories() {
           )}
 
           {/* Regular Categories */}
-          {(!showFavoritesOnly || favoriteCategories.length === 0) && (
+          {(!showFavoritesOnly || favoriteCategories.length === 0) && regularCategories.length > 0 && (
             <div>
-              {!showFavoritesOnly && favoriteCategories.length > 0 && (
+              {!showFavoritesOnly && (
                 <h3 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-3 flex items-center justify-between">
                   <span className="flex items-center gap-2">
-                    Все категории
+                    {favoriteCategories.length > 0 ? 'Все категории' : 'Категории'}
                   </span>
                   <button
                     onClick={() => setShowAllCategoriesSection(!showAllCategoriesSection)}
@@ -630,8 +634,9 @@ export function Categories() {
                 </h3>
               )}
               {showAllCategoriesSection && (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
-                  {regularCategories.map((category) => (
+                regularCategories.length > 0 ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
+                    {regularCategories.map((category) => (
                   <div
                     key={category.id}
                     className="card hover:shadow-lg transition-all relative group p-2 md:p-4"
@@ -660,8 +665,8 @@ export function Categories() {
                       </div>
                       
                       {/* Название категории */}
-                      <div className="w-full text-center">
-                        <h4 className="font-semibold text-telegram-text dark:text-telegram-dark-text truncate text-sm md:text-base lg:text-lg mb-1 pr-8">
+                      <div className="w-full text-center px-2">
+                        <h4 className="font-semibold text-telegram-text dark:text-telegram-dark-text text-sm md:text-base lg:text-lg mb-1 text-center break-words">
                           {translateCategoryName(category.name)}
                         </h4>
                         <p className="text-xs md:text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-1">
@@ -707,7 +712,14 @@ export function Categories() {
                       </div>
                     </div>
                   ))}
-                </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+                      {showFavoritesOnly ? 'Нет избранных категорий' : 'Нет категорий в этом разделе'}
+                    </p>
+                  </div>
+                )
               )}
             </div>
           )}

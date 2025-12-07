@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
@@ -49,6 +49,177 @@ export function Dashboard() {
     description: '',
     goal_id: '',
   })
+
+  // Lock scroll when Quick Form Modal is open
+  useEffect(() => {
+    if (!showQuickForm) return
+
+    // Сохраняем текущую позицию прокрутки
+    const scrollY = window.scrollY
+    const scrollX = window.scrollX
+    
+    // Сохраняем оригинальные стили для body и html
+    const originalBodyOverflow = document.body.style.overflow
+    const originalBodyPosition = document.body.style.position
+    const originalBodyTop = document.body.style.top
+    const originalBodyLeft = document.body.style.left
+    const originalBodyWidth = document.body.style.width
+    const originalBodyHeight = document.body.style.height
+    const originalBodyTouchAction = document.body.style.touchAction
+    
+    const originalHtmlOverflow = document.documentElement.style.overflow
+    const originalHtmlPosition = document.documentElement.style.position
+    const originalHtmlTop = document.documentElement.style.top
+    const originalHtmlLeft = document.documentElement.style.left
+    const originalHtmlWidth = document.documentElement.style.width
+    const originalHtmlHeight = document.documentElement.style.height
+    const originalHtmlTouchAction = document.documentElement.style.touchAction
+    
+    // Применяем стили для предотвращения прокрутки на body и html
+    const preventScrollStyles = {
+      overflow: 'hidden',
+      position: 'fixed',
+      top: `-${scrollY}px`,
+      left: `-${scrollX}px`,
+      width: '100%',
+      height: '100%',
+      touchAction: 'none',
+    }
+    
+    Object.assign(document.body.style, preventScrollStyles)
+    Object.assign(document.documentElement.style, preventScrollStyles)
+    
+    // Предотвращаем события прокрутки с помощью обработчиков событий
+    const preventWheel = (e: WheelEvent) => {
+      // Разрешаем прокрутку только внутри модального контента
+      const target = e.target as HTMLElement
+      const modalContent = target.closest('.modal-content-scrollable')
+      if (!modalContent) {
+        e.preventDefault()
+        e.stopPropagation()
+        e.stopImmediatePropagation()
+        return false
+      }
+    }
+    
+    const preventTouchMove = (e: TouchEvent) => {
+      // Разрешаем прокрутку только внутри модального контента
+      const target = e.target as HTMLElement
+      const modalContent = target.closest('.modal-content-scrollable')
+      if (!modalContent) {
+        e.preventDefault()
+        e.stopPropagation()
+        e.stopImmediatePropagation()
+        return false
+      }
+    }
+    
+    const preventScroll = (e: Event) => {
+      const target = e.target as HTMLElement
+      const modalContent = target.closest('.modal-content-scrollable')
+      if (!modalContent && target !== document.body && target !== document.documentElement) {
+        e.preventDefault()
+        e.stopPropagation()
+        e.stopImmediatePropagation()
+        return false
+      }
+    }
+    
+    // Добавляем обработчики событий с passive: false для возможности preventDefault
+    document.addEventListener('wheel', preventWheel, { passive: false, capture: true })
+    document.addEventListener('touchmove', preventTouchMove, { passive: false, capture: true })
+    document.addEventListener('scroll', preventScroll, { passive: false, capture: true })
+    window.addEventListener('scroll', preventScroll, { passive: false, capture: true })
+    
+    return () => {
+      // Удаляем обработчики событий
+      document.removeEventListener('wheel', preventWheel, { capture: true } as EventListenerOptions)
+      document.removeEventListener('touchmove', preventTouchMove, { capture: true } as EventListenerOptions)
+      document.removeEventListener('scroll', preventScroll, { capture: true } as EventListenerOptions)
+      window.removeEventListener('scroll', preventScroll, { capture: true } as EventListenerOptions)
+      
+      // Восстанавливаем оригинальные стили
+      // Если стиль был пустым, удаляем свойство полностью
+      if (originalBodyOverflow) {
+        document.body.style.overflow = originalBodyOverflow
+      } else {
+        document.body.style.removeProperty('overflow')
+      }
+      if (originalBodyPosition) {
+        document.body.style.position = originalBodyPosition
+      } else {
+        document.body.style.removeProperty('position')
+      }
+      if (originalBodyTop) {
+        document.body.style.top = originalBodyTop
+      } else {
+        document.body.style.removeProperty('top')
+      }
+      if (originalBodyLeft) {
+        document.body.style.left = originalBodyLeft
+      } else {
+        document.body.style.removeProperty('left')
+      }
+      if (originalBodyWidth) {
+        document.body.style.width = originalBodyWidth
+      } else {
+        document.body.style.removeProperty('width')
+      }
+      if (originalBodyHeight) {
+        document.body.style.height = originalBodyHeight
+      } else {
+        document.body.style.removeProperty('height')
+      }
+      if (originalBodyTouchAction) {
+        document.body.style.touchAction = originalBodyTouchAction
+      } else {
+        document.body.style.removeProperty('touch-action')
+      }
+      
+      if (originalHtmlOverflow) {
+        document.documentElement.style.overflow = originalHtmlOverflow
+      } else {
+        document.documentElement.style.removeProperty('overflow')
+      }
+      if (originalHtmlPosition) {
+        document.documentElement.style.position = originalHtmlPosition
+      } else {
+        document.documentElement.style.removeProperty('position')
+      }
+      if (originalHtmlTop) {
+        document.documentElement.style.top = originalHtmlTop
+      } else {
+        document.documentElement.style.removeProperty('top')
+      }
+      if (originalHtmlLeft) {
+        document.documentElement.style.left = originalHtmlLeft
+      } else {
+        document.documentElement.style.removeProperty('left')
+      }
+      if (originalHtmlWidth) {
+        document.documentElement.style.width = originalHtmlWidth
+      } else {
+        document.documentElement.style.removeProperty('width')
+      }
+      if (originalHtmlHeight) {
+        document.documentElement.style.height = originalHtmlHeight
+      } else {
+        document.documentElement.style.removeProperty('height')
+      }
+      if (originalHtmlTouchAction) {
+        document.documentElement.style.touchAction = originalHtmlTouchAction
+      } else {
+        document.documentElement.style.removeProperty('touch-action')
+      }
+      
+      // Восстанавливаем позицию прокрутки с помощью requestAnimationFrame для правильного рендеринга
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          window.scrollTo(scrollX, scrollY)
+        })
+      })
+    }
+  }, [showQuickForm])
 
   const { data: balance, isLoading: balanceLoading } = useQuery({
     queryKey: ['balance'],
@@ -580,7 +751,7 @@ export function Dashboard() {
 
             {/* Category Selection Step */}
             {quickFormStep === 'category' && quickFormType !== 'transfer' && (
-              <div className="flex-1 overflow-y-auto min-h-0">
+              <div className="flex-1 overflow-y-auto min-h-0 modal-content-scrollable">
                 {categoriesLoading ? (
                   <div className="text-center py-8">
                     <LoadingSpinner fullScreen={false} size="sm" />
@@ -616,7 +787,7 @@ export function Dashboard() {
                     <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-3">
                       {t.dashboard.form.selectCategory} ({categories.length} {t.dashboard.form.available})
                     </p>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 gap-3 max-h-[60vh] overflow-y-auto">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 gap-3 max-h-[60vh] overflow-y-auto modal-content-scrollable">
                       {categories
                         .sort((a, b) => (b.is_favorite ? 1 : 0) - (a.is_favorite ? 1 : 0))
                         .map((category) => (
@@ -653,7 +824,7 @@ export function Dashboard() {
             {/* Form Step */}
             {quickFormStep === 'form' && (
               <form onSubmit={handleQuickSubmit} className="flex flex-col flex-1 min-h-0">
-                <div className="space-y-3 flex-1 overflow-y-auto min-h-0 p-2">
+                <div className="space-y-3 flex-1 overflow-y-auto min-h-0 p-2 modal-content-scrollable">
               {/* Show selected category - compact display */}
               {quickFormType !== 'transfer' && quickFormData.category_id && (
                 <div className="bg-telegram-surface dark:bg-telegram-dark-surface p-2 rounded-telegram mb-2 flex items-center gap-2">

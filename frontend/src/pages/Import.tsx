@@ -106,7 +106,7 @@ export function Import() {
       <div className="flex items-center gap-3 mb-6">
         <button
           onClick={() => navigate('/profile')}
-          className="text-telegram-textSecondary hover:text-telegram-text transition-colors text-xl"
+          className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text transition-colors text-xl"
         >
           ←
         </button>
