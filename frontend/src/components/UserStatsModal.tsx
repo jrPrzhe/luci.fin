@@ -20,9 +20,33 @@ interface UserStatsModalProps {
 export const UserStatsModal = memo(function UserStatsModal({ status, onClose }: UserStatsModalProps) {
   useEffect(() => {
     // Prevent body scroll when modal is open
+    const originalOverflow = document.body.style.overflow
+    const originalPosition = document.body.style.position
+    const originalTop = document.body.style.top
+    const originalWidth = document.body.style.width
+    
+    // Save current scroll position
+    const scrollY = window.scrollY
+    
+    // Apply styles to prevent scrolling
     document.body.style.overflow = 'hidden'
+    document.body.style.position = 'fixed'
+    document.body.style.top = `-${scrollY}px`
+    document.body.style.width = '100%'
+    
+    // Prevent touch scrolling on mobile
+    document.body.style.touchAction = 'none'
+    
     return () => {
-      document.body.style.overflow = 'unset'
+      // Restore original styles
+      document.body.style.overflow = originalOverflow
+      document.body.style.position = originalPosition
+      document.body.style.top = originalTop
+      document.body.style.width = originalWidth
+      document.body.style.touchAction = ''
+      
+      // Restore scroll position
+      window.scrollTo(0, scrollY)
     }
   }, [])
 

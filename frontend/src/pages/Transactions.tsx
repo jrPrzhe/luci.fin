@@ -289,7 +289,8 @@ export function Transactions() {
     e.preventDefault()
 
     // Validate amount: max 13 digits before decimal point (NUMERIC(15, 2) constraint)
-    const amountStr = formData.amount.toString()
+    // Replace comma with dot for validation (Russian locale uses comma)
+    const amountStr = formData.amount.toString().replace(',', '.')
     const parts = amountStr.split('.')
     const integerPart = parts[0].replace(/[^0-9]/g, '') // Remove any non-digits
     if (integerPart.length > 13) {
@@ -304,10 +305,12 @@ export function Transactions() {
         return
       }
 
+      // Replace comma with dot for decimal separator (Russian locale uses comma)
+      const amountValue = formData.amount.toString().replace(',', '.')
       const submitData: any = {
         account_id: parseInt(formData.account_id),
         transaction_type: formData.transaction_type,
-        amount: parseFloat(formData.amount),
+        amount: parseFloat(amountValue),
         currency: formData.currency,
         description: formData.description || undefined,
         transaction_date: new Date(formData.transaction_date).toISOString(),
@@ -910,11 +913,24 @@ export function Transactions() {
                 {t.transactions.amount}
               </label>
               <input
-                type="number"
-                step="0.01"
-                min="0.01"
+                type="text"
+                inputMode="decimal"
                 value={formData.amount}
-                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                onChange={(e) => {
+                  // Allow both comma and dot as decimal separator
+                  // Replace comma with dot for internal storage, but allow user to type comma
+                  let value = e.target.value
+                  // Replace comma with dot
+                  value = value.replace(',', '.')
+                  // Remove any non-numeric characters except dot
+                  value = value.replace(/[^0-9.]/g, '')
+                  // Ensure only one dot
+                  const parts = value.split('.')
+                  if (parts.length > 2) {
+                    value = parts[0] + '.' + parts.slice(1).join('')
+                  }
+                  setFormData({ ...formData, amount: value })
+                }}
                 className="input"
                 placeholder="0.00"
                 required

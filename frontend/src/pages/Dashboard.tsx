@@ -195,8 +195,17 @@ export function Dashboard() {
 
   const handleQuickAction = async (type: 'income' | 'expense' | 'transfer') => {
     console.log(`[handleQuickAction] Starting for type: ${type}`)
+    setQuickFormType(type)
     
-    // Set form data first
+    // Reset categories first
+    setCategories([])
+    setCategoriesLoading(true)
+    console.log(`[handleQuickAction] Set categoriesLoading = true`)
+    
+    // Show form immediately with loading state
+    setShowQuickForm(true)
+    setQuickFormStep(type === 'transfer' ? 'form' : 'category')
+    
     setQuickFormData({
       category_id: '',
       account_id: accounts && accounts.length > 0 ? accounts[0].id.toString() : '',
@@ -206,34 +215,20 @@ export function Dashboard() {
       goal_id: '',
     })
     
-    // Reset categories and set loading state
-    setCategories([])
-    setCategoriesLoading(type !== 'transfer')
-    
-    // Set form type and step
-    setQuickFormType(type)
-    setQuickFormStep(type === 'transfer' ? 'form' : 'category')
-    
-    // Show form immediately - this should happen synchronously
-    setShowQuickForm(true)
-    
-    // Load categories for income/expense in background (non-blocking)
+    // Load categories for income/expense
     if (type === 'income' || type === 'expense') {
-      // Use setTimeout to ensure modal renders first
-      setTimeout(async () => {
-        try {
-          console.log(`[handleQuickAction] Loading categories for ${type}...`)
-          await loadCategories(type)
-          console.log(`[handleQuickAction] Categories loaded successfully`)
-        } catch (err: any) {
-          console.error('[handleQuickAction] Error loading categories:', err)
-          showError(err.message || t.errors.networkError)
-        } finally {
-          // Always reset loading state
-          console.log(`[handleQuickAction] Setting categoriesLoading = false`)
-          setCategoriesLoading(false)
-        }
-      }, 0)
+      try {
+        console.log(`[handleQuickAction] Loading categories for ${type}...`)
+        await loadCategories(type)
+        console.log(`[handleQuickAction] Categories loaded successfully`)
+      } catch (err: any) {
+        console.error('[handleQuickAction] Error loading categories:', err)
+        showError(err.message || t.errors.networkError)
+      } finally {
+        // Always reset loading state
+        console.log(`[handleQuickAction] Setting categoriesLoading = false`)
+        setCategoriesLoading(false)
+      }
     } else {
       console.log(`[handleQuickAction] Transfer type, skipping categories`)
       setCategoriesLoading(false)
@@ -260,7 +255,8 @@ export function Dashboard() {
     }
 
     // Validate amount: max 13 digits before decimal point (NUMERIC(15, 2) constraint)
-    const amountStr = quickFormData.amount.toString()
+    // Replace comma with dot for validation (Russian locale uses comma)
+    const amountStr = quickFormData.amount.toString().replace(',', '.')
     const parts = amountStr.split('.')
     const integerPart = parts[0].replace(/[^0-9]/g, '') // Remove any non-digits
     if (integerPart.length > 13) {
@@ -289,10 +285,12 @@ export function Dashboard() {
         return
       }
 
+      // Replace comma with dot for decimal separator (Russian locale uses comma)
+      const amountValue = quickFormData.amount.toString().replace(',', '.')
       const submitData: any = {
         account_id: parseInt(quickFormData.account_id),
         transaction_type: quickFormType,
-        amount: parseFloat(quickFormData.amount),
+        amount: parseFloat(amountValue),
         currency: account.currency,
         description: quickFormData.description || undefined,
         transaction_date: new Date().toISOString(),
@@ -518,8 +516,8 @@ export function Dashboard() {
 
       {/* Quick Form Modal */}
       {showQuickForm && quickFormType && (
-        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-[9999] p-4">
-          <div className="card max-w-md sm:max-w-lg md:max-w-xl w-full max-h-[90vh] flex flex-col relative z-[10000]">
+        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="card max-w-md sm:max-w-lg md:max-w-xl w-full max-h-[90vh] flex flex-col">
             <div className="flex justify-between items-center mb-4 flex-shrink-0">
               <div className="flex items-center gap-2">
                 {quickFormStep === 'category' && (
@@ -750,11 +748,24 @@ export function Dashboard() {
                     {t.dashboard.form.amount} *
                   </label>
                   <input
-                    type="number"
-                    step="0.01"
-                    min="0.01"
+                    type="text"
+                    inputMode="decimal"
                     value={quickFormData.amount}
-                    onChange={(e) => setQuickFormData({ ...quickFormData, amount: e.target.value })}
+                    onChange={(e) => {
+                      // Allow both comma and dot as decimal separator
+                      // Replace comma with dot for internal storage, but allow user to type comma
+                      let value = e.target.value
+                      // Replace comma with dot
+                      value = value.replace(',', '.')
+                      // Remove any non-numeric characters except dot
+                      value = value.replace(/[^0-9.]/g, '')
+                      // Ensure only one dot
+                      const parts = value.split('.')
+                      if (parts.length > 2) {
+                        value = parts[0] + '.' + parts.slice(1).join('')
+                      }
+                      setQuickFormData({ ...quickFormData, amount: value })
+                    }}
                     className="input text-lg font-semibold py-2"
                     placeholder="0"
                     required

@@ -193,11 +193,13 @@ export function Accounts() {
         showSuccess('Счет обновлен')
       } else {
         // Create new account
+        // Replace comma with dot for decimal separator (Russian locale uses comma)
+        const balanceValue = formData.initial_balance.replace(',', '.')
         await api.createAccount({
           name: formData.name.trim(),
           account_type: formData.account_type,
           currency: formData.currency,
-          initial_balance: parseFloat(formData.initial_balance) || 0,
+          initial_balance: parseFloat(balanceValue) || 0,
           description: formData.description.trim() || undefined,
           shared_budget_id: formData.shared_budget_id ? parseInt(formData.shared_budget_id) : undefined,
         })
@@ -568,12 +570,24 @@ export function Accounts() {
                         Начальный баланс
                       </label>
                       <input
-                        type="number"
-                        step="0.01"
+                        type="text"
+                        inputMode="decimal"
                         value={formData.initial_balance}
-                        onChange={(e) =>
-                          setFormData({ ...formData, initial_balance: e.target.value })
-                        }
+                        onChange={(e) => {
+                          // Allow both comma and dot as decimal separator
+                          // Replace comma with dot for internal storage, but allow user to type comma
+                          let value = e.target.value
+                          // Replace comma with dot
+                          value = value.replace(',', '.')
+                          // Remove any non-numeric characters except dot
+                          value = value.replace(/[^0-9.]/g, '')
+                          // Ensure only one dot
+                          const parts = value.split('.')
+                          if (parts.length > 2) {
+                            value = parts[0] + '.' + parts.slice(1).join('')
+                          }
+                          setFormData({ ...formData, initial_balance: value })
+                        }}
                         className="input"
                         placeholder="0.00"
                       />
