@@ -142,10 +142,10 @@ export function Achievements() {
                   
                   {/* Icon */}
                   <div className="flex items-start justify-between mb-4">
-                    <div className={`w-16 h-16 ${style.iconBg} rounded-2xl flex items-center justify-center text-3xl shadow-lg transform group-hover:scale-110 transition-transform duration-300`}>
+                    <div className={`w-16 h-16 ${style.iconBg} rounded-2xl flex items-center justify-center text-3xl shadow-lg transform group-hover:scale-110 transition-transform duration-300 flex-shrink-0`}>
                       {achievement.icon || '🏆'}
                     </div>
-                    <div className="px-2 py-1 bg-black/20 dark:bg-white/20 rounded-lg backdrop-blur-sm">
+                    <div className="px-2 py-1 bg-black/20 dark:bg-white/20 rounded-lg backdrop-blur-sm flex-shrink-0">
                       <span className="text-xs font-bold text-white">
                         {getRarityLabel(achievement.rarity)}
                       </span>
@@ -207,17 +207,12 @@ export function Achievements() {
                   key={achievement.id} 
                   className={`achievement-card bg-gradient-to-br ${style.gradient} rounded-2xl p-5 border-2 ${style.border} opacity-60 relative overflow-hidden`}
                 >
-                  {/* Lock overlay */}
-                  <div className="absolute inset-0 bg-black/20 dark:bg-black/40 rounded-2xl flex items-center justify-center z-20">
-                    <div className="text-4xl opacity-50">🔒</div>
-                  </div>
-                  
                   {/* Icon */}
                   <div className="flex items-start justify-between mb-4 relative z-10">
-                    <div className={`w-16 h-16 ${style.iconBg} rounded-2xl flex items-center justify-center text-3xl shadow-lg grayscale`}>
+                    <div className={`w-16 h-16 ${style.iconBg} rounded-2xl flex items-center justify-center text-3xl shadow-lg grayscale flex-shrink-0`}>
                       {achievement.icon || '🏆'}
                     </div>
-                    <div className="px-2 py-1 bg-black/20 dark:bg-white/20 rounded-lg backdrop-blur-sm">
+                    <div className="px-2 py-1 bg-black/20 dark:bg-white/20 rounded-lg backdrop-blur-sm flex-shrink-0">
                       <span className="text-xs font-bold text-white">
                         {getRarityLabel(achievement.rarity)}
                       </span>
@@ -226,9 +221,12 @@ export function Achievements() {
                   
                   {/* Content */}
                   <div className="relative z-10">
-                    <h3 className="text-lg font-bold text-telegram-text dark:text-telegram-dark-text mb-2 line-through opacity-50">
-                      {achievement.title}
-                    </h3>
+                    <div className="flex items-center gap-2 mb-2">
+                      <h3 className="text-lg font-bold text-telegram-text dark:text-telegram-dark-text line-through opacity-50 flex-1 min-w-0">
+                        {achievement.title}
+                      </h3>
+                      <span className="text-2xl opacity-50 flex-shrink-0" title="Заблокировано">🔒</span>
+                    </div>
                     {achievement.description && (
                       <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-4 leading-relaxed opacity-50">
                         {achievement.description}
