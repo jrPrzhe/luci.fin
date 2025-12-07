@@ -261,7 +261,21 @@ export function SharedBudgets() {
     }
 
     try {
-      await api.acceptInvitation(undefined, joinCode.toUpperCase().trim())
+      const response = await api.acceptInvitation(undefined, joinCode.toUpperCase().trim())
+      
+      // Check if API returned a message indicating user is already a member
+      // API returns 200 with message "You are already a member of this budget" instead of error
+      if (response && typeof response === 'object' && 'message' in response) {
+        const message = (response as any).message
+        if (typeof message === 'string' && 
+            (message.toLowerCase().includes('already a member') || 
+             message.toLowerCase().includes('уже являетесь участником'))) {
+          setError('Вы уже являетесь участником этого бюджета')
+          return
+        }
+      }
+      
+      // Successfully joined
       setJoinCode('')
       setShowJoinForm(false)
       setError('')

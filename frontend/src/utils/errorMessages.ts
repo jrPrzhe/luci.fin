@@ -128,6 +128,11 @@ export function translateError(error: any): string {
     return 'Запрашиваемый ресурс не найден.'
   }
 
+  // Ошибки участия в бюджете
+  if (errorLower.includes('already a member') || errorLower.includes('уже являетесь участником')) {
+    return 'Вы уже являетесь участником этого бюджета'
+  }
+
   // Ошибки сервера
   if (errorLower.includes('internal server error') || errorLower.includes('500') || errorLower.includes('server error')) {
     return 'Внутренняя ошибка сервера. Пожалуйста, попробуйте позже.'
