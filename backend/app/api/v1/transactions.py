@@ -483,6 +483,11 @@ async def create_transaction(
             detail=f"Некорректная сумма: {str(e)}"
         )
     
+    # Note: We don't validate transaction_date against current time here
+    # because users in different timezones may have local times that appear
+    # to be in the future when converted to UTC. The frontend validates
+    # that the transaction date is not in the future in the user's local timezone.
+    
     # For transfer, verify to_account_id
     to_account = None
     if transaction_data.transaction_type == "transfer":

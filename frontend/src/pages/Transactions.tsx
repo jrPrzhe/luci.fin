@@ -330,9 +330,12 @@ export function Transactions() {
     }
 
     // Validate transaction date: cannot be in the future
-    const transactionDate = new Date(formData.transaction_date)
+    // Parse transaction_date from local datetime format (YYYY-MM-DDTHH:mm)
+    const localDate = new Date(formData.transaction_date)
+    // Get current time in local timezone
     const now = new Date()
-    if (transactionDate > now) {
+    // Compare local times (both are in user's local timezone)
+    if (localDate > now) {
       showError('Дата транзакции не может быть в будущем. Выберите текущую или прошедшую дату.')
       return
     }
