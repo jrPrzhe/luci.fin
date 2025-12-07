@@ -958,8 +958,9 @@ export function Transactions() {
               <textarea
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="input"
+                className="input resize-none"
                 rows={3}
+                style={{ resize: 'none', maxHeight: '120px', overflowY: 'auto' }}
                 placeholder={t.transactions.form.descriptionPlaceholder}
               />
             </div>

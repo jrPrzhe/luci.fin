@@ -838,8 +838,9 @@ export function SharedBudgets() {
                     onChange={(e) =>
                       setCreateFormData({ ...createFormData, description: e.target.value })
                     }
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-telegram-dark-border rounded-lg focus:ring-2 focus:ring-telegram-primary dark:focus:ring-telegram-dark-primary focus:border-transparent bg-white dark:bg-telegram-dark-bg text-telegram-text dark:text-telegram-dark-text"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-telegram-dark-border rounded-lg focus:ring-2 focus:ring-telegram-primary dark:focus:ring-telegram-dark-primary focus:border-transparent bg-white dark:bg-telegram-dark-bg text-telegram-text dark:text-telegram-dark-text resize-none"
                     rows={3}
+                    style={{ resize: 'none', maxHeight: '120px', overflowY: 'auto' }}
                     placeholder="Описание бюджета"
                   />
                 </div>
