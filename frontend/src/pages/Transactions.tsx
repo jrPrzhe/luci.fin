@@ -465,6 +465,13 @@ export function Transactions() {
     return account ? account.name : `Счет #${accountId}`
   }
 
+  const truncateAccountName = (name: string, maxLength: number = 30) => {
+    if (name.length <= maxLength) {
+      return name
+    }
+    return name.substring(0, maxLength) + '...'
+  }
+
   const isSharedTransaction = (transaction: Transaction) => {
     const account = accounts.find(a => a.id === transaction.account_id)
     return account?.is_shared === true || (account?.shared_budget_id !== null && account?.shared_budget_id !== undefined)
@@ -514,11 +521,17 @@ export function Transactions() {
       {/* Show selected account filter if set */}
       {selectedAccountId && (
         <div className="card p-3 mb-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span>📋</span>
-              <span className="text-sm text-telegram-text dark:text-telegram-dark-text">
-                Показаны транзакции по счету: <strong>{getAccountName(selectedAccountId)}</strong>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <span className="flex-shrink-0">📋</span>
+              <span className="text-sm text-telegram-text dark:text-telegram-dark-text flex-1 min-w-0">
+                Показаны транзакции по счету:{' '}
+                <strong 
+                  className="break-words" 
+                  title={getAccountName(selectedAccountId)}
+                >
+                  {truncateAccountName(getAccountName(selectedAccountId))}
+                </strong>
               </span>
             </div>
             <button
@@ -526,7 +539,7 @@ export function Transactions() {
                 setSelectedAccountId(null)
                 loadData(true)
               }}
-              className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 px-2 py-1"
+              className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 px-2 py-1 flex-shrink-0 whitespace-nowrap"
             >
               ✕ Сбросить
             </button>
