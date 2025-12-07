@@ -925,9 +925,9 @@ export function Dashboard() {
                     {(!accounts || (accounts as Account[]).length < 2) && !accountsLoading && (
                       <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                         <p className="text-xs text-blue-700 dark:text-blue-300 mb-2">
-                          💡 Для перевода нужно минимум 2 счета. {!accounts || (accounts as Account[]).length === 0 
-                            ? 'Создайте счета, чтобы начать работу.' 
-                            : 'Создайте еще один счет для перевода.'}
+                          💡 {!accounts || (accounts as Account[]).length === 0 
+                            ? t.dashboard.form.transferNoAccounts
+                            : t.dashboard.form.transferMinAccounts}
                         </p>
                         <button
                           type="button"

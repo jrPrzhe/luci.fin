@@ -309,11 +309,11 @@ export function Categories() {
   const getTransactionTypeLabel = (type: string) => {
     switch (type) {
       case 'income':
-        return 'Доход'
+        return t.categories.filters.transactionType.income
       case 'expense':
-        return 'Расход'
+        return t.categories.filters.transactionType.expense
       case 'both':
-        return 'Оба'
+        return t.categories.filters.transactionType.both
       default:
         return type
     }
@@ -359,7 +359,7 @@ export function Categories() {
                 : 'bg-telegram-surface dark:bg-telegram-dark-surface text-telegram-text dark:text-telegram-dark-text hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover'
             }`}
           >
-            {isEditingMode ? '✓ Редактирование' : '✏️'}
+            {isEditingMode ? `✓ ${t.categories.filters.editing}` : '✏️'}
           </button>
           {isEditingMode && (
             <button
@@ -369,7 +369,7 @@ export function Categories() {
               }}
               className="btn-primary"
             >
-              ➕ Добавить категорию
+              ➕ {t.categories.filters.addCategory}
             </button>
           )}
         </div>
@@ -386,7 +386,7 @@ export function Categories() {
               : 'bg-telegram-surface dark:bg-telegram-dark-surface text-telegram-text dark:text-telegram-dark-text hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover'
           }`}
         >
-          Все
+          {t.categories.filters.all}
         </button>
         <button
           onClick={() => setFilterType('expense')}
@@ -396,7 +396,7 @@ export function Categories() {
               : 'bg-telegram-surface dark:bg-telegram-dark-surface text-telegram-text dark:text-telegram-dark-text hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover'
           }`}
         >
-          💸 Расходы
+          💸 {t.categories.filters.expense}
         </button>
         <button
           onClick={() => setFilterType('income')}
@@ -406,7 +406,7 @@ export function Categories() {
               : 'bg-telegram-surface dark:bg-telegram-dark-surface text-telegram-text dark:text-telegram-dark-text hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover'
           }`}
         >
-          💰 Доходы
+          💰 {t.categories.filters.income}
         </button>
         <button
           onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
@@ -416,7 +416,7 @@ export function Categories() {
               : 'bg-telegram-surface dark:bg-telegram-dark-surface text-telegram-text dark:text-telegram-dark-text hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover'
           }`}
         >
-          ⭐ Избранные
+          ⭐ {t.categories.filters.favorites}
         </button>
         {isEditingMode && filteredCategories.filter(cat => !cat.is_system).length > 0 && (
           <button
@@ -444,7 +444,7 @@ export function Categories() {
         <div className="card mb-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold text-telegram-text dark:text-telegram-dark-text">
-              {editingCategory ? 'Редактировать категорию' : 'Новая категория'}
+              {editingCategory ? t.categories.filters.editCategory : t.categories.filters.newCategory}
             </h2>
             <button
               onClick={resetForm}
@@ -483,9 +483,9 @@ export function Categories() {
                 className="input"
                 required
               >
-                <option value="expense">💸 Расход</option>
-                <option value="income">💰 Доход</option>
-                <option value="both">💵 Оба</option>
+                <option value="expense">💸 {t.categories.filters.transactionType.expense}</option>
+                <option value="income">💰 {t.categories.filters.transactionType.income}</option>
+                <option value="both">💵 {t.categories.filters.transactionType.both}</option>
               </select>
             </div>
 
@@ -577,12 +577,12 @@ export function Categories() {
           <div className="inline-block mx-auto w-24 h-24 rounded-full bg-gradient-to-br from-telegram-primaryLight/30 to-telegram-primaryLight/10 flex items-center justify-center text-5xl mb-6">
             📦
           </div>
-          <h3 className="text-xl font-semibold text-telegram-text dark:text-telegram-dark-text mb-2">Нет категорий</h3>
+          <h3 className="text-xl font-semibold text-telegram-text dark:text-telegram-dark-text mb-2">{t.categories.noCategories}</h3>
           <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-6">
-            Создайте категорию для удобной организации транзакций
+            {t.categories.noCategoriesDesc}
           </p>
           <button onClick={() => setShowForm(true)} className="btn-primary">
-            ➕ Создать категорию
+            ➕ {t.categories.filters.addCategory}
           </button>
         </div>
       ) : (
@@ -592,7 +592,7 @@ export function Categories() {
             <div>
               <h3 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-3 flex items-center justify-between">
                 <span className="flex items-center gap-2">
-                  ⭐ Избранные категории
+                  ⭐ {t.categories.filters.favoriteCategories}
                 </span>
                 <button
                   onClick={() => setShowFavoritesSection(!showFavoritesSection)}
@@ -617,7 +617,7 @@ export function Categories() {
                         <button
                           onClick={() => handleEdit(category)}
                           className="absolute top-2 right-2 p-1.5 text-telegram-primary hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover rounded-full transition-all active:scale-95"
-                          title="Редактировать"
+                          title={t.common.edit}
                         >
                           <span className="text-base">✏️</span>
                         </button>
@@ -691,7 +691,7 @@ export function Categories() {
               {!showFavoritesOnly && (
                 <h3 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-3 flex items-center justify-between">
                   <span className="flex items-center gap-2">
-                    {favoriteCategories.length > 0 ? 'Все категории' : 'Категории'}
+                    {favoriteCategories.length > 0 ? t.categories.filters.allCategories : t.categories.filters.categories}
                   </span>
                   <button
                     onClick={() => setShowAllCategoriesSection(!showAllCategoriesSection)}
