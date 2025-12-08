@@ -200,12 +200,28 @@ export function Login() {
 
   // Auto-login via Telegram or VK if in Mini App (atomic auth)
   useEffect(() => {
+    // PRIORITY: Проверяем платформу еще раз для надежности
+    const currentIsVK = isVKWebApp()
+    const currentIsTelegram = isTelegramWebApp()
+    
+    console.log('[Login] Platform check in useEffect:', {
+      isTelegram: currentIsTelegram,
+      isVK: currentIsVK,
+      url: window.location.href
+    })
+    
+    // PRIORITY: Если это VK, НЕ запускаем Telegram авторизацию
+    if (currentIsVK) {
+      console.log('[Login] VK detected, skipping Telegram auth')
+      return
+    }
+    
     // In Telegram Mini App - only Telegram auth, no choice
-    if (isTelegram && !isVK) {
+    if (currentIsTelegram && !currentIsVK) {
       if (authMethod === 'select') {
         console.log('[Login] Starting Telegram auto-login...')
         
-        // Сначала проверяем, загружен ли Telegram SDK
+        // Дополнительная проверка: убеждаемся, что это действительно Telegram
         if (!window.Telegram?.WebApp) {
           console.error('[Login] Telegram SDK not loaded!')
           console.error('[Login] Debug info:', {
@@ -214,7 +230,9 @@ export function Login() {
             hasWebApp: !!window.Telegram?.WebApp,
             userAgent: navigator.userAgent,
             url: window.location.href,
-            referrer: document.referrer
+            referrer: document.referrer,
+            isVK: currentIsVK,
+            isTelegram: currentIsTelegram
           })
           
           // Ждем немного для загрузки SDK
@@ -224,11 +242,29 @@ export function Login() {
             const checkInterval = 100
             
             while (!window.Telegram?.WebApp && waited < maxWait) {
+              // Проверяем, не изменилась ли платформа во время ожидания
+              const stillIsVK = isVKWebApp()
+              if (stillIsVK) {
+                console.log('[Login] VK detected during SDK wait, aborting Telegram auth')
+                setIsLoading(false)
+                return
+              }
+              
               await new Promise(resolve => setTimeout(resolve, checkInterval))
               waited += checkInterval
             }
             
-            if (!window.Telegram?.WebApp) {
+            // Финальная проверка платформы перед продолжением
+            const finalIsVK = isVKWebApp()
+            const finalIsTelegram = isTelegramWebApp()
+            
+            if (finalIsVK) {
+              console.log('[Login] VK detected after SDK wait, aborting Telegram auth')
+              setIsLoading(false)
+              return
+            }
+            
+            if (!window.Telegram?.WebApp || !finalIsTelegram) {
               const errorMsg = 'Telegram Mini App SDK не загрузился. Проверьте подключение к интернету и попробуйте обновить страницу.'
               console.error('[Login]', errorMsg)
               showError(errorMsg)
@@ -243,12 +279,40 @@ export function Login() {
           
           checkSDK()
         } else {
+          // Дополнительная проверка перед вызовом proceedWithTelegramAuth
+          const doubleCheckIsVK = isVKWebApp()
+          if (doubleCheckIsVK) {
+            console.log('[Login] VK detected before proceedWithTelegramAuth, aborting')
+            setIsLoading(false)
+            return
+          }
           proceedWithTelegramAuth()
         }
         
         function proceedWithTelegramAuth() {
+          // Финальная проверка перед ожиданием initData
+          const finalCheckIsVK = isVKWebApp()
+          const finalCheckIsTelegram = isTelegramWebApp()
+          
+          if (finalCheckIsVK || !finalCheckIsTelegram) {
+            console.log('[Login] Platform changed, aborting Telegram auth', {
+              isVK: finalCheckIsVK,
+              isTelegram: finalCheckIsTelegram
+            })
+            setIsLoading(false)
+            return
+          }
+          
           // Ждем, пока Telegram WebApp будет готов и initData станет доступен
           waitForInitData(5000).then((initData) => {
+            // Проверяем платформу еще раз после получения initData
+            const afterCheckIsVK = isVKWebApp()
+            if (afterCheckIsVK) {
+              console.log('[Login] VK detected after waitForInitData, aborting')
+              setIsLoading(false)
+              return
+            }
+            
             console.log('[Login] waitForInitData result:', {
               hasInitData: !!initData,
               initDataLength: initData?.length || 0
@@ -262,7 +326,9 @@ export function Login() {
               console.error('[Login] Debug info:', {
                 hasWebApp: !!window.Telegram?.WebApp,
                 initData: window.Telegram?.WebApp?.initData || 'empty',
-                initDataUnsafe: window.Telegram?.WebApp?.initDataUnsafe || null
+                initDataUnsafe: window.Telegram?.WebApp?.initDataUnsafe || null,
+                isVK: afterCheckIsVK,
+                isTelegram: isTelegramWebApp()
               })
               showError(errorMsg)
               setIsLoading(false)
@@ -281,7 +347,7 @@ export function Login() {
       }
     }
     // In VK Mini App - only VK auth, no choice
-    else if (isVK && !isTelegram) {
+    else if (currentIsVK && !currentIsTelegram) {
       if (authMethod === 'select') {
         initVKWebApp().then(async () => {
           const launchParams = await getVKLaunchParams()

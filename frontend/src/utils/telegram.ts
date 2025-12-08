@@ -159,8 +159,11 @@ export function isTelegramWebApp(): boolean {
     }
 
     // Method 3: Check user agent (Telegram WebView has specific user agent)
+    // BUT: Only if we have explicit Telegram parameters or WebApp object
+    // Don't rely on user agent alone - it can be spoofed or similar
     const userAgent = navigator.userAgent || ''
-    if (userAgent.includes('Telegram') || userAgent.includes('WebApp')) {
+    if ((userAgent.includes('Telegram') || userAgent.includes('WebApp')) && 
+        (urlParams.has('tgWebAppData') || urlParams.has('tgWebAppStartParam') || window.Telegram?.WebApp)) {
       if (!(window as any).__telegramDetected) {
         console.log('[isTelegramWebApp] Detected via user agent:', userAgent)
         ;(window as any).__telegramDetected = true
@@ -169,8 +172,11 @@ export function isTelegramWebApp(): boolean {
     }
 
     // Method 4: Check referrer (Telegram Mini Apps are opened from telegram.org)
+    // BUT: Only if we have explicit Telegram parameters or WebApp object
+    // Don't rely on referrer alone - it can be missing or incorrect
     const referrer = document.referrer || ''
-    if (referrer.includes('telegram.org') || referrer.includes('t.me')) {
+    if ((referrer.includes('telegram.org') || referrer.includes('t.me')) &&
+        (urlParams.has('tgWebAppData') || urlParams.has('tgWebAppStartParam') || window.Telegram?.WebApp)) {
       if (!(window as any).__telegramDetected) {
         console.log('[isTelegramWebApp] Detected via referrer:', referrer)
         ;(window as any).__telegramDetected = true
@@ -346,6 +352,13 @@ export function getTelegramUser() {
  * This function ensures Telegram WebApp is fully initialized before returning initData
  */
 export async function waitForInitData(maxWaitMs: number = 5000): Promise<string> {
+  // PRIORITY: Проверяем платформу перед попыткой получить WebApp
+  // Если это не Telegram (например, VK или Web), сразу возвращаем пустую строку
+  if (!isTelegramWebApp()) {
+    console.log('[waitForInitData] Not in Telegram Mini App, returning empty string')
+    return ''
+  }
+  
   const webApp = getTelegramWebApp()
   if (!webApp) {
     console.warn('[waitForInitData] Telegram WebApp not available')
