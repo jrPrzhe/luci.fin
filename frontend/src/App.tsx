@@ -60,7 +60,18 @@ function TelegramAuthHandler() {
         }, 3000)
 
         // Если не в Telegram Mini App, пропускаем проверку
-        if (!isTelegramWebApp()) {
+        // Проверяем несколько раз с небольшой задержкой, так как скрипт может загружаться
+        let telegramAvailable = isTelegramWebApp()
+        if (!telegramAvailable) {
+          // Даем скрипту время загрузиться (до 500мс)
+          for (let i = 0; i < 5; i++) {
+            await new Promise(resolve => setTimeout(resolve, 100))
+            telegramAvailable = isTelegramWebApp()
+            if (telegramAvailable) break
+          }
+        }
+        
+        if (!telegramAvailable) {
           if (mounted) {
             clearTimeout(timeoutId)
             setIsChecking(false)
