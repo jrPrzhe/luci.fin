@@ -163,10 +163,16 @@ export function isTelegramWebApp(): boolean {
     // This is the PRIMARY method - if this exists AND no VK indicators, we're in Telegram
     if (window.Telegram?.WebApp) {
       // Double-check: make sure we're not in VK
-      // Re-check VK params to be absolutely sure
-      const finalVKCheck = urlParams.has('vk_user_id') || urlParams.has('vk_app_id') || (window as any).vkBridge
+      // Re-check VK params to be absolutely sure (including hash)
+      const hashForFinalCheck = window.location.hash
+      const hashParamsForFinalCheck = hashForFinalCheck ? new URLSearchParams(hashForFinalCheck.split('?')[1] || '') : null
+      const finalVKCheck = urlParams.has('vk_user_id') || 
+                          urlParams.has('vk_app_id') || 
+                          (hashParamsForFinalCheck && (hashParamsForFinalCheck.has('vk_user_id') || hashParamsForFinalCheck.has('vk_app_id'))) ||
+                          (window as any).vkBridge
       if (finalVKCheck) {
         // VK detected, not Telegram
+        console.log('[isTelegramWebApp] VK detected in final check, returning false')
         return false
       }
       
@@ -383,6 +389,19 @@ export function getTelegramUser() {
 export async function waitForInitData(maxWaitMs: number = 5000): Promise<string> {
   // PRIORITY: Проверяем платформу перед попыткой получить WebApp
   // Если это не Telegram (например, VK или Web), сразу возвращаем пустую строку
+  // КРИТИЧЕСКИ ВАЖНО: Проверяем ВК ПЕРВЫМ делом - если мы в ВК, не пытаемся получить Telegram данные
+  try {
+    // Импортируем функцию проверки ВК динамически, чтобы избежать циклических зависимостей
+    const { isVKWebApp } = await import('./vk')
+    if (isVKWebApp()) {
+      console.log('[waitForInitData] VK detected (PRIORITY CHECK), returning empty string immediately')
+      return ''
+    }
+  } catch (error) {
+    // Игнорируем ошибки импорта - продолжаем проверку
+    console.warn('[waitForInitData] Could not check VK status:', error)
+  }
+  
   if (!isTelegramWebApp()) {
     console.log('[waitForInitData] Not in Telegram Mini App, returning empty string')
     return ''
@@ -421,7 +440,19 @@ export async function waitForInitData(maxWaitMs: number = 5000): Promise<string>
   const checkInterval = 50 // Check every 50ms
 
   return new Promise((resolve) => {
-    const checkInitData = () => {
+    const checkInitData = async () => {
+      // Периодически проверяем, не изменилась ли платформа на ВК
+      try {
+        const { isVKWebApp } = await import('./vk')
+        if (isVKWebApp()) {
+          console.log('[waitForInitData] VK detected during wait, returning empty string')
+          resolve('')
+          return
+        }
+      } catch (error) {
+        // Игнорируем ошибки импорта
+      }
+      
       const currentWebApp = getTelegramWebApp()
       
       if (!currentWebApp) {
@@ -436,6 +467,18 @@ export async function waitForInitData(maxWaitMs: number = 5000): Promise<string>
 
       // Check if initData is available and valid
       if (isValidInitData(currentWebApp.initData)) {
+        // Финальная проверка на ВК перед возвратом данных
+        try {
+          const { isVKWebApp } = await import('./vk')
+          if (isVKWebApp()) {
+            console.log('[waitForInitData] VK detected before returning initData, returning empty string')
+            resolve('')
+            return
+          }
+        } catch (error) {
+          // Игнорируем ошибки импорта
+        }
+        
         console.log('[waitForInitData] InitData became available after', Date.now() - startTime, 'ms')
         resolve(currentWebApp.initData)
         return
@@ -443,6 +486,18 @@ export async function waitForInitData(maxWaitMs: number = 5000): Promise<string>
 
       // Check timeout
       if (Date.now() - startTime >= maxWaitMs) {
+        // Финальная проверка на ВК перед возвратом (даже если таймаут)
+        try {
+          const { isVKWebApp } = await import('./vk')
+          if (isVKWebApp()) {
+            console.log('[waitForInitData] VK detected at timeout, returning empty string')
+            resolve('')
+            return
+          }
+        } catch (error) {
+          // Игнорируем ошибки импорта
+        }
+        
         // Timeout reached, return whatever we have (might be empty)
         const finalData = currentWebApp.initData || ''
         console.warn('[waitForInitData] Timeout reached after', maxWaitMs, 'ms. InitData:', finalData ? `available (${finalData.length} chars) but might be incomplete` : 'not available')

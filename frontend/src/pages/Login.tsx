@@ -321,26 +321,55 @@ export function Login() {
             if (initData && initData.length > 0) {
               handleTelegramLogin()
             } else {
+              // ПРОВЕРКА: Если мы в ВК, не показываем ошибку Telegram
+              const finalVKCheck = isVKWebApp()
+              if (finalVKCheck) {
+                console.log('[Login] VK detected when no initData, this is normal - not showing Telegram error')
+                setIsLoading(false)
+                return
+              }
+              
+              // Только если мы действительно в Telegram, показываем ошибку
+              const isTelegram = isTelegramWebApp()
+              if (!isTelegram) {
+                console.log('[Login] Not in Telegram and no initData, this is normal - not showing error')
+                setIsLoading(false)
+                return
+              }
+              
               const errorMsg = 'Не удалось получить данные авторизации Telegram. Убедитесь, что открыто через Telegram Mini App и попробуйте обновить страницу.'
               console.error('[Login]', errorMsg)
               console.error('[Login] Debug info:', {
                 hasWebApp: !!window.Telegram?.WebApp,
                 initData: window.Telegram?.WebApp?.initData || 'empty',
                 initDataUnsafe: window.Telegram?.WebApp?.initDataUnsafe || null,
-                isVK: afterCheckIsVK,
-                isTelegram: isTelegramWebApp()
+                isVK: finalVKCheck,
+                isTelegram: isTelegram
               })
               showError(errorMsg)
               setIsLoading(false)
             }
           }).catch((error) => {
+            // Проверяем, не изменилась ли платформа во время ожидания
+            const catchVKCheck = isVKWebApp()
+            if (catchVKCheck) {
+              console.log('[Login] VK detected in catch block, this is normal - not showing Telegram error')
+              setIsLoading(false)
+              return
+            }
+            
             console.error('[Login] Failed to wait for Telegram initData:', error)
             console.error('[Login] Error details:', {
               message: error instanceof Error ? error.message : String(error),
               stack: error instanceof Error ? error.stack : 'No stack'
             })
-            const errorMsg = 'Ошибка инициализации Telegram Mini App. Попробуйте обновить страницу или обратитесь в поддержку.'
-            showError(errorMsg)
+            
+            // Только если мы действительно в Telegram, показываем ошибку
+            const isTelegram = isTelegramWebApp()
+            if (isTelegram) {
+              const errorMsg = 'Ошибка инициализации Telegram Mini App. Попробуйте обновить страницу или обратитесь в поддержку.'
+              showError(errorMsg)
+            }
             setIsLoading(false)
           })
         }

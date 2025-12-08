@@ -249,10 +249,34 @@ function TelegramAuthHandler() {
           return
         }
 
+        // КРИТИЧЕСКАЯ ПРОВЕРКА: Если мы в ВК, НЕ пытаемся авторизоваться через Telegram
+        // Это предотвращает попытки авторизации через Telegram после успешной авторизации через ВК
+        const checkIsVKBeforeWait = isVKWebApp()
+        if (checkIsVKBeforeWait) {
+          console.log('[TelegramAuthHandler] VK detected before waitForInitData, aborting Telegram auth check')
+          if (mounted) {
+            clearTimeout(timeoutId)
+            setIsChecking(false)
+          }
+          return
+        }
+
         // Автоматическая авторизация через Telegram Mini App
         // Ждем, пока Telegram WebApp будет готов и initData станет доступен
         console.log('[TelegramAuthHandler] Telegram auto-auth check: waiting for initData...')
         const initData = await waitForInitData(5000) // Ждем до 5 секунд для полной инициализации
+        
+        // ПРОВЕРКА ПОСЛЕ waitForInitData: Если мы в ВК, НЕ продолжаем
+        const checkIsVKAfterWait = isVKWebApp()
+        if (checkIsVKAfterWait) {
+          console.log('[TelegramAuthHandler] VK detected after waitForInitData, aborting Telegram auth check')
+          if (mounted) {
+            clearTimeout(timeoutId)
+            setIsChecking(false)
+          }
+          return
+        }
+        
         console.log('[TelegramAuthHandler] Telegram auto-auth check result:', { 
           hasInitData: !!initData, 
           initDataLength: initData?.length || 0,
@@ -313,6 +337,17 @@ function TelegramAuthHandler() {
             }
           } catch (error: any) {
             console.error('Telegram auto-auth failed:', error)
+            // Проверяем, не изменилась ли платформа во время авторизации
+            const errorVKCheck = isVKWebApp()
+            if (errorVKCheck) {
+              console.log('[TelegramAuthHandler] VK detected after Telegram auth error, this is normal - not redirecting')
+              if (mounted) {
+                clearTimeout(timeoutId)
+                setIsChecking(false)
+              }
+              return
+            }
+            
             if (mounted) {
               clearTimeout(timeoutId)
               setIsChecking(false)
@@ -324,13 +359,27 @@ function TelegramAuthHandler() {
           }
         } else {
           // Нет initData - возможно, Mini App еще не инициализирован
+          // НО: Если мы в ВК, это нормально - не показываем ошибку
+          const finalVKCheck = isVKWebApp()
+          if (finalVKCheck) {
+            console.log('[TelegramAuthHandler] VK detected in else block (no initData), this is normal - not showing error')
+            if (mounted) {
+              clearTimeout(timeoutId)
+              setIsChecking(false)
+            }
+            return
+          }
+          
+          // Только если мы действительно в Telegram, показываем ошибку
           console.error('[TelegramAuthHandler] No initData available for Telegram auto-auth after waiting')
           console.error('[TelegramAuthHandler] Debug info:', {
             hasWebApp: !!window.Telegram?.WebApp,
             initData: window.Telegram?.WebApp?.initData || 'empty',
             initDataUnsafe: window.Telegram?.WebApp?.initDataUnsafe || null,
             webAppVersion: window.Telegram?.WebApp?.version,
-            webAppPlatform: window.Telegram?.WebApp?.platform
+            webAppPlatform: window.Telegram?.WebApp?.platform,
+            isVK: finalVKCheck,
+            isTelegram: isTelegramWebApp()
           })
           if (mounted) {
             clearTimeout(timeoutId)
