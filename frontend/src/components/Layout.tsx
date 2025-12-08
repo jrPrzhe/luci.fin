@@ -448,8 +448,8 @@ export function Layout() {
 
         <div className="p-3 border-t border-telegram-border dark:border-telegram-dark-border space-y-2 overflow-hidden">
           {/* Language Toggle */}
-          <div className="w-full flex items-center justify-between p-2 rounded-telegram hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors overflow-hidden max-w-full">
-            <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
+          <div className="w-full flex items-center p-2 rounded-telegram hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors overflow-hidden">
+            <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden pr-2">
               <span className="text-xl flex-shrink-0">🌍</span>
               <div className="min-w-0 flex-1 overflow-hidden">
                 <p className="font-medium text-xs text-telegram-text dark:text-telegram-dark-text truncate">{t.profile.language}</p>
@@ -458,10 +458,10 @@ export function Layout() {
                 </p>
               </div>
             </div>
-            <div className="flex gap-1.5 flex-shrink-0 ml-1.5">
+            <div className="flex gap-1.5 flex-shrink-0" style={{ width: '7rem' }}>
               <button
                 onClick={() => setLanguage('ru')}
-                className={`min-w-[3rem] max-w-[3rem] px-1.5 py-1 rounded-telegram text-xs font-medium transition-colors whitespace-nowrap overflow-hidden ${
+                className={`w-[3rem] px-1.5 py-1 rounded-telegram text-xs font-medium transition-colors whitespace-nowrap overflow-hidden ${
                   language === 'ru'
                     ? 'bg-telegram-primary text-white dark:bg-telegram-dark-primary'
                     : 'bg-telegram-border hover:bg-telegram-hover dark:bg-telegram-dark-border dark:hover:bg-telegram-dark-hover'
@@ -471,7 +471,7 @@ export function Layout() {
               </button>
               <button
                 onClick={() => setLanguage('en')}
-                className={`min-w-[3rem] max-w-[3rem] px-1.5 py-1 rounded-telegram text-xs font-medium transition-colors whitespace-nowrap overflow-hidden ${
+                className={`w-[3rem] px-1.5 py-1 rounded-telegram text-xs font-medium transition-colors whitespace-nowrap overflow-hidden ${
                   language === 'en'
                     ? 'bg-telegram-primary text-white dark:bg-telegram-dark-primary'
                     : 'bg-telegram-border hover:bg-telegram-hover dark:bg-telegram-dark-border dark:hover:bg-telegram-dark-hover'
