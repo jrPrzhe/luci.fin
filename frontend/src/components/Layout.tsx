@@ -310,7 +310,23 @@ export function Layout() {
   // НЕ показываем загрузку на странице онбординга и логина/регистрации
   // НО только если проверка активно идет (isCheckingAuth), а не просто isAuthorized === null
   // Это предотвращает бесконечную загрузку, если что-то пошло не так
-  if ((isCheckingAuth && isAuthorized !== true) && 
+  // Также добавляем таймаут - не показываем загрузку дольше 2 секунд
+  const [showAuthLoading, setShowAuthLoading] = useState(true)
+  
+  useEffect(() => {
+    if (isCheckingAuth && isAuthorized !== true) {
+      // Показываем загрузку максимум 2 секунды
+      const timer = setTimeout(() => {
+        setShowAuthLoading(false)
+      }, 2000)
+      
+      return () => clearTimeout(timer)
+    } else {
+      setShowAuthLoading(false)
+    }
+  }, [isCheckingAuth, isAuthorized])
+  
+  if (showAuthLoading && (isCheckingAuth && isAuthorized !== true) && 
       location.pathname !== '/onboarding' && 
       location.pathname !== '/login' && 
       location.pathname !== '/register') {

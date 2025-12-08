@@ -505,44 +505,70 @@ function VKAuthHandler() {
 }
 
 function App() {
+  // Логируем инициализацию приложения
+  useEffect(() => {
+    console.log('[App] Initializing...', {
+      isTelegram: isTelegramWebApp(),
+      isVK: isVKWebApp(),
+      url: window.location.href,
+      pathname: window.location.pathname
+    })
+  }, [])
+
   return (
-    <QueryClientProvider client={queryClient}>
-      <I18nProvider>
-        <NewYearProvider>
-          <ToastProvider>
-            <Router>
-            <TelegramAuthHandler />
-            <VKAuthHandler />
-            <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/onboarding" element={<Onboarding />} />
-            <Route path="/" element={<Layout />}>
-              <Route index element={<Dashboard />} />
-              <Route path="transactions" element={<Transactions />} />
-              <Route path="accounts" element={<Accounts />} />
-              <Route path="categories" element={<Categories />} />
-              <Route path="goals" element={<Goals />} />
-              <Route path="reports" element={
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <ErrorBoundary>
+          <I18nProvider>
+            <ErrorBoundary>
+              <NewYearProvider>
                 <ErrorBoundary>
-                  <Reports />
+                  <ToastProvider>
+                    <ErrorBoundary>
+                      <Router>
+                        <ErrorBoundary>
+                          <TelegramAuthHandler />
+                        </ErrorBoundary>
+                        <ErrorBoundary>
+                          <VKAuthHandler />
+                        </ErrorBoundary>
+                        <ErrorBoundary>
+                          <Routes>
+                            <Route path="/login" element={<Login />} />
+                            <Route path="/register" element={<Register />} />
+                            <Route path="/onboarding" element={<Onboarding />} />
+                            <Route path="/" element={<Layout />}>
+                              <Route index element={<Dashboard />} />
+                              <Route path="transactions" element={<Transactions />} />
+                              <Route path="accounts" element={<Accounts />} />
+                              <Route path="categories" element={<Categories />} />
+                              <Route path="goals" element={<Goals />} />
+                              <Route path="reports" element={
+                                <ErrorBoundary>
+                                  <Reports />
+                                </ErrorBoundary>
+                              } />
+                              <Route path="shared-budgets" element={<SharedBudgets />} />
+                              <Route path="profile" element={<Profile />} />
+                              <Route path="statistics" element={<Statistics />} />
+                              <Route path="analytics" element={<Analytics />} />
+                              <Route path="import" element={<Import />} />
+                              <Route path="about" element={<About />} />
+                              <Route path="achievements" element={<Achievements />} />
+                              <Route path="quests" element={<Quests />} />
+                            </Route>
+                          </Routes>
+                        </ErrorBoundary>
+                      </Router>
+                    </ErrorBoundary>
+                  </ToastProvider>
                 </ErrorBoundary>
-              } />
-              <Route path="shared-budgets" element={<SharedBudgets />} />
-              <Route path="profile" element={<Profile />} />
-              <Route path="statistics" element={<Statistics />} />
-              <Route path="analytics" element={<Analytics />} />
-              <Route path="import" element={<Import />} />
-              <Route path="about" element={<About />} />
-              <Route path="achievements" element={<Achievements />} />
-              <Route path="quests" element={<Quests />} />
-            </Route>
-          </Routes>
-        </Router>
-          </ToastProvider>
-        </NewYearProvider>
-      </I18nProvider>
-    </QueryClientProvider>
+              </NewYearProvider>
+            </ErrorBoundary>
+          </I18nProvider>
+        </ErrorBoundary>
+      </QueryClientProvider>
+    </ErrorBoundary>
   )
 }
 
