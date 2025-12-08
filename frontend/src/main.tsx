@@ -2,7 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import './styles/index.css'
-import { initTelegramWebApp, isTelegramWebApp } from './utils/telegram'
+import { initTelegramWebApp } from './utils/telegram'
 import { initVKWebApp } from './utils/vk'
 import { storageSync, initStorage } from './utils/storage'
 
