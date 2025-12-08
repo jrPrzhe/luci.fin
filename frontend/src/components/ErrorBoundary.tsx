@@ -31,6 +31,9 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo)
+    // Всегда логируем ошибки, даже в продакшене
+    console.error('Error stack:', error.stack)
+    console.error('Component stack:', errorInfo.componentStack)
     this.setState({
       error,
       errorInfo,
@@ -62,7 +65,7 @@ export class ErrorBoundary extends Component<Props, State> {
             >
               Перезагрузить страницу
             </button>
-            {import.meta.env.DEV && this.state.errorInfo && (
+            {this.state.errorInfo && (
               <details className="mt-4 text-left">
                 <summary className="cursor-pointer text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
                   Детали ошибки
