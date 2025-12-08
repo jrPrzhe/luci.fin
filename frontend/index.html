@@ -7,11 +7,8 @@
     <meta name="color-scheme" content="light dark" />
     <title>Люся.Бюджет - Все посчитала</title>
     <!-- Telegram Web App SDK -->
-    <!-- Загружаем скрипт асинхронно, но не блокируем рендеринг -->
-    <script src="https://telegram.org/js/telegram-web-app.js" 
-            async
-            onerror="console.warn('Failed to load Telegram WebApp SDK'); this.setAttribute('data-error', 'true');"
-            onload="console.log('Telegram WebApp SDK loaded successfully'); this.setAttribute('data-loaded', 'true');"></script>
+    <!-- Используем defer чтобы скрипт загружался параллельно, но выполнялся после парсинга HTML -->
+    <script src="https://telegram.org/js/telegram-web-app.js" defer></script>
   </head>
   <body>
     <div id="root"></div>
