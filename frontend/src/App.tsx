@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { storageSync } from './utils/storage'
 import { Layout } from './components/Layout'
 import { Dashboard } from './pages/Dashboard'
 import { Transactions } from './pages/Transactions'
@@ -75,6 +76,41 @@ function TelegramAuthHandler() {
             setIsChecking(false)
           }
           return
+        }
+
+        // PRIORITY: Если уже есть валидный токен И мы НЕ в Telegram, НЕ пытаемся авторизоваться через Telegram
+        // Это предотвращает повторные попытки авторизации после успешной авторизации через ВК
+        const existingToken = storageSync.getItem('token')
+        if (existingToken) {
+          try {
+            // Быстрая проверка токена - если он валиден, не пытаемся авторизоваться
+            const user = await api.getCurrentUser()
+            if (user && mounted) {
+              // Дополнительная проверка: если мы в ВК, точно не пытаемся авторизоваться через Telegram
+              const stillIsVK = isVKWebApp()
+              if (stillIsVK) {
+                console.log('[TelegramAuthHandler] VK detected with valid token, skipping Telegram auth check')
+                clearTimeout(timeoutId)
+                setIsChecking(false)
+                return
+              }
+              
+              // Если токен валиден и мы не в ВК, но и не в Telegram, тоже не пытаемся
+              const stillIsTelegram = isTelegramWebApp()
+              if (!stillIsTelegram) {
+                console.log('[TelegramAuthHandler] Valid token exists and not in Telegram, skipping Telegram auth check')
+                clearTimeout(timeoutId)
+                setIsChecking(false)
+                return
+              }
+              
+              // Если токен валиден и мы в Telegram, продолжаем проверку (может быть другой пользователь)
+              console.log('[TelegramAuthHandler] Valid token exists but in Telegram, will verify user match')
+            }
+          } catch (error) {
+            // Токен невалиден, продолжаем проверку
+            console.log('[TelegramAuthHandler] Existing token invalid, will check Telegram auth')
+          }
         }
 
         // Проверяем, находимся ли мы в Telegram Mini App
@@ -336,7 +372,32 @@ function TelegramAuthHandler() {
       }
     }
 
-    // Запускаем проверку
+    // PRIORITY: Проверяем платформу ПЕРЕД запуском проверки
+    // Это предотвращает повторные попытки авторизации после успешной авторизации через ВК
+    const isVK = isVKWebApp()
+    if (isVK) {
+      console.log('[TelegramAuthHandler] VK detected in useEffect, skipping Telegram auth check')
+      if (mounted) {
+        setIsChecking(false)
+      }
+      return
+    }
+    
+    // Если есть валидный токен и мы не в Telegram, не запускаем проверку
+    const existingToken = storageSync.getItem('token')
+    if (existingToken) {
+      // Быстрая проверка: если мы не в Telegram, точно не запускаем
+      const isTelegram = isTelegramWebApp()
+      if (!isTelegram) {
+        console.log('[TelegramAuthHandler] Valid token exists and not in Telegram, skipping Telegram auth check')
+        if (mounted) {
+          setIsChecking(false)
+        }
+        return
+      }
+    }
+    
+    // Запускаем проверку только если нужно
     checkTelegramAuth()
 
     return () => {
