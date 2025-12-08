@@ -66,6 +66,17 @@ function TelegramAuthHandler() {
           }
         }, 5000)
 
+        // PRIORITY: Если мы в VK, НЕ запускаем Telegram auth handler
+        const isVK = isVKWebApp()
+        if (isVK) {
+          console.log('[TelegramAuthHandler] VK detected, skipping Telegram auth check')
+          if (mounted) {
+            clearTimeout(timeoutId)
+            setIsChecking(false)
+          }
+          return
+        }
+
         // Проверяем, находимся ли мы в Telegram Mini App
         // Используем улучшенную функцию определения
         const isTelegram = isTelegramWebApp()
@@ -315,8 +326,11 @@ function TelegramAuthHandler() {
         }
       } finally {
         // Гарантируем, что isChecking всегда устанавливается в false
-        if (mounted && timeoutId) {
-          clearTimeout(timeoutId)
+        if (mounted) {
+          if (timeoutId) {
+            clearTimeout(timeoutId)
+          }
+          setIsChecking(false)
         }
         console.log('[TelegramAuthHandler] Auth check completed, isChecking:', false)
       }

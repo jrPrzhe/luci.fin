@@ -75,7 +75,8 @@ export function Layout() {
       let token = storageSync.getItem('token')
       
       // Если не нашли синхронно и это Telegram/VK, пробуем асинхронно (с коротким таймаутом)
-      if (!token && (isTelegramWebApp() || isVKWebApp())) {
+      const isMiniApp = isTelegramWebApp() || isVKWebApp()
+      if (!token && isMiniApp) {
         try {
           const { default: storage } = await import('../utils/storage')
           token = await Promise.race([
@@ -88,6 +89,15 @@ export function Layout() {
       }
       
       if (!token) {
+        // Для Web версии (не Mini App) сразу редиректим на логин
+        if (!isMiniApp) {
+          setIsAuthorized(false)
+          setIsCheckingAuth(false)
+          navigate('/login')
+          return
+        }
+        
+        // Для Mini App даем время на авторизацию
         // Сохраняем текущий путь для редиректа после авторизации
         const returnTo = location.pathname
         // Даем небольшое время на авторизацию через Mini App (Telegram/VK)
@@ -109,6 +119,37 @@ export function Layout() {
       try {
         const user = await api.getCurrentUser()
         if (user) {
+          // Сразу проверяем флаг justLoggedIn после успешной авторизации (до установки isAuthorized)
+          const justLoggedIn = sessionStorage.getItem('justLoggedIn') === 'true'
+          if (justLoggedIn) {
+            // Проверяем, является ли пользователь новым или существующим
+            const accounts = await api.getAccounts().catch(() => [])
+            const hasAccounts = Array.isArray(accounts) && accounts.length > 0
+            const isExistingUser = hasAccounts
+            
+            if (isExistingUser) {
+              // Для существующих пользователей - только приветствие, без онбординга
+              storageSync.setItem('onboarding_completed', 'true')
+              setUserName(user.first_name || user.username || 'Пользователь')
+              setShowWelcome(true)
+              sessionStorage.removeItem('justLoggedIn')
+            } else {
+              // Для новых пользователей проверяем флаг онбординга
+              const onboardingCompleted = storageSync.getItem('onboarding_completed') === 'true'
+              if (!onboardingCompleted) {
+                // Показываем онбординг для новых пользователей
+                sessionStorage.removeItem('justLoggedIn')
+                setIsCheckingAuth(false)
+                navigate('/onboarding')
+                return
+              } else {
+                setUserName(user.first_name || user.username || 'Пользователь')
+                setShowWelcome(true)
+                sessionStorage.removeItem('justLoggedIn')
+              }
+            }
+          }
+          // Устанавливаем авторизацию после проверки приветствия
           setIsAuthorized(true)
         } else {
           setIsAuthorized(false)
@@ -136,47 +177,9 @@ export function Layout() {
     return () => clearTimeout(timeout)
   }, [navigate, location.pathname, showWelcome, isCheckingAuth, isAuthorized])
 
-  // Проверяем флаг justLoggedIn отдельно
-  useEffect(() => {
-    if (isAuthorized && !showWelcome) {
-      const justLoggedIn = sessionStorage.getItem('justLoggedIn') === 'true'
-      if (justLoggedIn) {
-        // Проверяем, является ли пользователь новым или существующим
-        Promise.all([
-          api.getCurrentUser(),
-          api.getAccounts().catch(() => []), // Если ошибка, считаем что нет счетов
-        ]).then(([user, accounts]) => {
-          if (user) {
-            setUserName(user.first_name || user.username || 'Пользователь')
-            
-            // Проверяем, является ли пользователь существующим
-            // Если есть счета (больше чем дефолтный), значит пользователь существующий
-            const hasAccounts = Array.isArray(accounts) && accounts.length > 0
-            const isExistingUser = hasAccounts
-            
-            if (isExistingUser) {
-              // Для существующих пользователей - только приветствие, без онбординга
-              // Устанавливаем флаг онбординга, чтобы больше не показывать
-              storageSync.setItem('onboarding_completed', 'true')
-              setShowWelcome(true)
-              sessionStorage.removeItem('justLoggedIn')
-            } else {
-              // Для новых пользователей проверяем флаг онбординга
-              const onboardingCompleted = storageSync.getItem('onboarding_completed') === 'true'
-              if (!onboardingCompleted) {
-                // Показываем онбординг для новых пользователей
-                navigate('/onboarding')
-                sessionStorage.removeItem('justLoggedIn')
-              } else {
-                setShowWelcome(true)
-                sessionStorage.removeItem('justLoggedIn')
-              }
-            }
-          }
-        }).catch(console.error)
-      }
-    }
-  }, [isAuthorized, showWelcome, navigate])
+  // Проверяем флаг justLoggedIn сразу после авторизации (до рендеринга Layout)
+  // Проверка justLoggedIn теперь происходит сразу после успешной авторизации в checkAuth
+  // Это обеспечивает показ приветствия сразу после загрузки, до главного меню
 
   // Отслеживаем появление токена для обновления авторизации (особенно важно для Mini App)
   useEffect(() => {
@@ -209,7 +212,8 @@ export function Layout() {
       let token: string | null = storageSync.getItem('token')
       
       // Если не нашли синхронно и это Telegram/VK, пробуем асинхронно (с таймаутом)
-      if (!token && (isTelegramWebApp() || isVKWebApp())) {
+      const isMiniApp = isTelegramWebApp() || isVKWebApp()
+      if (!token && isMiniApp) {
         try {
           const { default: storage } = await import('../utils/storage')
           token = await Promise.race([
@@ -221,33 +225,66 @@ export function Layout() {
         }
       }
       
+      // Для Web версии (не Mini App) без токена сразу редиректим на логин
+      if (!token && !isMiniApp && isAuthorized === null) {
+        if (checkCount >= 2) { // Быстрее для Web версии
+          setIsAuthorized(false)
+          navigate('/login')
+        }
+        return
+      }
+      
       if (token && (isAuthorized === false || isAuthorized === null)) {
         // Токен появился, проверяем авторизацию
         setIsCheckingAuth(true)
-        api.getCurrentUser()
-          .then(user => {
-            if (user) {
-              setIsAuthorized(true)
-              setIsCheckingAuth(false)
-              const justLoggedIn = sessionStorage.getItem('justLoggedIn') === 'true'
-              if (justLoggedIn && !showWelcome) {
+        try {
+          const user = await api.getCurrentUser()
+          if (user) {
+            // Сразу проверяем флаг justLoggedIn после успешной авторизации (до установки isAuthorized)
+            const justLoggedIn = sessionStorage.getItem('justLoggedIn') === 'true'
+            if (justLoggedIn && !showWelcome) {
+              // Проверяем, является ли пользователь новым или существующим
+              const accounts = await api.getAccounts().catch(() => [])
+              const hasAccounts = Array.isArray(accounts) && accounts.length > 0
+              const isExistingUser = hasAccounts
+              
+              if (isExistingUser) {
+                // Для существующих пользователей - только приветствие, без онбординга
+                storageSync.setItem('onboarding_completed', 'true')
                 setUserName(user.first_name || user.username || 'Пользователь')
                 setShowWelcome(true)
                 sessionStorage.removeItem('justLoggedIn')
+              } else {
+                // Для новых пользователей проверяем флаг онбординга
+                const onboardingCompleted = storageSync.getItem('onboarding_completed') === 'true'
+                if (!onboardingCompleted) {
+                  // Показываем онбординг для новых пользователей
+                  sessionStorage.removeItem('justLoggedIn')
+                  setIsCheckingAuth(false)
+                  navigate('/onboarding')
+                  return
+                } else {
+                  setUserName(user.first_name || user.username || 'Пользователь')
+                  setShowWelcome(true)
+                  sessionStorage.removeItem('justLoggedIn')
+                }
               }
-            } else {
-              setIsCheckingAuth(false)
-              setIsAuthorized(false)
             }
-          })
-          .catch(error => {
-            console.error('Failed to verify token:', error)
+            // Устанавливаем авторизацию после проверки приветствия
+            setIsAuthorized(true)
+            setIsCheckingAuth(false)
+          } else {
             setIsCheckingAuth(false)
             setIsAuthorized(false)
-            // Если токен невалиден, удаляем его
-            storageSync.removeItem('token')
-            api.setToken(null)
-          })
+          }
+        } catch (error) {
+          console.error('Failed to verify token:', error)
+          setIsCheckingAuth(false)
+          setIsAuthorized(false)
+          // Если токен невалиден, удаляем его
+          storageSync.removeItem('token')
+          api.setToken(null)
+        }
       } else if (!token && isAuthorized === null) {
         // Нет токена и статус неизвестен - устанавливаем false после нескольких проверок
         if (checkCount >= 3) {
@@ -326,6 +363,7 @@ export function Layout() {
     }
   }, [isCheckingAuth, isAuthorized])
   
+  // Показываем загрузку во время проверки авторизации
   if (showAuthLoading && (isCheckingAuth && isAuthorized !== true) && 
       location.pathname !== '/onboarding' && 
       location.pathname !== '/login' && 
@@ -341,16 +379,17 @@ export function Layout() {
   }
   
   // Если авторизация неизвестна, но проверка не идет - не блокируем, пусть Layout рендерится
-  // Это важно для Telegram Mini App, где авторизация может происходить в фоне
+  // Это важно для Telegram Mini App, где авторизация происходит асинхронно через auth handlers
 
   // Если на странице онбординга и не авторизован, показываем онбординг
   if (location.pathname === '/onboarding' && !isAuthorized) {
     return null // Онбординг сам обработает навигацию
   }
 
-  // Показываем приветствие после авторизации (только если онбординг пройден)
-  if (showWelcome) {
-    const onboardingCompleted = localStorage.getItem('onboarding_completed') === 'true'
+  // Показываем приветствие сразу после авторизации (до главного меню)
+  // Приоритет: приветствие показывается перед Layout
+  if (showWelcome && isAuthorized === true) {
+    const onboardingCompleted = storageSync.getItem('onboarding_completed') === 'true'
     if (onboardingCompleted) {
       return <Welcome userName={userName} onComplete={handleWelcomeComplete} />
     }
@@ -449,7 +488,7 @@ export function Layout() {
         <div className="p-3 border-t border-telegram-border dark:border-telegram-dark-border space-y-2 overflow-hidden">
           {/* Language Toggle */}
           <div className="w-full flex items-center p-2 rounded-telegram hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors overflow-hidden">
-            <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden pr-2">
+            <div className="flex items-center gap-2 min-w-0 overflow-hidden pr-2" style={{ flex: '1 1 0', maxWidth: 'calc(100% - 7.5rem)' }}>
               <span className="text-xl flex-shrink-0">🌍</span>
               <div className="min-w-0 flex-1 overflow-hidden">
                 <p className="font-medium text-xs text-telegram-text dark:text-telegram-dark-text truncate">{t.profile.language}</p>
@@ -458,10 +497,10 @@ export function Layout() {
                 </p>
               </div>
             </div>
-            <div className="flex gap-1.5 flex-shrink-0" style={{ width: '7rem' }}>
+            <div className="flex gap-1.5 flex-shrink-0" style={{ width: '7rem', minWidth: '7rem', flexShrink: 0 }}>
               <button
                 onClick={() => setLanguage('ru')}
-                className={`w-[3rem] px-1.5 py-1 rounded-telegram text-xs font-medium transition-colors whitespace-nowrap overflow-hidden ${
+                className={`w-[3rem] min-w-[3rem] max-w-[3rem] px-1.5 py-1 rounded-telegram text-xs font-medium transition-colors whitespace-nowrap overflow-hidden ${
                   language === 'ru'
                     ? 'bg-telegram-primary text-white dark:bg-telegram-dark-primary'
                     : 'bg-telegram-border hover:bg-telegram-hover dark:bg-telegram-dark-border dark:hover:bg-telegram-dark-hover'
@@ -471,7 +510,7 @@ export function Layout() {
               </button>
               <button
                 onClick={() => setLanguage('en')}
-                className={`w-[3rem] px-1.5 py-1 rounded-telegram text-xs font-medium transition-colors whitespace-nowrap overflow-hidden ${
+                className={`w-[3rem] min-w-[3rem] max-w-[3rem] px-1.5 py-1 rounded-telegram text-xs font-medium transition-colors whitespace-nowrap overflow-hidden ${
                   language === 'en'
                     ? 'bg-telegram-primary text-white dark:bg-telegram-dark-primary'
                     : 'bg-telegram-border hover:bg-telegram-hover dark:bg-telegram-dark-border dark:hover:bg-telegram-dark-hover'
