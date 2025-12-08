@@ -51,17 +51,20 @@ function TelegramAuthHandler() {
 
     const checkTelegramAuth = async () => {
       try {
-        // Timeout after 5 seconds (достаточно для авторизации)
+        // Timeout after 3 seconds (уменьшено для более быстрого отклика)
         timeoutId = setTimeout(() => {
           if (mounted) {
             console.warn('[TelegramAuthHandler] Auth check timeout')
             setIsChecking(false)
           }
-        }, 5000)
+        }, 3000)
 
         // Если не в Telegram Mini App, пропускаем проверку
         if (!isTelegramWebApp()) {
-          if (mounted) setIsChecking(false)
+          if (mounted) {
+            clearTimeout(timeoutId)
+            setIsChecking(false)
+          }
           return
         }
 
@@ -246,6 +249,15 @@ function TelegramAuthHandler() {
         if (mounted) {
           clearTimeout(timeoutId)
           setIsChecking(false)
+          // При ошибке на других страницах редиректим на логин
+          if (location.pathname !== '/login' && location.pathname !== '/register') {
+            navigate('/login')
+          }
+        }
+      } finally {
+        // Гарантируем, что isChecking всегда устанавливается в false
+        if (mounted && timeoutId) {
+          clearTimeout(timeoutId)
         }
       }
     }
@@ -260,14 +272,16 @@ function TelegramAuthHandler() {
   }, [navigate, location.pathname])
 
   // Показываем загрузку только на страницах логина/регистрации и если проверяем
+  // НО с таймаутом - не показываем загрузку дольше 3 секунд
   if (isChecking && (location.pathname === '/login' || location.pathname === '/register')) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-telegram-bg">
+      <div className="min-h-screen flex items-center justify-center bg-telegram-bg dark:bg-telegram-dark-bg">
         <LoadingSpinner fullScreen={false} size="md" />
       </div>
     )
   }
 
+  // На других страницах не блокируем рендеринг - проверка идет в фоне
   return null
 }
 

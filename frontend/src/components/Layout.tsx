@@ -72,15 +72,29 @@ export function Layout() {
       
       // Используем storageSync вместо прямого localStorage
       // Для VK и Telegram это будет работать через их хранилища
-      const token = storageSync.getItem('token')
+      let token = storageSync.getItem('token')
+      
+      // Если не нашли синхронно и это Telegram/VK, пробуем асинхронно (с коротким таймаутом)
+      if (!token && (isTelegramWebApp() || isVKWebApp())) {
+        try {
+          const { default: storage } = await import('../utils/storage')
+          token = await Promise.race([
+            storage.getItem('token'),
+            new Promise<string | null>((resolve) => setTimeout(() => resolve(null), 500)) // Таймаут 500мс
+          ])
+        } catch (error) {
+          console.warn('[Layout] Failed to get token from Cloud Storage:', error)
+        }
+      }
       
       if (!token) {
         // Сохраняем текущий путь для редиректа после авторизации
         const returnTo = location.pathname
-        // Даем время на авторизацию через Mini App (Telegram/VK)
-        // Если через 2 секунды токен не появился, редиректим на логин
+        // Даем небольшое время на авторизацию через Mini App (Telegram/VK)
+        // Если через 1 секунду токен не появился, редиректим на логин
         setTimeout(() => {
-          if (!storageSync.getItem('token')) {
+          const finalToken = storageSync.getItem('token')
+          if (!finalToken) {
             setIsAuthorized(false)
             setIsCheckingAuth(false)
             navigate(`/login?returnTo=${encodeURIComponent(returnTo)}`)
@@ -88,7 +102,7 @@ export function Layout() {
             // Токен появился, проверяем его
             checkAuth()
           }
-        }, 2000)
+        }, 1000) // Уменьшено с 2 секунд до 1 секунды
         return
       }
 
@@ -294,7 +308,9 @@ export function Layout() {
 
   // Показываем загрузку во время проверки авторизации
   // НЕ показываем загрузку на странице онбординга и логина/регистрации
-  if ((isAuthorized === null || (isCheckingAuth && isAuthorized !== true)) && 
+  // НО только если проверка активно идет (isCheckingAuth), а не просто isAuthorized === null
+  // Это предотвращает бесконечную загрузку, если что-то пошло не так
+  if ((isCheckingAuth && isAuthorized !== true) && 
       location.pathname !== '/onboarding' && 
       location.pathname !== '/login' && 
       location.pathname !== '/register') {
@@ -307,6 +323,9 @@ export function Layout() {
       </div>
     )
   }
+  
+  // Если авторизация неизвестна, но проверка не идет - не блокируем, пусть Layout рендерится
+  // Это важно для Telegram Mini App, где авторизация может происходить в фоне
 
   // Если на странице онбординга и не авторизован, показываем онбординг
   if (location.pathname === '/onboarding' && !isAuthorized) {
