@@ -51,7 +51,7 @@ export function isVKWebApp(): boolean {
   // Проверка через VK Bridge (если доступен)
   // На мобильных устройствах ВК Bridge может быть доступен даже без параметров в URL
   try {
-    if (window.vkBridge) {
+    if ((window as any).vkBridge) {
       console.log('[isVKWebApp] VK Bridge detected')
       return true
     }
