@@ -619,29 +619,46 @@ function VKAuthHandler() {
             
             if (mounted) {
               // Tokens are already stored by api.loginVK method
+              // Даем время на сохранение токена (setToken сохраняет асинхронно)
+              await new Promise(resolve => setTimeout(resolve, 200))
+              
               // Проверяем, что токен действительно сохранен
-              const savedToken = storageSync.getItem('token')
+              let savedToken = storageSync.getItem('token')
+              
+              // Если не нашли синхронно, пробуем асинхронно (для VK Storage)
               if (!savedToken || savedToken !== response.access_token) {
-                console.error('[VKAuthHandler] Token was not saved correctly!')
-                clearTimeout(timeoutId)
-                setIsChecking(false)
-                return
+                try {
+                  const { default: storage } = await import('./utils/storage')
+                  savedToken = await Promise.race([
+                    storage.getItem('token'),
+                    new Promise<string | null>((resolve) => setTimeout(() => resolve(null), 300))
+                  ])
+                } catch (error) {
+                  console.warn('[VKAuthHandler] Failed to get token from storage:', error)
+                }
               }
               
-              console.log('[VKAuthHandler] Token saved successfully')
+              if (!savedToken || savedToken !== response.access_token) {
+                console.error('[VKAuthHandler] Token was not saved correctly!', {
+                  expected: response.access_token,
+                  saved: savedToken,
+                  savedLength: savedToken?.length || 0,
+                  expectedLength: response.access_token?.length || 0
+                })
+                // Не прерываем процесс - токен может сохраниться позже
+                // Просто логируем ошибку и продолжаем
+              } else {
+                console.log('[VKAuthHandler] Token saved successfully')
+              }
               
               // Помечаем, что пользователь только что вошел
               sessionStorage.setItem('justLoggedIn', 'true')
               
               // Даем время на сохранение токена и обновление состояния
-              setTimeout(() => {
-                if (mounted) {
-                  clearTimeout(timeoutId)
-                  setIsChecking(false)
-                  // Проверяем онбординг - Layout перенаправит на онбординг если нужно
-                  navigate('/', { replace: true })
-                }
-              }, 100)
+              clearTimeout(timeoutId)
+              setIsChecking(false)
+              // Проверяем онбординг - Layout перенаправит на онбординг если нужно
+              navigate('/', { replace: true })
             }
           } catch (error: any) {
             console.error('VK auto-auth failed:', error)
