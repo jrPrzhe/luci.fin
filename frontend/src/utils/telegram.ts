@@ -128,9 +128,11 @@ export function isTelegramWebApp(): boolean {
       return false
     }
 
+    // Get URL params once - reuse for all checks
+    const urlParams = new URLSearchParams(window.location.search)
+
     // PRIORITY CHECK: If VK parameters are in URL, we're NOT in Telegram
     // VK Mini Apps can sometimes have Telegram SDK loaded, but we should prioritize VK
-    const urlParams = new URLSearchParams(window.location.search)
     if (urlParams.has('vk_user_id') || urlParams.has('vk_app_id')) {
       // Definitely VK, not Telegram
       return false
@@ -148,7 +150,6 @@ export function isTelegramWebApp(): boolean {
     }
 
     // Method 2: Check URL parameters (Telegram Mini Apps often have tgWebAppData or similar)
-    const urlParams = new URLSearchParams(window.location.search)
     if (urlParams.has('tgWebAppData') || urlParams.has('tgWebAppStartParam')) {
       if (!(window as any).__telegramDetected) {
         console.log('[isTelegramWebApp] Detected via URL parameters')
