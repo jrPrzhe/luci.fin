@@ -119,12 +119,50 @@ declare global {
 
 /**
  * Check if app is running inside Telegram
+ * Uses multiple detection methods for reliability
  */
 export function isTelegramWebApp(): boolean {
   try {
-    return typeof window !== 'undefined' && !!window.Telegram?.WebApp
+    if (typeof window === 'undefined') {
+      return false
+    }
+
+    // Method 1: Check if Telegram WebApp object exists (most reliable)
+    if (window.Telegram?.WebApp) {
+      console.log('[isTelegramWebApp] Detected via window.Telegram.WebApp')
+      return true
+    }
+
+    // Method 2: Check URL parameters (Telegram Mini Apps often have tgWebAppData or similar)
+    const urlParams = new URLSearchParams(window.location.search)
+    if (urlParams.has('tgWebAppData') || urlParams.has('tgWebAppStartParam')) {
+      console.log('[isTelegramWebApp] Detected via URL parameters')
+      return true
+    }
+
+    // Method 3: Check user agent (Telegram WebView has specific user agent)
+    const userAgent = navigator.userAgent || ''
+    if (userAgent.includes('Telegram') || userAgent.includes('WebApp')) {
+      console.log('[isTelegramWebApp] Detected via user agent:', userAgent)
+      return true
+    }
+
+    // Method 4: Check referrer (Telegram Mini Apps are opened from telegram.org)
+    const referrer = document.referrer || ''
+    if (referrer.includes('telegram.org') || referrer.includes('t.me')) {
+      console.log('[isTelegramWebApp] Detected via referrer:', referrer)
+      return true
+    }
+
+    // Method 5: Check if we're in an iframe (Telegram Mini Apps are often in iframes)
+    // Note: This is less reliable as many apps use iframes
+    // if (window.self !== window.top) {
+    //   console.log('[isTelegramWebApp] Running in iframe (possible Telegram Mini App)')
+    // }
+
+    return false
   } catch (error) {
-    console.warn('[isTelegramWebApp] Error checking Telegram WebApp:', error)
+    console.error('[isTelegramWebApp] Error checking Telegram WebApp:', error)
     return false
   }
 }
@@ -145,19 +183,93 @@ export function getTelegramWebApp() {
 }
 
 /**
+ * Wait for Telegram Web App SDK script to load
+ * Returns true when Telegram WebApp is available, false after timeout
+ */
+export async function waitForTelegramSDK(maxWaitMs: number = 5000): Promise<boolean> {
+  // If already available, return immediately
+  if (window.Telegram?.WebApp) {
+    console.log('[waitForTelegramSDK] Telegram SDK already loaded')
+    return true
+  }
+
+  // Check if script tag exists
+  const scriptTag = document.querySelector('script[src*="telegram-web-app.js"]')
+  if (!scriptTag) {
+    console.warn('[waitForTelegramSDK] Telegram Web App SDK script tag not found in HTML')
+    // Still wait a bit in case it's loaded dynamically
+  }
+
+  const startTime = Date.now()
+  const checkInterval = 50 // Check every 50ms
+
+  return new Promise((resolve) => {
+    const checkSDK = () => {
+      if (window.Telegram?.WebApp) {
+        console.log('[waitForTelegramSDK] Telegram SDK loaded after', Date.now() - startTime, 'ms')
+        resolve(true)
+        return
+      }
+
+      if (Date.now() - startTime >= maxWaitMs) {
+        console.warn('[waitForTelegramSDK] Timeout: Telegram SDK not loaded after', maxWaitMs, 'ms')
+        console.warn('[waitForTelegramSDK] Debug info:', {
+          hasWindow: typeof window !== 'undefined',
+          hasTelegram: !!window.Telegram,
+          hasWebApp: !!window.Telegram?.WebApp,
+          userAgent: navigator.userAgent,
+          url: window.location.href,
+          referrer: document.referrer
+        })
+        resolve(false)
+        return
+      }
+
+      setTimeout(checkSDK, checkInterval)
+    }
+
+    // Start checking immediately
+    checkSDK()
+  })
+}
+
+/**
  * Initialize Telegram Web App
  * Call this early in your app initialization
+ * Now returns a Promise to allow async initialization
  */
-export function initTelegramWebApp() {
+export async function initTelegramWebApp(): Promise<boolean> {
+  console.log('[initTelegramWebApp] Starting initialization...')
+  
   try {
+    // First, wait for SDK to load if we detect we're in Telegram
+    const isTelegram = isTelegramWebApp()
+    console.log('[initTelegramWebApp] isTelegramWebApp() returned:', isTelegram)
+    
+    if (isTelegram) {
+      console.log('[initTelegramWebApp] Detected Telegram environment, waiting for SDK...')
+      const sdkLoaded = await waitForTelegramSDK(5000)
+      
+      if (!sdkLoaded) {
+        console.error('[initTelegramWebApp] Telegram SDK failed to load after timeout')
+        console.error('[initTelegramWebApp] This might cause issues with Telegram Mini App functionality')
+        // Continue anyway - app should still work
+      }
+    }
+
     const webApp = getTelegramWebApp()
     if (!webApp) {
-      return
+      console.warn('[initTelegramWebApp] Telegram WebApp not available after waiting')
+      console.warn('[initTelegramWebApp] App will continue but Telegram-specific features may not work')
+      return false
     }
+
+    console.log('[initTelegramWebApp] Telegram WebApp found, initializing...')
 
     // Expand to full height
     try {
       webApp.expand()
+      console.log('[initTelegramWebApp] Expanded to full height')
     } catch (error) {
       console.warn('[initTelegramWebApp] Failed to expand:', error)
     }
@@ -177,6 +289,7 @@ export function initTelegramWebApp() {
       if (themeParams && themeParams.button_text_color) {
         document.documentElement.style.setProperty('--tg-theme-button-text-color', themeParams.button_text_color)
       }
+      console.log('[initTelegramWebApp] Theme colors set')
     } catch (error) {
       console.warn('[initTelegramWebApp] Failed to set theme colors:', error)
     }
@@ -184,11 +297,16 @@ export function initTelegramWebApp() {
     // Notify Telegram that app is ready
     try {
       webApp.ready()
+      console.log('[initTelegramWebApp] Called ready()')
     } catch (error) {
       console.warn('[initTelegramWebApp] Failed to call ready():', error)
     }
+
+    console.log('[initTelegramWebApp] Initialization complete')
+    return true
   } catch (error) {
     console.error('[initTelegramWebApp] Initialization error:', error)
+    return false
   }
 }
 

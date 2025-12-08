@@ -50,23 +50,64 @@ function TelegramAuthHandler() {
     let timeoutId: ReturnType<typeof setTimeout>
 
     const checkTelegramAuth = async () => {
+      console.log('[TelegramAuthHandler] Starting auth check...', {
+        pathname: location.pathname,
+        url: window.location.href,
+        hasTelegramSDK: !!window.Telegram?.WebApp,
+        timestamp: new Date().toISOString()
+      })
+
       try {
-        // Timeout after 3 seconds (уменьшено для более быстрого отклика)
+        // Timeout after 5 seconds (увеличено для Telegram, так как SDK может загружаться)
         timeoutId = setTimeout(() => {
           if (mounted) {
-            console.warn('[TelegramAuthHandler] Auth check timeout')
+            console.warn('[TelegramAuthHandler] Auth check timeout after 5 seconds')
             setIsChecking(false)
           }
-        }, 3000)
+        }, 5000)
 
-        // Если не в Telegram Mini App, пропускаем проверку
-        // Проверяем один раз - если скрипт еще не загрузился, приложение все равно должно работать
-        if (!isTelegramWebApp()) {
+        // Проверяем, находимся ли мы в Telegram Mini App
+        // Используем улучшенную функцию определения
+        const isTelegram = isTelegramWebApp()
+        console.log('[TelegramAuthHandler] isTelegramWebApp() returned:', isTelegram)
+        
+        if (!isTelegram) {
+          console.log('[TelegramAuthHandler] Not in Telegram Mini App, skipping auth check')
           if (mounted) {
             clearTimeout(timeoutId)
             setIsChecking(false)
           }
           return
+        }
+
+        // Если мы в Telegram, но SDK еще не загрузился, ждем немного
+        if (!window.Telegram?.WebApp) {
+          console.warn('[TelegramAuthHandler] In Telegram but SDK not loaded yet, waiting...')
+          // Ждем до 2 секунд для загрузки SDK
+          let waited = 0
+          const maxWait = 2000
+          const checkInterval = 100
+          
+          while (!window.Telegram?.WebApp && waited < maxWait && mounted) {
+            await new Promise(resolve => setTimeout(resolve, checkInterval))
+            waited += checkInterval
+          }
+          
+          if (!window.Telegram?.WebApp) {
+            console.error('[TelegramAuthHandler] Telegram SDK still not loaded after waiting')
+            console.error('[TelegramAuthHandler] This is a critical error - Telegram Mini App may not work correctly')
+            if (mounted) {
+              clearTimeout(timeoutId)
+              setIsChecking(false)
+              // Показываем ошибку пользователю на странице логина
+              if (location.pathname === '/login' || location.pathname === '/register') {
+                // Ошибка будет показана через Login компонент
+              }
+            }
+            return
+          } else {
+            console.log('[TelegramAuthHandler] Telegram SDK loaded after waiting', waited, 'ms')
+          }
         }
 
         // На страницах логина/регистрации показываем загрузку
@@ -164,14 +205,17 @@ function TelegramAuthHandler() {
 
         // Автоматическая авторизация через Telegram Mini App
         // Ждем, пока Telegram WebApp будет готов и initData станет доступен
-        console.log('Telegram auto-auth check: waiting for initData...')
+        console.log('[TelegramAuthHandler] Telegram auto-auth check: waiting for initData...')
         const initData = await waitForInitData(5000) // Ждем до 5 секунд для полной инициализации
-        console.log('Telegram auto-auth check:', { 
+        console.log('[TelegramAuthHandler] Telegram auto-auth check result:', { 
           hasInitData: !!initData, 
           initDataLength: initData?.length || 0,
+          initDataPreview: initData ? initData.substring(0, 100) + '...' : null,
           isMiniApp: isTelegramWebApp(),
           currentPath: location.pathname,
-          hasToken: !!token
+          hasToken: !!token,
+          webAppVersion: window.Telegram?.WebApp?.version,
+          webAppPlatform: window.Telegram?.WebApp?.platform
         })
         
         if (initData && initData.length > 0) {
@@ -234,7 +278,14 @@ function TelegramAuthHandler() {
           }
         } else {
           // Нет initData - возможно, Mini App еще не инициализирован
-          console.warn('No initData available for Telegram auto-auth after waiting')
+          console.error('[TelegramAuthHandler] No initData available for Telegram auto-auth after waiting')
+          console.error('[TelegramAuthHandler] Debug info:', {
+            hasWebApp: !!window.Telegram?.WebApp,
+            initData: window.Telegram?.WebApp?.initData || 'empty',
+            initDataUnsafe: window.Telegram?.WebApp?.initDataUnsafe || null,
+            webAppVersion: window.Telegram?.WebApp?.version,
+            webAppPlatform: window.Telegram?.WebApp?.platform
+          })
           if (mounted) {
             clearTimeout(timeoutId)
             setIsChecking(false)
@@ -246,7 +297,14 @@ function TelegramAuthHandler() {
           }
         }
       } catch (error) {
-        console.error('Auth check error:', error)
+        console.error('[TelegramAuthHandler] Auth check error:', error)
+        console.error('[TelegramAuthHandler] Error stack:', error instanceof Error ? error.stack : 'No stack')
+        console.error('[TelegramAuthHandler] Error details:', {
+          message: error instanceof Error ? error.message : String(error),
+          name: error instanceof Error ? error.name : 'Unknown',
+          hasWebApp: !!window.Telegram?.WebApp,
+          url: window.location.href
+        })
         if (mounted) {
           clearTimeout(timeoutId)
           setIsChecking(false)
@@ -260,6 +318,7 @@ function TelegramAuthHandler() {
         if (mounted && timeoutId) {
           clearTimeout(timeoutId)
         }
+        console.log('[TelegramAuthHandler] Auth check completed, isChecking:', false)
       }
     }
 

@@ -203,19 +203,81 @@ export function Login() {
     // In Telegram Mini App - only Telegram auth, no choice
     if (isTelegram && !isVK) {
       if (authMethod === 'select') {
-        // Ждем, пока Telegram WebApp будет готов и initData станет доступен
-        waitForInitData(5000).then((initData) => {
-          if (initData && initData.length > 0) {
-            handleTelegramLogin()
-          } else {
-            showError('Не удалось получить данные Telegram. Убедитесь, что открыто через Telegram Mini App.')
-            setIsLoading(false)
+        console.log('[Login] Starting Telegram auto-login...')
+        
+        // Сначала проверяем, загружен ли Telegram SDK
+        if (!window.Telegram?.WebApp) {
+          console.error('[Login] Telegram SDK not loaded!')
+          console.error('[Login] Debug info:', {
+            hasWindow: typeof window !== 'undefined',
+            hasTelegram: !!window.Telegram,
+            hasWebApp: !!window.Telegram?.WebApp,
+            userAgent: navigator.userAgent,
+            url: window.location.href,
+            referrer: document.referrer
+          })
+          
+          // Ждем немного для загрузки SDK
+          const checkSDK = async () => {
+            let waited = 0
+            const maxWait = 3000
+            const checkInterval = 100
+            
+            while (!window.Telegram?.WebApp && waited < maxWait) {
+              await new Promise(resolve => setTimeout(resolve, checkInterval))
+              waited += checkInterval
+            }
+            
+            if (!window.Telegram?.WebApp) {
+              const errorMsg = 'Telegram Mini App SDK не загрузился. Проверьте подключение к интернету и попробуйте обновить страницу.'
+              console.error('[Login]', errorMsg)
+              showError(errorMsg)
+              setIsLoading(false)
+              return
+            }
+            
+            // SDK загрузился, продолжаем
+            console.log('[Login] Telegram SDK loaded after waiting', waited, 'ms')
+            proceedWithTelegramAuth()
           }
-        }).catch((error) => {
-          console.error('[Login] Failed to wait for Telegram initData:', error)
-          showError('Ошибка инициализации Telegram Mini App')
-          setIsLoading(false)
-        })
+          
+          checkSDK()
+        } else {
+          proceedWithTelegramAuth()
+        }
+        
+        function proceedWithTelegramAuth() {
+          // Ждем, пока Telegram WebApp будет готов и initData станет доступен
+          waitForInitData(5000).then((initData) => {
+            console.log('[Login] waitForInitData result:', {
+              hasInitData: !!initData,
+              initDataLength: initData?.length || 0
+            })
+            
+            if (initData && initData.length > 0) {
+              handleTelegramLogin()
+            } else {
+              const errorMsg = 'Не удалось получить данные авторизации Telegram. Убедитесь, что открыто через Telegram Mini App и попробуйте обновить страницу.'
+              console.error('[Login]', errorMsg)
+              console.error('[Login] Debug info:', {
+                hasWebApp: !!window.Telegram?.WebApp,
+                initData: window.Telegram?.WebApp?.initData || 'empty',
+                initDataUnsafe: window.Telegram?.WebApp?.initDataUnsafe || null
+              })
+              showError(errorMsg)
+              setIsLoading(false)
+            }
+          }).catch((error) => {
+            console.error('[Login] Failed to wait for Telegram initData:', error)
+            console.error('[Login] Error details:', {
+              message: error instanceof Error ? error.message : String(error),
+              stack: error instanceof Error ? error.stack : 'No stack'
+            })
+            const errorMsg = 'Ошибка инициализации Telegram Mini App. Попробуйте обновить страницу или обратитесь в поддержку.'
+            showError(errorMsg)
+            setIsLoading(false)
+          })
+        }
       }
     }
     // In VK Mini App - only VK auth, no choice
