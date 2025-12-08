@@ -7,13 +7,22 @@ import { initVKWebApp } from './utils/vk'
 import { storageSync, initStorage } from './utils/storage'
 
 // Initialize Telegram Web App if running inside Telegram
-initTelegramWebApp()
+try {
+  initTelegramWebApp()
+} catch (error) {
+  console.error('[main] Failed to initialize Telegram WebApp:', error)
+}
 
 // Initialize VK Web App if running inside VK
-initVKWebApp()
+try {
+  initVKWebApp()
+} catch (error) {
+  console.error('[main] Failed to initialize VK WebApp:', error)
+}
 
 // Инициализируем storage и загружаем данные из правильного хранилища
 // Важно: ждем завершения инициализации для Telegram/VK, чтобы токены были доступны
+// НО не блокируем рендеринг приложения
 initStorage().then(() => {
   console.log('[main] Storage initialized successfully')
 }).catch((error) => {
@@ -22,18 +31,45 @@ initStorage().then(() => {
 
 // Initialize theme from storage
 // Для VK и Telegram используем их хранилища, для веба - localStorage
-const savedTheme = storageSync.getItem('theme')
-if (savedTheme === 'dark') {
-  document.documentElement.classList.add('dark')
-} else if (savedTheme === 'light') {
-  document.documentElement.classList.remove('dark')
-} else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-  document.documentElement.classList.add('dark')
+try {
+  const savedTheme = storageSync.getItem('theme')
+  if (savedTheme === 'dark') {
+    document.documentElement.classList.add('dark')
+  } else if (savedTheme === 'light') {
+    document.documentElement.classList.remove('dark')
+  } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    document.documentElement.classList.add('dark')
+  }
+} catch (error) {
+  console.error('[main] Failed to initialize theme:', error)
 }
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-)
+// Рендерим приложение с обработкой ошибок
+try {
+  const rootElement = document.getElementById('root')
+  if (!rootElement) {
+    throw new Error('Root element not found')
+  }
+  
+  ReactDOM.createRoot(rootElement).render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>,
+  )
+} catch (error) {
+  console.error('[main] Failed to render app:', error)
+  // Показываем сообщение об ошибке пользователю
+  document.body.innerHTML = `
+    <div style="display: flex; align-items: center; justify-content: center; height: 100vh; padding: 20px; text-align: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+      <div>
+        <h1 style="font-size: 24px; margin-bottom: 16px;">Ошибка загрузки приложения</h1>
+        <p style="color: #666; margin-bottom: 8px;">Не удалось загрузить приложение.</p>
+        <p style="color: #999; font-size: 14px;">Пожалуйста, обновите страницу или попробуйте позже.</p>
+        <button onclick="window.location.reload()" style="margin-top: 16px; padding: 12px 24px; background: #3390EC; color: white; border: none; border-radius: 12px; cursor: pointer; font-size: 16px;">
+          Обновить страницу
+        </button>
+      </div>
+    </div>
+  `
+}
 

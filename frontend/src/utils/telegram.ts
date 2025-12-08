@@ -121,17 +121,27 @@ declare global {
  * Check if app is running inside Telegram
  */
 export function isTelegramWebApp(): boolean {
-  return typeof window !== 'undefined' && !!window.Telegram?.WebApp
+  try {
+    return typeof window !== 'undefined' && !!window.Telegram?.WebApp
+  } catch (error) {
+    console.warn('[isTelegramWebApp] Error checking Telegram WebApp:', error)
+    return false
+  }
 }
 
 /**
  * Get Telegram Web App instance
  */
 export function getTelegramWebApp() {
-  if (!isTelegramWebApp()) {
+  try {
+    if (!isTelegramWebApp()) {
+      return null
+    }
+    return window.Telegram?.WebApp || null
+  } catch (error) {
+    console.warn('[getTelegramWebApp] Error getting Telegram WebApp:', error)
     return null
   }
-  return window.Telegram!.WebApp
 }
 
 /**
@@ -139,31 +149,47 @@ export function getTelegramWebApp() {
  * Call this early in your app initialization
  */
 export function initTelegramWebApp() {
-  const webApp = getTelegramWebApp()
-  if (!webApp) {
-    return
-  }
+  try {
+    const webApp = getTelegramWebApp()
+    if (!webApp) {
+      return
+    }
 
-  // Expand to full height
-  webApp.expand()
+    // Expand to full height
+    try {
+      webApp.expand()
+    } catch (error) {
+      console.warn('[initTelegramWebApp] Failed to expand:', error)
+    }
 
-  // Set theme colors if available
-  const themeParams = webApp.themeParams
-  if (themeParams.bg_color) {
-    document.documentElement.style.setProperty('--tg-theme-bg-color', themeParams.bg_color)
-  }
-  if (themeParams.text_color) {
-    document.documentElement.style.setProperty('--tg-theme-text-color', themeParams.text_color)
-  }
-  if (themeParams.button_color) {
-    document.documentElement.style.setProperty('--tg-theme-button-color', themeParams.button_color)
-  }
-  if (themeParams.button_text_color) {
-    document.documentElement.style.setProperty('--tg-theme-button-text-color', themeParams.button_text_color)
-  }
+    // Set theme colors if available
+    try {
+      const themeParams = webApp.themeParams
+      if (themeParams && themeParams.bg_color) {
+        document.documentElement.style.setProperty('--tg-theme-bg-color', themeParams.bg_color)
+      }
+      if (themeParams && themeParams.text_color) {
+        document.documentElement.style.setProperty('--tg-theme-text-color', themeParams.text_color)
+      }
+      if (themeParams && themeParams.button_color) {
+        document.documentElement.style.setProperty('--tg-theme-button-color', themeParams.button_color)
+      }
+      if (themeParams && themeParams.button_text_color) {
+        document.documentElement.style.setProperty('--tg-theme-button-text-color', themeParams.button_text_color)
+      }
+    } catch (error) {
+      console.warn('[initTelegramWebApp] Failed to set theme colors:', error)
+    }
 
-  // Notify Telegram that app is ready
-  webApp.ready()
+    // Notify Telegram that app is ready
+    try {
+      webApp.ready()
+    } catch (error) {
+      console.warn('[initTelegramWebApp] Failed to call ready():', error)
+    }
+  } catch (error) {
+    console.error('[initTelegramWebApp] Initialization error:', error)
+  }
 }
 
 /**

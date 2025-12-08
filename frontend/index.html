@@ -7,7 +7,9 @@
     <meta name="color-scheme" content="light dark" />
     <title>Люся.Бюджет - Все посчитала</title>
     <!-- Telegram Web App SDK -->
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js" 
+            onerror="console.warn('Failed to load Telegram WebApp SDK')"
+            onload="console.log('Telegram WebApp SDK loaded successfully')"></script>
   </head>
   <body>
     <div id="root"></div>
