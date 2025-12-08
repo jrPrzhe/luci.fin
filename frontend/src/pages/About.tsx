@@ -206,15 +206,17 @@ export function About() {
         <div className="flex gap-3">
           <button
             onClick={handlePrev}
-            className="btn-secondary flex-1"
+            className="btn-secondary flex-1 flex items-center justify-center gap-2"
           >
-            ← {t.common.back}
+            <span className="text-lg md:text-xl leading-none">←</span>
+            <span>{t.common.back}</span>
           </button>
           <button
             onClick={handleNext}
-            className="btn-primary flex-1"
+            className="btn-primary flex-1 flex items-center justify-center gap-2"
           >
-            {isLastPage ? t.common.close : `${t.common.next} →`}
+            <span>{isLastPage ? t.common.close : t.common.next}</span>
+            {!isLastPage && <span className="text-lg md:text-xl leading-none">→</span>}
           </button>
         </div>
       </div>
