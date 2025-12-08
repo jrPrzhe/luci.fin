@@ -461,11 +461,11 @@ export function Layout() {
       </aside>
 
       {/* Mobile/Tablet Header - скрыт на больших экранах (xl+) */}
-      <header className="xl:hidden bg-telegram-surface dark:bg-telegram-dark-surface border-b border-telegram-border dark:border-telegram-dark-border px-4 py-3 flex items-center justify-between sticky top-0 z-10 relative">
-        <div className="flex items-center gap-2">
+      <header className="xl:hidden bg-telegram-surface dark:bg-telegram-dark-surface border-b border-telegram-border dark:border-telegram-dark-border px-4 py-3 flex items-center justify-between sticky top-0 z-10 relative gap-2">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           <button
             onClick={() => setShowStories(true)}
-            className="relative group"
+            className="relative group flex-shrink-0"
           >
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-telegram-primary dark:from-telegram-dark-primary to-telegram-primaryLight dark:to-telegram-dark-primaryLight flex items-center justify-center overflow-hidden relative z-10 transform transition-transform duration-300 group-active:scale-110 shadow-lg">
               <img src="/1.png" alt="Люся.Бюджет" className="w-full h-full object-cover" />
@@ -474,7 +474,7 @@ export function Layout() {
             <div className="absolute inset-0 rounded-full bg-gradient-to-br from-telegram-primary dark:from-telegram-dark-primary to-telegram-primaryLight dark:to-telegram-dark-primaryLight opacity-60 animate-ping" style={{ animationDuration: '2s' }}></div>
             <div className="absolute -inset-1 rounded-full border-2 border-telegram-primary dark:border-telegram-dark-primary opacity-40 animate-pulse" style={{ animationDuration: '1.5s' }}></div>
           </button>
-          <h1 className="text-base font-extrabold tracking-tight">
+          <h1 className="text-sm sm:text-base font-extrabold tracking-tight min-w-0 truncate">
             <span className="bg-gradient-to-r from-telegram-primary dark:from-telegram-dark-primary via-purple-500 to-telegram-primaryLight dark:to-telegram-dark-primaryLight bg-clip-text text-transparent">
               {newYearEnabled ? '🎄 ' : ''}Люся.Бюджет{newYearEnabled ? ' ❄️' : ''}
             </span>
