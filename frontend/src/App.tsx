@@ -333,7 +333,10 @@ function TelegramAuthHandler() {
 
   // Показываем загрузку только на страницах логина/регистрации и если проверяем
   // НО с таймаутом - не показываем загрузку дольше 3 секунд
+  // ВАЖНО: Не блокируем рендеринг на других страницах
   if (isChecking && (location.pathname === '/login' || location.pathname === '/register')) {
+    // Логируем состояние загрузки для отладки
+    console.log('[TelegramAuthHandler] Showing loading spinner on', location.pathname)
     return (
       <div className="min-h-screen flex items-center justify-center bg-telegram-bg dark:bg-telegram-dark-bg">
         <LoadingSpinner fullScreen={false} size="md" />
@@ -342,6 +345,11 @@ function TelegramAuthHandler() {
   }
 
   // На других страницах не блокируем рендеринг - проверка идет в фоне
+  // Это критически важно - иначе приложение будет показывать пустой экран
+  if (isChecking && location.pathname !== '/login' && location.pathname !== '/register') {
+    console.log('[TelegramAuthHandler] Auth check in progress, but not blocking render on', location.pathname)
+  }
+  
   return null
 }
 
@@ -356,17 +364,40 @@ function VKAuthHandler() {
     let timeoutId: ReturnType<typeof setTimeout>
 
     const checkVKAuth = async () => {
+      console.log('[VKAuthHandler] Starting auth check...', {
+        pathname: location.pathname,
+        url: window.location.href,
+        isVK: isVKWebApp(),
+        isTelegram: isTelegramWebApp(),
+        timestamp: new Date().toISOString()
+      })
+
       try {
         // Timeout after 3 seconds
         timeoutId = setTimeout(() => {
           if (mounted) {
+            console.warn('[VKAuthHandler] Auth check timeout')
             setIsChecking(false)
           }
         }, 3000)
 
+        // PRIORITY: Если мы в Telegram, НЕ запускаем VK auth handler
+        if (isTelegramWebApp()) {
+          console.log('[VKAuthHandler] Telegram detected, skipping VK auth check')
+          if (mounted) {
+            clearTimeout(timeoutId)
+            setIsChecking(false)
+          }
+          return
+        }
+
         // Если не в VK Mini App, пропускаем проверку
         if (!isVKWebApp()) {
-          if (mounted) setIsChecking(false)
+          console.log('[VKAuthHandler] Not in VK Mini App, skipping auth check')
+          if (mounted) {
+            clearTimeout(timeoutId)
+            setIsChecking(false)
+          }
           return
         }
 
@@ -567,13 +598,29 @@ function VKAuthHandler() {
 function App() {
   // Логируем инициализацию приложения
   useEffect(() => {
+    const isTelegram = isTelegramWebApp()
+    const isVK = isVKWebApp()
+    
     console.log('[App] Initializing...', {
-      isTelegram: isTelegramWebApp(),
-      isVK: isVKWebApp(),
+      isTelegram,
+      isVK,
       url: window.location.href,
-      pathname: window.location.pathname
+      pathname: window.location.pathname,
+      hasTelegramSDK: !!window.Telegram?.WebApp,
+      hasVKParams: new URLSearchParams(window.location.search).has('vk_user_id')
     })
+    
+    // Предупреждение, если оба определены (не должно происходить после исправления)
+    if (isTelegram && isVK) {
+      console.warn('[App] WARNING: Both Telegram and VK detected! This should not happen.')
+      console.warn('[App] Telegram will take priority.')
+    }
   }, [])
+
+  console.log('[App] Rendering App component...', {
+    timestamp: new Date().toISOString(),
+    pathname: window.location.pathname
+  })
 
   return (
     <ErrorBoundary>

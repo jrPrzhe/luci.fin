@@ -120,6 +120,7 @@ declare global {
 /**
  * Check if app is running inside Telegram
  * Uses multiple detection methods for reliability
+ * This function has PRIORITY - if Telegram is detected, other platforms should not be active
  */
 export function isTelegramWebApp(): boolean {
   try {
@@ -128,37 +129,45 @@ export function isTelegramWebApp(): boolean {
     }
 
     // Method 1: Check if Telegram WebApp object exists (most reliable)
+    // This is the PRIMARY method - if this exists, we're definitely in Telegram
     if (window.Telegram?.WebApp) {
-      console.log('[isTelegramWebApp] Detected via window.Telegram.WebApp')
+      // Only log once to avoid spam
+      if (!(window as any).__telegramDetected) {
+        console.log('[isTelegramWebApp] Detected via window.Telegram.WebApp')
+        ;(window as any).__telegramDetected = true
+      }
       return true
     }
 
     // Method 2: Check URL parameters (Telegram Mini Apps often have tgWebAppData or similar)
     const urlParams = new URLSearchParams(window.location.search)
     if (urlParams.has('tgWebAppData') || urlParams.has('tgWebAppStartParam')) {
-      console.log('[isTelegramWebApp] Detected via URL parameters')
+      if (!(window as any).__telegramDetected) {
+        console.log('[isTelegramWebApp] Detected via URL parameters')
+        ;(window as any).__telegramDetected = true
+      }
       return true
     }
 
     // Method 3: Check user agent (Telegram WebView has specific user agent)
     const userAgent = navigator.userAgent || ''
     if (userAgent.includes('Telegram') || userAgent.includes('WebApp')) {
-      console.log('[isTelegramWebApp] Detected via user agent:', userAgent)
+      if (!(window as any).__telegramDetected) {
+        console.log('[isTelegramWebApp] Detected via user agent:', userAgent)
+        ;(window as any).__telegramDetected = true
+      }
       return true
     }
 
     // Method 4: Check referrer (Telegram Mini Apps are opened from telegram.org)
     const referrer = document.referrer || ''
     if (referrer.includes('telegram.org') || referrer.includes('t.me')) {
-      console.log('[isTelegramWebApp] Detected via referrer:', referrer)
+      if (!(window as any).__telegramDetected) {
+        console.log('[isTelegramWebApp] Detected via referrer:', referrer)
+        ;(window as any).__telegramDetected = true
+      }
       return true
     }
-
-    // Method 5: Check if we're in an iframe (Telegram Mini Apps are often in iframes)
-    // Note: This is less reliable as many apps use iframes
-    // if (window.self !== window.top) {
-    //   console.log('[isTelegramWebApp] Running in iframe (possible Telegram Mini App)')
-    // }
 
     return false
   } catch (error) {

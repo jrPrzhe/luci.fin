@@ -356,9 +356,27 @@ export function Layout() {
     }
   }
 
-  // Если не авторизован, редирект уже произошел, возвращаем null
-  if (!isAuthorized) {
-    return null
+  // КРИТИЧЕСКИ ВАЖНО: Не блокируем рендеринг, если авторизация еще не определена
+  // Для Telegram/VK Mini App авторизация происходит асинхронно через auth handlers
+  // Если мы вернем null здесь, приложение будет показывать пустой экран
+  // Вместо этого даем время на авторизацию и редиректим только если точно не авторизованы
+  if (isAuthorized === false) {
+    // Только если точно знаем, что не авторизованы (не null!)
+    // И только если не на странице логина/регистрации
+    if (location.pathname !== '/login' && location.pathname !== '/register') {
+      console.log('[Layout] User not authorized, redirecting to login')
+      // Редирект уже должен был произойти в useEffect выше
+      // Но на всякий случай возвращаем null здесь
+      return null
+    }
+  }
+
+  // Если авторизация еще неизвестна (null), продолжаем рендеринг
+  // Auth handlers обработают авторизацию в фоне
+  // Это предотвращает пустой экран во время авторизации через Mini App
+  if (isAuthorized === null) {
+    console.log('[Layout] Authorization status unknown, allowing render to continue (Mini App auth in progress)')
+    // Продолжаем рендеринг - не блокируем UI
   }
 
   const navItems = [

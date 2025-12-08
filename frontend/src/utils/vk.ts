@@ -19,18 +19,34 @@ let launchParamsCache: string | null = null
 
 /**
  * Check if app is running inside VK
+ * IMPORTANT: Telegram has priority - if Telegram is detected, VK should return false
  */
 export function isVKWebApp(): boolean {
   if (typeof window === 'undefined') {
     return false
   }
   
-  // Check for VK launch params in URL
+  // PRIORITY: If Telegram is detected, we're NOT in VK
+  // Check Telegram first to avoid conflicts
+  try {
+    if (window.Telegram?.WebApp) {
+      return false
+    }
+  } catch (error) {
+    // Ignore errors when checking Telegram
+  }
+  
+  // Check for VK launch params in URL (most reliable indicator)
   const urlParams = new URLSearchParams(window.location.search)
   const hasVKParams = urlParams.has('vk_user_id') || urlParams.has('vk_app_id')
   
-  // Also check if bridge is available
-  return hasVKParams || typeof bridge !== 'undefined'
+  if (hasVKParams) {
+    return true
+  }
+  
+  // Don't rely on bridge being available - it's always imported
+  // Only return true if we have explicit VK parameters
+  return false
 }
 
 /**
