@@ -991,7 +991,7 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
       }}
     >
       <div
-        className="bg-telegram-surface dark:bg-telegram-dark-surface rounded-2xl max-w-md w-full p-6"
+        className="bg-telegram-surface dark:bg-telegram-dark-surface rounded-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
@@ -1100,17 +1100,21 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
           </div>
 
           {/* Roadmap Generation Status */}
-          {generatingRoadmap && (
+          {(generatingRoadmap || roadmapStatus) && (
             <div className="mt-4 p-4 bg-gradient-to-br from-blue-50 dark:from-blue-900/20 to-cyan-50 dark:to-cyan-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-              <div className="flex items-center gap-3">
-                <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 dark:border-blue-400"></div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
+              <div className="flex items-start gap-3">
+                {generatingRoadmap && (
+                  <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 dark:border-blue-400 flex-shrink-0 mt-0.5"></div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-blue-600 dark:text-blue-400 break-words">
                     {roadmapStatus || t.goals.generatingRoadmap}
                   </p>
-                  <p className="text-xs text-blue-500 dark:text-blue-500 mt-1">
-                    ⏳ {t.goals.pleaseWait || 'Please wait. This may take some time...'}
-                  </p>
+                  {generatingRoadmap && (
+                    <p className="text-xs text-blue-500 dark:text-blue-500 mt-1">
+                      ⏳ {t.goals.pleaseWait || 'Please wait. This may take some time...'}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

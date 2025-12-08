@@ -259,20 +259,20 @@ export function Profile() {
               }`}></div>
             </div>
           </button>
-          <div className="w-full flex items-center justify-between p-3 rounded-telegram hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">🌍</span>
-              <div>
-                <p className="font-medium text-telegram-text dark:text-telegram-dark-text">{t.profile.language}</p>
-                <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+          <div className="w-full flex items-center justify-between p-3 rounded-telegram hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors overflow-hidden max-w-full">
+            <div className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
+              <span className="text-2xl flex-shrink-0">🌍</span>
+              <div className="min-w-0 flex-1 overflow-hidden">
+                <p className="font-medium text-telegram-text dark:text-telegram-dark-text truncate">{t.profile.language}</p>
+                <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary truncate">
                   {language === 'ru' ? 'Русский' : 'English'}
                 </p>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-shrink-0 ml-2">
               <button
                 onClick={() => setLanguage('ru')}
-                className={`w-[3.5rem] px-3 py-1.5 rounded-telegram text-sm font-medium transition-colors whitespace-nowrap ${
+                className={`min-w-[3.5rem] max-w-[3.5rem] px-3 py-1.5 rounded-telegram text-sm font-medium transition-colors whitespace-nowrap overflow-hidden ${
                   language === 'ru'
                     ? 'bg-telegram-primary text-white dark:bg-telegram-dark-primary'
                     : 'bg-telegram-border hover:bg-telegram-hover dark:bg-telegram-dark-border dark:hover:bg-telegram-dark-hover'
@@ -282,7 +282,7 @@ export function Profile() {
               </button>
               <button
                 onClick={() => setLanguage('en')}
-                className={`w-[3.5rem] px-3 py-1.5 rounded-telegram text-sm font-medium transition-colors whitespace-nowrap ${
+                className={`min-w-[3.5rem] max-w-[3.5rem] px-3 py-1.5 rounded-telegram text-sm font-medium transition-colors whitespace-nowrap overflow-hidden ${
                   language === 'en'
                     ? 'bg-telegram-primary text-white dark:bg-telegram-dark-primary'
                     : 'bg-telegram-border hover:bg-telegram-hover dark:bg-telegram-dark-border dark:hover:bg-telegram-dark-hover'
