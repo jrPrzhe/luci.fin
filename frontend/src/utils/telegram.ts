@@ -120,11 +120,19 @@ declare global {
 /**
  * Check if app is running inside Telegram
  * Uses multiple detection methods for reliability
- * This function has PRIORITY - if Telegram is detected, other platforms should not be active
+ * IMPORTANT: VK has priority - if VK parameters are in URL, this should return false
  */
 export function isTelegramWebApp(): boolean {
   try {
     if (typeof window === 'undefined') {
+      return false
+    }
+
+    // PRIORITY CHECK: If VK parameters are in URL, we're NOT in Telegram
+    // VK Mini Apps can sometimes have Telegram SDK loaded, but we should prioritize VK
+    const urlParams = new URLSearchParams(window.location.search)
+    if (urlParams.has('vk_user_id') || urlParams.has('vk_app_id')) {
+      // Definitely VK, not Telegram
       return false
     }
 
