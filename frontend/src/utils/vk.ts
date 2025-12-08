@@ -36,8 +36,31 @@ export function isVKWebApp(): boolean {
     return true
   }
   
+  // Дополнительная проверка: проверяем hash для SPA навигации
+  // На мобильных устройствах ВК параметры могут быть в hash после навигации
+  const hash = window.location.hash
+  if (hash) {
+    const hashParams = new URLSearchParams(hash.split('?')[1] || '')
+    const hasVKParamsInHash = hashParams.has('vk_user_id') || hashParams.has('vk_app_id')
+    if (hasVKParamsInHash) {
+      console.log('[isVKWebApp] Detected via hash parameters (vk_user_id or vk_app_id)')
+      return true
+    }
+  }
+  
+  // Проверка через VK Bridge (если доступен)
+  // На мобильных устройствах ВК Bridge может быть доступен даже без параметров в URL
+  try {
+    if (window.vkBridge) {
+      console.log('[isVKWebApp] VK Bridge detected')
+      return true
+    }
+  } catch (error) {
+    // Игнорируем ошибки доступа к window.vkBridge
+  }
+  
   // Don't rely on bridge being available - it's always imported
-  // Only return true if we have explicit VK parameters
+  // Only return true if we have explicit VK parameters or VK Bridge
   return false
 }
 
