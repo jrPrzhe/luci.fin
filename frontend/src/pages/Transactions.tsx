@@ -1097,7 +1097,7 @@ export function Transactions() {
                   value={formData.transaction_date}
                   onChange={(e) => setFormData({ ...formData, transaction_date: e.target.value })}
                   className="input pr-10"
-                  max={new Date().toISOString().slice(0, 16)}
+                  max={formatLocalDateTime(new Date())}
                   required
                 />
               </div>
@@ -1432,7 +1432,7 @@ export function Transactions() {
                           value={formData.transaction_date}
                           onChange={(e) => setFormData({ ...formData, transaction_date: e.target.value })}
                           className="input pr-10"
-                          max={new Date().toISOString().slice(0, 16)}
+                          max={formatLocalDateTime(new Date())}
                           required
                         />
                       </div>
