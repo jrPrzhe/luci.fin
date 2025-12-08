@@ -131,16 +131,45 @@ export function isTelegramWebApp(): boolean {
     // Get URL params once - reuse for all checks
     const urlParams = new URLSearchParams(window.location.search)
 
-    // PRIORITY CHECK: If VK parameters are in URL, we're NOT in Telegram
+    // PRIORITY CHECK 1: If VK parameters are in URL, we're NOT in Telegram
     // VK Mini Apps can sometimes have Telegram SDK loaded, but we should prioritize VK
     if (urlParams.has('vk_user_id') || urlParams.has('vk_app_id')) {
       // Definitely VK, not Telegram
       return false
     }
 
+    // PRIORITY CHECK 2: Check hash for VK parameters (for SPA navigation)
+    const hash = window.location.hash
+    if (hash) {
+      const hashParams = new URLSearchParams(hash.split('?')[1] || '')
+      if (hashParams.has('vk_user_id') || hashParams.has('vk_app_id')) {
+        // Definitely VK, not Telegram
+        return false
+      }
+    }
+
+    // PRIORITY CHECK 3: Check for VK Bridge (if available, we're in VK)
+    try {
+      if ((window as any).vkBridge) {
+        // VK Bridge detected, we're in VK, not Telegram
+        return false
+      }
+    } catch (error) {
+      // Ignore errors accessing vkBridge
+    }
+
     // Method 1: Check if Telegram WebApp object exists (most reliable)
-    // This is the PRIMARY method - if this exists, we're definitely in Telegram
+    // BUT: Only if we don't have VK indicators
+    // This is the PRIMARY method - if this exists AND no VK indicators, we're in Telegram
     if (window.Telegram?.WebApp) {
+      // Double-check: make sure we're not in VK
+      // Re-check VK params to be absolutely sure
+      const finalVKCheck = urlParams.has('vk_user_id') || urlParams.has('vk_app_id') || (window as any).vkBridge
+      if (finalVKCheck) {
+        // VK detected, not Telegram
+        return false
+      }
+      
       // Only log once to avoid spam
       if (!(window as any).__telegramDetected) {
         console.log('[isTelegramWebApp] Detected via window.Telegram.WebApp')
