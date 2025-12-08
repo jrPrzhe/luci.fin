@@ -512,17 +512,8 @@ function App() {
       isTelegram: isTelegramWebApp(),
       isVK: isVKWebApp(),
       url: window.location.href,
-      pathname: window.location.pathname,
-      hasRoot: !!document.getElementById('root')
+      pathname: window.location.pathname
     })
-    
-    // Проверяем, что приложение действительно рендерится
-    const root = document.getElementById('root')
-    if (root && root.children.length === 0) {
-      console.warn('[App] Root element is empty - app may not be rendering')
-    } else {
-      console.log('[App] Root element has children:', root?.children.length || 0)
-    }
   }, [])
 
   return (

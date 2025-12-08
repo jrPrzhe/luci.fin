@@ -88,29 +88,21 @@ export function Layout() {
       }
       
       if (!token) {
-        // В Mini App даем больше времени на авторизацию (она происходит автоматически)
-        // В веб-версии редиректим быстрее
-        const waitTime = (isMiniApp || isVK) ? 3000 : 1000
-        
         // Сохраняем текущий путь для редиректа после авторизации
         const returnTo = location.pathname
-        // Даем время на авторизацию через Mini App (Telegram/VK)
+        // Даем небольшое время на авторизацию через Mini App (Telegram/VK)
+        // Если через 2 секунды токен не появился, редиректим на логин
         setTimeout(() => {
           const finalToken = storageSync.getItem('token')
           if (!finalToken) {
-            // В Mini App не редиректим сразу - авторизация может еще произойти
-            // Просто помечаем как неавторизованного, Layout покажет загрузку
             setIsAuthorized(false)
             setIsCheckingAuth(false)
-            // Редиректим только если это не Mini App или прошло достаточно времени
-            if (!isMiniApp && !isVK) {
-              navigate(`/login?returnTo=${encodeURIComponent(returnTo)}`)
-            }
+            navigate(`/login?returnTo=${encodeURIComponent(returnTo)}`)
           } else {
             // Токен появился, проверяем его
             checkAuth()
           }
-        }, waitTime)
+        }, 2000)
         return
       }
 
@@ -364,36 +356,8 @@ export function Layout() {
     }
   }
 
-  // В Mini App даем время на авторизацию - не блокируем рендеринг сразу
-  // Если авторизация еще не проверена (null), показываем загрузку
-  if (isAuthorized === null && (isMiniApp || isVK)) {
-    // В Mini App авторизация происходит автоматически, даем время
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-telegram-bg dark:bg-telegram-dark-bg">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-telegram-primary mb-4"></div>
-          <p className="text-telegram-text dark:text-telegram-dark-text">Загрузка...</p>
-        </div>
-      </div>
-    )
-  }
-
-  // Если не авторизован и это не Mini App, редирект уже произошел
-  // В Mini App даем больше времени на авторизацию
+  // Если не авторизован, редирект уже произошел, возвращаем null
   if (!isAuthorized) {
-    // В Mini App не редиректим сразу - авторизация может произойти в фоне
-    if (isMiniApp || isVK) {
-      // Показываем загрузку, даем время на авторизацию
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-telegram-bg dark:bg-telegram-dark-bg">
-          <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-telegram-primary mb-4"></div>
-            <p className="text-telegram-text dark:text-telegram-dark-text">Авторизация...</p>
-          </div>
-        </div>
-      )
-    }
-    // В веб-версии редирект уже произошел
     return null
   }
 

@@ -6,42 +6,19 @@ import { initTelegramWebApp } from './utils/telegram'
 import { initVKWebApp } from './utils/vk'
 import { storageSync, initStorage } from './utils/storage'
 
-// Инициализация Telegram/VK WebApp в фоне - не блокирует рендеринг
-// Пытаемся инициализировать сразу, если скрипт уже загружен
-// Если нет - попробуем позже
-function initPlatforms() {
-  // Telegram WebApp
-  if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
-    try {
-      initTelegramWebApp()
-      console.log('[main] Telegram WebApp initialized')
-    } catch (error) {
-      console.error('[main] Failed to initialize Telegram WebApp:', error)
-    }
-  } else {
-    // Если скрипт еще не загружен, попробуем через небольшую задержку
-    setTimeout(() => {
-      if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
-        try {
-          initTelegramWebApp()
-          console.log('[main] Telegram WebApp initialized (delayed)')
-        } catch (error) {
-          console.error('[main] Failed to initialize Telegram WebApp (delayed):', error)
-        }
-      }
-    }, 500)
-  }
-
-  // VK WebApp
-  try {
-    initVKWebApp()
-  } catch (error) {
-    console.error('[main] Failed to initialize VK WebApp:', error)
-  }
+// Initialize Telegram Web App if running inside Telegram
+try {
+  initTelegramWebApp()
+} catch (error) {
+  console.error('[main] Failed to initialize Telegram WebApp:', error)
 }
 
-// Инициализируем платформы в фоне
-initPlatforms()
+// Initialize VK Web App if running inside VK
+try {
+  initVKWebApp()
+} catch (error) {
+  console.error('[main] Failed to initialize VK WebApp:', error)
+}
 
 // Инициализируем storage и загружаем данные из правильного хранилища
 // Важно: ждем завершения инициализации для Telegram/VK, чтобы токены были доступны
@@ -67,32 +44,18 @@ try {
   console.error('[main] Failed to initialize theme:', error)
 }
 
-// Устанавливаем минимальный фон сразу, чтобы избежать пустого/серого экрана
-if (typeof document !== 'undefined') {
-  document.body.style.backgroundColor = '#F0F0F0'
-  if (document.documentElement.classList.contains('dark')) {
-    document.body.style.backgroundColor = '#212121'
-  }
-}
-
-// Рендерим приложение сразу - это критически важно для Telegram Mini App
-// Приложение должно рендериться независимо от состояния Telegram WebApp
+// Рендерим приложение с обработкой ошибок
 try {
   const rootElement = document.getElementById('root')
   if (!rootElement) {
     throw new Error('Root element not found')
   }
   
-  console.log('[main] Rendering app...')
-  console.log('[main] Telegram WebApp available:', typeof window !== 'undefined' && !!window.Telegram?.WebApp)
-  
   ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
       <App />
     </React.StrictMode>,
   )
-  
-  console.log('[main] App rendered successfully')
 } catch (error) {
   console.error('[main] Failed to render app:', error)
   // Показываем сообщение об ошибке пользователю
