@@ -81,7 +81,7 @@ const accountTypeIcons: Record<string, string> = {
 }
 
 export function SharedBudgets() {
-  const { showSuccess } = useToast()
+  const { showSuccess, showError } = useToast()
   const { t } = useI18n()
   
   // Account type labels mapping
@@ -460,8 +460,17 @@ export function SharedBudgets() {
       </div>
       
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-          {error}
+        <div className="sticky top-0 z-40 mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 shadow-md">
+          <div className="flex items-start justify-between gap-3">
+            <span className="flex-1">{error}</span>
+            <button
+              onClick={() => setError('')}
+              className="flex-shrink-0 text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100 transition-colors p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900/40"
+              aria-label="Закрыть"
+            >
+              <span className="text-lg leading-none">×</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -589,7 +598,10 @@ export function SharedBudgets() {
                 <h3 className="text-xl font-semibold text-telegram-text dark:text-telegram-dark-text">Совместные счета</h3>
               </div>
               <button
-                onClick={() => setShowInviteCode(selectedBudget.id)}
+                onClick={() => {
+                  setError('') // Очищаем ошибку при открытии модалки с кодом
+                  setShowInviteCode(selectedBudget.id)
+                }}
                 className="px-4 py-2 bg-telegram-primary text-white rounded-lg hover:bg-telegram-primary/90 transition-colors font-medium"
               >
                 📋 Код приглашения
@@ -656,7 +668,7 @@ export function SharedBudgets() {
               {members.map((member) => (
                 <div key={member.id} className="card hover:shadow-lg transition-shadow">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3 flex-1">
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
                       <div className={`w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold flex-shrink-0 ${
                         member.role === 'admin' 
                           ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-white' 
@@ -664,10 +676,9 @@ export function SharedBudgets() {
                       }`}>
                         {member.user_name?.[0]?.toUpperCase() || member.user_email?.[0]?.toUpperCase() || '👤'}
                       </div>
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 overflow-hidden">
                         <h4 
-                          className="font-semibold text-telegram-text dark:text-telegram-dark-text break-words"
-                          style={{ wordBreak: 'break-word', overflowWrap: 'break-word', lineHeight: '1.5' }}
+                          className="font-semibold text-telegram-text dark:text-telegram-dark-text truncate"
                           title={member.user_name || member.user_email || `Пользователь #${member.user_id}`}
                         >
                           {member.user_name || member.user_email || `Пользователь #${member.user_id}`}
@@ -968,8 +979,11 @@ export function SharedBudgets() {
                         await api.regenerateInviteCode(showInviteCode)
                         await loadData()
                         setError('')
+                        showSuccess('Код приглашения успешно обновлен')
                       } catch (err: any) {
-                        setError(err.message || 'Ошибка обновления кода')
+                        const errorMessage = err.message || 'Ошибка обновления кода'
+                        showError(errorMessage)
+                        setError('') // Очищаем локальное состояние ошибки, так как используем Toast
                       }
                     }}
                     className="w-full px-4 py-2 border border-gray-300 dark:border-telegram-dark-border rounded-lg hover:bg-gray-50 dark:hover:bg-telegram-dark-hover mb-3 text-telegram-text dark:text-telegram-dark-text"

@@ -334,6 +334,42 @@ export function Reports() {
     return TooltipComponent
   }, [locale, analytics?.totals?.currency])
 
+  // Custom Tooltip for PieChart with dark theme support
+  const PieChartTooltip = useMemo(() => {
+    const TooltipComponent = ({ active, payload }: any) => {
+      try {
+        if (active && payload && Array.isArray(payload) && payload.length > 0) {
+          const entry = payload[0]
+          const currency = analytics?.totals?.currency || 'RUB'
+          const formatValue = (value: number) => {
+            const systemLocale = navigator.language || 'en-US'
+            return new Intl.NumberFormat(systemLocale, {
+              style: 'currency',
+              currency: currency,
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 0,
+            }).format(Math.round(value || 0))
+          }
+          return (
+            <div className="bg-white dark:bg-telegram-dark-surface p-3 rounded-lg shadow-lg border border-telegram-border dark:border-telegram-dark-border pointer-events-none">
+              <p className="text-sm font-semibold mb-1 text-telegram-text dark:text-telegram-dark-text">
+                {entry.payload?.icon || ''} {entry.payload?.name || entry.name || ''}
+              </p>
+              <p className="text-sm text-telegram-text dark:text-telegram-dark-text">
+                {formatValue(entry.value || 0)}
+              </p>
+            </div>
+          )
+        }
+        return null
+      } catch (error) {
+        console.error('Error rendering pie chart tooltip:', error)
+        return null
+      }
+    }
+    return TooltipComponent
+  }, [analytics?.totals?.currency])
+
   // Now we can do conditional returns after all hooks
   if (isLoading) {
     return <LoadingSpinner />
@@ -780,8 +816,7 @@ export function Reports() {
                   ))}
                 </Pie>
                 <Tooltip 
-                  formatter={(value: number) => formatCurrency(value)}
-                  contentStyle={{ borderRadius: '12px', border: '1px solid #E5E5E5', backgroundColor: 'var(--tw-telegram-surface, white)' }}
+                  content={PieChartTooltip}
                 />
               </PieChart>
             </ResponsiveContainer>

@@ -1007,7 +1007,13 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
           </button>
         </div>
 
-        <div className="space-y-4">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            handleCreate()
+          }}
+          className="space-y-4"
+        >
           <div>
             <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
               {t.goals.goalNameLabel} *
@@ -1092,34 +1098,34 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
               disabled={loading || generatingRoadmap}
             />
           </div>
-        </div>
 
-        {/* Roadmap Generation Status */}
-        {generatingRoadmap && (
-          <div className="mt-4 p-4 bg-gradient-to-br from-blue-50 dark:from-blue-900/20 to-cyan-50 dark:to-cyan-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-            <div className="flex items-center gap-3">
-              <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 dark:border-blue-400"></div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
-                  {roadmapStatus || t.goals.generatingRoadmap}
-                </p>
-                <p className="text-xs text-blue-500 dark:text-blue-500 mt-1">
-                  ⏳ {t.goals.pleaseWait || 'Please wait. This may take some time...'}
-                </p>
+          {/* Roadmap Generation Status */}
+          {generatingRoadmap && (
+            <div className="mt-4 p-4 bg-gradient-to-br from-blue-50 dark:from-blue-900/20 to-cyan-50 dark:to-cyan-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <div className="flex items-center gap-3">
+                <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 dark:border-blue-400"></div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                    {roadmapStatus || t.goals.generatingRoadmap}
+                  </p>
+                  <p className="text-xs text-blue-500 dark:text-blue-500 mt-1">
+                    ⏳ {t.goals.pleaseWait || 'Please wait. This may take some time...'}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        <div className="flex gap-3 mt-6">
-          <button
-            onClick={handleCreate}
-            className="flex-1 btn-primary"
-            disabled={loading || generatingRoadmap || !!amountError || !formData.name || !formData.target_amount}
-          >
-            {loading ? (generatingRoadmap ? roadmapStatus || t.goals.creating : t.goals.creating) : t.goals.createButton}
-          </button>
-        </div>
+          <div className="flex gap-3 mt-6">
+            <button
+              type="submit"
+              className="flex-1 btn-primary"
+              disabled={loading || generatingRoadmap || !!amountError || !formData.name || !formData.target_amount}
+            >
+              {loading ? (generatingRoadmap ? roadmapStatus || t.goals.creating : t.goals.creating) : t.goals.createButton}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   )
