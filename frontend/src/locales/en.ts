@@ -231,6 +231,7 @@ export const en = {
       exampleName: 'For example: Main Account',
       invalidBalance: 'Enter a valid whole number for initial balance',
       balanceTooLarge: 'Amount is too large. Maximum amount: 999,999,999,999,999',
+      negativeBalanceNotAllowed: 'Initial balance cannot be negative',
     },
   },
   

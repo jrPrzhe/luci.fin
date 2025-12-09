@@ -145,9 +145,12 @@ export function Layout() {
             
             if (isExistingUser) {
               // Для существующих пользователей - только приветствие, без онбординга
+              // Для ВК миниаппа не показываем приветствие
               storageSync.setItem('onboarding_completed', 'true')
               setUserName(user.first_name || user.username || 'Пользователь')
-              setShowWelcome(true)
+              if (!isVK) {
+                setShowWelcome(true)
+              }
               sessionStorage.removeItem('justLoggedIn')
             } else {
               // Для новых пользователей проверяем флаг онбординга
@@ -160,7 +163,10 @@ export function Layout() {
                 return
               } else {
                 setUserName(user.first_name || user.username || 'Пользователь')
-                setShowWelcome(true)
+                // Для ВК миниаппа не показываем приветствие
+                if (!isVK) {
+                  setShowWelcome(true)
+                }
                 sessionStorage.removeItem('justLoggedIn')
               }
             }
@@ -266,9 +272,12 @@ export function Layout() {
               
               if (isExistingUser) {
                 // Для существующих пользователей - только приветствие, без онбординга
+                // Для ВК миниаппа не показываем приветствие
                 storageSync.setItem('onboarding_completed', 'true')
                 setUserName(user.first_name || user.username || 'Пользователь')
-                setShowWelcome(true)
+                if (!isVK) {
+                  setShowWelcome(true)
+                }
                 sessionStorage.removeItem('justLoggedIn')
               } else {
                 // Для новых пользователей проверяем флаг онбординга
@@ -281,7 +290,10 @@ export function Layout() {
                   return
                 } else {
                   setUserName(user.first_name || user.username || 'Пользователь')
-                  setShowWelcome(true)
+                  // Для ВК миниаппа не показываем приветствие
+                  if (!isVK) {
+                    setShowWelcome(true)
+                  }
                   sessionStorage.removeItem('justLoggedIn')
                 }
               }
@@ -404,7 +416,8 @@ export function Layout() {
 
   // Показываем приветствие сразу после авторизации (до главного меню)
   // Приоритет: приветствие показывается перед Layout
-  if (showWelcome && isAuthorized === true) {
+  // Для ВК миниаппа не показываем приветствие
+  if (showWelcome && isAuthorized === true && !isVK) {
     const onboardingCompleted = storageSync.getItem('onboarding_completed') === 'true'
     if (onboardingCompleted) {
       return <Welcome userName={userName} onComplete={handleWelcomeComplete} />

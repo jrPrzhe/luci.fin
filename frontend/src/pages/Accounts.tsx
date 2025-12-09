@@ -226,8 +226,8 @@ export function Accounts() {
 
     // Trim name and validate length
     const trimmedName = formData.name.trim()
-    if (trimmedName.length > 255) {
-      showError('Название счета не может превышать 255 символов')
+    if (trimmedName.length > 60) {
+      showError('Название счета не может превышать 60 символов')
       return
     }
 
@@ -265,6 +265,13 @@ export function Accounts() {
         // Validate balance value
         if (isNaN(balanceNumber)) {
           showError(t.accounts.form.invalidBalance || 'Enter a valid whole number for initial balance')
+          setIsSubmitting(false)
+          return
+        }
+        
+        // Prevent negative numbers
+        if (balanceNumber < 0) {
+          showError(t.accounts.form.negativeBalanceNotAllowed || 'Начальный баланс не может быть отрицательным')
           setIsSubmitting(false)
           return
         }
@@ -350,6 +357,13 @@ export function Accounts() {
       day: 'numeric',
     })
   }
+
+  // Check if initial balance is valid (for disabling submit button)
+  const isInitialBalanceValid = !editingAccount ? (() => {
+    const balanceValue = formData.initial_balance.trim()
+    const balanceNumber = parseInt(balanceValue, 10)
+    return !isNaN(balanceNumber) && balanceNumber >= 0
+  })() : true
 
   if (loading) {
     return <LoadingSpinner />
@@ -604,9 +618,26 @@ export function Accounts() {
                   <input
                     type="text"
                     value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
+                    onChange={(e) => {
+                      // Enforce max length even when pasting
+                      let value = e.target.value
+                      if (value.length > 60) {
+                        value = value.substring(0, 60)
+                      }
+                      setFormData({ ...formData, name: value })
+                    }}
+                    onPaste={(e) => {
+                      // Prevent pasting text longer than 60 characters
+                      const pastedText = e.clipboardData.getData('text')
+                      if (pastedText.length > 60) {
+                        e.preventDefault()
+                        const currentValue = formData.name
+                        const remainingChars = 60 - currentValue.length
+                        if (remainingChars > 0) {
+                          setFormData({ ...formData, name: currentValue + pastedText.substring(0, remainingChars) })
+                        }
+                      }
+                    }}
                     className="input"
                     placeholder={t.accounts.form.exampleName}
                     maxLength={60}
@@ -661,25 +692,22 @@ export function Accounts() {
                       <input
                         type="number"
                         step="1"
+                        min="0"
                         value={formData.initial_balance}
                         onChange={(e) => {
-                          // Only allow whole numbers (integers)
+                          // Only allow whole numbers (integers) and prevent negative numbers
                           let value = e.target.value
-                          // Remove any non-numeric characters (including dots and commas)
-                          value = value.replace(/[^0-9-]/g, '')
-                          // Ensure only one minus sign at the start
-                          if (value.includes('-')) {
-                            const parts = value.split('-')
-                            value = parts.length > 1 ? '-' + parts.slice(1).join('').replace(/-/g, '') : value.replace(/-/g, '')
-                            if (!value.startsWith('-')) {
-                              value = '-' + value.replace(/-/g, '')
-                            }
+                          // Remove any non-numeric characters (including dots, commas, and minus signs)
+                          value = value.replace(/[^0-9]/g, '')
+                          // Remove leading zeros except for single zero
+                          if (value.length > 1) {
+                            value = value.replace(/^0+/, '') || '0'
                           }
                           setFormData({ ...formData, initial_balance: value })
                         }}
                         onKeyDown={(e) => {
-                          // Prevent decimal point, comma, and 'e' key
-                          if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E') {
+                          // Prevent decimal point, comma, 'e' key, and minus sign
+                          if (e.key === '.' || e.key === ',' || e.key === 'e' || e.key === 'E' || e.key === '-' || e.key === '+') {
                             e.preventDefault()
                           }
                         }}
@@ -754,7 +782,7 @@ export function Accounts() {
                   </button>
                   <button
                     type="submit"
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || !isInitialBalanceValid}
                     className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isSubmitting 

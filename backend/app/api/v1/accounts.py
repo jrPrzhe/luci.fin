@@ -226,9 +226,17 @@ async def create_account(
             detail=f"Неверный тип счета. Должен быть одним из: {[e.value for e in AccountType]}"
         )
     
+    # Validate account name length
+    trimmed_name = account_data.name.strip()
+    if len(trimmed_name) > 60:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Название счета не может превышать 60 символов"
+        )
+    
     # Validate account name: only letters, numbers, spaces, hyphens, and underscores
     name_pattern = re.compile(r'^[a-zA-Zа-яА-ЯёЁ0-9\s\-_]+$')
-    if not name_pattern.match(account_data.name.strip()):
+    if not name_pattern.match(trimmed_name):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Название счета может содержать только буквы, цифры, пробелы, дефисы и подчеркивания"
@@ -279,6 +287,13 @@ async def create_account(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Неверное значение начального баланса"
+        )
+    
+    # Prevent negative numbers
+    if initial_balance_decimal < 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Начальный баланс не может быть отрицательным"
         )
     
     # Maximum value for Numeric(15, 2): 999,999,999,999,999.99
@@ -395,14 +410,21 @@ async def update_account(
     
     # Update fields
     if account_update.name is not None:
+        # Validate account name length
+        trimmed_name = account_update.name.strip()
+        if len(trimmed_name) > 60:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Название счета не может превышать 60 символов"
+            )
         # Validate account name: only letters, numbers, spaces, hyphens, and underscores
         name_pattern = re.compile(r'^[a-zA-Zа-яА-ЯёЁ0-9\s\-_]+$')
-        if not name_pattern.match(account_update.name.strip()):
+        if not name_pattern.match(trimmed_name):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Название счета может содержать только буквы, цифры, пробелы, дефисы и подчеркивания"
             )
-        account.name = account_update.name
+        account.name = trimmed_name
     if account_update.account_type is not None:
         try:
             account.account_type = AccountType(account_update.account_type)

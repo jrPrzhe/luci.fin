@@ -283,14 +283,28 @@ export function Dashboard() {
         const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
         const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
         
-        // Форматируем даты в формат YYYY-MM-DD
-        const startDate = firstDay.toISOString().split('T')[0]
-        const endDate = lastDay.toISOString().split('T')[0]
+        // Форматируем даты в формат YYYY-MM-DD используя локальное время
+        const formatLocalDate = (date: Date): string => {
+          const year = date.getFullYear()
+          const month = String(date.getMonth() + 1).padStart(2, '0')
+          const day = String(date.getDate()).padStart(2, '0')
+          return `${year}-${month}-${day}`
+        }
+        
+        const startDate = formatLocalDate(firstDay)
+        const endDate = formatLocalDate(lastDay)
+        
+        console.log('[Dashboard] Fetching monthly stats:', { startDate, endDate })
         
         const [incomeTransactions, expenseTransactions] = await Promise.all([
           api.getTransactions(1000, 0, undefined, undefined, 'income', startDate, endDate),
           api.getTransactions(1000, 0, undefined, undefined, 'expense', startDate, endDate),
         ])
+        
+        console.log('[Dashboard] Transactions received:', {
+          incomeCount: incomeTransactions?.length || 0,
+          expenseCount: expenseTransactions?.length || 0,
+        })
         
         // Исключаем транзакции перевода из доходов
         // Transfer income transactions have parent_transaction_id set (new transfers) or description starting with "Перевод из" (old transfers)
@@ -307,6 +321,8 @@ export function Dashboard() {
           })
           .reduce((sum: number, t: any) => sum + (parseFloat(t.amount) || 0), 0)
         const expense = (expenseTransactions || []).reduce((sum: number, t: any) => sum + (parseFloat(t.amount) || 0), 0)
+        
+        console.log('[Dashboard] Calculated stats:', { income, expense })
         
         return { income, expense }
       } catch (error) {

@@ -5,7 +5,7 @@ from decimal import Decimal, InvalidOperation
 
 
 class AccountBase(BaseModel):
-    name: str = Field(..., min_length=1, max_length=255, description="Account name")
+    name: str = Field(..., min_length=1, max_length=60, description="Account name")
     account_type: str
     currency: str = Field(..., min_length=3, max_length=3)
     initial_balance: Decimal = Decimal("0")
@@ -21,6 +21,10 @@ class AccountBase(BaseModel):
             except (ValueError, InvalidOperation, TypeError):
                 raise ValueError("Неверное значение начального баланса")
         
+        # Prevent negative numbers
+        if v < 0:
+            raise ValueError("Начальный баланс не может быть отрицательным")
+        
         # Maximum value for Numeric(15, 2): 999,999,999,999,999.99
         MAX_BALANCE = Decimal('999999999999999.99')
         if abs(v) > MAX_BALANCE:
@@ -34,7 +38,7 @@ class AccountCreate(AccountBase):
 
 
 class AccountUpdate(BaseModel):
-    name: Optional[str] = Field(None, min_length=1, max_length=255, description="Account name")
+    name: Optional[str] = Field(None, min_length=1, max_length=60, description="Account name")
     account_type: Optional[str] = None
     currency: Optional[str] = Field(None, min_length=3, max_length=3)
     description: Optional[str] = Field(None, max_length=500, description="Account description")

@@ -114,11 +114,11 @@ export function translateError(error: any): string {
       return errorMessage
     }
     if (errorLower.includes('name') || errorLower.includes('название')) {
-      // Проверяем, относится ли это к бюджету (100 символов) или к счету (255 символов)
+      // Проверяем, относится ли это к бюджету (100 символов) или к счету (60 символов)
       if (errorLower.includes('100') || errorMessage.includes('100')) {
         return 'Максимальная длина названия — 100 символов'
       }
-      return 'Название счета не может превышать 255 символов.'
+      return 'Название счета не может превышать 60 символов.'
     }
     if (errorLower.includes('description') || errorLower.includes('описание')) {
       return 'Описание не может превышать 500 символов.'
