@@ -92,7 +92,6 @@ export function Layout() {
         // Проверяем, не завершена ли авторизация через VK
         // Если да, даем больше времени на сохранение токена
         const vkAuthCompleted = sessionStorage.getItem('vkAuthCompleted') === 'true'
-        const isVK = isVKWebApp()
         
         // Для Web версии (не Mini App) сразу редиректим на логин
         if (!isMiniApp && !vkAuthCompleted) {
