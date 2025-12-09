@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../services/api'
 import { useToast } from '../contexts/ToastContext'
@@ -382,8 +383,23 @@ function GoalDetailModal({ goal, onClose, onDelete }: { goal: Goal; onClose: () 
     })
   }
 
-  return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
+  // Use portal to render modal directly in body, above all content including VK header
+  const modalContent = (
+    <div 
+      className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[9999] p-4" 
+      style={{ 
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100%',
+        height: '100%',
+        margin: 0,
+        padding: '1rem'
+      }}
+      onClick={onClose}
+    >
       <div
         className="bg-telegram-surface dark:bg-telegram-dark-surface rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
@@ -737,6 +753,13 @@ function GoalDetailModal({ goal, onClose, onDelete }: { goal: Goal; onClose: () 
       )}
     </div>
   )
+
+  // Render modal using portal to body to ensure it's above all content including VK header
+  if (typeof window !== 'undefined' && document.body) {
+    return createPortal(modalContent, document.body)
+  }
+  
+  return modalContent
 }
 
 // Create Goal Modal Component
@@ -980,9 +1003,21 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     }
   }
 
-  return (
+  // Use portal to render modal directly in body, above all content including VK header
+  const modalContent = (
     <div 
-      className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" 
+      className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[9999] p-4" 
+      style={{ 
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100%',
+        height: '100%',
+        margin: 0,
+        padding: '1rem'
+      }}
       onClick={() => {
         // Don't close modal during loading
         if (!loading && !generatingRoadmap) {
@@ -1133,6 +1168,13 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
       </div>
     </div>
   )
+
+  // Render modal using portal to body to ensure it's above all content including VK header
+  if (typeof window !== 'undefined' && document.body) {
+    return createPortal(modalContent, document.body)
+  }
+  
+  return modalContent
 }
 
 // Helper functions
