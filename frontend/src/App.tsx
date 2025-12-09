@@ -702,11 +702,14 @@ function VKAuthHandler() {
               
               // Помечаем, что пользователь только что вошел
               sessionStorage.setItem('justLoggedIn', 'true')
+              // Помечаем, что авторизация через VK завершена (предотвращает редирект на /login)
+              sessionStorage.setItem('vkAuthCompleted', 'true')
               
               // Даем время на сохранение токена и обновление состояния
               clearTimeout(timeoutId)
               setIsChecking(false)
               // Проверяем онбординг - Layout перенаправит на онбординг если нужно
+              // Используем replace: true чтобы предотвратить возврат на /login
               navigate('/', { replace: true })
             }
           } catch (error: any) {

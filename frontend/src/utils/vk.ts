@@ -20,6 +20,7 @@ let launchParamsCache: string | null = null
 /**
  * Check if app is running inside VK
  * VK parameters in URL have HIGHEST PRIORITY - if they exist, we're in VK
+ * Also checks sessionStorage to preserve VK status during SPA navigation
  */
 export function isVKWebApp(): boolean {
   if (typeof window === 'undefined') {
@@ -33,6 +34,12 @@ export function isVKWebApp(): boolean {
   
   if (hasVKParams) {
     console.log('[isVKWebApp] Detected via URL parameters (vk_user_id or vk_app_id)')
+    // Сохраняем информацию о VK в sessionStorage для сохранения при навигации
+    try {
+      sessionStorage.setItem('isVKWebApp', 'true')
+    } catch (error) {
+      // Игнорируем ошибки sessionStorage (может быть недоступен в некоторых контекстах)
+    }
     return true
   }
   
@@ -44,6 +51,12 @@ export function isVKWebApp(): boolean {
     const hasVKParamsInHash = hashParams.has('vk_user_id') || hashParams.has('vk_app_id')
     if (hasVKParamsInHash) {
       console.log('[isVKWebApp] Detected via hash parameters (vk_user_id or vk_app_id)')
+      // Сохраняем информацию о VK в sessionStorage
+      try {
+        sessionStorage.setItem('isVKWebApp', 'true')
+      } catch (error) {
+        // Игнорируем ошибки sessionStorage
+      }
       return true
     }
   }
@@ -53,14 +66,32 @@ export function isVKWebApp(): boolean {
   try {
     if ((window as any).vkBridge) {
       console.log('[isVKWebApp] VK Bridge detected')
+      // Сохраняем информацию о VK в sessionStorage
+      try {
+        sessionStorage.setItem('isVKWebApp', 'true')
+      } catch (error) {
+        // Игнорируем ошибки sessionStorage
+      }
       return true
     }
   } catch (error) {
     // Игнорируем ошибки доступа к window.vkBridge
   }
   
+  // Если URL параметры отсутствуют, проверяем sessionStorage
+  // Это позволяет сохранить статус VK миниаппа при навигации через React Router
+  try {
+    const savedVKStatus = sessionStorage.getItem('isVKWebApp')
+    if (savedVKStatus === 'true') {
+      console.log('[isVKWebApp] Detected via sessionStorage (preserved from previous navigation)')
+      return true
+    }
+  } catch (error) {
+    // Игнорируем ошибки sessionStorage
+  }
+  
   // Don't rely on bridge being available - it's always imported
-  // Only return true if we have explicit VK parameters or VK Bridge
+  // Only return true if we have explicit VK parameters, VK Bridge, or saved status
   return false
 }
 

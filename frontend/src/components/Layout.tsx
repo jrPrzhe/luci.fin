@@ -89,8 +89,13 @@ export function Layout() {
       }
       
       if (!token) {
+        // Проверяем, не завершена ли авторизация через VK
+        // Если да, даем больше времени на сохранение токена
+        const vkAuthCompleted = sessionStorage.getItem('vkAuthCompleted') === 'true'
+        const isVK = isVKWebApp()
+        
         // Для Web версии (не Mini App) сразу редиректим на логин
-        if (!isMiniApp) {
+        if (!isMiniApp && !vkAuthCompleted) {
           setIsAuthorized(false)
           setIsCheckingAuth(false)
           navigate('/login')
@@ -100,19 +105,31 @@ export function Layout() {
         // Для Mini App даем время на авторизацию
         // Сохраняем текущий путь для редиректа после авторизации
         const returnTo = location.pathname
-        // Даем небольшое время на авторизацию через Mini App (Telegram/VK)
-        // Если через 2 секунды токен не появился, редиректим на логин
+        // Если VK авторизация завершена, даем больше времени на сохранение токена (5 секунд)
+        // Иначе стандартное время (2 секунды)
+        const waitTime = vkAuthCompleted ? 5000 : 2000
+        // Даем время на авторизацию через Mini App (Telegram/VK)
+        // Если через waitTime токен не появился, редиректим на логин
         setTimeout(() => {
           const finalToken = storageSync.getItem('token')
           if (!finalToken) {
+            // Если VK авторизация была завершена, но токен все еще не найден,
+            // очищаем флаг и редиректим на логин
+            if (vkAuthCompleted) {
+              sessionStorage.removeItem('vkAuthCompleted')
+            }
             setIsAuthorized(false)
             setIsCheckingAuth(false)
             navigate(`/login?returnTo=${encodeURIComponent(returnTo)}`)
           } else {
             // Токен появился, проверяем его
+            // Очищаем флаг VK авторизации, так как токен найден
+            if (vkAuthCompleted) {
+              sessionStorage.removeItem('vkAuthCompleted')
+            }
             checkAuth()
           }
-        }, 2000)
+        }, waitTime)
         return
       }
 

@@ -148,7 +148,19 @@ export function isTelegramWebApp(): boolean {
       }
     }
 
-    // PRIORITY CHECK 3: Check for VK Bridge (if available, we're in VK)
+    // PRIORITY CHECK 3: Check sessionStorage for saved VK status
+    // This prevents false Telegram detection after navigation in VK Mini App
+    try {
+      const savedVKStatus = sessionStorage.getItem('isVKWebApp')
+      if (savedVKStatus === 'true') {
+        console.log('[isTelegramWebApp] VK detected via sessionStorage, returning false')
+        return false
+      }
+    } catch (error) {
+      // Ignore errors accessing sessionStorage
+    }
+
+    // PRIORITY CHECK 4: Check for VK Bridge (if available, we're in VK)
     try {
       if ((window as any).vkBridge) {
         // VK Bridge detected, we're in VK, not Telegram
@@ -163,12 +175,19 @@ export function isTelegramWebApp(): boolean {
     // This is the PRIMARY method - if this exists AND no VK indicators, we're in Telegram
     if (window.Telegram?.WebApp) {
       // Double-check: make sure we're not in VK
-      // Re-check VK params to be absolutely sure (including hash)
+      // Re-check VK params to be absolutely sure (including hash and sessionStorage)
       const hashForFinalCheck = window.location.hash
       const hashParamsForFinalCheck = hashForFinalCheck ? new URLSearchParams(hashForFinalCheck.split('?')[1] || '') : null
+      let savedVKStatus = false
+      try {
+        savedVKStatus = sessionStorage.getItem('isVKWebApp') === 'true'
+      } catch (error) {
+        // Ignore errors
+      }
       const finalVKCheck = urlParams.has('vk_user_id') || 
                           urlParams.has('vk_app_id') || 
                           (hashParamsForFinalCheck && (hashParamsForFinalCheck.has('vk_user_id') || hashParamsForFinalCheck.has('vk_app_id'))) ||
+                          savedVKStatus ||
                           (window as any).vkBridge
       if (finalVKCheck) {
         // VK detected, not Telegram
