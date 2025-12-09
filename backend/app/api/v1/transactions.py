@@ -625,6 +625,49 @@ async def create_transaction(
             detail=f"Invalid transaction_type: {transaction_data.transaction_type}. Must be 'income', 'expense', or 'transfer'"
         )
     
+    # Validate category_id for income and expense transactions
+    if transaction_type_value in ["income", "expense"]:
+        if not transaction_data.category_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Категория обязательна для доходов и расходов"
+            )
+        
+        # Verify category exists and belongs to user or shared budget
+        from app.models.category import Category
+        category = db.query(Category).filter(Category.id == transaction_data.category_id).first()
+        
+        if not category:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Категория не найдена"
+            )
+        
+        # Check if category is for the correct transaction type
+        if category.transaction_type.value not in ["both", transaction_type_value]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Категория не подходит для типа транзакции '{transaction_type_value}'"
+            )
+        
+        # Check access: category must belong to user or shared budget
+        has_category_access = False
+        if category.user_id == current_user.id:
+            has_category_access = True
+        elif category.shared_budget_id:
+            from app.models.shared_budget import SharedBudgetMember
+            membership = db.query(SharedBudgetMember).filter(
+                SharedBudgetMember.shared_budget_id == category.shared_budget_id,
+                SharedBudgetMember.user_id == current_user.id
+            ).first()
+            has_category_access = membership is not None
+        
+        if not has_category_access:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="У вас нет доступа к этой категории"
+            )
+    
     # Check balance for expense and transfer transactions
     if transaction_type_value in ["expense", "transfer"]:
         # Calculate current account balance

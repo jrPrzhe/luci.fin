@@ -558,8 +558,11 @@ export function Dashboard() {
       
       showSuccess(t.dashboard.quickActions[quickFormType || 'expense'] + ' добавлен')
     } catch (err: any) {
+      console.error('[Dashboard] Error creating transaction:', err)
+      console.error('[Dashboard] Transaction data:', submitData)
       const { translateError } = await import('../utils/errorMessages')
       const errorMessage = translateError(err)
+      console.error('[Dashboard] Translated error:', errorMessage)
       showError(errorMessage)
       setSubmitting(false)
     } finally {
