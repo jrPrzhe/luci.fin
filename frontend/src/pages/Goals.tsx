@@ -383,7 +383,7 @@ function GoalDetailModal({ goal, onClose, onDelete }: { goal: Goal; onClose: () 
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div
         className="bg-telegram-surface dark:bg-telegram-dark-surface rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
@@ -982,7 +982,7 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
 
   return (
     <div 
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" 
+      className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" 
       onClick={() => {
         // Don't close modal during loading
         if (!loading && !generatingRoadmap) {
