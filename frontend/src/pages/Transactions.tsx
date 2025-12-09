@@ -363,7 +363,7 @@ export function Transactions() {
       // Convert local time to ISO string (UTC) for backend
       const transactionDateISO = localDate.toISOString()
       
-      const submitData: any = {
+      let submitData: any = {
         account_id: parseInt(formData.account_id),
         transaction_type: formData.transaction_type,
         amount: amountNumber,
@@ -408,7 +408,9 @@ export function Transactions() {
       showSuccess(editingTransaction ? t.transactions.updated : t.transactions.added)
     } catch (err: any) {
       console.error('[Transactions] Error creating/updating transaction:', err)
-      console.error('[Transactions] Transaction data:', submitData)
+      if (submitData) {
+        console.error('[Transactions] Transaction data:', submitData)
+      }
       const { translateError } = await import('../utils/errorMessages')
       const errorMessage = translateError(err)
       console.error('[Transactions] Translated error:', errorMessage)

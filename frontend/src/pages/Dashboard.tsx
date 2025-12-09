@@ -468,6 +468,7 @@ export function Dashboard() {
 
     setSubmitting(true)
 
+    let submitData: any = null
     try {
       const account = (accounts as Account[]).find(a => a.id === parseInt(quickFormData.account_id))
       if (!account) {
@@ -478,7 +479,7 @@ export function Dashboard() {
 
       // Replace comma with dot for decimal separator (Russian locale uses comma)
       const amountValue = quickFormData.amount.toString().replace(',', '.')
-      const submitData: any = {
+      submitData = {
         account_id: parseInt(quickFormData.account_id),
         transaction_type: quickFormType,
         amount: parseFloat(amountValue),
@@ -559,7 +560,9 @@ export function Dashboard() {
       showSuccess(t.dashboard.quickActions[quickFormType || 'expense'] + ' добавлен')
     } catch (err: any) {
       console.error('[Dashboard] Error creating transaction:', err)
-      console.error('[Dashboard] Transaction data:', submitData)
+      if (submitData) {
+        console.error('[Dashboard] Transaction data:', submitData)
+      }
       const { translateError } = await import('../utils/errorMessages')
       const errorMessage = translateError(err)
       console.error('[Dashboard] Translated error:', errorMessage)
