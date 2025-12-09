@@ -340,6 +340,7 @@ export function Transactions() {
       return
     }
 
+    let submitData: any = null
     try {
       // Validate category for income/expense transactions
       if ((formData.transaction_type === 'income' || formData.transaction_type === 'expense') && !formData.category_id) {
@@ -363,7 +364,7 @@ export function Transactions() {
       // Convert local time to ISO string (UTC) for backend
       const transactionDateISO = localDate.toISOString()
       
-      let submitData: any = {
+      submitData = {
         account_id: parseInt(formData.account_id),
         transaction_type: formData.transaction_type,
         amount: amountNumber,
