@@ -146,6 +146,12 @@ export function translateError(error: any): string {
     return 'Ошибка базы данных. Пожалуйста, попробуйте позже или обратитесь в поддержку.'
   }
 
+  // Ошибки категории
+  if (errorLower.includes('категория обязательна') || errorLower.includes('категория не найдена') || 
+      errorLower.includes('категория не подходит') || errorLower.includes('нет доступа к этой категории')) {
+    return errorMessage
+  }
+
   // Ошибки "не найдено"
   if (errorLower.includes('not found') || errorLower.includes('404') || errorLower.includes('does not exist')) {
     return 'Запрашиваемый ресурс не найден.'
@@ -161,7 +167,24 @@ export function translateError(error: any): string {
     return 'Внутренняя ошибка сервера. Пожалуйста, попробуйте позже.'
   }
 
+  // Ошибки 400 Bad Request - проверяем конкретные сообщения перед общим сообщением
+  if (errorLower.includes('категория') || errorLower.includes('category') || 
+      errorLower.includes('недостаточно средств') || errorLower.includes('insufficient') ||
+      errorLower.includes('обязательна') || errorLower.includes('required')) {
+    // Если это конкретная ошибка, возвращаем её как есть
+    if (errorMessage.includes('Категория') || errorMessage.includes('категория') ||
+        errorMessage.includes('Недостаточно средств') || errorMessage.includes('недостаточно средств')) {
+      return errorMessage
+    }
+  }
+  
   if (errorLower.includes('bad request') || errorLower.includes('400')) {
+    // Если сообщение уже на русском и понятное, возвращаем как есть
+    if (errorMessage.includes('Категория') || errorMessage.includes('категория') ||
+        errorMessage.includes('обязательна') || errorMessage.includes('не найдена') ||
+        errorMessage.includes('не подходит') || errorMessage.includes('нет доступа')) {
+      return errorMessage
+    }
     return 'Неверный запрос. Проверьте введенные данные.'
   }
 

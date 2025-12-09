@@ -488,8 +488,13 @@ export function Dashboard() {
         transaction_date: new Date().toISOString(),
       }
 
-      // Add category_id if selected (for income/expense)
-      if (quickFormData.category_id && (quickFormType === 'income' || quickFormType === 'expense')) {
+      // Add category_id for income/expense transactions (required)
+      if (quickFormType === 'income' || quickFormType === 'expense') {
+        if (!quickFormData.category_id) {
+          showError(t.dashboard.form.selectCategory)
+          setSubmitting(false)
+          return
+        }
         submitData.category_id = parseInt(quickFormData.category_id)
       }
 
