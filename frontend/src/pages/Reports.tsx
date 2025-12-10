@@ -58,23 +58,6 @@ interface AnalyticsData {
 
 const COLORS = ['#3390EC', '#6CC3F2', '#4CAF50', '#FF9800', '#9C27B0', '#F44336', '#00BCD4', '#FFC107', '#607D8B', '#E91E63']
 
-// Custom Tooltip component for charts
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-telegram-surface dark:bg-telegram-dark-surface border border-telegram-border dark:border-telegram-dark-border rounded-lg p-3 shadow-lg">
-        <p className="text-sm font-semibold text-telegram-text dark:text-telegram-dark-text mb-2">{label}</p>
-        {payload.map((entry: any, index: number) => (
-          <p key={index} className="text-sm" style={{ color: entry.color }}>
-            {entry.name}: {typeof entry.value === 'number' ? entry.value.toLocaleString('ru-RU') : entry.value} ₽
-          </p>
-        ))}
-      </div>
-    )
-  }
-  return null
-}
-
 // Маппинг английских названий месяцев на русские
 const MONTH_MAPPING: Record<string, string> = {
   'Jan': 'Янв', 'Feb': 'Фев', 'Mar': 'Мар', 'Apr': 'Апр',

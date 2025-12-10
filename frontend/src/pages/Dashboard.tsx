@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
@@ -40,6 +40,8 @@ export function Dashboard() {
   const [submitting, setSubmitting] = useState(false)
   const [newAchievement, setNewAchievement] = useState<any>(null)
   const [levelUp, setLevelUp] = useState<number | null>(null)
+  const descriptionInputRef = useRef<HTMLInputElement>(null)
+  const formScrollContainerRef = useRef<HTMLDivElement>(null)
 
   // Quick form state
   const [quickFormData, setQuickFormData] = useState({
@@ -833,7 +835,7 @@ export function Dashboard() {
             {/* Form Step */}
             {quickFormStep === 'form' && (
               <form onSubmit={handleQuickSubmit} className="flex flex-col flex-1 min-h-0">
-                <div className="space-y-3 flex-1 overflow-y-auto min-h-0 p-2 modal-content-scrollable">
+                <div ref={formScrollContainerRef} className="space-y-3 flex-1 overflow-y-auto min-h-0 p-2 pb-20 modal-content-scrollable">
               {/* Show selected category - compact display */}
               {quickFormType !== 'transfer' && quickFormData.category_id && (
                 <div className="bg-telegram-surface dark:bg-telegram-dark-surface p-2 rounded-telegram mb-2 flex items-center gap-2 min-w-0">
@@ -987,9 +989,25 @@ export function Dashboard() {
                     {t.dashboard.form.description}
                   </label>
                   <input
+                    ref={descriptionInputRef}
                     type="text"
                     value={quickFormData.description}
                     onChange={(e) => setQuickFormData({ ...quickFormData, description: e.target.value })}
+                    onFocus={(e) => {
+                      // Scroll to description field when focused to prevent it from being hidden behind buttons
+                      setTimeout(() => {
+                        const input = e.target as HTMLInputElement
+                        const container = formScrollContainerRef.current
+                        if (input && container) {
+                          const inputOffsetTop = input.offsetTop
+                          const scrollPosition = inputOffsetTop - 20 // Add some padding
+                          container.scrollTo({
+                            top: scrollPosition,
+                            behavior: 'smooth'
+                          })
+                        }
+                      }, 100) // Small delay to ensure keyboard is shown
+                    }}
                     className="input text-sm py-2"
                     placeholder={t.common.optional}
                     disabled={submitting}
@@ -1024,7 +1042,7 @@ export function Dashboard() {
               )}
                 </div>
                 
-                <div className="flex gap-3 mt-4 pt-4 border-t border-telegram-border dark:border-telegram-dark-border flex-shrink-0">
+                <div className="flex gap-3 mt-4 pt-4 pb-2 border-t border-telegram-border dark:border-telegram-dark-border flex-shrink-0">
                   <button 
                     type="submit" 
                     className="btn-primary flex-1 flex items-center justify-center gap-2"
