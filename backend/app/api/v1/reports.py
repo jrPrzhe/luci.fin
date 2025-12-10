@@ -556,16 +556,48 @@ async def get_analytics(
                     AND transaction_date <= :month_end
                 """
             
-            month_result = db.execute(sa_text(month_sql), month_params)
-            month_transactions_data = month_result.fetchall()
+            try:
+                month_result = db.execute(sa_text(month_sql), month_params)
+                month_transactions_data = month_result.fetchall()
+            except Exception as e:
+                error_str = str(e)
+                if "CharacterNotInRepertoire" in error_str or "invalid byte sequence" in error_str:
+                    logger.error(f"Encoding error in monthly comparison query: {e}")
+                    # Try simpler query
+                    try:
+                        if shared_account_ids_list:
+                            simple_month_sql = f"""
+                                SELECT transaction_type::text, amount, description, parent_transaction_id
+                                FROM transactions
+                                WHERE ({where_clause})
+                                AND transaction_date >= :month_start
+                                AND transaction_date <= :month_end
+                            """
+                        else:
+                            simple_month_sql = f"""
+                                SELECT transaction_type::text, amount, description, parent_transaction_id
+                                FROM transactions
+                                WHERE account_id IN ({placeholders})
+                                AND user_id = :user_id
+                                AND transaction_date >= :month_start
+                                AND transaction_date <= :month_end
+                            """
+                        month_result = db.execute(sa_text(simple_month_sql), month_params)
+                        month_transactions_data = month_result.fetchall()
+                    except Exception as e2:
+                        logger.error(f"Fallback monthly query also failed: {e2}")
+                        month_transactions_data = []
+                else:
+                    logger.error(f"Error in monthly comparison query: {e}")
+                    month_transactions_data = []
         
         month_income = 0.0
         month_expense = 0.0
-            for row in month_transactions_data:
-                trans_type = row[0].lower() if row[0] else ''
-                amount = float(row[1]) if row[1] else 0.0
-                description = safe_decode(row[2]) if len(row) > 2 else None
-                parent_transaction_id = row[3] if len(row) > 3 else None
+        for row in month_transactions_data:
+            trans_type = row[0].lower() if row[0] else ''
+            amount = float(row[1]) if row[1] else 0.0
+            description = safe_decode(row[2]) if len(row) > 2 else None
+            parent_transaction_id = row[3] if len(row) > 3 else None
             
             # Exclude transfer income transactions
             is_transfer_income = False
