@@ -131,7 +131,17 @@ async def get_analytics(
             sql_query = f"""
                 SELECT 
                     id, account_id, transaction_type::text, amount, currency,
-                    category_id, description, goal_id, transaction_date,
+                    category_id, 
+                    CASE 
+                        WHEN description IS NOT NULL THEN 
+                            COALESCE(
+                                convert_from(convert_to(description, 'LATIN1'), 'UTF8'),
+                                encode(description::bytea, 'escape')::text,
+                                description
+                            )
+                        ELSE NULL
+                    END as description,
+                    goal_id, transaction_date,
                     amount_in_default_currency, parent_transaction_id, user_id
                 FROM transactions
                 WHERE ({where_clause})
@@ -149,7 +159,17 @@ async def get_analytics(
             sql_query = f"""
                 SELECT 
                     id, account_id, transaction_type::text, amount, currency,
-                    category_id, description, goal_id, transaction_date,
+                    category_id, 
+                    CASE 
+                        WHEN description IS NOT NULL THEN 
+                            COALESCE(
+                                convert_from(convert_to(description, 'LATIN1'), 'UTF8'),
+                                encode(description::bytea, 'escape')::text,
+                                description
+                            )
+                        ELSE NULL
+                    END as description,
+                    goal_id, transaction_date,
                     amount_in_default_currency, parent_transaction_id, user_id
                 FROM transactions
                 WHERE account_id IN ({placeholders})
@@ -158,8 +178,48 @@ async def get_analytics(
                 AND transaction_date <= :end_date
             """
         
-        result = db.execute(sa_text(sql_query), params)
-        transactions_data = result.fetchall()
+        try:
+            result = db.execute(sa_text(sql_query), params)
+            transactions_data = result.fetchall()
+        except Exception as e:
+            error_str = str(e)
+            # Check if it's an encoding error
+            if "CharacterNotInRepertoire" in error_str or "invalid byte sequence" in error_str:
+                logger.error(f"Encoding error in reports query: {e}")
+                # Try simpler query without encoding conversions
+                try:
+                    if shared_account_ids_list:
+                        simple_sql = f"""
+                            SELECT 
+                                id, account_id, transaction_type::text, amount, currency,
+                                category_id, description, goal_id, transaction_date,
+                                amount_in_default_currency, parent_transaction_id, user_id
+                            FROM transactions
+                            WHERE ({where_clause})
+                            AND transaction_date >= :start_date
+                            AND transaction_date <= :end_date
+                        """
+                    else:
+                        simple_sql = f"""
+                            SELECT 
+                                id, account_id, transaction_type::text, amount, currency,
+                                category_id, description, goal_id, transaction_date,
+                                amount_in_default_currency, parent_transaction_id, user_id
+                            FROM transactions
+                            WHERE account_id IN ({placeholders})
+                            AND user_id = :user_id
+                            AND transaction_date >= :start_date
+                            AND transaction_date <= :end_date
+                        """
+                    logger.warning("Retrying reports query without encoding conversions")
+                    result = db.execute(sa_text(simple_sql), params)
+                    transactions_data = result.fetchall()
+                except Exception as e2:
+                    logger.error(f"Fallback query also failed: {e2}")
+                    transactions_data = []
+            else:
+                logger.error(f"Error executing reports query: {e}", exc_info=True)
+                raise
     
     # Calculate totals - convert Decimal to float for consistency
     total_income = 0.0
@@ -369,7 +429,7 @@ async def get_analytics(
         trans_type = row[2].lower() if row[2] else ''
         transaction_date = row[8]  # transaction_date
         amount = float(row[3]) if row[3] else 0.0
-        description = row[6] if len(row) > 6 else None
+        description = safe_decode(row[6]) if len(row) > 6 else None
         parent_transaction_id = row[10] if len(row) > 10 else None
         
         # Exclude transfer income transactions
@@ -433,7 +493,17 @@ async def get_analytics(
                 where_clause = " OR ".join(where_clauses) if where_clauses else "1=0"
                 
                 month_sql = f"""
-                    SELECT transaction_type::text, amount, description, parent_transaction_id
+                    SELECT transaction_type::text, amount, 
+                    CASE 
+                        WHEN description IS NOT NULL THEN 
+                            COALESCE(
+                                convert_from(convert_to(description, 'LATIN1'), 'UTF8'),
+                                encode(description::bytea, 'escape')::text,
+                                description
+                            )
+                        ELSE NULL
+                    END as description,
+                    parent_transaction_id
                     FROM transactions
                     WHERE ({where_clause})
                     AND transaction_date >= :month_start
@@ -448,7 +518,17 @@ async def get_analytics(
                 month_params["user_id"] = current_user.id
                 
                 month_sql = f"""
-                    SELECT transaction_type::text, amount, description, parent_transaction_id
+                    SELECT transaction_type::text, amount, 
+                    CASE 
+                        WHEN description IS NOT NULL THEN 
+                            COALESCE(
+                                convert_from(convert_to(description, 'LATIN1'), 'UTF8'),
+                                encode(description::bytea, 'escape')::text,
+                                description
+                            )
+                        ELSE NULL
+                    END as description,
+                    parent_transaction_id
                     FROM transactions
                     WHERE account_id IN ({placeholders})
                     AND user_id = :user_id
@@ -461,11 +541,11 @@ async def get_analytics(
         
         month_income = 0.0
         month_expense = 0.0
-        for row in month_transactions_data:
-            trans_type = row[0].lower() if row[0] else ''
-            amount = float(row[1]) if row[1] else 0.0
-            description = row[2] if len(row) > 2 else None
-            parent_transaction_id = row[3] if len(row) > 3 else None
+            for row in month_transactions_data:
+                trans_type = row[0].lower() if row[0] else ''
+                amount = float(row[1]) if row[1] else 0.0
+                description = safe_decode(row[2]) if len(row) > 2 else None
+                parent_transaction_id = row[3] if len(row) > 3 else None
             
             # Exclude transfer income transactions
             is_transfer_income = False
