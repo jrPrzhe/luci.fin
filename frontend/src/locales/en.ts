@@ -89,6 +89,7 @@ export const en = {
       transferMinAccounts: 'At least 2 accounts are required for transfer. Create another account for transfer.',
       transferNoAccounts: 'Create accounts to get started.',
       selectItemFromList: 'Select an item from the list',
+      transactionAdded: '{type} added',
     },
   },
   
@@ -357,6 +358,9 @@ export const en = {
     error: 'Error loading data',
     noData: 'No data to display',
     saved: 'Saved:',
+    downloadSuccess: 'Report downloaded successfully',
+    downloadError: 'Error',
+    downloadFailed: 'Failed to download report',
     weekdayShort: {
       mon: 'Mon',
       tue: 'Tue',
@@ -522,6 +526,7 @@ export const en = {
     importCompleted: 'Import completed! Imported: {accounts} accounts, {transactions} transactions, {categories} categories',
     importExecutionTime: 'Execution time: {time}',
     importLessThanSecond: 'less than 1 sec.',
+    importSeconds: 'sec.',
     about: 'About',
     aboutDesc: 'Tips and help',
     dangerZone: 'Danger Zone',

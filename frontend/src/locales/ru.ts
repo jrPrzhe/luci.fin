@@ -89,6 +89,7 @@ export const ru = {
       transferMinAccounts: 'Для перевода нужно минимум 2 счета. Создайте еще один счет для перевода.',
       transferNoAccounts: 'Создайте счета, чтобы начать работу.',
       selectItemFromList: 'Выберите элемент в списке',
+      transactionAdded: '{type} добавлен',
     },
   },
   
@@ -357,6 +358,9 @@ export const ru = {
     error: 'Ошибка загрузки данных',
     noData: 'Нет данных для отображения',
     saved: 'Накоплено:',
+    downloadSuccess: 'Отчет успешно скачан',
+    downloadError: 'Ошибка',
+    downloadFailed: 'Не удалось скачать отчет',
     weekdayShort: {
       mon: 'пн',
       tue: 'вт',
@@ -522,6 +526,7 @@ export const ru = {
     importCompleted: 'Импорт завершен! Импортировано: {accounts} счетов, {transactions} транзакций, {categories} категорий',
     importExecutionTime: 'Время выполнения: {time}',
     importLessThanSecond: 'менее 1 сек.',
+    importSeconds: 'сек.',
     about: 'О приложении',
     aboutDesc: 'Подсказки и помощь',
     dangerZone: 'Опасная зона',

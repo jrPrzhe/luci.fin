@@ -198,7 +198,7 @@ export function Import() {
               {t.common.loading}
             </p>
             <p className="text-center text-xs text-blue-500">
-              {t.profile.importExecutionTime.replace('{time}', elapsedTime > 0 ? `${elapsedTime} сек.` : t.profile.importLessThanSecond)}
+              {t.profile.importExecutionTime.replace('{time}', elapsedTime > 0 ? `${elapsedTime} ${t.profile.importSeconds}` : t.profile.importLessThanSecond)}
             </p>
           </div>
         )}

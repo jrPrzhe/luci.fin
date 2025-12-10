@@ -68,20 +68,17 @@ const MONTH_MAPPING: Record<string, string> = {
   'September': 'Сентябрь', 'October': 'Октябрь', 'November': 'Ноябрь', 'December': 'Декабрь'
 }
 
-// Функция для локализации названия месяца (использует системную локаль)
-const localizeMonth = (monthStr: string, locale: string = 'en-US'): string => {
+// Функция для локализации названия месяца (использует локаль из i18n)
+const localizeMonth = (monthStr: string, language: 'ru' | 'en', currentLocale: string = 'en-US'): string => {
   if (!monthStr) return monthStr
   
-  // Используем системную локаль браузера
-  const systemLocale = navigator.language || 'en-US'
-  
   // Если локаль английская, возвращаем как есть (месяцы уже на английском)
-  if (systemLocale.startsWith('en') || locale === 'en-US') {
+  if (language === 'en' || currentLocale.startsWith('en')) {
     return monthStr
   }
   
   // Для русской локали - переводим месяцы
-  if (systemLocale.startsWith('ru') || locale === 'ru-RU') {
+  if (language === 'ru' || currentLocale.startsWith('ru')) {
     // Если уже на русском, возвращаем как есть
     if (monthStr.match(/[А-Яа-я]/)) {
       return monthStr
@@ -109,7 +106,7 @@ const localizeMonth = (monthStr: string, locale: string = 'en-US'): string => {
     try {
       const date = new Date(trimmed + ' 1, 2024')
       if (!isNaN(date.getTime())) {
-        const localized = date.toLocaleDateString('ru-RU', { month: 'short' })
+        const localized = date.toLocaleDateString(currentLocale, { month: 'short' })
         return localized.replace(/\.$/, '')
       }
     } catch (e) {
@@ -186,7 +183,7 @@ export function Reports() {
         })
         // Validate response structure
         if (!data || typeof data !== 'object') {
-          throw new Error('Неверный формат данных от сервера')
+          throw new Error(t.reports.error)
         }
         return data
       } catch (err: any) {
@@ -221,12 +218,13 @@ export function Reports() {
       const errorMessage = error.message || ''
       // Проверяем ошибку от бэкенда - если это 403 или сообщение о премиум, показываем модальное окно
       if (errorMessage.includes('премиум') || 
+          errorMessage.includes('premium') ||
           errorMessage.includes('403') || 
           errorMessage.includes('Forbidden') ||
           (error.response && error.response.status === 403)) {
         setShowPremiumModal(true)
       } else {
-        alert(`❌ Ошибка: ${errorMessage || 'Не удалось отправить отчет'}`)
+        alert(`❌ ${t.reports.downloadError}: ${errorMessage || t.reports.downloadFailed}`)
       }
     },
   })
@@ -252,19 +250,20 @@ export function Reports() {
         window.URL.revokeObjectURL(url)
         document.body.removeChild(a)
         setIsDownloading(false)
-        alert('✅ Отчет успешно скачан')
+        alert(`✅ ${t.reports.downloadSuccess}`)
       }
     } catch (error: any) {
       setIsDownloading(false)
       // Проверяем ошибку от бэкенда - если это 403 или сообщение о премиум, показываем модальное окно
       const errorMessage = error.message || ''
       if (errorMessage.includes('премиум') || 
+          errorMessage.includes('premium') ||
           errorMessage.includes('403') || 
           errorMessage.includes('Forbidden') ||
           (error.response && error.response.status === 403)) {
         setShowPremiumModal(true)
       } else {
-        alert(`❌ Ошибка: ${errorMessage || 'Не удалось скачать отчет'}`)
+        alert(`❌ ${t.reports.downloadError}: ${errorMessage || t.reports.downloadFailed}`)
       }
     }
   }
@@ -274,30 +273,30 @@ export function Reports() {
   
   const formatCurrency = useCallback((amount: number) => {
     const currency = analytics?.totals?.currency || 'RUB'
-    const systemLocale = navigator.language || 'en-US'
-    return new Intl.NumberFormat(systemLocale, {
+    const currentLocale = locale === 'en' ? 'en-US' : 'ru-RU'
+    return new Intl.NumberFormat(currentLocale, {
       style: 'currency',
       currency: currency,
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(Math.round(amount || 0))
-  }, [analytics?.totals?.currency])
+  }, [analytics?.totals?.currency, locale])
 
   const formatDate = useCallback((dateString: string) => {
     try {
       if (!dateString) return ''
       const date = new Date(dateString)
       if (isNaN(date.getTime())) return dateString // Return original if invalid date
-      const systemLocale = navigator.language || 'en-US'
+      const currentLocale = locale === 'en' ? 'en-US' : 'ru-RU'
       if (period === 'week') {
-        return date.toLocaleDateString(systemLocale, { weekday: 'short' })
+        return date.toLocaleDateString(currentLocale, { weekday: 'short' })
       }
-      return date.toLocaleDateString(systemLocale, { day: 'numeric', month: 'short' })
+      return date.toLocaleDateString(currentLocale, { day: 'numeric', month: 'short' })
     } catch (error) {
       console.error('Error formatting date:', error)
       return dateString || ''
     }
-  }, [period])
+  }, [period, locale])
 
   // Memoize CustomTooltip to prevent re-renders and jittering
   // Create a stable component reference that only changes when locale changes
@@ -421,15 +420,15 @@ export function Reports() {
   }))
 
   const monthlyData = (analytics.monthly_comparison || []).map(item => {
-    // Форматируем месяц с использованием системной локали
-    const systemLocale = navigator.language || 'en-US'
+    // Форматируем месяц с использованием локали из i18n
+    const currentLocale = locale === 'en' ? 'en-US' : 'ru-RU'
     let monthLabel = item.month_short || ''
     if (monthLabel && !monthLabel.match(/[А-Яа-я]/)) {
-      // Если месяц на английском, форматируем его согласно системной локали
+      // Если месяц на английском, форматируем его согласно текущей локали
       try {
         const date = new Date(`2000-${monthLabel}-01`)
         if (!isNaN(date.getTime())) {
-          monthLabel = date.toLocaleDateString(systemLocale, { month: 'short' })
+          monthLabel = date.toLocaleDateString(currentLocale, { month: 'short' })
         }
       } catch (e) {
         // Если не удалось, используем оригинальное значение
@@ -439,7 +438,7 @@ export function Reports() {
     const incomeValue = typeof item.income === 'number' ? item.income : (parseFloat(item.income) || 0)
     const expenseValue = typeof item.expense === 'number' ? item.expense : (parseFloat(item.expense) || 0)
     return {
-      month: localizeMonth(monthLabel, locale),
+      month: localizeMonth(monthLabel, language, currentLocale),
       // Use static keys for data to avoid issues on mobile devices
       income: incomeValue,
       expense: expenseValue,

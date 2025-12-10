@@ -144,11 +144,11 @@ export function Quests() {
                   </div>
                   <div className="quest-content flex-1 min-w-0">
                     <div className="quest-title font-bold text-base text-telegram-text dark:text-telegram-dark-text mb-1 line-through">
-                      {quest.title}
+                      {translateQuest(quest.title, quest.description).title}
                     </div>
                     {quest.description && (
                       <div className="quest-description text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-3 line-through">
-                        {quest.description}
+                        {translateQuest(quest.title, quest.description).description || quest.description}
                       </div>
                     )}
                     <div className="quest-progress">

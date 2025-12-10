@@ -575,7 +575,7 @@ export function Dashboard() {
         queryClient.refetchQueries({ queryKey: ['analytics'], exact: false }),
       ]).catch(console.error) // Don't block UI on refetch errors
       
-      showSuccess(t.dashboard.quickActions[quickFormType || 'expense'] + ' добавлен')
+      showSuccess(t.dashboard.transactionAdded.replace('{type}', t.dashboard.quickActions[quickFormType || 'expense']))
     } catch (err: any) {
       console.error('[Dashboard] Error creating transaction:', err)
       if (submitData) {

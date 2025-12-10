@@ -2,8 +2,10 @@ import { useState, useCallback, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../services/api'
 import { UserStatsModal } from './UserStatsModal'
+import { useI18n } from '../contexts/I18nContext'
 
 export function UserStatsCard() {
+  const { t } = useI18n()
   const [showModal, setShowModal] = useState(false)
 
   const { data: status, isLoading } = useQuery({
@@ -73,7 +75,7 @@ export function UserStatsCard() {
                     {profile.streak_days}
                   </span>
                   <span className="text-[10px] md:text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-                    дней
+                    {t.dashboard.days}
                   </span>
                 </div>
               </div>
