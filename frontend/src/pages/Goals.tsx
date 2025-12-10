@@ -52,7 +52,7 @@ export function Goals() {
   const activeGoals = (goals || []).filter((g: Goal) => {
     const status = String(g.status || '').toLowerCase()
     // Log each goal for debugging
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.DEV) {
       console.log('[Goals] Goal status check:', { id: g.id, name: g.name, status: g.status, statusLower: status })
     }
     return status === 'active'
@@ -93,7 +93,7 @@ export function Goals() {
         <div className="text-center py-12">
           <div className="text-6xl mb-4">⚠️</div>
           <h3 className="text-xl font-bold text-telegram-text dark:text-telegram-dark-text mb-2">
-            {t.goals.error || 'Ошибка загрузки целей'}
+            {t.goals.stats.errorLoadingData || 'Ошибка загрузки целей'}
           </h3>
           <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-6">
             {error instanceof Error ? error.message : 'Не удалось загрузить цели'}
@@ -102,7 +102,7 @@ export function Goals() {
             onClick={() => queryClient.invalidateQueries({ queryKey: ['goals'] })}
             className="btn-primary"
           >
-            {t.common.retry || 'Повторить'}
+            {t.common.reload || 'Повторить'}
           </button>
         </div>
       </div>
@@ -130,7 +130,7 @@ export function Goals() {
       </div>
 
       {/* Debug: Show all goals count */}
-      {process.env.NODE_ENV === 'development' && (
+      {import.meta.env.DEV && (
         <div className="text-xs text-gray-500 p-2 bg-gray-100 rounded">
           Debug: Всего целей: {goals.length}, Активных: {activeGoals.length}, Завершенных: {completedGoals.length}
         </div>

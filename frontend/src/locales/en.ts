@@ -29,6 +29,7 @@ export const en = {
     copy: 'Copy',
     from: 'From',
     processing: 'Processing...',
+    reload: 'Retry',
   },
   
   // Navigation
@@ -402,6 +403,7 @@ export const en = {
     completedGoals: 'Completed Goals',
     noGoals: 'No goals',
     noGoalsDesc: 'Create your first financial goal and start your journey to your dream!',
+    errorLoadingData: 'Error loading goals',
     achieved: '✅ Achieved',
     deleteGoal: 'Delete Goal',
     deleteGoalConfirm: 'Are you sure you want to delete this goal?',
@@ -501,7 +503,6 @@ export const en = {
     active: 'Active',
     moderatelyActive: 'Moderately Active',
     inactive: 'Inactive',
-    errorLoadingData: 'Error loading data',
   },
   
   // Profile

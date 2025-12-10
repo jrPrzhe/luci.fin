@@ -29,6 +29,7 @@ export const ru = {
     copy: 'Копировать',
     from: 'От',
     processing: 'Обработка...',
+    reload: 'Повторить',
   },
   
   // Navigation
@@ -402,6 +403,7 @@ export const ru = {
     completedGoals: 'Достигнутые цели',
     noGoals: 'Нет целей',
     noGoalsDesc: 'Создайте свою первую финансовую цель и начните путь к мечте!',
+    errorLoadingData: 'Ошибка загрузки целей',
     achieved: '✅ Достигнуто',
     deleteGoal: 'Удалить цель',
     deleteGoalConfirm: 'Вы уверены, что хотите удалить эту цель?',
@@ -501,7 +503,6 @@ export const ru = {
     active: 'Активен',
     moderatelyActive: 'Умеренно активен',
     inactive: 'Неактивен',
-    errorLoadingData: 'Ошибка загрузки данных',
   },
   
   // Profile
