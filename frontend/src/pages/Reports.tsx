@@ -1,5 +1,5 @@
-import { useState, useMemo, useCallback } from 'react'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { api } from '../services/api'
 import { PremiumSubscriptionModal } from '../components/PremiumSubscriptionModal'
@@ -123,10 +123,18 @@ const localizeMonth = (monthStr: string, locale: string = 'en-US'): string => {
 
 export function Reports() {
   const { t, language, translateCategoryName } = useI18n()
+  const queryClient = useQueryClient()
   const [period, setPeriod] = useState<'week' | 'month' | 'year'>('month')
   const [showPremiumModal, setShowPremiumModal] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
   const locale = language === 'ru' ? 'ru-RU' : 'en-US'
+  
+  // Invalidate cache when period changes
+  useEffect(() => {
+    console.log(`[Reports] Period changed to: ${period}, invalidating cache`)
+    queryClient.invalidateQueries({ queryKey: ['analytics', period] })
+    queryClient.invalidateQueries({ queryKey: ['analytics'] })
+  }, [period, queryClient])
   
   // Function to translate Interesting Facts texts
   const translateFactText = (text: string): string => {
