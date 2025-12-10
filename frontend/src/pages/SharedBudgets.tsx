@@ -665,10 +665,19 @@ export function SharedBudgets() {
               </span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {members.map((member) => (
-                <div key={member.id} className="card hover:shadow-lg transition-shadow">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3 flex-1 min-w-0">
+              {members.map((member) => {
+                const memberName = member.user_name || member.user_email || `Пользователь #${member.user_id}`
+                const currentUserMember = members.find(m => currentUser && m.user_id === currentUser.id)
+                const currentUserIsAdmin = currentUserMember?.role === 'admin'
+                const adminCount = members.filter(m => m.role === 'admin').length
+                const isCurrentUser = currentUser && member.user_id === currentUser.id
+                
+                // Truncate name if too long (more than 20 characters)
+                const displayName = memberName.length > 20 ? `${memberName.substring(0, 20)}...` : memberName
+                
+                return (
+                  <div key={member.id} className="card hover:shadow-lg transition-shadow">
+                    <div className="flex items-start gap-3 mb-3">
                       <div className={`w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold flex-shrink-0 ${
                         member.role === 'admin' 
                           ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-white' 
@@ -676,12 +685,13 @@ export function SharedBudgets() {
                       }`}>
                         {member.user_name?.[0]?.toUpperCase() || member.user_email?.[0]?.toUpperCase() || '👤'}
                       </div>
-                      <div className="flex-1 min-w-0 overflow-hidden">
+                      <div className="flex-1 min-w-0">
                         <h4 
-                          className="font-semibold text-telegram-text dark:text-telegram-dark-text truncate"
-                          title={member.user_name || member.user_email || `Пользователь #${member.user_id}`}
+                          className="font-semibold text-telegram-text dark:text-telegram-dark-text break-words"
+                          style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
+                          title={memberName}
                         >
-                          {member.user_name || member.user_email || `Пользователь #${member.user_id}`}
+                          {displayName}
                         </h4>
                         <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
                           {member.role === 'admin' ? `👑 ${t.sharedBudgets.adminRole}` : `👤 ${t.sharedBudgets.memberRole}`}
@@ -692,16 +702,10 @@ export function SharedBudgets() {
                       </div>
                     </div>
                     {(() => {
-                      // Check if current user is admin of this budget
-                      const currentUserMember = members.find(m => currentUser && m.user_id === currentUser.id)
-                      const currentUserIsAdmin = currentUserMember?.role === 'admin'
-                      const adminCount = members.filter(m => m.role === 'admin').length
-                      const isCurrentUser = currentUser && member.user_id === currentUser.id
-                      
                       // Show admin controls only if current user is admin
                       if (currentUserIsAdmin && !isCurrentUser) {
                         return (
-                          <div className="flex gap-2 flex-shrink-0">
+                          <div className="flex gap-2 pt-3 border-t border-telegram-border dark:border-telegram-dark-border">
                             {/* Role change button */}
                             <button
                               onClick={() => handleUpdateRole(
@@ -709,7 +713,7 @@ export function SharedBudgets() {
                                 member.user_id, 
                                 member.role === 'admin' ? 'member' : 'admin'
                               )}
-                              className="px-3 py-1.5 text-xs font-medium rounded-telegram transition-colors whitespace-nowrap"
+                              className="px-3 py-1.5 text-xs font-medium rounded-telegram transition-colors whitespace-nowrap flex-1"
                               style={{
                                 backgroundColor: member.role === 'admin' 
                                   ? '#F59E0B' 
@@ -724,7 +728,7 @@ export function SharedBudgets() {
                             {!(member.role === 'admin' && adminCount === 1) && (
                               <button
                                 onClick={() => handleRemoveMember(selectedBudget.id, member.user_id)}
-                                className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
+                                className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors flex-shrink-0"
                                 title={t.sharedBudgets.removeMember}
                               >
                                 🗑️
@@ -736,8 +740,8 @@ export function SharedBudgets() {
                       return null
                     })()}
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         </div>
