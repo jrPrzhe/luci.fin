@@ -243,10 +243,60 @@ async def get_transactions(
         # Check if it's an encoding error
         if "CharacterNotInRepertoire" in error_str or "invalid byte sequence" in error_str:
             logger.error(f"Encoding error in database data: {e}")
-            # Try to query without problematic fields first, or use a workaround
-            # For now, return empty list and log the issue
-            logger.warning("Returning empty transactions list due to encoding error in database")
-            return []
+            # Try simpler query without encoding conversions
+            try:
+                simple_sql = """
+                    SELECT 
+                        t.id, t.account_id, t.transaction_type::text, t.amount, t.currency,
+                        t.category_id, t.description, t.shared_budget_id, t.goal_id,
+                        t.transaction_date, t.to_account_id, t.created_at, t.updated_at, t.user_id,
+                        t.parent_transaction_id,
+                        a.shared_budget_id as account_shared_budget_id,
+                        c.name as category_name, c.icon as category_icon,
+                        g.name as goal_name
+                    FROM transactions t
+                    LEFT JOIN accounts a ON t.account_id = a.id
+                    LEFT JOIN categories c ON t.category_id = c.id
+                    LEFT JOIN goals g ON t.goal_id = g.id
+                    WHERE 1=1
+                """
+                # Rebuild WHERE clause from original query
+                where_parts = []
+                if account_id:
+                    where_parts.append("t.account_id = :account_id")
+                    if 'user_id' in params:
+                        where_parts.append("t.user_id = :user_id")
+                elif filter_type == "own":
+                    where_parts.append("t.user_id = :user_id")
+                elif filter_type == "shared":
+                    if shared_account_ids:
+                        placeholders = ','.join([f':shared_acc_{i}' for i in range(len(shared_account_ids))])
+                        where_parts.append(f"t.account_id IN ({placeholders})")
+                else:
+                    if shared_account_ids:
+                        placeholders = ','.join([f':shared_acc_{i}' for i in range(len(shared_account_ids))])
+                        where_parts.append(f"(t.user_id = :user_id OR t.account_id IN ({placeholders}))")
+                    else:
+                        where_parts.append("t.user_id = :user_id")
+                
+                if transaction_type and 'transaction_type' in params:
+                    where_parts.append("LOWER(t.transaction_type::text) = :transaction_type")
+                if start_date and 'start_date' in params:
+                    where_parts.append("t.transaction_date >= :start_date")
+                if end_date and 'end_date' in params:
+                    where_parts.append("t.transaction_date <= :end_date")
+                
+                if where_parts:
+                    simple_sql += " AND " + " AND ".join(where_parts)
+                simple_sql += " ORDER BY t.transaction_date DESC LIMIT :limit OFFSET :offset"
+                
+                logger.warning("Retrying transactions query without encoding conversions")
+                result_rows = db.execute(sa_text(simple_sql), params).fetchall()
+                logger.info(f"Found {len(result_rows)} transactions with fallback query")
+            except Exception as e2:
+                logger.error(f"Fallback query also failed: {e2}")
+                logger.warning("Returning empty transactions list due to encoding error in database")
+                return []
         logger.error(f"Error executing SQL query: {e}", exc_info=True)
         logger.error(f"SQL query: {sql_query[:500]}...")
         logger.error(f"Params keys: {list(params.keys())}")

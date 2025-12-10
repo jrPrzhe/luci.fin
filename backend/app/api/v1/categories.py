@@ -27,10 +27,20 @@ async def get_categories(
     from app.models.shared_budget import SharedBudgetMember
     
     # Use raw SQL to avoid enum comparison issues
-    # Build SQL query
+    # Build SQL query with encoding handling
     sql_query = """
         SELECT 
-            id, user_id, shared_budget_id, name, transaction_type::text, parent_id,
+            id, user_id, shared_budget_id, 
+            CASE 
+                WHEN name IS NOT NULL THEN 
+                    COALESCE(
+                        convert_from(convert_to(name, 'LATIN1'), 'UTF8'),
+                        encode(name::bytea, 'escape')::text,
+                        name
+                    )
+                ELSE NULL
+            END as name,
+            transaction_type::text, parent_id,
             icon, color, is_system, is_active, is_favorite, budget_limit,
             created_at, updated_at
         FROM categories
@@ -114,15 +124,35 @@ async def get_categories(
         categories = []
         for row in result_rows:
             try:
+                # Helper function to safely decode strings
+                def safe_decode(value):
+                    if value is None:
+                        return None
+                    if isinstance(value, bytes):
+                        try:
+                            return value.decode('utf-8', errors='replace')
+                        except:
+                            return value.decode('latin-1', errors='replace')
+                    if isinstance(value, str):
+                        try:
+                            value.encode('utf-8')
+                            return value
+                        except UnicodeEncodeError:
+                            try:
+                                return value.encode('latin-1').decode('utf-8', errors='replace')
+                            except:
+                                return value.encode('utf-8', errors='replace').decode('utf-8', errors='replace')
+                    return value
+                
                 cat_dict = {
                     "id": row[0],
                     "user_id": row[1],
                     "shared_budget_id": row[2],
-                    "name": row[3],
+                    "name": safe_decode(row[3]),
                     "transaction_type": TransactionType(row[4].lower()) if row[4] else TransactionType.BOTH,  # Convert to enum
                     "parent_id": row[5],
-                    "icon": row[6],
-                    "color": row[7],
+                    "icon": safe_decode(row[6]),
+                    "color": safe_decode(row[7]),
                     "is_system": row[8],
                     "is_active": row[9],
                     "is_favorite": row[10],
@@ -137,6 +167,95 @@ async def get_categories(
         
         return categories
     except Exception as e:
+        error_str = str(e)
+        # Check if it's an encoding error
+        if "CharacterNotInRepertoire" in error_str or "invalid byte sequence" in error_str:
+            logger.error(f"Encoding error in categories: {e}")
+            # Try simpler query without encoding conversions
+            try:
+                simple_sql = """
+                    SELECT 
+                        id, user_id, shared_budget_id, name, transaction_type::text, parent_id,
+                        icon, color, is_system, is_active, is_favorite, budget_limit,
+                        created_at, updated_at
+                    FROM categories
+                    WHERE 1=1
+                """
+                # Rebuild WHERE clause (simplified)
+                if not shared_budget_id and include_shared:
+                    budget_memberships = db.query(SharedBudgetMember).filter(
+                        SharedBudgetMember.user_id == current_user.id
+                    ).all()
+                    budget_ids = [m.shared_budget_id for m in budget_memberships]
+                    if budget_ids:
+                        placeholders = ','.join([f':budget_{i}' for i in range(len(budget_ids))])
+                        simple_sql += f" AND ((user_id = :user_id AND shared_budget_id IS NULL) OR shared_budget_id IN ({placeholders}))"
+                        for i, budget_id in enumerate(budget_ids):
+                            params[f"budget_{i}"] = budget_id
+                    else:
+                        simple_sql += " AND user_id = :user_id AND shared_budget_id IS NULL"
+                else:
+                    simple_sql += " AND user_id = :user_id AND shared_budget_id IS NULL"
+                
+                if transaction_type:
+                    simple_sql += " AND (LOWER(transaction_type::text) = :transaction_type OR LOWER(transaction_type::text) = 'both')"
+                if favorites_only:
+                    simple_sql += " AND is_favorite = true"
+                
+                simple_sql += " ORDER BY shared_budget_id IS NULL DESC, is_favorite DESC, is_system DESC, name"
+                
+                logger.warning("Retrying categories query without encoding conversions")
+                result_rows = db.execute(sa_text(simple_sql), params).fetchall()
+                # Process results with safe_decode
+                categories = []
+                for row in result_rows:
+                    try:
+                        def safe_decode(value):
+                            if value is None:
+                                return None
+                            if isinstance(value, bytes):
+                                try:
+                                    return value.decode('utf-8', errors='replace')
+                                except:
+                                    return value.decode('latin-1', errors='replace')
+                            if isinstance(value, str):
+                                try:
+                                    value.encode('utf-8')
+                                    return value
+                                except UnicodeEncodeError:
+                                    try:
+                                        return value.encode('latin-1').decode('utf-8', errors='replace')
+                                    except:
+                                        return value.encode('utf-8', errors='replace').decode('utf-8', errors='replace')
+                            return value
+                        
+                        cat_dict = {
+                            "id": row[0],
+                            "user_id": row[1],
+                            "shared_budget_id": row[2],
+                            "name": safe_decode(row[3]),
+                            "transaction_type": TransactionType(row[4].lower()) if row[4] else TransactionType.BOTH,
+                            "parent_id": row[5],
+                            "icon": safe_decode(row[6]),
+                            "color": safe_decode(row[7]),
+                            "is_system": row[8],
+                            "is_active": row[9],
+                            "is_favorite": row[10],
+                            "budget_limit": float(row[11]) if row[11] else None,
+                            "created_at": row[12],
+                            "updated_at": row[13],
+                        }
+                        categories.append(CategoryResponse(**cat_dict))
+                    except Exception as e2:
+                        logger.error(f"Error serializing category in fallback: {e2}")
+                        continue
+                return categories
+            except Exception as e2:
+                logger.error(f"Fallback query also failed: {e2}")
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail=f"Ошибка при получении категорий: {str(e2)}"
+                )
         logger.error(f"Error fetching categories: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
