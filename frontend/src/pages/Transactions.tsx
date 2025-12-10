@@ -43,29 +43,29 @@ interface Category {
   is_favorite: boolean
 }
 
-// Функция для правильного склонения слова "транзакция"
-const getTransactionWord = (count: number): string => {
-  const lastDigit = count % 10
-  const lastTwoDigits = count % 100
-  
-  // Для чисел 11-14 всегда "транзакций"
-  if (lastTwoDigits >= 11 && lastTwoDigits <= 14) {
-    return 'транзакций'
-  }
-  
-  // Для чисел, оканчивающихся на 1 - "транзакция"
-  if (lastDigit === 1) {
-    return 'транзакция'
-  }
-  
-  // Для чисел, оканчивающихся на 2, 3, 4 - "транзакции"
-  if (lastDigit >= 2 && lastDigit <= 4) {
-    return 'транзакции'
-  }
-  
-  // Для остальных - "транзакций"
-  return 'транзакций'
-}
+// Функция для правильного склонения слова "транзакция" - больше не используется, заменено на i18n
+// const getTransactionWord = (count: number): string => {
+//   const lastDigit = count % 10
+//   const lastTwoDigits = count % 100
+//   
+//   // Для чисел 11-14 всегда "транзакций"
+//   if (lastTwoDigits >= 11 && lastTwoDigits <= 14) {
+//     return 'транзакций'
+//   }
+//   
+//   // Для чисел, оканчивающихся на 1 - "транзакция"
+//   if (lastDigit === 1) {
+//     return 'транзакция'
+//   }
+//   
+//   // Для чисел, оканчивающихся на 2, 3, 4 - "транзакции"
+//   if (lastDigit >= 2 && lastDigit <= 4) {
+//     return 'транзакции'
+//   }
+//   
+//   // Для остальных - "транзакций"
+//   return 'транзакций'
+// }
 
 export function Transactions() {
   const location = useLocation()
