@@ -880,6 +880,12 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
       return
     }
 
+    // Validate name length (max 15 characters)
+    if (formData.name.length > 15) {
+      showError('Название цели не должно превышать 15 символов')
+      return
+    }
+
     // Validate amount before proceeding
     if (!validateAmount(formData.target_amount)) {
       return
@@ -1031,7 +1037,13 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
             <input
               type="text"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) => {
+                const value = e.target.value
+                if (value.length <= 15) {
+                  setFormData({ ...formData, name: value })
+                }
+              }}
+              maxLength={15}
               className="w-full px-4 py-2 rounded-lg bg-telegram-hover dark:bg-telegram-dark-hover border border-telegram-border dark:border-telegram-dark-border text-telegram-text dark:text-telegram-dark-text disabled:opacity-50 disabled:cursor-not-allowed"
               placeholder={t.goals.goalNamePlaceholder}
               disabled={loading}

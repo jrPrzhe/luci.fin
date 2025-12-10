@@ -5,7 +5,7 @@ from decimal import Decimal
 
 
 class GoalBase(BaseModel):
-    name: str = Field(..., min_length=1, max_length=255)
+    name: str = Field(..., min_length=1, max_length=15)
     description: Optional[str] = None
     target_amount: Decimal = Field(..., gt=0)
     currency: str = Field(default="RUB", min_length=3, max_length=3)
@@ -19,7 +19,7 @@ class GoalCreate(GoalBase):
 
 
 class GoalUpdate(BaseModel):
-    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    name: Optional[str] = Field(None, min_length=1, max_length=15)
     description: Optional[str] = None
     target_amount: Optional[Decimal] = Field(None, gt=0)
     currency: Optional[str] = Field(None, min_length=3, max_length=3)
