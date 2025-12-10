@@ -1032,7 +1032,7 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
         >
           <div>
             <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
-              {t.goals.goalNameLabel} *
+              {t.goals.goalNameLabel} <span className="text-red-500 dark:text-red-400">*</span>
             </label>
             <input
               type="text"
@@ -1052,7 +1052,7 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
 
           <div>
             <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
-              {t.goals.targetAmountLabel} *
+              {t.goals.targetAmountLabel} <span className="text-red-500 dark:text-red-400">*</span>
             </label>
             <input
               type="text"

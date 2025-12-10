@@ -965,7 +965,7 @@ export function Transactions() {
 
             <div>
               <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                {formData.transaction_type === 'transfer' ? t.transactions.form.fromAccount : t.transactions.form.account}
+                {formData.transaction_type === 'transfer' ? t.transactions.form.fromAccount : t.transactions.form.account} <span className="text-red-500 dark:text-red-400">*</span>
               </label>
               <select
                 value={formData.account_id}
@@ -985,7 +985,7 @@ export function Transactions() {
             {formData.transaction_type === 'transfer' && (
               <div>
                 <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                  {t.transactions.form.toAccount}
+                  {t.transactions.form.toAccount} <span className="text-red-500 dark:text-red-400">*</span>
                 </label>
                 <select
                   value={formData.to_account_id}
@@ -1008,7 +1008,7 @@ export function Transactions() {
             {formData.transaction_type !== 'transfer' && categories.length > 0 && (
               <div>
                 <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                  {t.transactions.category}
+                  {t.transactions.category} <span className="text-red-500 dark:text-red-400">*</span>
                 </label>
                 <select
                   value={formData.category_id}
@@ -1054,7 +1054,7 @@ export function Transactions() {
 
             <div>
               <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                {t.transactions.amount}
+                {t.transactions.amount} <span className="text-red-500 dark:text-red-400">*</span>
               </label>
               <input
                 type="number"
@@ -1089,7 +1089,7 @@ export function Transactions() {
 
             <div>
               <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                {t.transactions.form.currency}
+                {t.transactions.form.currency} <span className="text-red-500 dark:text-red-400">*</span>
               </label>
               <select
                 value={formData.currency}
@@ -1104,7 +1104,7 @@ export function Transactions() {
 
             <div>
               <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                {t.transactions.form.dateTime}
+                {t.transactions.form.dateTime} <span className="text-red-500 dark:text-red-400">*</span>
               </label>
               <div className="relative">
                 <input
@@ -1295,7 +1295,7 @@ export function Transactions() {
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                        Тип транзакции
+                        Тип транзакции <span className="text-red-500 dark:text-red-400">*</span>
                       </label>
                       <select
                         value={formData.transaction_type}
@@ -1311,7 +1311,7 @@ export function Transactions() {
 
                     <div>
                       <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                        {formData.transaction_type === 'transfer' ? 'Счет отправления' : 'Счет'}
+                        {formData.transaction_type === 'transfer' ? 'Счет отправления' : 'Счет'} <span className="text-red-500 dark:text-red-400">*</span>
                       </label>
                       <select
                         value={formData.account_id}
@@ -1331,7 +1331,7 @@ export function Transactions() {
                     {formData.transaction_type === 'transfer' && (
                       <div>
                         <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                          {t.transactions.form.toAccount}
+                          {t.transactions.form.toAccount} <span className="text-red-500 dark:text-red-400">*</span>
                         </label>
                         <select
                           value={formData.to_account_id}
@@ -1354,7 +1354,7 @@ export function Transactions() {
                     {formData.transaction_type !== 'transfer' && categories.length > 0 && (
                       <div>
                         <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                          {t.transactions.category}
+                          {t.transactions.category} <span className="text-red-500 dark:text-red-400">*</span>
                         </label>
                         <select
                           value={formData.category_id}
@@ -1400,7 +1400,7 @@ export function Transactions() {
 
                     <div>
                       <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                        {t.transactions.amount}
+                        {t.transactions.amount} <span className="text-red-500 dark:text-red-400">*</span>
                       </label>
                       <input
                         type="number"
@@ -1435,7 +1435,7 @@ export function Transactions() {
 
                     <div>
                       <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                        {t.transactions.form.currency}
+                        {t.transactions.form.currency} <span className="text-red-500 dark:text-red-400">*</span>
                       </label>
                       <select
                         value={formData.currency}
@@ -1450,7 +1450,7 @@ export function Transactions() {
 
                     <div>
                       <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                        {t.transactions.form.dateTime}
+                        {t.transactions.form.dateTime} <span className="text-red-500 dark:text-red-400">*</span>
                       </label>
                       <div className="relative">
                         <input

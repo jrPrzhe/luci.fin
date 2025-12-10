@@ -874,7 +874,7 @@ export function Dashboard() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="col-span-2">
                   <label className="block text-xs font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
-                    {quickFormType === 'transfer' ? t.dashboard.form.fromAccount : t.dashboard.form.account}
+                    {quickFormType === 'transfer' ? t.dashboard.form.fromAccount : t.dashboard.form.account} <span className="text-red-500 dark:text-red-400">*</span>
                   </label>
                   <select
                     value={quickFormData.account_id}
@@ -912,7 +912,7 @@ export function Dashboard() {
                 {quickFormType === 'transfer' ? (
                   <div className="col-span-2">
                     <label className="block text-xs font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
-                      {t.dashboard.form.toAccount}
+                      {t.dashboard.form.toAccount} <span className="text-red-500 dark:text-red-400">*</span>
                     </label>
                     <select
                       value={quickFormData.to_account_id}
@@ -955,7 +955,7 @@ export function Dashboard() {
 
                 <div className="col-span-2">
                   <label className="block text-xs font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
-                    {t.dashboard.form.amount} *
+                    {t.dashboard.form.amount} <span className="text-red-500 dark:text-red-400">*</span>
                   </label>
                   <input
                     type="text"
