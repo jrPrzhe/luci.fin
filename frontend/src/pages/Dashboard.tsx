@@ -15,6 +15,7 @@ interface Account {
   type: string
   currency: string
   balance: number
+  is_active?: boolean
 }
 
 interface Category {
@@ -383,6 +384,10 @@ export function Dashboard() {
   const handleQuickAction = (type: 'income' | 'expense' | 'transfer') => {
     console.log(`[handleQuickAction] Starting for type: ${type}`)
     
+    // Invalidate and refetch accounts to ensure we have the latest data
+    queryClient.invalidateQueries({ queryKey: ['accounts'] })
+    queryClient.refetchQueries({ queryKey: ['accounts'] })
+    
     // Set form type and show modal immediately (synchronous operations)
     setQuickFormType(type)
     setShowQuickForm(true)
@@ -394,9 +399,11 @@ export function Dashboard() {
     console.log(`[handleQuickAction] Set categoriesLoading = true`)
     
     // Reset form data
+    // Filter active accounts only
+    const activeAccounts = (accounts as Account[] || []).filter(acc => acc.is_active !== false)
     setQuickFormData({
       category_id: '',
-      account_id: accounts && accounts.length > 0 ? accounts[0].id.toString() : '',
+      account_id: activeAccounts && activeAccounts.length > 0 ? activeAccounts[0].id.toString() : '',
       to_account_id: '',
       amount: '',
       description: '',
@@ -916,13 +923,13 @@ export function Dashboard() {
                     disabled={accountsLoading || submitting}
                   >
                     <option value="">{t.dashboard.form.selectAccount}</option>
-                    {(accounts as Account[] || []).map(account => (
+                    {((accounts as Account[] || []).filter(acc => acc.is_active !== false)).map(account => (
                       <option key={account.id} value={account.id}>
                         {account.name} ({Math.round(account.balance).toLocaleString('ru-RU')} {account.currency})
                       </option>
                     ))}
                   </select>
-                  {(!accounts || (accounts as Account[]).length === 0) && !accountsLoading && (
+                  {(!accounts || ((accounts as Account[]).filter(acc => acc.is_active !== false)).length === 0) && !accountsLoading && (
                     <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                       <p className="text-xs text-blue-700 dark:text-blue-300 mb-2">
                         💡 У вас пока нет счетов. Создайте счет, чтобы начать работу.
@@ -954,8 +961,9 @@ export function Dashboard() {
                       disabled={accountsLoading || submitting}
                     >
                       <option value="">{t.dashboard.form.selectAccount}</option>
-                      {(accounts as Account[] || [])
-                        .filter(account => account.id !== parseInt(quickFormData.account_id || '0'))
+                      {((accounts as Account[] || [])
+                        .filter(acc => acc.is_active !== false)
+                        .filter(account => account.id !== parseInt(quickFormData.account_id || '0')))
                         .map(account => (
                           <option key={account.id} value={account.id}>
                             {account.name} ({Math.round(account.balance).toLocaleString('ru-RU')} {account.currency})
