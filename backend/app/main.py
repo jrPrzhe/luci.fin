@@ -374,13 +374,26 @@ for domain in vercel_domains:
 # Log CORS configuration for debugging
 import logging
 cors_logger = logging.getLogger(__name__)
+print(f"[STARTUP] CORS origins configured: {cors_origins}", file=sys.stderr, flush=True)
+print(f"[STARTUP] CORS origins count: {len(cors_origins)}", file=sys.stderr, flush=True)
 cors_logger.info(f"CORS origins configured: {cors_origins}")
 cors_logger.info(f"CORS origins count: {len(cors_origins)}")
 
 # CORS middleware - order matters! Must be before other middleware
+# Use explicit list with Vercel domains to ensure they're included
+final_cors_origins = list(cors_origins) if cors_origins else []
+if "https://luci-fin.vercel.app" not in final_cors_origins:
+    final_cors_origins.append("https://luci-fin.vercel.app")
+if "https://luci-fin-git-main.vercel.app" not in final_cors_origins:
+    final_cors_origins.append("https://luci-fin-git-main.vercel.app")
+if "https://luci-fin-git-develop.vercel.app" not in final_cors_origins:
+    final_cors_origins.append("https://luci-fin-git-develop.vercel.app")
+
+print(f"[STARTUP] Final CORS origins: {final_cors_origins}", file=sys.stderr, flush=True)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins if cors_origins else ["*"],  # Fallback to allow all if empty
+    allow_origins=final_cors_origins if final_cors_origins else ["*"],  # Fallback to allow all if empty
     allow_origin_regex=r"https://.*\.ngrok-free\.app|https://.*\.ngrok\.app|https://.*\.ngrok\.io|https://.*\.vercel\.app|https://.*\.vk\.com|https://vk\.com|https://m\.vk\.com",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
