@@ -26,7 +26,7 @@ router = APIRouter()
 logger.info("Goals router created and ready to register routes")
 
 
-@router.get("/", response_model=List[GoalResponse], include_in_schema=True)
+@router.get("", response_model=List[GoalResponse], include_in_schema=True)
 async def get_goals(
     status_filter: Optional[str] = None,
     current_user: User = Depends(get_current_user),
