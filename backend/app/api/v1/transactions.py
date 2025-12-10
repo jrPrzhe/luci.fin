@@ -106,15 +106,19 @@ async def get_transactions(
     
     # Use raw SQL to avoid enum conversion issues
     # Build SQL query based on filters
+    # Use encode/decode to handle invalid UTF-8 sequences in database
     sql_query = """
         SELECT 
             t.id, t.account_id, t.transaction_type::text, t.amount, t.currency,
-            t.category_id, t.description, t.shared_budget_id, t.goal_id,
+            t.category_id, 
+            COALESCE(convert_from(convert_to(t.description, 'LATIN1'), 'UTF8'), t.description) as description,
+            t.shared_budget_id, t.goal_id,
             t.transaction_date, t.to_account_id, t.created_at, t.updated_at, t.user_id,
             t.parent_transaction_id,
             a.shared_budget_id as account_shared_budget_id,
-            c.name as category_name, c.icon as category_icon,
-            g.name as goal_name
+            COALESCE(convert_from(convert_to(c.name, 'LATIN1'), 'UTF8'), c.name) as category_name,
+            c.icon as category_icon,
+            COALESCE(convert_from(convert_to(g.name, 'LATIN1'), 'UTF8'), g.name) as goal_name
         FROM transactions t
         LEFT JOIN accounts a ON t.account_id = a.id
         LEFT JOIN categories c ON t.category_id = c.id
