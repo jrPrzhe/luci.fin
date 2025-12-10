@@ -854,18 +854,37 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     // Create goal without roadmap (roadmap generation is only available via bot)
     try {
       const cleanAmount = formData.target_amount.replace(/,/g, '.').replace(/\s/g, '')
+      const parsedAmount = parseFloat(cleanAmount)
+      
+      if (isNaN(parsedAmount) || !isFinite(parsedAmount) || parsedAmount <= 0) {
+        showError(t.goals.form.enterNumber || 'Please enter a valid amount')
+        return
+      }
+      
       const goalData: any = {
-        name: formData.name,
-        description: formData.description || undefined,
-        target_amount: parseFloat(cleanAmount),
-        currency: formData.currency,
-        target_date: formData.target_date || undefined,
+        name: formData.name.trim(),
+        target_amount: parsedAmount,
+        currency: formData.currency || 'RUB',
+        goal_type: 'save', // Default goal type
+      }
+      
+      // Add optional fields only if they have values
+      if (formData.description && formData.description.trim()) {
+        goalData.description = formData.description.trim()
+      }
+      
+      if (formData.target_date) {
+        // Convert date string to ISO format for backend
+        goalData.target_date = new Date(formData.target_date).toISOString()
       }
       
       console.log('Creating goal with data:', {
         name: goalData.name,
         target_amount: goalData.target_amount,
-        currency: goalData.currency
+        currency: goalData.currency,
+        goal_type: goalData.goal_type,
+        has_description: !!goalData.description,
+        has_target_date: !!goalData.target_date
       })
       
       await api.createGoal(goalData)
