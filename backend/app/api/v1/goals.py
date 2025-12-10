@@ -127,12 +127,21 @@ async def get_goals(
                         except Exception as e:
                             logger.error(f"Error preparing goal completion notification: {e}")
         
-        db.commit()
+        # Commit changes if any were made
+        try:
+            db.commit()
+        except Exception as commit_error:
+            logger.error(f"Error committing goals changes: {commit_error}", exc_info=True)
+            db.rollback()
+            # Don't fail the request if commit fails, just log it
+        
         return goals
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error getting goals for user {current_user.id}: {e}", exc_info=True)
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ошибка при получении целей: {str(e)}"

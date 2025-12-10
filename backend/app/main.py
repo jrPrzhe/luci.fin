@@ -407,6 +407,64 @@ limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
+# Global exception handler to ensure CORS headers are added even on errors
+from fastapi import Request
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
+import re
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Global exception handler that ensures CORS headers are added even on errors"""
+    import traceback
+    error_detail = str(exc)
+    error_traceback = traceback.format_exc()
+    
+    # Log the error
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.error(f"Unhandled exception: {error_detail}\n{error_traceback}")
+    
+    # Create response with error details
+    response = JSONResponse(
+        status_code=500,
+        content={
+            "detail": f"Internal server error: {error_detail}",
+            "error": error_detail
+        }
+    )
+    
+    # Add CORS headers manually
+    origin = request.headers.get("origin")
+    if origin:
+        # Check if origin is allowed
+        origin_allowed = False
+        if origin in final_cors_origins:
+            origin_allowed = True
+        else:
+            # Check regex patterns
+            patterns = [
+                r"https://.*\.ngrok-free\.app",
+                r"https://.*\.ngrok\.app",
+                r"https://.*\.ngrok\.io",
+                r"https://.*\.vercel\.app",
+                r"https://.*\.vk\.com",
+                r"https://vk\.com",
+                r"https://m\.vk\.com",
+            ]
+            for pattern in patterns:
+                if re.match(pattern, origin):
+                    origin_allowed = True
+                    break
+        
+        if origin_allowed:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+            response.headers["Access-Control-Allow-Headers"] = "*"
+    
+    return response
+
 
 @app.options("/{full_path:path}")
 async def options_handler(full_path: str):

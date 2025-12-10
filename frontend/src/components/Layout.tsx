@@ -522,23 +522,23 @@ export function Layout() {
               <span className="text-xl flex-shrink-0">🌍</span>
               <button
                 onClick={() => setLanguage('ru')}
-                className={`flex items-center justify-center gap-1 px-2 py-1 rounded-telegram text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
+                className={`flex items-center justify-center px-2 py-1 rounded-telegram transition-colors flex-shrink-0 ${
                   language === 'ru'
-                    ? 'bg-telegram-primary text-white dark:bg-telegram-dark-primary'
+                    ? 'bg-telegram-primary dark:bg-telegram-dark-primary'
                     : 'bg-telegram-border hover:bg-telegram-hover dark:bg-telegram-dark-border dark:hover:bg-telegram-dark-hover'
                 }`}
               >
-                <span className="text-base">🇷🇺</span>
+                <span className="text-xl">🇷🇺</span>
               </button>
               <button
                 onClick={() => setLanguage('en')}
-                className={`flex items-center justify-center gap-1 px-2 py-1 rounded-telegram text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
+                className={`flex items-center justify-center px-2 py-1 rounded-telegram transition-colors flex-shrink-0 ${
                   language === 'en'
-                    ? 'bg-telegram-primary text-white dark:bg-telegram-dark-primary'
+                    ? 'bg-telegram-primary dark:bg-telegram-dark-primary'
                     : 'bg-telegram-border hover:bg-telegram-hover dark:bg-telegram-dark-border dark:hover:bg-telegram-dark-hover'
                 }`}
               >
-                <span className="text-base">🇬🇧</span>
+                <span className="text-xl">🇬🇧</span>
               </button>
             </div>
             {/* Вторая строка: "Язык Русский" / "Language English" */}
