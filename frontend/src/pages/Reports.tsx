@@ -273,21 +273,21 @@ export function Reports() {
   
   const formatCurrency = useCallback((amount: number) => {
     const currency = analytics?.totals?.currency || 'RUB'
-    const currentLocale = locale === 'en' ? 'en-US' : 'ru-RU'
+    const currentLocale = language === 'en' ? 'en-US' : 'ru-RU'
     return new Intl.NumberFormat(currentLocale, {
       style: 'currency',
       currency: currency,
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(Math.round(amount || 0))
-  }, [analytics?.totals?.currency, locale])
+  }, [analytics?.totals?.currency, language])
 
   const formatDate = useCallback((dateString: string) => {
     try {
       if (!dateString) return ''
       const date = new Date(dateString)
       if (isNaN(date.getTime())) return dateString // Return original if invalid date
-      const currentLocale = locale === 'en' ? 'en-US' : 'ru-RU'
+      const currentLocale = language === 'en' ? 'en-US' : 'ru-RU'
       if (period === 'week') {
         return date.toLocaleDateString(currentLocale, { weekday: 'short' })
       }
@@ -296,7 +296,7 @@ export function Reports() {
       console.error('Error formatting date:', error)
       return dateString || ''
     }
-  }, [period, locale])
+  }, [period, language])
 
   // Memoize CustomTooltip to prevent re-renders and jittering
   // Create a stable component reference that only changes when locale changes
@@ -421,7 +421,7 @@ export function Reports() {
 
   const monthlyData = (analytics.monthly_comparison || []).map(item => {
     // Форматируем месяц с использованием локали из i18n
-    const currentLocale = locale === 'en' ? 'en-US' : 'ru-RU'
+    const currentLocale = language === 'en' ? 'en-US' : 'ru-RU'
     let monthLabel = item.month_short || ''
     if (monthLabel && !monthLabel.match(/[А-Яа-я]/)) {
       // Если месяц на английском, форматируем его согласно текущей локали
