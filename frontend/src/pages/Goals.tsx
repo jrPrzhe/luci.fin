@@ -37,15 +37,42 @@ export function Goals() {
     onConfirm: () => {},
   })
 
-  const { data: goals = [], isLoading } = useQuery({
+  const { data: goals = [], isLoading, error } = useQuery({
     queryKey: ['goals'],
     queryFn: () => api.getGoals(),
     refetchInterval: 30000, // Refetch every 30 seconds to update progress
     staleTime: 10000, // Consider data stale after 10 seconds
+    retry: 2,
   })
 
-  const activeGoals = goals.filter((g: Goal) => g.status === 'active')
-  const completedGoals = goals.filter((g: Goal) => g.status === 'completed')
+  // Debug logging
+  console.log('[Goals] Goals data:', { goals, goalsLength: goals?.length, isLoading, error })
+
+  // Filter goals by status (case-insensitive comparison, handle both string and enum)
+  const activeGoals = (goals || []).filter((g: Goal) => {
+    const status = String(g.status || '').toLowerCase()
+    // Log each goal for debugging
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[Goals] Goal status check:', { id: g.id, name: g.name, status: g.status, statusLower: status })
+    }
+    return status === 'active'
+  })
+  const completedGoals = (goals || []).filter((g: Goal) => {
+    const status = String(g.status || '').toLowerCase()
+    return status === 'completed'
+  })
+  
+  // Also show goals with any other status for debugging
+  const otherGoals = (goals || []).filter((g: Goal) => {
+    const status = String(g.status || '').toLowerCase()
+    return status !== 'active' && status !== 'completed'
+  })
+  
+  if (otherGoals.length > 0) {
+    console.warn('[Goals] Found goals with unexpected status:', otherGoals.map(g => ({ id: g.id, name: g.name, status: g.status })))
+  }
+
+  console.log('[Goals] Filtered goals:', { activeGoals: activeGoals.length, completedGoals: completedGoals.length })
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('ru-RU', {
@@ -57,6 +84,29 @@ export function Goals() {
 
   if (isLoading) {
     return <LoadingSpinner />
+  }
+
+  if (error) {
+    console.error('[Goals] Error loading goals:', error)
+    return (
+      <div className="p-4 md:p-6">
+        <div className="text-center py-12">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h3 className="text-xl font-bold text-telegram-text dark:text-telegram-dark-text mb-2">
+            {t.goals.error || 'Ошибка загрузки целей'}
+          </h3>
+          <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-6">
+            {error instanceof Error ? error.message : 'Не удалось загрузить цели'}
+          </p>
+          <button
+            onClick={() => queryClient.invalidateQueries({ queryKey: ['goals'] })}
+            className="btn-primary"
+          >
+            {t.common.retry || 'Повторить'}
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -78,6 +128,13 @@ export function Goals() {
           <span>➕</span> {t.goals.newGoal}
         </button>
       </div>
+
+      {/* Debug: Show all goals count */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="text-xs text-gray-500 p-2 bg-gray-100 rounded">
+          Debug: Всего целей: {goals.length}, Активных: {activeGoals.length}, Завершенных: {completedGoals.length}
+        </div>
+      )}
 
       {/* Active Goals - Game Mode */}
       {activeGoals.length > 0 && (
