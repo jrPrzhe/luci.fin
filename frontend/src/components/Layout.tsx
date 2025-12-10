@@ -517,19 +517,19 @@ export function Layout() {
         <div className="p-3 border-t border-telegram-border dark:border-telegram-dark-border space-y-2 overflow-hidden">
           {/* Language Toggle */}
           <div className="w-full flex items-center p-2 rounded-telegram hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors overflow-hidden">
-            <div className="flex items-center gap-2 min-w-0 overflow-hidden pr-2" style={{ flex: '1 1 0', maxWidth: 'calc(100% - 7.5rem)' }}>
-              <span className="text-xl flex-shrink-0">🌍</span>
+            <div className="flex items-center gap-2 min-w-0 overflow-hidden pr-2" style={{ flex: '1 1 0', maxWidth: 'calc(100% - 7.5rem)', minWidth: 0 }}>
+              <span className="text-lg flex-shrink-0">🌍</span>
               <div className="min-w-0 flex-1 overflow-hidden">
-                <p className="font-medium text-xs text-telegram-text dark:text-telegram-dark-text truncate">{t.profile.language}</p>
-                <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary truncate">
+                <p className="font-medium text-[10px] leading-tight text-telegram-text dark:text-telegram-dark-text truncate">{t.profile.language}</p>
+                <p className="text-[10px] leading-tight text-telegram-textSecondary dark:text-telegram-dark-textSecondary truncate">
                   {language === 'ru' ? 'Русский' : 'English'}
                 </p>
               </div>
             </div>
-            <div className="flex gap-1.5 flex-shrink-0" style={{ width: '7rem', minWidth: '7rem', flexShrink: 0 }}>
+            <div className="flex gap-1.5 flex-shrink-0" style={{ width: '7rem', minWidth: '7rem', maxWidth: '7rem', flexShrink: 0 }}>
               <button
                 onClick={() => setLanguage('ru')}
-                className={`w-[3rem] min-w-[3rem] max-w-[3rem] px-1.5 py-1 rounded-telegram text-xs font-medium transition-colors whitespace-nowrap overflow-hidden ${
+                className={`w-[3rem] min-w-[3rem] max-w-[3rem] px-1.5 py-1 rounded-telegram text-xs font-medium transition-colors whitespace-nowrap overflow-hidden flex-shrink-0 ${
                   language === 'ru'
                     ? 'bg-telegram-primary text-white dark:bg-telegram-dark-primary'
                     : 'bg-telegram-border hover:bg-telegram-hover dark:bg-telegram-dark-border dark:hover:bg-telegram-dark-hover'
@@ -539,7 +539,7 @@ export function Layout() {
               </button>
               <button
                 onClick={() => setLanguage('en')}
-                className={`w-[3rem] min-w-[3rem] max-w-[3rem] px-1.5 py-1 rounded-telegram text-xs font-medium transition-colors whitespace-nowrap overflow-hidden ${
+                className={`w-[3rem] min-w-[3rem] max-w-[3rem] px-1.5 py-1 rounded-telegram text-xs font-medium transition-colors whitespace-nowrap overflow-hidden flex-shrink-0 ${
                   language === 'en'
                     ? 'bg-telegram-primary text-white dark:bg-telegram-dark-primary'
                     : 'bg-telegram-border hover:bg-telegram-hover dark:bg-telegram-dark-border dark:hover:bg-telegram-dark-hover'
