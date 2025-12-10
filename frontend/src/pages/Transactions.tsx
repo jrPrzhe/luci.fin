@@ -78,6 +78,7 @@ export function Transactions() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   // Загружаем сохраненные фильтры из localStorage при инициализации
   const loadSavedFilters = () => {
     try {
@@ -321,6 +322,11 @@ export function Transactions() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
+    // Prevent multiple submissions
+    if (isSubmitting) {
+      return
+    }
+
     // Validate amount: max 13 digits (integer only)
     const amountStr = formData.amount.toString().trim()
     const integerPart = amountStr.replace(/[^0-9-]/g, '') // Remove any non-digits except minus
@@ -340,6 +346,7 @@ export function Transactions() {
       return
     }
 
+    setIsSubmitting(true)
     let submitData: any = null
     try {
       // Validate category for income/expense transactions
@@ -416,6 +423,8 @@ export function Transactions() {
       const errorMessage = translateError(err)
       console.error('[Transactions] Translated error:', errorMessage)
       showError(errorMessage)
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -1144,8 +1153,19 @@ export function Transactions() {
             </div>
 
             <div className="flex gap-3">
-              <button type="submit" className="btn-primary flex-1">
-                {editingTransaction ? t.transactions.form.save : t.transactions.form.add}
+              <button 
+                type="submit" 
+                className="btn-primary flex-1"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    {t.common.processing || 'Обработка...'}
+                  </span>
+                ) : (
+                  editingTransaction ? t.transactions.form.save : t.transactions.form.add
+                )}
               </button>
               <button
                 type="button"
