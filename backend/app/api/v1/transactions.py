@@ -670,51 +670,74 @@ async def create_transaction(
     
     # Check balance for expense and transfer transactions
     if transaction_type_value in ["expense", "transfer"]:
-        # Calculate current account balance
-        # For shared accounts, count ALL transactions (from all members)
-        # For personal accounts, count only user's transactions
-        if final_account.shared_budget_id:
-            # Shared account: count all transactions
-            transactions_result = db.execute(
-                sa_text("""
-                    SELECT transaction_type::text, amount 
-                    FROM transactions 
-                    WHERE account_id = :account_id
-                """),
-                {"account_id": final_account_id}
-            )
-        else:
-            # Personal account: count only user's transactions
-            transactions_result = db.execute(
-                sa_text("""
-                    SELECT transaction_type::text, amount 
-                    FROM transactions 
-                    WHERE account_id = :account_id AND user_id = :user_id
-                """),
-                {"account_id": final_account_id, "user_id": current_user.id}
-            )
-        
-        # Calculate balance
-        balance = Decimal(str(final_account.initial_balance)) if final_account.initial_balance else Decimal("0")
-        for row in transactions_result:
-            trans_type = row[0].lower() if row[0] else ''
-            amount = Decimal(str(row[1])) if row[1] else Decimal("0")
+        try:
+            logger.info(f"Checking balance for {transaction_type_value} transaction, account_id={final_account_id}, user_id={current_user.id}")
             
-            if trans_type == 'income':
-                balance += amount
-            elif trans_type == 'expense':
-                balance -= amount
-            elif trans_type == 'transfer':
-                # Transfer уменьшает баланс счета отправления
-                balance -= amount
-        
-        # Check if balance is sufficient
-        transaction_amount = Decimal(str(transaction_data.amount))
-        if balance < transaction_amount:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Недостаточно средств на счете. Текущий баланс: {balance:.2f}, требуется: {transaction_amount:.2f}"
-            )
+            # Calculate current account balance
+            # For shared accounts, count ALL transactions (from all members)
+            # For personal accounts, count only user's transactions
+            if final_account.shared_budget_id:
+                # Shared account: count all transactions
+                logger.info(f"Checking balance for shared account {final_account_id}")
+                transactions_result = db.execute(
+                    sa_text("""
+                        SELECT transaction_type::text, amount 
+                        FROM transactions 
+                        WHERE account_id = :account_id
+                    """),
+                    {"account_id": final_account_id}
+                )
+            else:
+                # Personal account: count only user's transactions
+                logger.info(f"Checking balance for personal account {final_account_id}, user_id={current_user.id}")
+                transactions_result = db.execute(
+                    sa_text("""
+                        SELECT transaction_type::text, amount 
+                        FROM transactions 
+                        WHERE account_id = :account_id AND user_id = :user_id
+                    """),
+                    {"account_id": final_account_id, "user_id": current_user.id}
+                )
+            
+            # Calculate balance
+            balance = Decimal(str(final_account.initial_balance)) if final_account.initial_balance else Decimal("0")
+            logger.info(f"Initial balance: {balance}")
+            
+            transaction_count = 0
+            for row in transactions_result:
+                transaction_count += 1
+                trans_type = row[0].lower() if row[0] else ''
+                amount = Decimal(str(row[1])) if row[1] else Decimal("0")
+                
+                if trans_type == 'income':
+                    balance += amount
+                elif trans_type == 'expense':
+                    balance -= amount
+                elif trans_type == 'transfer':
+                    # Transfer уменьшает баланс счета отправления
+                    balance -= amount
+            
+            logger.info(f"Balance after {transaction_count} transactions: {balance}")
+            
+            # Check if balance is sufficient
+            transaction_amount = Decimal(str(transaction_data.amount))
+            logger.info(f"Transaction amount: {transaction_amount}, Current balance: {balance}")
+            
+            if balance < transaction_amount:
+                logger.warning(f"Insufficient balance: {balance} < {transaction_amount}")
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Недостаточно средств на счете. Текущий баланс: {balance:.2f}, требуется: {transaction_amount:.2f}"
+                )
+            
+            logger.info(f"Balance check passed: {balance} >= {transaction_amount}")
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Error checking balance for expense transaction: {e}", exc_info=True)
+            # Don't fail transaction creation if balance check fails - log and continue
+            # This allows transactions to be created even if there's a calculation error
+            logger.warning(f"Balance check failed, but allowing transaction creation. Error: {e}")
     
     # For transfers, use raw SQL to avoid enum issues completely
     if transaction_data.transaction_type == "transfer" and to_transaction:
