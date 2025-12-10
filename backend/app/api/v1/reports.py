@@ -230,10 +230,30 @@ async def get_analytics(
     logger.info(f"[Analytics] Date range: {start_date} to {end_date}")
     logger.info(f"[Analytics] Personal accounts: {len(personal_account_ids)}, Shared accounts: {len(shared_account_ids_list)}")
     
+    # Helper function to safely decode strings
+    def safe_decode(value):
+        if value is None:
+            return None
+        if isinstance(value, bytes):
+            try:
+                return value.decode('utf-8', errors='replace')
+            except:
+                return value.decode('latin-1', errors='replace')
+        if isinstance(value, str):
+            try:
+                value.encode('utf-8')
+                return value
+            except UnicodeEncodeError:
+                try:
+                    return value.encode('latin-1').decode('utf-8', errors='replace')
+                except:
+                    return value.encode('utf-8', errors='replace').decode('utf-8', errors='replace')
+        return value
+    
     for row in transactions_data:
         trans_type = row[2].lower() if row[2] else ''
         amount = float(row[3]) if row[3] else 0.0
-        description = row[6] if len(row) > 6 else None
+        description = safe_decode(row[6]) if len(row) > 6 else None
         parent_transaction_id = row[10] if len(row) > 10 else None  # parent_transaction_id is at index 10
         
         # Exclude income transactions that are part of a transfer
