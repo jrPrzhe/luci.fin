@@ -65,14 +65,14 @@ async def get_analytics(
         # Default to current month
         start_date = datetime(end_date.year, end_date.month, 1)
     
-    # Get user's accounts
+    # Get user's accounts (matching get_transactions logic)
     user_accounts = db.query(Account).filter(
         Account.user_id == current_user.id,
         Account.is_active == True
     ).all()
     account_ids = [acc.id for acc in user_accounts]
     
-    # Get shared budget accounts
+    # Get shared budget accounts (matching get_transactions logic)
     budget_memberships = db.query(SharedBudgetMember).filter(
         SharedBudgetMember.user_id == current_user.id
     ).all()
@@ -88,64 +88,75 @@ async def get_analytics(
     
     all_account_ids = account_ids + shared_account_ids
     
+    # Separate personal and shared account IDs (needed for queries)
+    personal_account_ids = account_ids
+    shared_account_ids_list = shared_account_ids
+    
     # Get transactions in period using raw SQL to avoid enum issues
-    # For personal accounts, only get user's transactions
-    # For shared accounts, get all transactions
+    # Match get_transactions logic: user's transactions OR all transactions from shared accounts
     if not all_account_ids:
         transactions_data = []
     else:
-        # Separate personal and shared account IDs
-        personal_account_ids = account_ids
-        shared_account_ids_list = shared_account_ids
         
-        # Build query for personal accounts (with user_id filter)
-        personal_transactions = []
-        if personal_account_ids:
-            placeholders_personal = ','.join([f':acc_p_{i}' for i in range(len(personal_account_ids))])
-            params_personal = {f"acc_p_{i}": acc_id for i, acc_id in enumerate(personal_account_ids)}
-            params_personal["start_date"] = start_date
-            params_personal["end_date"] = end_date
-            params_personal["user_id"] = current_user.id
+        # Build query matching get_transactions logic
+        # For personal accounts: only user's transactions
+        # For shared accounts: all transactions (from all members)
+        if shared_account_ids_list:
+            # Has shared accounts: (user_id = current_user.id OR account_id IN shared_accounts)
+            placeholders_personal = ','.join([f':acc_p_{i}' for i in range(len(personal_account_ids))]) if personal_account_ids else ''
+            placeholders_shared = ','.join([f':acc_s_{i}' for i in range(len(shared_account_ids_list))])
             
-            sql_query_personal = f"""
+            params = {}
+            if personal_account_ids:
+                for i, acc_id in enumerate(personal_account_ids):
+                    params[f"acc_p_{i}"] = acc_id
+            for i, acc_id in enumerate(shared_account_ids_list):
+                params[f"acc_s_{i}"] = acc_id
+            params["start_date"] = start_date
+            params["end_date"] = end_date
+            params["user_id"] = current_user.id
+            
+            # Build WHERE clause matching get_transactions logic
+            where_clauses = []
+            if personal_account_ids:
+                where_clauses.append(f"account_id IN ({placeholders_personal}) AND user_id = :user_id")
+            if shared_account_ids_list:
+                where_clauses.append(f"account_id IN ({placeholders_shared})")
+            
+            where_clause = " OR ".join(where_clauses) if where_clauses else "1=0"
+            
+            sql_query = f"""
                 SELECT 
                     id, account_id, transaction_type::text, amount, currency,
                     category_id, description, goal_id, transaction_date,
                     amount_in_default_currency, parent_transaction_id, user_id
                 FROM transactions
-                WHERE account_id IN ({placeholders_personal})
+                WHERE ({where_clause})
+                AND transaction_date >= :start_date
+                AND transaction_date <= :end_date
+            """
+        else:
+            # No shared accounts: only user's transactions
+            placeholders = ','.join([f':acc_{i}' for i in range(len(personal_account_ids))])
+            params = {f"acc_{i}": acc_id for i, acc_id in enumerate(personal_account_ids)}
+            params["start_date"] = start_date
+            params["end_date"] = end_date
+            params["user_id"] = current_user.id
+            
+            sql_query = f"""
+                SELECT 
+                    id, account_id, transaction_type::text, amount, currency,
+                    category_id, description, goal_id, transaction_date,
+                    amount_in_default_currency, parent_transaction_id, user_id
+                FROM transactions
+                WHERE account_id IN ({placeholders})
                 AND user_id = :user_id
                 AND transaction_date >= :start_date
                 AND transaction_date <= :end_date
             """
-            
-            result_personal = db.execute(sa_text(sql_query_personal), params_personal)
-            personal_transactions = result_personal.fetchall()
         
-        # Build query for shared accounts (all transactions)
-        shared_transactions = []
-        if shared_account_ids_list:
-            placeholders_shared = ','.join([f':acc_s_{i}' for i in range(len(shared_account_ids_list))])
-            params_shared = {f"acc_s_{i}": acc_id for i, acc_id in enumerate(shared_account_ids_list)}
-            params_shared["start_date"] = start_date
-            params_shared["end_date"] = end_date
-            
-            sql_query_shared = f"""
-                SELECT 
-                    id, account_id, transaction_type::text, amount, currency,
-                    category_id, description, goal_id, transaction_date,
-                    amount_in_default_currency, parent_transaction_id, user_id
-                FROM transactions
-                WHERE account_id IN ({placeholders_shared})
-                AND transaction_date >= :start_date
-                AND transaction_date <= :end_date
-            """
-            
-            result_shared = db.execute(sa_text(sql_query_shared), params_shared)
-            shared_transactions = result_shared.fetchall()
-        
-        # Combine both results
-        transactions_data = list(personal_transactions) + list(shared_transactions)
+        result = db.execute(sa_text(sql_query), params)
+        transactions_data = result.fetchall()
     
     # Calculate totals - convert Decimal to float for consistency
     total_income = 0.0
@@ -384,47 +395,60 @@ async def get_analytics(
         month_end = (month_start + relativedelta(months=1)) - timedelta(days=1)
         
         # Get month transactions using raw SQL
-        # For personal accounts, only get user's transactions
-        # For shared accounts, get all transactions
+        # Match get_transactions logic: user's transactions OR all transactions from shared accounts
         month_transactions_data = []
         
-        # Personal accounts
-        if personal_account_ids:
-            placeholders_personal = ','.join([f':macc_p_{i}' for i in range(len(personal_account_ids))])
-            month_params_personal = {f"macc_p_{i}": acc_id for i, acc_id in enumerate(personal_account_ids)}
-            month_params_personal["month_start"] = month_start
-            month_params_personal["month_end"] = month_end
-            month_params_personal["user_id"] = current_user.id
+        if all_account_ids:
+            # Use same logic as main query
+            if shared_account_ids_list:
+                # Has shared accounts: (user_id = current_user.id OR account_id IN shared_accounts)
+                placeholders_personal = ','.join([f':macc_p_{i}' for i in range(len(personal_account_ids))]) if personal_account_ids else ''
+                placeholders_shared = ','.join([f':macc_s_{i}' for i in range(len(shared_account_ids_list))])
+                
+                month_params = {}
+                if personal_account_ids:
+                    for i, acc_id in enumerate(personal_account_ids):
+                        month_params[f"macc_p_{i}"] = acc_id
+                for i, acc_id in enumerate(shared_account_ids_list):
+                    month_params[f"macc_s_{i}"] = acc_id
+                month_params["month_start"] = month_start
+                month_params["month_end"] = month_end
+                month_params["user_id"] = current_user.id
+                
+                where_clauses = []
+                if personal_account_ids:
+                    where_clauses.append(f"account_id IN ({placeholders_personal}) AND user_id = :user_id")
+                if shared_account_ids_list:
+                    where_clauses.append(f"account_id IN ({placeholders_shared})")
+                
+                where_clause = " OR ".join(where_clauses) if where_clauses else "1=0"
+                
+                month_sql = f"""
+                    SELECT transaction_type::text, amount, description, parent_transaction_id
+                    FROM transactions
+                    WHERE ({where_clause})
+                    AND transaction_date >= :month_start
+                    AND transaction_date <= :month_end
+                """
+            else:
+                # No shared accounts: only user's transactions
+                placeholders = ','.join([f':macc_{i}' for i in range(len(personal_account_ids))])
+                month_params = {f"macc_{i}": acc_id for i, acc_id in enumerate(personal_account_ids)}
+                month_params["month_start"] = month_start
+                month_params["month_end"] = month_end
+                month_params["user_id"] = current_user.id
+                
+                month_sql = f"""
+                    SELECT transaction_type::text, amount, description, parent_transaction_id
+                    FROM transactions
+                    WHERE account_id IN ({placeholders})
+                    AND user_id = :user_id
+                    AND transaction_date >= :month_start
+                    AND transaction_date <= :month_end
+                """
             
-            month_sql_personal = f"""
-                SELECT transaction_type::text, amount, description, parent_transaction_id
-                FROM transactions
-                WHERE account_id IN ({placeholders_personal})
-                AND user_id = :user_id
-                AND transaction_date >= :month_start
-                AND transaction_date <= :month_end
-            """
-            
-            month_result_personal = db.execute(sa_text(month_sql_personal), month_params_personal)
-            month_transactions_data.extend(month_result_personal.fetchall())
-        
-        # Shared accounts
-        if shared_account_ids_list:
-            placeholders_shared = ','.join([f':macc_s_{i}' for i in range(len(shared_account_ids_list))])
-            month_params_shared = {f"macc_s_{i}": acc_id for i, acc_id in enumerate(shared_account_ids_list)}
-            month_params_shared["month_start"] = month_start
-            month_params_shared["month_end"] = month_end
-            
-            month_sql_shared = f"""
-                SELECT transaction_type::text, amount, description, parent_transaction_id
-                FROM transactions
-                WHERE account_id IN ({placeholders_shared})
-                AND transaction_date >= :month_start
-                AND transaction_date <= :month_end
-            """
-            
-            month_result_shared = db.execute(sa_text(month_sql_shared), month_params_shared)
-            month_transactions_data.extend(month_result_shared.fetchall())
+            month_result = db.execute(sa_text(month_sql), month_params)
+            month_transactions_data = month_result.fetchall()
         
         month_income = 0.0
         month_expense = 0.0
