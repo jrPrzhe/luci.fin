@@ -45,53 +45,53 @@ async def get_goals(
                 )
         
         goals = query.order_by(Goal.created_at.desc()).all()
-    
-    # Update progress for each goal and sync with account if linked
-    for goal in goals:
-        # If goal has linked account, sync with account balance
-        if goal.account_id:
-            from app.models.account import Account
-            from app.models.transaction import Transaction, TransactionType
-            account = db.query(Account).filter(Account.id == goal.account_id).first()
-            if account:
-                # Calculate account balance
-                transactions = db.query(Transaction).filter(
-                    Transaction.account_id == goal.account_id,
-                    Transaction.user_id == current_user.id
-                ).all()
-                
-                balance = Decimal(str(account.initial_balance))
-                for trans in transactions:
-                    if trans.transaction_type == TransactionType.INCOME:
-                        balance += Decimal(str(trans.amount))
-                    elif trans.transaction_type == TransactionType.EXPENSE:
-                        balance -= Decimal(str(trans.amount))
-                    elif trans.transaction_type == TransactionType.TRANSFER:
-                        balance -= Decimal(str(trans.amount))
-                
-                # Update goal current_amount from account balance (ensure not negative)
-                goal.current_amount = max(Decimal(0), balance)
         
-        # Update progress percentage
-        if goal.target_amount > 0:
-            # Calculate progress percentage (ensure it's between 0 and 100)
-            progress = int((goal.current_amount / goal.target_amount) * 100)
-            goal.progress_percentage = max(0, min(100, progress))
+        # Update progress for each goal and sync with account if linked
+        for goal in goals:
+            # If goal has linked account, sync with account balance
+            if goal.account_id:
+                from app.models.account import Account
+                from app.models.transaction import Transaction, TransactionType
+                account = db.query(Account).filter(Account.id == goal.account_id).first()
+                if account:
+                    # Calculate account balance
+                    transactions = db.query(Transaction).filter(
+                        Transaction.account_id == goal.account_id,
+                        Transaction.user_id == current_user.id
+                    ).all()
+                    
+                    balance = Decimal(str(account.initial_balance))
+                    for trans in transactions:
+                        if trans.transaction_type == TransactionType.INCOME:
+                            balance += Decimal(str(trans.amount))
+                        elif trans.transaction_type == TransactionType.EXPENSE:
+                            balance -= Decimal(str(trans.amount))
+                        elif trans.transaction_type == TransactionType.TRANSFER:
+                            balance -= Decimal(str(trans.amount))
+                    
+                    # Update goal current_amount from account balance (ensure not negative)
+                    goal.current_amount = max(Decimal(0), balance)
             
-            # Check if goal is completed
-            was_active = goal.status == GoalStatus.ACTIVE
-            if goal.current_amount >= goal.target_amount and was_active:
-                goal.status = GoalStatus.COMPLETED
-                goal.progress_percentage = 100
+            # Update progress percentage
+            if goal.target_amount > 0:
+                # Calculate progress percentage (ensure it's between 0 and 100)
+                progress = int((goal.current_amount / goal.target_amount) * 100)
+                goal.progress_percentage = max(0, min(100, progress))
                 
-                # Send Telegram notification if user has telegram_id
-                if current_user.telegram_id:
-                    try:
-                        from app.core.config import settings
-                        import httpx
-                        
-                        if settings.TELEGRAM_BOT_TOKEN:
-                            message = f"""🎉 Поздравляем! Цель достигнута!
+                # Check if goal is completed
+                was_active = goal.status == GoalStatus.ACTIVE
+                if goal.current_amount >= goal.target_amount and was_active:
+                    goal.status = GoalStatus.COMPLETED
+                    goal.progress_percentage = 100
+                    
+                    # Send Telegram notification if user has telegram_id
+                    if current_user.telegram_id:
+                        try:
+                            from app.core.config import settings
+                            import httpx
+                            
+                            if settings.TELEGRAM_BOT_TOKEN:
+                                message = f"""🎉 Поздравляем! Цель достигнута!
 
 ✅ Вы успешно достигли цели: {goal.name}
 
@@ -99,29 +99,29 @@ async def get_goals(
 🎯 Цель: {float(goal.target_amount):,.2f} {goal.currency}
 
 Продолжайте в том же духе! 🚀"""
-                            url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendMessage"
-                            payload = {
-                                "chat_id": current_user.telegram_id,
-                                "text": message
-                            }
-                            
-                            # Send notification in background (don't wait)
-                            try:
-                                import threading
-                                def send_notification():
-                                    try:
-                                        with httpx.Client(timeout=10.0) as client:
-                                            client.post(url, json=payload)
-                                    except Exception as e:
-                                        logger.error(f"Failed to send goal completion notification: {e}")
+                                url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendMessage"
+                                payload = {
+                                    "chat_id": current_user.telegram_id,
+                                    "text": message
+                                }
                                 
-                                thread = threading.Thread(target=send_notification)
-                                thread.daemon = True
-                                thread.start()
-                            except Exception as e:
-                                logger.error(f"Error sending goal completion notification: {e}")
-                    except Exception as e:
-                        logger.error(f"Error preparing goal completion notification: {e}")
+                                # Send notification in background (don't wait)
+                                try:
+                                    import threading
+                                    def send_notification():
+                                        try:
+                                            with httpx.Client(timeout=10.0) as client:
+                                                client.post(url, json=payload)
+                                        except Exception as e:
+                                            logger.error(f"Failed to send goal completion notification: {e}")
+                                    
+                                    thread = threading.Thread(target=send_notification)
+                                    thread.daemon = True
+                                    thread.start()
+                                except Exception as e:
+                                    logger.error(f"Error sending goal completion notification: {e}")
+                        except Exception as e:
+                            logger.error(f"Error preparing goal completion notification: {e}")
         
         db.commit()
         return goals
