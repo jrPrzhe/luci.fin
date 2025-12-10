@@ -30,19 +30,21 @@ async def get_goals(
     db: Session = Depends(get_db)
 ):
     """Get user's goals"""
-    query = db.query(Goal).filter(Goal.user_id == current_user.id)
-    
-    if status_filter:
-        try:
-            status_enum = GoalStatus(status_filter)
-            query = query.filter(Goal.status == status_enum)
-        except ValueError:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid status filter"
-            )
-    
-    goals = query.order_by(Goal.created_at.desc()).all()
+    logger.info(f"Getting goals for user_id={current_user.id}, status_filter={status_filter}")
+    try:
+        query = db.query(Goal).filter(Goal.user_id == current_user.id)
+        
+        if status_filter:
+            try:
+                status_enum = GoalStatus(status_filter)
+                query = query.filter(Goal.status == status_enum)
+            except ValueError:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid status filter"
+                )
+        
+        goals = query.order_by(Goal.created_at.desc()).all()
     
     # Update progress for each goal and sync with account if linked
     for goal in goals:
@@ -120,9 +122,17 @@ async def get_goals(
                                 logger.error(f"Error sending goal completion notification: {e}")
                     except Exception as e:
                         logger.error(f"Error preparing goal completion notification: {e}")
-    
-    db.commit()
-    return goals
+        
+        db.commit()
+        return goals
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting goals for user {current_user.id}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Ошибка при получении целей: {str(e)}"
+        )
 
 
 @router.get("/{goal_id}", response_model=GoalResponse)
