@@ -576,6 +576,10 @@ class ApiClient {
     )
   }
 
+  async getAnalytics(period: 'week' | 'month' | 'year' = 'month') {
+    return this.request<any>(`/api/v1/reports/analytics?period=${period}`)
+  }
+
   async createAccount(data: {
     name: string
     account_type: string

@@ -147,61 +147,102 @@ async def get_balance(
     # Combine personal and shared accounts
     all_accounts = list(accounts) + list(shared_accounts)
     
-    total_balance = Decimal("0")
-    account_balances = []
+    # Optimize: calculate all balances in a single SQL query instead of per-account queries
+    if not all_accounts:
+        return {
+            "total": 0.0,
+            "currency": current_user.default_currency or "USD",
+            "accounts": []
+        }
     
+    # Separate personal and shared accounts for different query logic
+    personal_account_ids = [acc.id for acc in accounts]
+    shared_account_ids = [acc.id for acc in shared_accounts]
+    
+    # Build optimized SQL query to calculate all balances at once
+    account_balances_map = {}
+    total_balance = Decimal("0")
+    
+    # Initialize balances with initial_balance
     for account in all_accounts:
+        initial = Decimal(str(account.initial_balance)) if account.initial_balance else Decimal("0")
+        account_balances_map[account.id] = {
+            "id": account.id,
+            "name": account.name,
+            "balance": initial,
+            "currency": account.currency or "USD"
+        }
+    
+    # Calculate balances for personal accounts (only user's transactions)
+    if personal_account_ids:
+        placeholders = ','.join([f':acc_{i}' for i in range(len(personal_account_ids))])
+        params = {f"acc_{i}": acc_id for i, acc_id in enumerate(personal_account_ids)}
+        params["user_id"] = current_user.id
+        
+        personal_balances_sql = f"""
+            SELECT 
+                account_id,
+                SUM(CASE 
+                    WHEN transaction_type::text ILIKE 'income' THEN amount
+                    WHEN transaction_type::text ILIKE 'expense' THEN -amount
+                    WHEN transaction_type::text ILIKE 'transfer' THEN -amount
+                    ELSE 0
+                END) as net_amount
+            FROM transactions
+            WHERE account_id IN ({placeholders}) AND user_id = :user_id
+            GROUP BY account_id
+        """
+        
         try:
-            # Calculate balance
-            # For shared accounts, count ALL transactions (from all members)
-            # For personal accounts, count only user's transactions
-            # Use raw SQL to avoid enum conversion issues
-            if account.shared_budget_id:
-                # Shared account: count all transactions
-                transactions_result = db.execute(
-                    sa_text("""
-                        SELECT transaction_type::text, amount 
-                        FROM transactions 
-                        WHERE account_id = :account_id
-                    """),
-                    {"account_id": account.id}
-                )
-            else:
-                # Personal account: count only user's transactions
-                transactions_result = db.execute(
-                    sa_text("""
-                        SELECT transaction_type::text, amount 
-                        FROM transactions 
-                        WHERE account_id = :account_id AND user_id = :user_id
-                    """),
-                    {"account_id": account.id, "user_id": current_user.id}
-                )
-            
-            balance = Decimal(str(account.initial_balance)) if account.initial_balance else Decimal("0")
-            for row in transactions_result:
-                trans_type = row[0].lower()  # Convert to lowercase for comparison
-                amount = Decimal(str(row[1])) if row[1] else Decimal("0")
-                
-                if trans_type == 'income':
-                    balance += amount
-                elif trans_type == 'expense':
-                    balance -= amount
-                elif trans_type == 'transfer':
-                    # Transfer уменьшает баланс счета отправления
-                    balance -= amount
-            
-            # For simplicity, assume same currency for now
-            total_balance += balance
-            account_balances.append({
-                "id": account.id,
-                "name": account.name,
-                "balance": float(balance),
-                "currency": account.currency or "USD"
-            })
+            result = db.execute(sa_text(personal_balances_sql), params)
+            for row in result:
+                account_id = row[0]
+                net_amount = Decimal(str(row[1])) if row[1] else Decimal("0")
+                if account_id in account_balances_map:
+                    account_balances_map[account_id]["balance"] += net_amount
         except Exception as e:
-            logger.error(f"Error calculating balance for account {account.id}: {e}", exc_info=True)
-            # Skip this account if there's an error
-            continue
+            logger.error(f"Error calculating personal account balances: {e}", exc_info=True)
+    
+    # Calculate balances for shared accounts (all transactions from all members)
+    if shared_account_ids:
+        placeholders = ','.join([f':acc_{i}' for i in range(len(shared_account_ids))])
+        params = {f"acc_{i}": acc_id for i, acc_id in enumerate(shared_account_ids)}
+        
+        shared_balances_sql = f"""
+            SELECT 
+                account_id,
+                SUM(CASE 
+                    WHEN transaction_type::text ILIKE 'income' THEN amount
+                    WHEN transaction_type::text ILIKE 'expense' THEN -amount
+                    WHEN transaction_type::text ILIKE 'transfer' THEN -amount
+                    ELSE 0
+                END) as net_amount
+            FROM transactions
+            WHERE account_id IN ({placeholders})
+            GROUP BY account_id
+        """
+        
+        try:
+            result = db.execute(sa_text(shared_balances_sql), params)
+            for row in result:
+                account_id = row[0]
+                net_amount = Decimal(str(row[1])) if row[1] else Decimal("0")
+                if account_id in account_balances_map:
+                    account_balances_map[account_id]["balance"] += net_amount
+        except Exception as e:
+            logger.error(f"Error calculating shared account balances: {e}", exc_info=True)
+    
+    # Convert to list and calculate total
+    account_balances = []
+    for account_id, acc_data in account_balances_map.items():
+        balance_float = float(acc_data["balance"])
+        total_balance += acc_data["balance"]  # For simplicity, assume same currency
+        account_balances.append({
+            "id": acc_data["id"],
+            "name": acc_data["name"],
+            "balance": balance_float,
+            "currency": acc_data["currency"]
+        })
     
     return {
         "total": float(total_balance),

@@ -275,57 +275,16 @@ export function Dashboard() {
     refetchOnWindowFocus: false,
   })
 
-  // Получаем доходы и расходы за текущий месяц
+  // Получаем доходы и расходы за текущий месяц через аналитику (быстрее чем загрузка всех транзакций)
   const { data: monthlyStats, isLoading: monthlyStatsLoading } = useQuery({
     queryKey: ['monthly-stats'],
     queryFn: async () => {
       try {
-        const now = new Date()
-        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
-        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
-        
-        // Форматируем даты в формат YYYY-MM-DD используя локальное время
-        const formatLocalDate = (date: Date): string => {
-          const year = date.getFullYear()
-          const month = String(date.getMonth() + 1).padStart(2, '0')
-          const day = String(date.getDate()).padStart(2, '0')
-          return `${year}-${month}-${day}`
+        const analytics = await api.getAnalytics('month')
+        return {
+          income: analytics.total_income || 0,
+          expense: analytics.total_expense || 0
         }
-        
-        const startDate = formatLocalDate(firstDay)
-        const endDate = formatLocalDate(lastDay)
-        
-        console.log('[Dashboard] Fetching monthly stats:', { startDate, endDate })
-        
-        const [incomeTransactions, expenseTransactions] = await Promise.all([
-          api.getTransactions(1000, 0, undefined, undefined, 'income', startDate, endDate),
-          api.getTransactions(1000, 0, undefined, undefined, 'expense', startDate, endDate),
-        ])
-        
-        console.log('[Dashboard] Transactions received:', {
-          incomeCount: incomeTransactions?.length || 0,
-          expenseCount: expenseTransactions?.length || 0,
-        })
-        
-        // Исключаем транзакции перевода из доходов
-        // Transfer income transactions have parent_transaction_id set (new transfers) or description starting with "Перевод из" (old transfers)
-        // В расходах переводы учитываем (перевод из личного счета = расход)
-        const income = (incomeTransactions || [])
-          .filter((t: any) => {
-            // Exclude if it has parent_transaction_id (new transfer format)
-            if (t.parent_transaction_id) return false
-            // Exclude if description starts with "Перевод из" (old transfer format)
-            if (t.description && t.description.trim().toLowerCase().startsWith('перевод из')) return false
-            // Exclude if it has to_account_id (legacy check)
-            if (t.to_account_id) return false
-            return true
-          })
-          .reduce((sum: number, t: any) => sum + (parseFloat(t.amount) || 0), 0)
-        const expense = (expenseTransactions || []).reduce((sum: number, t: any) => sum + (parseFloat(t.amount) || 0), 0)
-        
-        console.log('[Dashboard] Calculated stats:', { income, expense })
-        
-        return { income, expense }
       } catch (error) {
         console.error('Error fetching monthly stats:', error)
         return { income: 0, expense: 0 }
