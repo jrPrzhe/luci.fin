@@ -1,8 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
+import { useI18n } from '../contexts/I18nContext'
 
 export function DailyQuestsCompact() {
+  const { t } = useI18n()
   const navigate = useNavigate()
   const { data: quests, isLoading } = useQuery({
     queryKey: ['daily-quests'],
@@ -32,10 +34,10 @@ export function DailyQuestsCompact() {
             <span className="text-xl">🎯</span>
             <div>
               <div className="text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
-                Ежедневный ритуал
+                {t.quests.dailyRitual}
               </div>
               <div className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-                На сегодня квестов нет
+                {t.quests.noQuestsTodayDesc}
               </div>
             </div>
           </div>
@@ -69,7 +71,7 @@ export function DailyQuestsCompact() {
         <div className="flex items-center gap-2">
           <span className="text-xl">🎯</span>
           <span className="text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
-            Ежедневный ритуал
+            {t.quests.dailyRitual}
           </span>
         </div>
         <span className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
@@ -103,19 +105,19 @@ export function DailyQuestsCompact() {
           ))}
           {activeQuests.length > 2 && (
             <div className="text-xs text-center text-telegram-textSecondary dark:text-telegram-dark-textSecondary pt-1">
-              +{activeQuests.length - 2} ещё заданий
+              +{activeQuests.length - 2} {t.quests.moreQuests}
             </div>
           )}
         </div>
       ) : (
         <div className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-          Все задания выполнены! 🎉
+          {t.quests.allQuestsCompleted}
         </div>
       )}
       
       <div className="mt-2 pt-2 border-t border-telegram-border dark:border-telegram-dark-border">
         <div className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary text-center">
-          Нажмите, чтобы открыть все задания →
+          {t.quests.clickToOpenAll}
         </div>
       </div>
     </div>

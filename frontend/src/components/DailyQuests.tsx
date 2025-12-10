@@ -1,7 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../services/api'
+import { useI18n } from '../contexts/I18nContext'
 
 export function DailyQuests() {
+  const { t } = useI18n()
   const { data: quests, isLoading } = useQuery({
     queryKey: ['daily-quests'],
     queryFn: () => api.getDailyQuests(),
@@ -11,7 +13,7 @@ export function DailyQuests() {
   if (isLoading) {
     return (
       <div className="daily-quests loading">
-        <div className="skeleton">Загрузка квестов...</div>
+        <div className="skeleton">{t.quests.loadingQuestsShort}</div>
       </div>
     )
   }
@@ -22,10 +24,10 @@ export function DailyQuests() {
         <div className="text-center">
           <div className="text-4xl mb-3">📝</div>
           <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary font-medium">
-            На сегодня квестов нет
+            {t.quests.noQuestsTodayDesc}
           </p>
           <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
-            Задания появятся завтра
+            {t.quests.questsAppearTomorrow}
           </p>
         </div>
       </div>
@@ -58,7 +60,7 @@ export function DailyQuests() {
       <div className="flex items-center gap-2 mb-4">
         <span className="text-2xl">🎯</span>
         <h3 className="text-lg font-bold text-telegram-text dark:text-telegram-dark-text">
-          Ежедневный ритуал
+          {t.quests.dailyRitual}
         </h3>
       </div>
       <div className="quests-list space-y-3">
@@ -87,7 +89,7 @@ export function DailyQuests() {
                 <div className="quest-progress">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-xs font-medium text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-                      Прогресс
+                      {t.quests.progress}
                     </span>
                     <span className="text-xs font-bold text-telegram-text dark:text-telegram-dark-text">
                       {quest.progress}%

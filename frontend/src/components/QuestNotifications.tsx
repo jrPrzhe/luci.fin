@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
+import { useI18n } from '../contexts/I18nContext'
 
 interface QuestNotificationsProps {
   variant?: 'header' | 'dashboard'
 }
 
 export function QuestNotifications({ variant = 'header' }: QuestNotificationsProps) {
+  const { t, translateQuest } = useI18n()
   const navigate = useNavigate()
   const [showModal, setShowModal] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(false)
@@ -67,7 +69,7 @@ export function QuestNotifications({ variant = 'header' }: QuestNotificationsPro
         <button
           onClick={handleClick}
           className="btn-icon w-10 h-10 flex items-center justify-center bg-telegram-hover dark:bg-telegram-dark-hover hover:bg-telegram-border dark:hover:bg-telegram-dark-border relative"
-          title="Уведомления по задачам"
+          title={t.quests.questNotifications}
         >
           <span className="text-xl">🎯</span>
           {!isLoading && activeCount > 0 && (
@@ -91,7 +93,7 @@ export function QuestNotifications({ variant = 'header' }: QuestNotificationsPro
             >
               <div className="p-4 border-b border-telegram-border dark:border-telegram-dark-border flex items-center justify-between">
                 <h2 className="text-lg font-bold text-telegram-text dark:text-telegram-dark-text">
-                  🎯 Ежедневные задания
+                  🎯 {t.quests.dailyQuests}
                 </h2>
                 <button
                   onClick={() => setShowModal(false)}
@@ -105,14 +107,14 @@ export function QuestNotifications({ variant = 'header' }: QuestNotificationsPro
                 {isLoading ? (
                   <div className="text-center py-8">
                     <div className="animate-pulse text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-                      Загрузка заданий...
+                      {t.quests.loadingQuests}
                     </div>
                   </div>
                 ) : !quests || quests.length === 0 ? (
                   <div className="text-center py-8">
                     <div className="text-4xl mb-3">📝</div>
                     <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary font-medium">
-                      На сегодня заданий нет
+                      {t.quests.noQuestsToday}
                     </p>
                   </div>
                 ) : (
@@ -135,7 +137,7 @@ export function QuestNotifications({ variant = 'header' }: QuestNotificationsPro
                                   ? 'text-green-700 dark:text-green-400'
                                   : 'text-telegram-text dark:text-telegram-dark-text'
                               }`}>
-                                {quest.title}
+                                {translateQuest(quest.title, quest.description).title}
                               </h3>
                               <span className="text-xs font-bold text-yellow-600 dark:text-yellow-400">
                                 +{quest.xp_reward} XP
@@ -143,7 +145,7 @@ export function QuestNotifications({ variant = 'header' }: QuestNotificationsPro
                             </div>
                             {quest.description && (
                               <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-2">
-                                {quest.description}
+                                {translateQuest(quest.title, quest.description).description || quest.description}
                               </p>
                             )}
                             {quest.status === 'pending' && (
@@ -155,13 +157,13 @@ export function QuestNotifications({ variant = 'header' }: QuestNotificationsPro
                                   />
                                 </div>
                                 <div className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
-                                  Прогресс: {quest.progress}%
+                                  {t.quests.progress}: {quest.progress}%
                                 </div>
                               </div>
                             )}
                             {quest.status === 'completed' && (
                               <div className="text-xs text-green-600 dark:text-green-400 font-medium mt-1">
-                                ✅ Выполнено
+                                ✅ {t.quests.completedStatus}
                               </div>
                             )}
                           </div>
@@ -180,7 +182,7 @@ export function QuestNotifications({ variant = 'header' }: QuestNotificationsPro
                   }}
                   className="w-full py-2 px-4 bg-telegram-primary dark:bg-telegram-dark-primary text-white rounded-xl font-medium hover:opacity-90 transition-opacity"
                 >
-                  Открыть все задания →
+                  {t.quests.openAllQuests}
                 </button>
               </div>
             </div>
@@ -195,7 +197,7 @@ export function QuestNotifications({ variant = 'header' }: QuestNotificationsPro
     <button
       onClick={handleClick}
       className="relative inline-flex items-center justify-center p-2 rounded-xl bg-telegram-hover dark:bg-telegram-dark-hover hover:bg-telegram-border dark:hover:bg-telegram-dark-border transition-colors"
-      title="Уведомления по задачам"
+      title={t.quests.questNotifications}
     >
       <span className="text-2xl">🎯</span>
       {!isLoading && activeCount > 0 && (
