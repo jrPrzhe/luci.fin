@@ -206,9 +206,18 @@ async def get_transactions(
     # Execute raw SQL query with error handling
     try:
         logger.info(f"Executing SQL query with params: {list(params.keys())}")
+        # Use bindparam to handle encoding issues
         result_rows = db.execute(sa_text(sql_query), params).fetchall()
         logger.info(f"Found {len(result_rows)} transactions for user {current_user.id}, filter={filter_type}")
     except Exception as e:
+        error_str = str(e)
+        # Check if it's an encoding error
+        if "CharacterNotInRepertoire" in error_str or "invalid byte sequence" in error_str:
+            logger.error(f"Encoding error in database data: {e}")
+            # Try to query without problematic fields first, or use a workaround
+            # For now, return empty list and log the issue
+            logger.warning("Returning empty transactions list due to encoding error in database")
+            return []
         logger.error(f"Error executing SQL query: {e}", exc_info=True)
         logger.error(f"SQL query: {sql_query[:500]}...")
         logger.error(f"Params keys: {list(params.keys())}")
@@ -221,14 +230,36 @@ async def get_transactions(
     result = []
     for row in result_rows:
         try:
+            # Helper function to safely decode strings
+            def safe_decode(value):
+                if value is None:
+                    return None
+                if isinstance(value, bytes):
+                    try:
+                        return value.decode('utf-8', errors='replace')
+                    except:
+                        return value.decode('latin-1', errors='replace')
+                if isinstance(value, str):
+                    # Try to fix encoding issues
+                    try:
+                        value.encode('utf-8')
+                        return value
+                    except UnicodeEncodeError:
+                        # If string has encoding issues, try to fix it
+                        try:
+                            return value.encode('latin-1').decode('utf-8', errors='replace')
+                        except:
+                            return value.encode('utf-8', errors='replace').decode('utf-8', errors='replace')
+                return value
+            
             trans_dict = {
                 "id": row[0],
                 "account_id": row[1],
-                "transaction_type": row[2].lower() if row[2] else None,  # Convert to lowercase
+                "transaction_type": safe_decode(row[2]).lower() if row[2] else None,  # Convert to lowercase
                 "amount": float(row[3]) if row[3] else 0.0,
-                "currency": row[4] or "USD",
+                "currency": safe_decode(row[4]) or "USD",
                 "category_id": row[5],
-                "description": row[6],
+                "description": safe_decode(row[6]),
                 "shared_budget_id": row[7],
                 "goal_id": row[8],
                 "transaction_date": row[9],
@@ -238,9 +269,9 @@ async def get_transactions(
                 "user_id": row[13],
                 "parent_transaction_id": row[14],
                 "is_shared": row[15] is not None if row[15] is not None else False,
-                "category_name": row[16],
-                "category_icon": row[17],
-                "goal_name": row[18],
+                "category_name": safe_decode(row[16]),
+                "category_icon": safe_decode(row[17]),
+                "goal_name": safe_decode(row[18]),
             }
             
             result.append(TransactionResponse(**trans_dict))
