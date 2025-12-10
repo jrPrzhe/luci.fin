@@ -329,7 +329,7 @@ export function Reports() {
                       }
                     } catch (e) {}
                   }
-                  return localizeMonth(labelStr, locale)
+                  return localizeMonth(labelStr, language, locale)
                 })() : ''}
               </p>
               {payload.map((entry: any, index: number) => (
