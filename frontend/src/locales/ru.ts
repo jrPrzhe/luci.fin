@@ -45,6 +45,7 @@ export const ru = {
     quests: 'Задания',
     achievements: 'Достижения',
     analytics: 'Аналитика',
+    menu: 'Меню',
   },
   
   // Dashboard

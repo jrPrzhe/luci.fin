@@ -766,8 +766,6 @@ function GoalDetailModal({ goal, onClose, onDelete }: { goal: Goal; onClose: () 
 function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const { t } = useI18n()
   const [loading, setLoading] = useState(false)
-  const [generatingRoadmap, setGeneratingRoadmap] = useState(false)
-  const [roadmapStatus, setRoadmapStatus] = useState<string>('')
   const [amountError, setAmountError] = useState<string>('')
   const [formData, setFormData] = useState({
     name: '',
@@ -852,104 +850,9 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     }
 
     setLoading(true)
-    let roadmap: string | undefined = undefined
     
-    // Generate roadmap with user feedback (optional, goal can be created without it)
+    // Create goal without roadmap (roadmap generation is only available via bot)
     try {
-      setGeneratingRoadmap(true)
-      setRoadmapStatus(t.goals.form.gettingTransactions || 'Getting transaction data...')
-      
-      try {
-        const balancePromise = api.getBalance()
-        const transactionsPromise = api.getTransactions(100)
-        
-        // Use Promise.race to add timeout
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Timeout')), 15000) // 15 seconds timeout
-        )
-        
-        setRoadmapStatus(t.goals.form.analyzingTransactions || 'Analyzing your transactions...')
-        const [balance, transactions] = await Promise.race([
-          Promise.all([balancePromise, transactionsPromise]),
-          timeoutPromise
-        ]) as [any, any]
-        
-        const incomeTotal = transactions
-          .filter((t: any) => t.transaction_type === 'income')
-          .reduce((sum: number, t: any) => sum + t.amount, 0)
-        
-        const expenseTotal = transactions
-          .filter((t: any) => t.transaction_type === 'expense')
-          .reduce((sum: number, t: any) => sum + t.amount, 0)
-
-        // Generate roadmap with timeout
-        setRoadmapStatus(t.goals.form.creatingPlan || 'Creating personalized plan via AI...')
-        const cleanAmount = formData.target_amount.replace(/,/g, '.').replace(/\s/g, '')
-        const roadmapPromise = api.generateRoadmap({
-          goal_name: formData.name,
-          target_amount: parseFloat(cleanAmount),
-          currency: formData.currency,
-          transactions,
-          balance: balance.total,
-          income_total: incomeTotal,
-          expense_total: expenseTotal,
-        })
-        
-        const roadmapTimeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Roadmap generation timeout')), 60000) // 60 seconds for roadmap (AI can take time)
-        )
-        
-        const roadmapResponse = await Promise.race([
-          roadmapPromise,
-          roadmapTimeoutPromise
-        ]) as any
-        
-        console.log('Roadmap response received:', { 
-          hasRoadmap: !!roadmapResponse.roadmap,
-          roadmapType: typeof roadmapResponse.roadmap,
-          roadmapLength: roadmapResponse.roadmap ? roadmapResponse.roadmap.length : 0,
-          fullResponse: roadmapResponse
-        })
-        
-        // Ensure roadmap is a string (it should already be a JSON string from backend)
-        if (roadmapResponse && roadmapResponse.roadmap) {
-          roadmap = typeof roadmapResponse.roadmap === 'string' 
-            ? roadmapResponse.roadmap 
-            : JSON.stringify(roadmapResponse.roadmap)
-          console.log('Roadmap processed:', { 
-            isString: typeof roadmap === 'string',
-            length: roadmap ? roadmap.length : 0,
-            preview: roadmap ? roadmap.substring(0, 100) : 'empty'
-          })
-        } else {
-          console.warn('Roadmap response missing roadmap field:', roadmapResponse)
-          roadmap = undefined
-        }
-        setRoadmapStatus(t.goals.form.roadmapCreated || 'Roadmap created successfully!')
-      } catch (roadmapError: any) {
-        console.error('Roadmap generation failed or timed out, creating goal without roadmap:', roadmapError)
-        console.error('Roadmap error details:', {
-          message: roadmapError?.message,
-          stack: roadmapError?.stack,
-          response: roadmapError?.response
-        })
-        setRoadmapStatus(t.goals.form.roadmapFailed || 'Failed to create roadmap, creating goal without it...')
-        // Continue without roadmap - goal can be created without it
-        // Wait a bit to show the message
-        await new Promise(resolve => setTimeout(resolve, 1000))
-      } finally {
-        setGeneratingRoadmap(false)
-      }
-    } catch (roadmapInitError: any) {
-      // If even getting transactions/balance fails, just skip roadmap generation
-      console.error('Failed to initialize roadmap generation, creating goal without roadmap:', roadmapInitError)
-      setGeneratingRoadmap(false)
-      roadmap = undefined
-    }
-    
-    // Create goal (with or without roadmap)
-    try {
-      setRoadmapStatus(t.goals.form.creatingGoal || 'Creating goal...')
       const cleanAmount = formData.target_amount.replace(/,/g, '.').replace(/\s/g, '')
       const goalData: any = {
         name: formData.name,
@@ -959,30 +862,15 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
         target_date: formData.target_date || undefined,
       }
       
-      // Only include roadmap if it exists and is a valid string
-      if (roadmap && typeof roadmap === 'string' && roadmap.trim().length > 0) {
-        goalData.roadmap = roadmap
-        console.log('Including roadmap in goal data:', {
-          roadmapLength: roadmap.length,
-          roadmapPreview: roadmap.substring(0, 200)
-        })
-      } else {
-        console.warn('Roadmap not included in goal data:', {
-          roadmap: roadmap,
-          roadmapType: typeof roadmap,
-          roadmapLength: roadmap ? roadmap.length : 0
-        })
-      }
-      
       console.log('Creating goal with data:', {
         name: goalData.name,
-        hasRoadmap: !!goalData.roadmap,
-        roadmapLength: goalData.roadmap ? goalData.roadmap.length : 0
+        target_amount: goalData.target_amount,
+        currency: goalData.currency
       })
       
       await api.createGoal(goalData)
 
-      showSuccess(roadmap ? t.goals.goalCreatedWithRoadmap : t.goals.goalCreated)
+      showSuccess(t.goals.goalCreated)
       onSuccess()
     } catch (error: any) {
       console.error('Error creating goal:', error)
@@ -1117,7 +1005,7 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
               onChange={(e) => setFormData({ ...formData, target_date: e.target.value })}
               min={new Date().toISOString().split('T')[0]}
               className="w-full px-4 py-2 rounded-lg bg-telegram-hover dark:bg-telegram-dark-hover border border-telegram-border dark:border-telegram-dark-border text-telegram-text dark:text-telegram-dark-text disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={loading || generatingRoadmap}
+              disabled={loading}
             />
             {formData.target_date && new Date(formData.target_date) < new Date() && (
               <p className="mt-1 text-sm text-red-500 dark:text-red-400">
@@ -1137,38 +1025,17 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
               rows={3}
               style={{ maxHeight: '120px', minHeight: '80px', resize: 'none' }}
               placeholder={t.goals.descriptionPlaceholder}
-              disabled={loading || generatingRoadmap}
+              disabled={loading}
             />
           </div>
-
-          {/* Roadmap Generation Status */}
-          {(generatingRoadmap || roadmapStatus) && (
-            <div className="mt-4 p-4 bg-gradient-to-br from-blue-50 dark:from-blue-900/20 to-cyan-50 dark:to-cyan-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-              <div className="flex items-start gap-3">
-                {generatingRoadmap && (
-                  <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 dark:border-blue-400 flex-shrink-0 mt-0.5"></div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-blue-600 dark:text-blue-400 break-words">
-                    {roadmapStatus || t.goals.generatingRoadmap}
-                  </p>
-                  {generatingRoadmap && (
-                    <p className="text-xs text-blue-500 dark:text-blue-500 mt-1">
-                      ⏳ {t.goals.pleaseWait || 'Please wait. This may take some time...'}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
 
           <div className="flex gap-3 mt-6">
             <button
               type="submit"
               className="flex-1 btn-primary"
-              disabled={loading || generatingRoadmap || !!amountError || !formData.name || !formData.target_amount}
+              disabled={loading || !!amountError || !formData.name || !formData.target_amount}
             >
-              {loading ? (generatingRoadmap ? roadmapStatus || t.goals.creating : t.goals.creating) : t.goals.createButton}
+              {loading ? t.goals.creating : t.goals.createButton}
             </button>
           </div>
         </form>

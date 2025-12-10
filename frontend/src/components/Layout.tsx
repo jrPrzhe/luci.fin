@@ -633,7 +633,7 @@ export function Layout() {
                   </div>
                   <div className="flex items-center gap-2">
                     <h2 className="text-base font-semibold text-telegram-text dark:text-telegram-dark-text">
-                      {newYearEnabled ? '🎄 Меню' : 'Меню'}
+                      {newYearEnabled ? `🎄 ${t.nav.menu}` : t.nav.menu}
                     </h2>
                     {/* Premium Badge в мобильном меню-оверлее */}
                     {user?.is_premium && (
@@ -761,15 +761,15 @@ export function Layout() {
                   ? 'text-telegram-primary dark:text-telegram-dark-primary bg-telegram-primary/10 dark:bg-telegram-dark-primary/10' 
                   : 'text-telegram-textSecondary dark:text-telegram-dark-textSecondary'
               }`}
-              aria-label="Меню"
+              aria-label={t.nav.menu}
             >
               <span className="text-xl">{mobileMenuOpen ? '✕' : '☰'}</span>
-              <span className="text-[10px] font-medium">Меню</span>
+              <span className="text-[10px] font-medium">{t.nav.menu}</span>
             </button>
           </div>
         </nav>
       )}
-      
+
       {/* Mobile Bottom Navigation - для всех мобильных устройств (не только Mini App) */}
       {!isMiniApp && (
         <nav className="xl:hidden fixed bottom-0 left-0 right-0 bg-telegram-surface dark:bg-telegram-dark-surface border-t border-telegram-border dark:border-telegram-dark-border px-2 py-2 safe-area-inset-bottom z-10 shadow-lg">
@@ -805,10 +805,10 @@ export function Layout() {
                   ? 'text-telegram-primary dark:text-telegram-dark-primary bg-telegram-primary/10 dark:bg-telegram-dark-primary/10' 
                   : 'text-telegram-textSecondary dark:text-telegram-dark-textSecondary'
               }`}
-              aria-label="Меню"
+              aria-label={t.nav.menu}
             >
               <span className="text-xl">{mobileMenuOpen ? '✕' : '☰'}</span>
-              <span className="text-[10px] font-medium">Меню</span>
+              <span className="text-[10px] font-medium">{t.nav.menu}</span>
             </button>
           </div>
         </nav>
