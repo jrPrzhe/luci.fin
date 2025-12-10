@@ -852,14 +852,14 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     }
 
     setLoading(true)
+    let roadmap: string | undefined = undefined
+    
+    // Generate roadmap with user feedback (optional, goal can be created without it)
     try {
-      let roadmap: string | undefined = undefined
+      setGeneratingRoadmap(true)
+      setRoadmapStatus(t.goals.form.gettingTransactions || 'Getting transaction data...')
       
-      // Generate roadmap with user feedback
       try {
-        setGeneratingRoadmap(true)
-        setRoadmapStatus(t.goals.form.gettingTransactions || 'Getting transaction data...')
-        
         const balancePromise = api.getBalance()
         const transactionsPromise = api.getTransactions(100)
         
@@ -940,8 +940,15 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
       } finally {
         setGeneratingRoadmap(false)
       }
-
-      // Create goal (with or without roadmap)
+    } catch (roadmapInitError: any) {
+      // If even getting transactions/balance fails, just skip roadmap generation
+      console.error('Failed to initialize roadmap generation, creating goal without roadmap:', roadmapInitError)
+      setGeneratingRoadmap(false)
+      roadmap = undefined
+    }
+    
+    // Create goal (with or without roadmap)
+    try {
       setRoadmapStatus(t.goals.form.creatingGoal || 'Creating goal...')
       const cleanAmount = formData.target_amount.replace(/,/g, '.').replace(/\s/g, '')
       const goalData: any = {
