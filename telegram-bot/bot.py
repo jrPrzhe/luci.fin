@@ -903,12 +903,7 @@ async def account_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             ))
                         keyboard.append(row)
                     
-                    # Add "Skip category" button (full width)
-                    skip_text = t("expense.skip_category", lang) if trans_type == "expense" else t("income.skip_category", lang)
-                    keyboard.append([InlineKeyboardButton(
-                        skip_text,
-                        callback_data="category_skip"
-                    )])
+                    # Category is required for income/expense transactions, so no skip button
                     
                     reply_markup = InlineKeyboardMarkup(keyboard)
                     
@@ -929,7 +924,17 @@ async def account_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     
                     return WAITING_CATEGORY
                 else:
-                    # No categories, skip to amount
+                    # No categories - category is required for income/expense
+                    if trans_type in ["income", "expense"]:
+                        error_text = t("expense.error", lang) if trans_type == "expense" else t("income.error", lang)
+                        no_categories_text = t('common.no_categories', lang) if t('common.no_categories', lang) != 'common.no_categories' else 'Нет доступных категорий. Пожалуйста, создайте категорию сначала.'
+                        await query.edit_message_text(
+                            f"{error_text}\n\n{no_categories_text}",
+                            parse_mode='Markdown'
+                        )
+                        return ConversationHandler.END
+                    
+                    # For transfers, skip to amount (category not required)
                     title_text = t("expense.title", lang) if trans_type == "expense" else t("income.title", lang)
                     enter_amount_text = t("expense.enter_amount", lang) if trans_type == "expense" else t("income.enter_amount", lang)
                     edited_message = await query.edit_message_text(
@@ -945,7 +950,17 @@ async def account_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     
                     return WAITING_AMOUNT
             else:
-                # Error loading categories, skip to amount
+                # Error loading categories - category is required for income/expense
+                if trans_type in ["income", "expense"]:
+                    error_text = t("expense.error", lang) if trans_type == "expense" else t("income.error", lang)
+                    error_loading_text = t('common.error_loading_categories', lang) if t('common.error_loading_categories', lang) != 'common.error_loading_categories' else 'Ошибка загрузки категорий. Пожалуйста, попробуйте позже.'
+                    await query.edit_message_text(
+                        f"{error_text}\n\n{error_loading_text}",
+                        parse_mode='Markdown'
+                    )
+                    return ConversationHandler.END
+                
+                # For transfers, skip to amount (category not required)
                 title_text = t("expense.title", lang) if trans_type == "expense" else t("income.title", lang)
                 enter_amount_text = t("expense.enter_amount", lang) if trans_type == "expense" else t("income.enter_amount", lang)
                 edited_message = await query.edit_message_text(
@@ -962,7 +977,17 @@ async def account_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 return WAITING_AMOUNT
         except Exception as e:
             logger.error(f"Error loading categories: {e}")
-            # On error, skip to amount
+            # Category is required for income/expense, show error
+            if trans_type in ["income", "expense"]:
+                error_text = t("expense.error", lang) if trans_type == "expense" else t("income.error", lang)
+                error_loading_text = t('common.error_loading_categories', lang) if t('common.error_loading_categories', lang) != 'common.error_loading_categories' else 'Ошибка загрузки категорий. Пожалуйста, попробуйте позже.'
+                await query.edit_message_text(
+                    f"{error_text}\n\n{error_loading_text}",
+                    parse_mode='Markdown'
+                )
+                return ConversationHandler.END
+            
+            # For transfers, skip to amount (category not required)
             title_text = t("expense.title", lang) if trans_type == "expense" else t("income.title", lang)
             enter_amount_text = t("expense.enter_amount", lang) if trans_type == "expense" else t("income.enter_amount", lang)
             await query.edit_message_text(
@@ -995,9 +1020,17 @@ async def category_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Get language from context
     lang = context.user_data.get('language', 'ru')
+    trans_type = context.user_data.get('type', 'expense')
     
+    # Category is required for income/expense transactions
     if query.data == "category_skip":
-        context.user_data['category_id'] = None
+        if trans_type in ["income", "expense"]:
+            # Category cannot be skipped for income/expense
+            error_text = t("expense.error", lang) if trans_type == "expense" else t("income.error", lang)
+            await query.edit_message_text(error_text)
+            return ConversationHandler.END
+        else:
+            context.user_data['category_id'] = None
     else:
         category_id = int(query.data.split('_')[1])
         context.user_data['category_id'] = category_id
@@ -1009,7 +1042,6 @@ async def category_selected(update: Update, context: ContextTypes.DEFAULT_TYPE):
             category_name = f"{category.get('icon', '📦')} {category.get('name', t('common.category', lang))}"
             context.user_data['category_name'] = category_name
     
-    trans_type = context.user_data.get('type', 'expense')
     icon = "💰" if trans_type == "income" else "💸"
     
     title_text = t("expense.title", lang) if trans_type == "expense" else t("income.title", lang)
@@ -1169,9 +1201,16 @@ async def description_received(update: Update, context: ContextTypes.DEFAULT_TYP
             "transaction_date": transaction_date,
         }
         
-        # Add category_id if selected
+        # Category is required for income/expense transactions
         category_id = context.user_data.get('category_id')
-        if category_id:
+        if transaction_type in ["income", "expense"]:
+            if not category_id:
+                cmd = "/add_expense" if transaction_type == "expense" else "/add_income"
+                await update.message.reply_text(f"{t('common.error', lang)} {cmd}")
+                return ConversationHandler.END
+            transaction_data["category_id"] = category_id
+        elif category_id:
+            # Optional for transfers
             transaction_data["category_id"] = category_id
         
         # Use authenticated request helper with increased timeout

@@ -630,12 +630,7 @@ async def account_selected_handler(message: Message, account_id: int):
                     ))
                     keyboard.row()
                 
-                # Add skip button
-                skip_text = t("expense.skip_category", lang) if trans_type == "expense" else t("income.skip_category", lang)
-                keyboard.add(Text(
-                    skip_text,
-                    payload=json.dumps({"command": "category_skip"})
-                ))
+                # Category is required for income/expense transactions, so no skip button
                 
                 title_text = t("expense.title", lang) if trans_type == "expense" else t("income.title", lang)
                 select_cat_text = t("expense.select_category", lang) if trans_type == "expense" else t("income.select_category", lang)
@@ -652,8 +647,24 @@ async def account_selected_handler(message: Message, account_id: int):
                 return
             else:
                 logger.warning(f"No categories returned for transaction_type={trans_type}")
+                # Category is required for income/expense, show error
+                error_text = t("expense.error", lang) if trans_type == "expense" else t("income.error", lang)
+                await message.answer(f"{error_text}\n\n{t('common.no_categories', lang) if t('common.no_categories', lang) != 'common.no_categories' else 'Нет доступных категорий. Пожалуйста, создайте категорию сначала.'}")
+                # Clear state to allow retry
+                if user_id in user_states:
+                    del user_states[user_id]
+                return
         
-        # No categories or error, skip to amount
+        # No categories or error, but category is required for income/expense
+        if trans_type in ["income", "expense"]:
+            error_text = t("expense.error", lang) if trans_type == "expense" else t("income.error", lang)
+            await message.answer(f"{error_text}\n\n{t('common.no_categories', lang) if t('common.no_categories', lang) != 'common.no_categories' else 'Нет доступных категорий. Пожалуйста, создайте категорию сначала.'}")
+            # Clear state to allow retry
+            if user_id in user_states:
+                del user_states[user_id]
+            return
+        
+        # For transfers, skip to amount (category not required)
         title_text = t("expense.title", lang) if trans_type == "expense" else t("income.title", lang)
         enter_amount_text = t("expense.enter_amount", lang) if trans_type == "expense" else t("income.enter_amount", lang)
         
@@ -667,7 +678,16 @@ async def account_selected_handler(message: Message, account_id: int):
         await message.answer(message_text)
     except Exception as e:
         logger.error(f"Error loading categories: {e}", exc_info=True)
-        # On error, skip to amount
+        # Category is required for income/expense, show error
+        if trans_type in ["income", "expense"]:
+            error_text = t("expense.error", lang) if trans_type == "expense" else t("income.error", lang)
+            await message.answer(f"{error_text}\n\n{t('common.error_loading_categories', lang) if t('common.error_loading_categories', lang) != 'common.error_loading_categories' else 'Ошибка загрузки категорий. Пожалуйста, попробуйте позже.'}")
+            # Clear state to allow retry
+            if user_id in user_states:
+                del user_states[user_id]
+            return
+        
+        # For transfers, skip to amount (category not required)
         title_text = t("expense.title", lang) if trans_type == "expense" else t("income.title", lang)
         enter_amount_text = t("expense.enter_amount", lang) if trans_type == "expense" else t("income.enter_amount", lang)
         
@@ -692,9 +712,16 @@ async def category_selected_handler(message: Message, category_id: Optional[int]
         return
     
     state = user_states[user_id]
-    state["category_id"] = category_id
     trans_type = state.get("transaction_type", "expense")
     lang = state.get("language", "ru")
+    
+    # Category is required for income/expense transactions
+    if not category_id and trans_type in ["income", "expense"]:
+        error_text = t("expense.error", lang) if trans_type == "expense" else t("income.error", lang)
+        await message.answer(error_text)
+        return
+    
+    state["category_id"] = category_id
     
     if category_id:
         # Find category name
@@ -771,12 +798,18 @@ async def description_received_handler(message: Message, state: dict):
     
     try:
         # Create transaction
+        # Category is required for income/expense transactions
+        if trans_type in ["income", "expense"] and not category_id:
+            error_text = t("expense.error", lang) if trans_type == "expense" else t("income.error", lang)
+            await message.answer(error_text)
+            return
+        
         transaction_data = {
             "account_id": account_id,
             "amount": amount,
             "transaction_type": trans_type,
             "description": description if description else None,
-            "category_id": category_id if category_id else None
+            "category_id": category_id
         }
         
         response = await make_authenticated_request(
@@ -953,11 +986,9 @@ async def button_handler(message: Message):
                 await account_selected_handler(message, account_id)
                 return
             elif command and command.startswith("category_"):
-                if command == "category_skip":
-                    await category_selected_handler(message, None)
-                else:
-                    category_id = int(command.split("_")[1])
-                    await category_selected_handler(message, category_id)
+                # Category is required, skip is not allowed
+                category_id = int(command.split("_")[1])
+                await category_selected_handler(message, category_id)
                 return
             elif command == "cancel":
                 await cancel_handler(message)
