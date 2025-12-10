@@ -867,8 +867,6 @@ async def create_transaction(
     # For transfers, use raw SQL to avoid enum issues completely
     if transaction_data.transaction_type == "transfer" and to_transaction:
         try:
-            from sqlalchemy import text as sa_text
-            
             # Insert source transaction (transfer) using raw SQL
             source_transaction_sql = """
                 INSERT INTO transactions 
