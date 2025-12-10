@@ -46,20 +46,20 @@ export function Import() {
       if (file.name.endsWith('.db')) {
         setSelectedFile(file)
       } else {
-        showError('Пожалуйста, выберите файл с расширением .db')
+        showError(t.profile.importSelectFileError)
         setSelectedFile(null)
       }
     }
   }
 
   const handleImport = async () => {
-    if (!selectedSource) {
-      showError('Пожалуйста, выберите источник импорта')
+      if (!selectedSource) {
+      showError(t.profile.importSelectSource)
       return
     }
 
     if (!selectedFile) {
-      showError('Пожалуйста, выберите файл для импорта')
+      showError(t.profile.importSelectFileRequired)
       return
     }
 
@@ -71,7 +71,10 @@ export function Import() {
     try {
       const result = await api.importData(selectedSource, selectedFile)
       
-      showSuccess(`Импорт завершен! Импортировано: ${result.accounts_imported || 0} счетов, ${result.transactions_imported} транзакций, ${result.categories_imported} категорий`)
+      showSuccess(t.profile.importCompleted
+        .replace('{accounts}', String(result.accounts_imported || 0))
+        .replace('{transactions}', String(result.transactions_imported))
+        .replace('{categories}', String(result.categories_imported)))
       
       // Очищаем выбор файла
       setSelectedFile(null)
@@ -111,7 +114,7 @@ export function Import() {
           ←
         </button>
         <h1 className="text-xl md:text-2xl font-semibold text-telegram-text dark:text-telegram-dark-text">
-          Импорт данных
+          {t.profile.importTitle}
         </h1>
       </div>
 
@@ -119,7 +122,7 @@ export function Import() {
         {/* Выбор источника */}
         <div>
           <label className="block text-xs md:text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-            Выберите приложение
+            {t.profile.importSelectApp}
           </label>
           <div className="space-y-2">
             {sources.map((source) => (
@@ -151,7 +154,7 @@ export function Import() {
         {/* Выбор файла */}
         <div>
           <label className="block text-xs md:text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-            Выберите файл бэкапа
+            {t.profile.importSelectFile}
           </label>
           <input
             id="file-input"
@@ -175,9 +178,9 @@ export function Import() {
               </div>
             ) : (
               <div>
-                <p className="text-telegram-text dark:text-telegram-dark-text">Нажмите для выбора файла</p>
+                <p className="text-telegram-text dark:text-telegram-dark-text">{t.profile.importClickToSelect}</p>
                 <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
-                  Поддерживаются файлы .db
+                  {t.profile.importSupportedFiles}
                 </p>
               </div>
             )}
@@ -195,7 +198,7 @@ export function Import() {
               {t.common.loading}
             </p>
             <p className="text-center text-xs text-blue-500">
-              Время выполнения: {elapsedTime > 0 ? `${elapsedTime} сек.` : 'менее 1 сек.'}
+              {t.profile.importExecutionTime.replace('{time}', elapsedTime > 0 ? `${elapsedTime} сек.` : t.profile.importLessThanSecond)}
             </p>
           </div>
         )}
@@ -212,10 +215,9 @@ export function Import() {
 
         {/* Информация */}
         <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-telegram text-sm">
-          <p className="font-medium mb-1">Примечание:</p>
+          <p className="font-medium mb-1">{t.profile.importNote}</p>
           <p>
-            Импортируются только транзакции с датами и категории. Существующие данные не будут изменены.
-            Дубликаты транзакций будут пропущены.
+            {t.profile.importNoteText}
           </p>
         </div>
       </div>

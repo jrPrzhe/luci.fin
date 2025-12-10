@@ -293,7 +293,7 @@ export function SharedBudgets() {
         if (typeof message === 'string' && 
             (message.toLowerCase().includes('already a member') || 
              message.toLowerCase().includes('уже являетесь участником'))) {
-          setError('Вы уже являетесь участником этого бюджета')
+          setError(t.sharedBudgets.joinSuccess) // Используем существующий ключ или можно добавить новый
           return
         }
       }
@@ -445,7 +445,7 @@ export function SharedBudgets() {
             }}
             className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-medium"
           >
-            🔗 Присоединиться
+            🔗 {t.sharedBudgets.joinBudget}
           </button>
           <button
             onClick={() => {
@@ -454,7 +454,7 @@ export function SharedBudgets() {
             }}
             className="px-4 py-2 bg-telegram-primary text-white rounded-lg hover:bg-telegram-primary/90 transition-colors font-medium"
           >
-            ➕ Создать бюджет
+            ➕ {t.sharedBudgets.createBudget}
           </button>
         </div>
       </div>
@@ -466,7 +466,7 @@ export function SharedBudgets() {
             <button
               onClick={() => setError('')}
               className="flex-shrink-0 text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100 transition-colors p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900/40"
-              aria-label="Закрыть"
+              aria-label={t.common.close}
             >
               <span className="text-lg leading-none">×</span>
             </button>
@@ -479,7 +479,7 @@ export function SharedBudgets() {
         <div className="mb-8">
             <div className="flex items-center gap-2 mb-4">
               <span className="text-2xl">📬</span>
-              <h2 className="text-xl font-semibold text-telegram-text dark:text-telegram-dark-text">Входящие приглашения</h2>
+              <h2 className="text-xl font-semibold text-telegram-text dark:text-telegram-dark-text">{t.sharedBudgets.invitations}</h2>
             <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-semibold">
               {invitations.length}
             </span>
@@ -496,7 +496,7 @@ export function SharedBudgets() {
                       </h3>
                     </div>
                     <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-2">
-                      👤 От: <strong className="text-telegram-text dark:text-telegram-dark-text">{invitation.invited_by_name}</strong>
+                      👤 {t.common.from}: <strong className="text-telegram-text dark:text-telegram-dark-text">{invitation.invited_by_name}</strong>
                     </p>
                     <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
                       📅 {formatDate(invitation.created_at)}
@@ -507,13 +507,13 @@ export function SharedBudgets() {
                       onClick={() => handleAcceptInvitation(invitation.token)}
                       className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-medium whitespace-nowrap"
                     >
-                      ✓ Принять
+                      ✓ {t.sharedBudgets.accept}
                     </button>
                     <button
                       onClick={() => handleDeclineInvitation(invitation.id)}
                       className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium whitespace-nowrap"
                     >
-                      ✕ Отклонить
+                      ✕ {t.sharedBudgets.decline}
                     </button>
                   </div>
                 </div>
@@ -534,7 +534,7 @@ export function SharedBudgets() {
             className="mb-4 flex items-center gap-2 text-telegram-primary hover:text-telegram-primary/80 transition-colors font-medium"
           >
             <span>←</span>
-            <span>Назад к списку</span>
+            <span>{t.common.back}</span>
           </button>
           
           <div className="card mb-6 bg-gradient-to-br from-telegram-primaryLight/10 to-white border-2 border-telegram-primary/20">
@@ -568,7 +568,7 @@ export function SharedBudgets() {
                     await api.leaveBudget(selectedBudget.id)
                     setSelectedBudget(null)
                     await loadData()
-                    showSuccess('Вы успешно вышли из бюджета')
+                    showSuccess(t.sharedBudgets.leaveSuccess)
                   } catch (err: any) {
                     // Check if error is about being the last admin
                     if (err.message && (err.message.includes('LAST_ADMIN_CANNOT_LEAVE') || err.message.includes('последний администратор'))) {
@@ -586,7 +586,7 @@ export function SharedBudgets() {
                 }}
                 className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium whitespace-nowrap"
               >
-                🚪 Выйти из бюджета
+                🚪 {t.sharedBudgets.leave}
               </button>
             </div>
           </div>
@@ -595,7 +595,7 @@ export function SharedBudgets() {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
               <div className="flex items-center gap-2">
                 <span className="text-2xl">💰</span>
-                <h3 className="text-xl font-semibold text-telegram-text dark:text-telegram-dark-text">Совместные счета</h3>
+                <h3 className="text-xl font-semibold text-telegram-text dark:text-telegram-dark-text">{t.sharedBudgets.accounts}</h3>
               </div>
               <button
                 onClick={() => {
@@ -604,7 +604,7 @@ export function SharedBudgets() {
                 }}
                 className="px-4 py-2 bg-telegram-primary text-white rounded-lg hover:bg-telegram-primary/90 transition-colors font-medium"
               >
-                📋 Код приглашения
+                📋 {t.sharedBudgets.inviteCode}
               </button>
             </div>
             {sharedAccounts.length === 0 ? (
@@ -618,7 +618,7 @@ export function SharedBudgets() {
                   return (
                     <div className="card p-6 text-center bg-gray-50 border-2 border-dashed border-gray-300">
                       <div className="text-4xl mb-3">💳</div>
-                      <p className="text-telegram-text dark:text-telegram-dark-text font-medium mb-2">Нет совместных счетов</p>
+                      <p className="text-telegram-text dark:text-telegram-dark-text font-medium mb-2">{t.sharedBudgets.noAccounts}</p>
                     </div>
                   )
                 }
@@ -626,8 +626,8 @@ export function SharedBudgets() {
                 return (
                   <div className="card p-6 text-center bg-gray-50 border-2 border-dashed border-gray-300">
                     <div className="text-4xl mb-3">💳</div>
-                    <p className="text-telegram-text dark:text-telegram-dark-text font-medium mb-2">Нет совместных счетов</p>
-                    <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">Создайте счет в разделе "Счета", выбрав этот бюджет</p>
+                    <p className="text-telegram-text dark:text-telegram-dark-text font-medium mb-2">{t.sharedBudgets.noAccounts}</p>
+                    <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{t.sharedBudgets.noAccountsDesc}</p>
                   </div>
                 )
               })()
@@ -659,7 +659,7 @@ export function SharedBudgets() {
           <div>
             <div className="flex items-center gap-2 mb-4">
               <span className="text-2xl">👥</span>
-              <h3 className="text-xl font-semibold text-telegram-text dark:text-telegram-dark-text">Участники</h3>
+              <h3 className="text-xl font-semibold text-telegram-text dark:text-telegram-dark-text">{t.sharedBudgets.members}</h3>
               <span className="px-2 py-1 bg-telegram-primaryLight/20 text-telegram-primary rounded-full text-xs font-semibold">
                 {members.length}
               </span>
@@ -684,7 +684,7 @@ export function SharedBudgets() {
                           {member.user_name || member.user_email || `Пользователь #${member.user_id}`}
                         </h4>
                         <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-                          {member.role === 'admin' ? '👑 Администратор' : '👤 Участник'}
+                          {member.role === 'admin' ? `👑 ${t.sharedBudgets.adminRole}` : `👤 ${t.sharedBudgets.memberRole}`}
                         </p>
                         <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
                           📅 {formatDate(member.joined_at)}
@@ -716,16 +716,16 @@ export function SharedBudgets() {
                                   : '#3B82F6',
                                 color: 'white'
                               }}
-                              title={member.role === 'admin' ? 'Понизить до участника' : 'Повысить до администратора'}
+                              title={member.role === 'admin' ? t.sharedBudgets.memberRole : t.sharedBudgets.adminRole}
                             >
-                              {member.role === 'admin' ? '👑 Админ' : '⭐ Сделать админом'}
+                              {member.role === 'admin' ? `👑 ${t.sharedBudgets.adminRole}` : `⭐ ${t.sharedBudgets.makeAdmin}`}
                             </button>
                             {/* Delete button - only if not the only admin */}
                             {!(member.role === 'admin' && adminCount === 1) && (
                               <button
                                 onClick={() => handleRemoveMember(selectedBudget.id, member.user_id)}
                                 className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
-                                title="Удалить участника"
+                                title={t.sharedBudgets.removeMember}
                               >
                                 🗑️
                               </button>
@@ -748,9 +748,9 @@ export function SharedBudgets() {
               <div className="inline-block mx-auto w-24 h-24 rounded-full bg-gradient-to-br from-telegram-primaryLight/30 to-telegram-primaryLight/10 flex items-center justify-center text-5xl mb-6">
                 💼
               </div>
-              <h3 className="text-xl font-semibold text-telegram-text dark:text-telegram-dark-text mb-2">Нет совместных бюджетов</h3>
+              <h3 className="text-xl font-semibold text-telegram-text dark:text-telegram-dark-text mb-2">{t.sharedBudgets.noBudgets}</h3>
               <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-6 max-w-md mx-auto">
-                Создайте совместный бюджет, чтобы управлять общими финансами с друзьями или семьей
+                {t.sharedBudgets.noBudgetsDesc}
               </p>
               <button
                 onClick={() => {
@@ -759,7 +759,7 @@ export function SharedBudgets() {
                 }}
                 className="px-6 py-3 bg-telegram-primary text-white rounded-lg hover:bg-telegram-primary/90 transition-colors font-medium text-lg"
               >
-                ➕ Создать первый бюджет
+                ➕ {t.sharedBudgets.newBudget}
               </button>
             </div>
           ) : (
@@ -806,7 +806,7 @@ export function SharedBudgets() {
                       className="w-full px-4 py-2 bg-telegram-primaryLight/10 text-telegram-primary rounded-lg hover:bg-telegram-primaryLight/20 transition-colors font-medium text-sm flex items-center justify-center gap-2"
                     >
                       <span>📋</span>
-                      <span className="truncate">{budget.invite_code || 'Загрузка...'}</span>
+                      <span className="truncate">{budget.invite_code || t.common.loading}</span>
                     </button>
                   </div>
                 </div>
@@ -822,7 +822,7 @@ export function SharedBudgets() {
           <div className="bg-white dark:bg-telegram-dark-surface rounded-lg shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-telegram-text dark:text-telegram-dark-text">Создать совместный бюджет</h2>
+                <h2 className="text-2xl font-bold text-telegram-text dark:text-telegram-dark-text">{t.sharedBudgets.createBudgetTitle}</h2>
                 <button
                   onClick={() => {
                     setShowCreateForm(false)
@@ -842,7 +842,7 @@ export function SharedBudgets() {
               <form onSubmit={handleCreateBudget} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
-                    Название бюджета <span className="text-red-500 dark:text-red-400">*</span>
+                    {t.sharedBudgets.budgetName} <span className="text-red-500 dark:text-red-400">*</span>
                   </label>
                   <input
                     type="text"
@@ -851,18 +851,18 @@ export function SharedBudgets() {
                       setCreateFormData({ ...createFormData, name: e.target.value })
                     }
                     className="w-full px-4 py-2 border border-gray-300 dark:border-telegram-dark-border rounded-lg focus:ring-2 focus:ring-telegram-primary dark:focus:ring-telegram-dark-primary focus:border-transparent bg-white dark:bg-telegram-dark-bg text-telegram-text dark:text-telegram-dark-text"
-                    placeholder="Например: Семейный бюджет"
+                    placeholder={t.sharedBudgets.budgetNamePlaceholder}
                     maxLength={100}
                     required
                   />
                   <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
-                    {createFormData.name.length}/100 символов
+                    {createFormData.name.length}/100 {t.common.characters}
                   </p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
-                    Валюта <span className="text-red-500 dark:text-red-400">*</span>
+                    {t.sharedBudgets.currency} <span className="text-red-500 dark:text-red-400">*</span>
                   </label>
                   <select
                     value={createFormData.currency}
@@ -878,7 +878,7 @@ export function SharedBudgets() {
 
                 <div>
                   <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
-                    Описание (необязательно)
+                    {t.sharedBudgets.description} ({t.common.optional})
                   </label>
                   <textarea
                     value={createFormData.description}
@@ -888,7 +888,7 @@ export function SharedBudgets() {
                     className="w-full px-4 py-2 border border-gray-300 dark:border-telegram-dark-border rounded-lg focus:ring-2 focus:ring-telegram-primary dark:focus:ring-telegram-dark-primary focus:border-transparent bg-white dark:bg-telegram-dark-bg text-telegram-text dark:text-telegram-dark-text resize-none"
                     rows={3}
                     style={{ resize: 'none', maxHeight: '120px', overflowY: 'auto' }}
-                    placeholder="Описание бюджета"
+                    placeholder={t.sharedBudgets.descriptionPlaceholder}
                   />
                 </div>
 
@@ -906,10 +906,10 @@ export function SharedBudgets() {
                     }}
                     className="flex-1 px-4 py-2 border border-gray-300 dark:border-telegram-dark-border rounded-lg hover:bg-gray-50 dark:hover:bg-telegram-dark-hover text-telegram-text dark:text-telegram-dark-text"
                   >
-                    Отмена
+                    {t.common.cancel}
                   </button>
                   <button type="submit" className="flex-1 btn-primary">
-                    Создать
+                    {t.sharedBudgets.create}
                   </button>
                 </div>
               </form>
@@ -924,7 +924,7 @@ export function SharedBudgets() {
           <div className="bg-white dark:bg-telegram-dark-surface rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-telegram-text dark:text-telegram-dark-text">Код приглашения</h2>
+                <h2 className="text-2xl font-bold text-telegram-text dark:text-telegram-dark-text">{t.sharedBudgets.inviteCode}</h2>
                 <button
                   onClick={() => {
                     setError('') // Очищаем ошибку при закрытии модалки
@@ -939,7 +939,7 @@ export function SharedBudgets() {
               {budgets.find(b => b.id === showInviteCode) && (
                 <div>
                   <p className="text-gray-600 dark:text-telegram-dark-textSecondary mb-4 break-words">
-                    Отправьте этот код пользователю, чтобы он мог присоединиться к бюджету <strong className="text-telegram-text dark:text-telegram-dark-text break-words">"{budgets.find(b => b.id === showInviteCode)?.name}"</strong>
+                    {t.sharedBudgets.inviteCodeDesc.replace('{budgetName}', `"${budgets.find(b => b.id === showInviteCode)?.name}"`)}
                   </p>
                   
                   <div className="bg-gray-50 dark:bg-telegram-dark-hover p-4 rounded-lg mb-4">
@@ -951,7 +951,7 @@ export function SharedBudgets() {
                         onClick={() => copyToClipboard(budgets.find(b => b.id === showInviteCode)?.invite_code || '')}
                         className="px-4 py-2 bg-telegram-primary dark:bg-telegram-dark-primary text-white rounded-lg hover:bg-telegram-primaryHover dark:hover:bg-telegram-dark-primaryHover"
                       >
-                        {copiedCode === budgets.find(b => b.id === showInviteCode)?.invite_code ? '✓ Скопировано' : '📋 Копировать'}
+                        {copiedCode === budgets.find(b => b.id === showInviteCode)?.invite_code ? `✓ ${t.common.copied}` : `📋 ${t.common.copy}`}
                       </button>
                     </div>
                   </div>
@@ -970,7 +970,7 @@ export function SharedBudgets() {
                     className="w-full px-4 py-2 bg-blue-500 dark:bg-telegram-primary text-white rounded-lg hover:bg-blue-600 dark:hover:bg-telegram-primaryHover mb-3 flex items-center justify-center gap-2"
                   >
                     <span>📨</span>
-                    <span>{isVKWebApp() ? 'Отправить в ВК' : 'Отправить в Telegram'}</span>
+                    <span>{isVKWebApp() ? t.sharedBudgets.sendToVK : t.sharedBudgets.sendToTelegram}</span>
                   </button>
 
                   <button
@@ -979,16 +979,16 @@ export function SharedBudgets() {
                         await api.regenerateInviteCode(showInviteCode)
                         await loadData()
                         setError('')
-                        showSuccess('Код приглашения успешно обновлен')
+                        showSuccess(t.sharedBudgets.inviteCodeRegenerated)
                       } catch (err: any) {
-                        const errorMessage = err.message || 'Ошибка обновления кода'
+                        const errorMessage = err.message || t.sharedBudgets.inviteCodeRegenerateError
                         showError(errorMessage)
                         setError('') // Очищаем локальное состояние ошибки, так как используем Toast
                       }
                     }}
                     className="w-full px-4 py-2 border border-gray-300 dark:border-telegram-dark-border rounded-lg hover:bg-gray-50 dark:hover:bg-telegram-dark-hover mb-3 text-telegram-text dark:text-telegram-dark-text"
                   >
-                    🔄 Сгенерировать новый код
+                    🔄 {t.sharedBudgets.regenerateCode}
                   </button>
 
                   <button
@@ -998,7 +998,7 @@ export function SharedBudgets() {
                     }}
                     className="w-full px-4 py-2 bg-gray-200 dark:bg-telegram-dark-surface text-gray-700 dark:text-telegram-dark-text rounded-lg hover:bg-gray-300 dark:hover:bg-telegram-dark-hover"
                   >
-                    Закрыть
+                    {t.common.close}
                   </button>
                 </div>
               )}
@@ -1013,7 +1013,7 @@ export function SharedBudgets() {
           <div className="bg-white dark:bg-telegram-dark-surface rounded-lg shadow-xl max-w-md w-full mx-4">
             <div className="p-6">
               <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-telegram-text dark:text-telegram-dark-text">Присоединиться к бюджету</h2>
+                <h2 className="text-2xl font-bold text-telegram-text dark:text-telegram-dark-text">{t.sharedBudgets.joinBudgetTitle}</h2>
                 <button
                   onClick={() => {
                     setShowJoinForm(false)
@@ -1029,7 +1029,7 @@ export function SharedBudgets() {
               <form onSubmit={handleJoinByCode} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
-                    Код приглашения
+                    {t.sharedBudgets.inviteCode}
                   </label>
                   <input
                     type="text"
@@ -1041,7 +1041,7 @@ export function SharedBudgets() {
                     required
                   />
                   <p className="text-xs text-gray-500 dark:text-telegram-dark-textSecondary mt-2">
-                    Введите 6-значный код, который вам предоставил администратор бюджета
+                    {t.sharedBudgets.enterInviteCode}
                   </p>
                 </div>
 
@@ -1061,10 +1061,10 @@ export function SharedBudgets() {
                     }}
                     className="flex-1 px-4 py-2 border border-gray-300 dark:border-telegram-dark-border rounded-lg hover:bg-gray-50 dark:hover:bg-telegram-dark-hover text-telegram-text dark:text-telegram-dark-text"
                   >
-                    Отмена
+                    {t.common.cancel}
                   </button>
                   <button type="submit" className="flex-1 btn-primary">
-                    Присоединиться
+                    {t.sharedBudgets.join}
                   </button>
                 </div>
               </form>

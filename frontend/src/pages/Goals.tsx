@@ -195,7 +195,7 @@ export function Goals() {
                   {goal.progress_percentage >= 50 && (
                     <div className="flex items-center gap-2 text-sm text-yellow-600 dark:text-yellow-400">
                       <span className="text-xl">🏆</span>
-                      <span className="font-semibold">Половина пути пройдена!</span>
+                      <span className="font-semibold">{t.goals.halfWay}</span>
                     </div>
                   )}
 
@@ -555,7 +555,7 @@ function GoalDetailModal({ goal, onClose, onDelete }: { goal: Goal; onClose: () 
                 <div className="bg-gradient-to-r from-green-50 dark:from-green-900/20 to-emerald-50 dark:to-emerald-900/20 rounded-lg p-4 border border-green-200 dark:border-green-800 mb-4">
                   <div className="flex items-center justify-between">
                     <span className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary font-medium">
-                      💵 Ежемесячные накопления
+                      💵 {t.goals.monthlySavings}
                     </span>
                     <span className="text-xl font-bold text-green-600 dark:text-green-400">
                       {Math.round(roadmap.monthly_savings_needed).toLocaleString()} {goal.currency}
@@ -569,7 +569,7 @@ function GoalDetailModal({ goal, onClose, onDelete }: { goal: Goal; onClose: () 
           {/* Timeline */}
           <div className="mb-6">
             <h3 className="text-lg font-bold text-telegram-text dark:text-telegram-dark-text mb-3">
-              📅 Сроки
+              📅 {t.goals.timeline}
             </h3>
             <div className="space-y-2">
               <div className="flex items-center justify-between p-3 bg-telegram-hover dark:bg-telegram-dark-hover rounded-lg">
@@ -622,10 +622,10 @@ function GoalDetailModal({ goal, onClose, onDelete }: { goal: Goal; onClose: () 
                     >
                       <div className="flex items-center justify-between mb-2">
                         <span className="font-semibold text-telegram-text dark:text-telegram-dark-text">
-                          Месяц {month.month}
+                          {t.goals.month} {month.month}
                         </span>
                         <span className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-                          Накоплено: {Math.round(month.cumulative_target).toLocaleString()} {goal.currency}
+                          {t.goals.saved}: {Math.round(month.cumulative_target).toLocaleString()} {goal.currency}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">

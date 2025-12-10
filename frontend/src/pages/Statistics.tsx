@@ -2,9 +2,11 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../services/api'
 import { LoadingSpinner } from '../components/LoadingSpinner'
+import { useI18n } from '../contexts/I18nContext'
 
 export function Statistics() {
   const queryClient = useQueryClient()
+  const { t } = useI18n()
   const [resetUserId, setResetUserId] = useState<number | null>(null)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
 
@@ -95,9 +97,10 @@ export function Statistics() {
   }
 
   const formatDate = (dateString: string | null) => {
-    if (!dateString) return 'Никогда'
+    if (!dateString) return t.goals.stats.never
     const date = new Date(dateString)
-    return date.toLocaleDateString('ru-RU', {
+    const systemLocale = navigator.language || 'en-US'
+    return date.toLocaleDateString(systemLocale, {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -107,20 +110,20 @@ export function Statistics() {
   }
 
   const getActivityLevel = (lastLogin: string | null) => {
-    if (!lastLogin) return { level: 'Неактивен', color: 'text-gray-500' }
+    if (!lastLogin) return { level: t.goals.stats.inactive, color: 'text-gray-500' }
     
     const daysSinceLogin = Math.floor(
       (Date.now() - new Date(lastLogin).getTime()) / (1000 * 60 * 60 * 24)
     )
     
     if (daysSinceLogin <= 1) {
-      return { level: 'Очень активен', color: 'text-green-500' }
+      return { level: t.goals.stats.veryActive, color: 'text-green-500' }
     } else if (daysSinceLogin <= 7) {
-      return { level: 'Активен', color: 'text-blue-500' }
+      return { level: t.goals.stats.active, color: 'text-blue-500' }
     } else if (daysSinceLogin <= 30) {
-      return { level: 'Умеренно активен', color: 'text-yellow-500' }
+      return { level: t.goals.stats.moderatelyActive, color: 'text-yellow-500' }
     } else {
-      return { level: 'Неактивен', color: 'text-gray-500' }
+      return { level: t.goals.stats.inactive, color: 'text-gray-500' }
     }
   }
 
@@ -132,9 +135,9 @@ export function Statistics() {
     return (
       <div className="min-h-screen p-4 md:p-6 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-500 mb-4">Ошибка загрузки данных</p>
+          <p className="text-red-500 mb-4">{t.goals.stats.errorLoadingData}</p>
           <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary text-sm">
-            У вас нет прав администратора
+            {t.errors.unauthorized}
           </p>
         </div>
       </div>
@@ -144,18 +147,17 @@ export function Statistics() {
   return (
     <div className="min-h-screen p-4 md:p-6 animate-fade-in max-w-6xl mx-auto w-full">
       <h1 className="text-xl md:text-2xl font-semibold text-telegram-text dark:text-telegram-dark-text mb-4 md:mb-6">
-        📊 Статистика пользователей
+        📊 {t.goals.stats.title}
       </h1>
 
       {showResetConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="card p-6 max-w-md w-full">
             <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
-              Подтверждение сброса
+              {t.common.confirm}
             </h2>
             <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-6">
-              Вы уверены, что хотите сбросить настройки этого пользователя до заводских? 
-              Это действие удалит все данные пользователя и вернет настройки к первоначальному состоянию.
+              {t.goals.stats.resetConfirmText}
             </p>
             <div className="flex gap-3">
               <button
@@ -163,7 +165,7 @@ export function Statistics() {
                 disabled={resetMutation.isPending}
                 className="flex-1 btn-primary text-sm md:text-base py-2.5 md:py-3 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {resetMutation.isPending ? 'Сброс...' : 'Да, сбросить'}
+                {resetMutation.isPending ? t.goals.stats.resetting : t.goals.stats.resetConfirm}
               </button>
               <button
                 onClick={() => {
@@ -173,7 +175,7 @@ export function Statistics() {
                 disabled={resetMutation.isPending}
                 className="flex-1 btn-secondary text-sm md:text-base py-2.5 md:py-3 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Отмена
+                {t.common.cancel}
               </button>
             </div>
           </div>
@@ -265,7 +267,7 @@ export function Statistics() {
                             className="w-4 h-4 text-telegram-primary bg-telegram-surface border-telegram-border rounded focus:ring-telegram-primary focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed"
                           />
                           <span className={`text-xs md:text-sm ${user.is_premium ? 'text-telegram-primary font-semibold' : 'text-telegram-textSecondary dark:text-telegram-dark-textSecondary'}`}>
-                            {user.is_premium ? '⭐ Премиум' : 'Базовый'}
+                            {user.is_premium ? `⭐ ${t.goals.stats.premium}` : t.goals.stats.basic}
                           </span>
                         </label>
                       </td>
@@ -275,7 +277,7 @@ export function Statistics() {
                           disabled={resetMutation.isPending}
                           className="text-xs md:text-sm btn-secondary text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-700 dark:hover:text-red-300 border-red-300 dark:border-red-700 py-1.5 px-3 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          Сбросить
+                          {t.goals.stats.reset}
                         </button>
                       </td>
                     </tr>
