@@ -203,10 +203,19 @@ async def get_transactions(
     params["limit"] = limit
     params["offset"] = offset
     
-    # Execute raw SQL query
-    result_rows = db.execute(sa_text(sql_query), params).fetchall()
-    
-    logger.info(f"Found {len(result_rows)} transactions for user {current_user.id}, filter={filter_type}")
+    # Execute raw SQL query with error handling
+    try:
+        logger.info(f"Executing SQL query with params: {list(params.keys())}")
+        result_rows = db.execute(sa_text(sql_query), params).fetchall()
+        logger.info(f"Found {len(result_rows)} transactions for user {current_user.id}, filter={filter_type}")
+    except Exception as e:
+        logger.error(f"Error executing SQL query: {e}", exc_info=True)
+        logger.error(f"SQL query: {sql_query[:500]}...")
+        logger.error(f"Params keys: {list(params.keys())}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Ошибка при получении транзакций: {str(e)}"
+        )
     
     # Build response from raw SQL results
     result = []
@@ -237,6 +246,7 @@ async def get_transactions(
             result.append(TransactionResponse(**trans_dict))
         except Exception as e:
             logger.error(f"Error serializing transaction {row[0] if row else 'unknown'}: {e}", exc_info=True)
+            logger.error(f"Row data: {row[:5] if row else 'no row'}")
             continue
     
     return result
