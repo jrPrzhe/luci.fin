@@ -490,12 +490,22 @@ export function Dashboard() {
 
       // Add category_id for income/expense transactions (required)
       if (quickFormType === 'income' || quickFormType === 'expense') {
-        if (!quickFormData.category_id) {
+        const categoryId = quickFormData.category_id?.toString().trim()
+        if (!categoryId || categoryId === '' || categoryId === '0') {
+          console.error('[Dashboard] Category ID is missing:', { categoryId, quickFormData })
           showError(t.dashboard.form.selectCategory)
           setSubmitting(false)
           return
         }
-        submitData.category_id = parseInt(quickFormData.category_id)
+        const parsedCategoryId = parseInt(categoryId)
+        if (isNaN(parsedCategoryId) || parsedCategoryId <= 0) {
+          console.error('[Dashboard] Invalid category ID:', { categoryId, parsedCategoryId })
+          showError(t.dashboard.form.selectCategory)
+          setSubmitting(false)
+          return
+        }
+        submitData.category_id = parsedCategoryId
+        console.log('[Dashboard] Category ID added to transaction:', parsedCategoryId)
       }
 
       if (quickFormType === 'transfer') {
@@ -507,6 +517,9 @@ export function Dashboard() {
         submitData.goal_id = parseInt(quickFormData.goal_id)
       }
 
+      // Log transaction data before sending
+      console.log('[Dashboard] Creating transaction with data:', submitData)
+      
       // Create transaction
       const response = await api.createTransaction(submitData)
       

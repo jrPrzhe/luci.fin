@@ -361,6 +361,16 @@ app.add_middleware(NgrokBypassMiddleware)
 # Ensure CORS_ORIGINS is a list
 cors_origins = settings.CORS_ORIGINS if isinstance(settings.CORS_ORIGINS, list) else list(settings.CORS_ORIGINS)
 
+# Add common Vercel domains to origins if not already present
+vercel_domains = [
+    "https://luci-fin.vercel.app",
+    "https://luci-fin-git-main.vercel.app",
+    "https://luci-fin-git-develop.vercel.app",
+]
+for domain in vercel_domains:
+    if domain not in cors_origins:
+        cors_origins.append(domain)
+
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
