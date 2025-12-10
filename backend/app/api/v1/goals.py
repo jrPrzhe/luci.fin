@@ -22,6 +22,9 @@ import logging
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+# Log router creation for debugging
+logger.info("Goals router created and ready to register routes")
+
 
 @router.get("/", response_model=List[GoalResponse])
 async def get_goals(
@@ -30,7 +33,8 @@ async def get_goals(
     db: Session = Depends(get_db)
 ):
     """Get user's goals"""
-    logger.info(f"Getting goals for user_id={current_user.id}, status_filter={status_filter}")
+    logger.info(f"[GET_GOALS] Endpoint called for user_id={current_user.id}, status_filter={status_filter}")
+    logger.info(f"[GET_GOALS] Router registered at /api/v1/goals")
     try:
         query = db.query(Goal).filter(Goal.user_id == current_user.id)
         

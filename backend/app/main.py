@@ -530,10 +530,15 @@ try:
     app.include_router(ai.router, prefix="/api/v1/ai", tags=["AI Assistant"])
     app.include_router(categories.router, prefix="/api/v1/categories", tags=["Categories"])
     app.include_router(reports.router, prefix="/api/v1/reports", tags=["Reports"])
+    # Register goals router BEFORE admin router to avoid route conflicts
+    print("[STARTUP] Registering goals router...", file=sys.stderr, flush=True)
     app.include_router(goals.router, prefix="/api/v1/goals", tags=["Goals"])
+    print("[STARTUP] Goals router registered successfully", file=sys.stderr, flush=True)
     app.include_router(import_router.router, prefix="/api/v1/import", tags=["Import"])
     app.include_router(gamification.router, prefix="/api/v1/gamification", tags=["Gamification"])
     app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["Analytics"])
+    # Admin router should be last to avoid conflicts with other routes
+    print("[STARTUP] Registering admin router...", file=sys.stderr, flush=True)
     app.include_router(admin.router, prefix="/api/v1", tags=["Admin"])
     print("[STARTUP] All routers included, application ready!", file=sys.stderr, flush=True)
 except Exception as e:
