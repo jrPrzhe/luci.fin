@@ -52,18 +52,21 @@ async def get_analytics(
     
     # Calculate date range - use proper calendar periods
     end_date = datetime.utcnow()
+    # Set end_date to end of current day (23:59:59) to include all transactions from today
+    end_date = end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+    
     if period == "week":
-        # Last 7 days
-        start_date = end_date - timedelta(days=7)
+        # Last 7 days (including today)
+        start_date = (end_date - timedelta(days=6)).replace(hour=0, minute=0, second=0, microsecond=0)
     elif period == "month":
-        # Current month from the 1st to today
-        start_date = datetime(end_date.year, end_date.month, 1)
+        # Current month from the 1st to today (end of day)
+        start_date = datetime(end_date.year, end_date.month, 1, 0, 0, 0)
     elif period == "year":
-        # Current year from January 1st to today
-        start_date = datetime(end_date.year, 1, 1)
+        # Current year from January 1st to today (end of day)
+        start_date = datetime(end_date.year, 1, 1, 0, 0, 0)
     else:
         # Default to current month
-        start_date = datetime(end_date.year, end_date.month, 1)
+        start_date = datetime(end_date.year, end_date.month, 1, 0, 0, 0)
     
     # Get user's accounts (matching get_transactions logic)
     user_accounts = db.query(Account).filter(
@@ -163,6 +166,10 @@ async def get_analytics(
     total_expense = 0.0
     total_transfer = 0.0
     
+    logger.info(f"[Analytics] Processing {len(transactions_data)} transactions for period={period}, user_id={current_user.id}")
+    logger.info(f"[Analytics] Date range: {start_date} to {end_date}")
+    logger.info(f"[Analytics] Personal accounts: {len(personal_account_ids)}, Shared accounts: {len(shared_account_ids_list)}")
+    
     for row in transactions_data:
         trans_type = row[2].lower() if row[2] else ''
         amount = float(row[3]) if row[3] else 0.0
@@ -189,6 +196,8 @@ async def get_analytics(
             total_transfer += amount
     
     net_flow = total_income - total_expense
+    
+    logger.info(f"[Analytics] Calculated totals: income={total_income}, expense={total_expense}, net={net_flow}, transfer={total_transfer}")
     
     # Expenses by category
     # Get all category IDs first, then fetch categories using raw SQL to avoid enum issues
@@ -538,7 +547,7 @@ async def get_analytics(
                     "type": "trend"
                 })
     
-    return {
+    result = {
         "period": period,
         "start_date": start_date.isoformat(),
         "end_date": end_date.isoformat(),
@@ -556,6 +565,10 @@ async def get_analytics(
         "transaction_count": len(transactions_data),
         "goals": goals_info
     }
+    
+    logger.info(f"[Analytics] Returning result: income={result['totals']['income']}, expense={result['totals']['expense']}, net={result['totals']['net']}, period={period}")
+    
+    return result
 
 
 @router.get("/premium/export")

@@ -168,7 +168,14 @@ export function Reports() {
     queryKey: ['analytics', period],
     queryFn: async () => {
       try {
+        console.log(`[Reports] Fetching analytics for period: ${period}`)
         const data = await api.getAnalytics(period)
+        console.log(`[Reports] Analytics data received:`, {
+          income: data?.totals?.income,
+          expense: data?.totals?.expense,
+          net: data?.totals?.net,
+          transaction_count: data?.transaction_count
+        })
         // Validate response structure
         if (!data || typeof data !== 'object') {
           throw new Error('Неверный формат данных от сервера')
@@ -181,10 +188,11 @@ export function Reports() {
       }
     },
     staleTime: 0, // Always consider data stale to allow immediate updates
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true, // Refetch when window gets focus
     refetchOnMount: 'always', // Always refetch when component mounts
     refetchInterval: false, // Don't auto-refetch on interval
     retry: 1, // Retry once on failure
+    gcTime: 0, // Don't cache data (formerly cacheTime)
   })
 
   const { data: user } = useQuery({

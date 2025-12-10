@@ -209,7 +209,8 @@ class ApiClient {
     // Prevent caching for critical endpoints (auth, data fetching)
     if (endpoint.includes('/auth/') || endpoint.includes('/transactions') || 
         endpoint.includes('/accounts') || endpoint.includes('/categories') ||
-        endpoint.includes('/shared-budgets') || endpoint.includes('/balance')) {
+        endpoint.includes('/shared-budgets') || endpoint.includes('/balance') ||
+        endpoint.includes('/reports/analytics')) {
       headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
       headers['Pragma'] = 'no-cache'
       headers['Expires'] = '0'
