@@ -893,8 +893,6 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
       showError(translateError(errorToTranslate))
     } finally {
       setLoading(false)
-      setGeneratingRoadmap(false)
-      setRoadmapStatus('')
     }
   }
 
@@ -915,7 +913,7 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
       }}
       onClick={() => {
         // Don't close modal during loading
-        if (!loading && !generatingRoadmap) {
+        if (!loading) {
           onClose()
         }
       }}
@@ -931,7 +929,7 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
           <button
             onClick={onClose}
             className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text text-xl disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={loading || generatingRoadmap}
+            disabled={loading}
           >
             ×
           </button>
@@ -954,7 +952,7 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               className="w-full px-4 py-2 rounded-lg bg-telegram-hover dark:bg-telegram-dark-hover border border-telegram-border dark:border-telegram-dark-border text-telegram-text dark:text-telegram-dark-text disabled:opacity-50 disabled:cursor-not-allowed"
               placeholder={t.goals.goalNamePlaceholder}
-              disabled={loading || generatingRoadmap}
+              disabled={loading}
             />
           </div>
 
@@ -973,7 +971,7 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
                   : 'border-telegram-border dark:border-telegram-dark-border'
               } text-telegram-text dark:text-telegram-dark-text disabled:opacity-50 disabled:cursor-not-allowed`}
               placeholder="2000000"
-              disabled={loading || generatingRoadmap}
+              disabled={loading}
             />
             {amountError && (
               <p className="mt-1 text-sm text-red-500 dark:text-red-400">{amountError}</p>
@@ -988,7 +986,7 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
               value={formData.currency}
               onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
               className="w-full px-4 py-2 rounded-lg bg-telegram-hover dark:bg-telegram-dark-hover border border-telegram-border dark:border-telegram-dark-border text-telegram-text dark:text-telegram-dark-text disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={loading || generatingRoadmap}
+              disabled={loading}
             >
               <option value="RUB">₽ RUB</option>
               <option value="USD">$ USD</option>
