@@ -845,9 +845,12 @@ async def create_transaction(
             
             if balance < transaction_amount:
                 logger.warning(f"Insufficient balance: {balance} < {transaction_amount}")
+                # Format balance and amount for display
+                balance_formatted = f"{float(balance):,.2f}".replace(',', ' ')
+                amount_formatted = f"{float(transaction_amount):,.2f}".replace(',', ' ')
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Недостаточно средств на счете. Текущий баланс: {balance:.2f}, требуется: {transaction_amount:.2f}"
+                    detail=f"Недостаточно средств на счете. Текущий баланс: {balance_formatted} {final_account.currency}, требуется: {amount_formatted} {final_account.currency}"
                 )
             
             logger.info(f"Balance check passed: {balance} >= {transaction_amount}")
@@ -855,9 +858,11 @@ async def create_transaction(
             raise
         except Exception as e:
             logger.error(f"Error checking balance for expense transaction: {e}", exc_info=True)
-            # Don't fail transaction creation if balance check fails - log and continue
-            # This allows transactions to be created even if there's a calculation error
-            logger.warning(f"Balance check failed, but allowing transaction creation. Error: {e}")
+            # Re-raise the exception to prevent transaction creation if balance check fails
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Ошибка при проверке баланса счета: {str(e)}"
+            )
     
     # For transfers, use raw SQL to avoid enum issues completely
     if transaction_data.transaction_type == "transfer" and to_transaction:
