@@ -58,6 +58,23 @@ interface AnalyticsData {
 
 const COLORS = ['#3390EC', '#6CC3F2', '#4CAF50', '#FF9800', '#9C27B0', '#F44336', '#00BCD4', '#FFC107', '#607D8B', '#E91E63']
 
+// Custom Tooltip component for charts
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-telegram-surface dark:bg-telegram-dark-surface border border-telegram-border dark:border-telegram-dark-border rounded-lg p-3 shadow-lg">
+        <p className="text-sm font-semibold text-telegram-text dark:text-telegram-dark-text mb-2">{label}</p>
+        {payload.map((entry: any, index: number) => (
+          <p key={index} className="text-sm" style={{ color: entry.color }}>
+            {entry.name}: {typeof entry.value === 'number' ? entry.value.toLocaleString('ru-RU') : entry.value} ₽
+          </p>
+        ))}
+      </div>
+    )
+  }
+  return null
+}
+
 // Маппинг английских названий месяцев на русские
 const MONTH_MAPPING: Record<string, string> = {
   'Jan': 'Янв', 'Feb': 'Фев', 'Mar': 'Мар', 'Apr': 'Апр',
@@ -720,45 +737,50 @@ export function Reports() {
 
       {/* Daily Flow Chart */}
       {dailyFlowData && Array.isArray(dailyFlowData) && dailyFlowData.length > 0 && (
-        <div className="card p-5 mb-6">
+        <div className="card p-5 mb-6" style={{ overflow: 'visible' }}>
           <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
             {t.reports.dailyFlow}
           </h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={dailyFlowData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E5E5" className="dark:stroke-telegram-dark-border" />
-              <XAxis 
-                dataKey="date" 
-                stroke="#707579"
-                className="dark:stroke-telegram-dark-textSecondary"
-                style={{ fontSize: '12px' }}
-              />
-              <YAxis 
-                stroke="#707579"
-                className="dark:stroke-telegram-dark-textSecondary"
-                style={{ fontSize: '12px' }}
-                tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
-              />
-              <Tooltip content={CustomTooltip} />
-              <Legend />
-              <Line 
-                type="monotone" 
-                dataKey={t.reports.income} 
-                stroke="#4CAF50" 
-                strokeWidth={2}
-                dot={{ fill: '#4CAF50', r: 4 }}
-                activeDot={{ r: 6 }}
-              />
-              <Line 
-                type="monotone" 
-                dataKey={t.reports.expenses} 
-                stroke="#F44336" 
-                strokeWidth={2}
-                dot={{ fill: '#F44336', r: 4 }}
-                activeDot={{ r: 6 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          <div style={{ width: '100%', height: 300, overflow: 'visible', padding: '10px' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart 
+                data={dailyFlowData}
+                margin={{ top: 10, right: 10, bottom: 10, left: 10 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#E5E5E5" className="dark:stroke-telegram-dark-border" />
+                <XAxis 
+                  dataKey="date" 
+                  stroke="#707579"
+                  className="dark:stroke-telegram-dark-textSecondary"
+                  style={{ fontSize: '12px' }}
+                />
+                <YAxis 
+                  stroke="#707579"
+                  className="dark:stroke-telegram-dark-textSecondary"
+                  style={{ fontSize: '12px' }}
+                  tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+                />
+                <Tooltip content={CustomTooltip} />
+                <Legend />
+                <Line 
+                  type="monotone" 
+                  dataKey={t.reports.income} 
+                  stroke="#4CAF50" 
+                  strokeWidth={2}
+                  dot={{ fill: '#4CAF50', r: 4 }}
+                  activeDot={{ r: 8, stroke: '#4CAF50', strokeWidth: 2, fill: '#fff' }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey={t.reports.expenses} 
+                  stroke="#F44336" 
+                  strokeWidth={2}
+                  dot={{ fill: '#F44336', r: 4 }}
+                  activeDot={{ r: 8, stroke: '#F44336', strokeWidth: 2, fill: '#fff' }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       )}
 
