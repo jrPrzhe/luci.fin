@@ -765,6 +765,7 @@ function GoalDetailModal({ goal, onClose, onDelete }: { goal: Goal; onClose: () 
 // Create Goal Modal Component
 function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const { t } = useI18n()
+  const queryClient = useQueryClient()
   const [loading, setLoading] = useState(false)
   const [amountError, setAmountError] = useState<string>('')
   const [formData, setFormData] = useState({
@@ -890,6 +891,11 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
       await api.createGoal(goalData)
 
       showSuccess(t.goals.goalCreated)
+      
+      // Invalidate and refetch goals query to refresh the list immediately
+      await queryClient.invalidateQueries({ queryKey: ['goals'] })
+      await queryClient.refetchQueries({ queryKey: ['goals'] })
+      
       onSuccess()
     } catch (error: any) {
       console.error('Error creating goal:', error)
