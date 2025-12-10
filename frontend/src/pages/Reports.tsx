@@ -68,24 +68,51 @@ const MONTH_MAPPING: Record<string, string> = {
   'September': 'Сентябрь', 'October': 'Октябрь', 'November': 'Ноябрь', 'December': 'Декабрь'
 }
 
+// Reverse mapping: Russian to English
+const REVERSE_MONTH_MAPPING: Record<string, string> = {
+  'Янв': 'Jan', 'Фев': 'Feb', 'Мар': 'Mar', 'Апр': 'Apr',
+  'Май': 'May', 'Июн': 'Jun', 'Июл': 'Jul', 'Авг': 'Aug',
+  'Сен': 'Sep', 'Окт': 'Oct', 'Ноя': 'Nov', 'Дек': 'Dec',
+  'Январь': 'January', 'Февраль': 'February', 'Март': 'March', 'Апрель': 'April',
+  'Июнь': 'June', 'Июль': 'July', 'Август': 'August',
+  'Сентябрь': 'September', 'Октябрь': 'October', 'Ноябрь': 'November', 'Декабрь': 'December'
+}
+
 // Функция для локализации названия месяца (использует локаль из i18n)
 const localizeMonth = (monthStr: string, language: 'ru' | 'en', currentLocale: string = 'en-US'): string => {
   if (!monthStr) return monthStr
   
-  // Если локаль английская, возвращаем как есть (месяцы уже на английском)
-  if (language === 'en' || currentLocale.startsWith('en')) {
-    return monthStr
-  }
+  const trimmed = monthStr.trim()
   
-  // Для русской локали - переводим месяцы
-  if (language === 'ru' || currentLocale.startsWith('ru')) {
-    // Если уже на русском, возвращаем как есть
-    if (monthStr.match(/[А-Яа-я]/)) {
-      return monthStr
+  // Если локаль английская, переводим с русского на английский
+  if (language === 'en' || currentLocale.startsWith('en')) {
+    // Если уже на английском, возвращаем как есть
+    if (!trimmed.match(/[А-Яа-я]/)) {
+      return trimmed
     }
     
-    // Убираем лишние пробелы
-    const trimmed = monthStr.trim()
+    // Переводим с русского на английский
+    if (REVERSE_MONTH_MAPPING[trimmed]) {
+      return REVERSE_MONTH_MAPPING[trimmed]
+    }
+    
+    // Пробуем найти русский месяц в строке
+    for (const [ruMonth, enMonth] of Object.entries(REVERSE_MONTH_MAPPING)) {
+      if (trimmed.includes(ruMonth)) {
+        return trimmed.replace(ruMonth, enMonth)
+      }
+    }
+    
+    // Если не нашли, возвращаем как есть
+    return trimmed
+  }
+  
+  // Для русской локали - переводим месяцы с английского на русский
+  if (language === 'ru' || currentLocale.startsWith('ru')) {
+    // Если уже на русском, возвращаем как есть
+    if (trimmed.match(/[А-Яа-я]/)) {
+      return trimmed
+    }
     
     // Пробуем найти точное совпадение в маппинге
     if (MONTH_MAPPING[trimmed]) {
@@ -115,7 +142,7 @@ const localizeMonth = (monthStr: string, language: 'ru' | 'en', currentLocale: s
   }
   
   // Если ничего не помогло, возвращаем как есть
-  return monthStr
+  return trimmed
 }
 
 export function Reports() {
@@ -306,8 +333,8 @@ export function Reports() {
         if (active && payload && Array.isArray(payload) && payload.length > 0) {
           const currency = analytics?.totals?.currency || 'RUB'
           const formatValue = (value: number) => {
-            const systemLocale = navigator.language || 'en-US'
-            return new Intl.NumberFormat(systemLocale, {
+            const currentLocale = language === 'en' ? 'en-US' : 'ru-RU'
+            return new Intl.NumberFormat(currentLocale, {
               style: 'currency',
               currency: currency,
               minimumFractionDigits: 0,
@@ -318,18 +345,18 @@ export function Reports() {
             <div className="bg-white dark:bg-telegram-dark-surface p-3 rounded-lg shadow-lg border border-telegram-border dark:border-telegram-dark-border pointer-events-none">
               <p className="font-semibold mb-2 text-telegram-text dark:text-telegram-dark-text">
                 {label ? (() => {
-                  const systemLocale = navigator.language || 'en-US'
+                  const currentLocale = language === 'en' ? 'en-US' : 'ru-RU'
                   const labelStr = String(label)
-                  // Если это дата, форматируем её согласно системной локали
+                  // Если это дата, форматируем её согласно текущей локали
                   if (labelStr.match(/^\d{4}-\d{2}-\d{2}/)) {
                     try {
                       const date = new Date(labelStr)
                       if (!isNaN(date.getTime())) {
-                        return date.toLocaleDateString(systemLocale, { day: 'numeric', month: 'short' })
+                        return date.toLocaleDateString(currentLocale, { day: 'numeric', month: 'short' })
                       }
                     } catch (e) {}
                   }
-                  return localizeMonth(labelStr, language, locale)
+                  return localizeMonth(labelStr, language, currentLocale)
                 })() : ''}
               </p>
               {payload.map((entry: any, index: number) => (
@@ -347,7 +374,7 @@ export function Reports() {
       }
     }
     return TooltipComponent
-  }, [locale, analytics?.totals?.currency])
+  }, [locale, language, analytics?.totals?.currency])
 
   // Custom Tooltip for PieChart with dark theme support
   const PieChartTooltip = useMemo(() => {

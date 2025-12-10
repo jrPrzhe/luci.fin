@@ -269,10 +269,10 @@ export function Goals() {
         <div className="text-center py-12">
           <div className="text-6xl mb-4">🎯</div>
           <h3 className="text-xl font-bold text-telegram-text dark:text-telegram-dark-text mb-2">
-            Нет целей
+            {t.goals.noGoals}
           </h3>
           <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-6">
-            Создайте свою первую финансовую цель и начните путь к мечте!
+            {t.goals.noGoalsDesc}
           </p>
         </div>
       )}

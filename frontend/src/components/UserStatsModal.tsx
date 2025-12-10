@@ -1,4 +1,5 @@
 import { useEffect, useMemo, memo, useState } from 'react'
+import { useI18n } from '../contexts/I18nContext'
 
 interface UserStatsModalProps {
   status: {
@@ -18,6 +19,7 @@ interface UserStatsModalProps {
 }
 
 export const UserStatsModal = memo(function UserStatsModal({ status, onClose }: UserStatsModalProps) {
+  const { t } = useI18n()
   const [isDarkMode, setIsDarkMode] = useState(() => {
     // Check theme immediately on component mount
     return document.documentElement.classList.contains('dark')
@@ -223,9 +225,9 @@ export const UserStatsModal = memo(function UserStatsModal({ status, onClose }: 
   // Calculate heart cooldown (if heart_level < 100, show when it will regenerate)
   const heartCooldown = useMemo(() => {
     return profile.heart_level < 100 
-      ? 'Сердце восстанавливается при выполнении заданий'
-      : 'Сердце на максимуме! ❤️'
-  }, [profile.heart_level])
+      ? t.goals.stats.heartRegenerating
+      : t.goals.stats.heartMax
+  }, [profile.heart_level, t])
 
   // Calculate next level info
   const currentLevelXP = profile.xp
@@ -235,9 +237,9 @@ export const UserStatsModal = memo(function UserStatsModal({ status, onClose }: 
   // Calculate streak info
   const streakInfo = useMemo(() => {
     return profile.streak_days > 0
-      ? `Выполняйте задания каждый день, чтобы увеличить серию!`
-      : 'Начните выполнять задания, чтобы создать серию!'
-  }, [profile.streak_days])
+      ? t.goals.stats.streakInfo
+      : t.goals.stats.streakInfoStart
+  }, [profile.streak_days, t])
 
   return (
     <div 
@@ -258,7 +260,7 @@ export const UserStatsModal = memo(function UserStatsModal({ status, onClose }: 
             <h2 className={`text-lg md:text-xl font-bold ${
               isDarkMode ? 'text-telegram-dark-text' : 'text-telegram-text'
             }`}>
-              📊 Статистика
+              📊 {t.goals.stats.title}
             </h2>
             <button
               onClick={onClose}
@@ -285,13 +287,13 @@ export const UserStatsModal = memo(function UserStatsModal({ status, onClose }: 
               <div className="flex items-center gap-4 mb-4">
                 <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-br from-yellow-400 to-orange-500 flex flex-col items-center justify-center shadow-lg">
                   <span className="text-2xl md:text-3xl font-bold text-white">{profile.level}</span>
-                  <span className="text-xs md:text-sm text-white/90 font-medium">Уровень</span>
+                  <span className="text-xs md:text-sm text-white/90 font-medium">{t.goals.stats.level}</span>
                 </div>
                 <div className="flex-1">
                   <h3 className={`text-base md:text-lg font-semibold mb-1 ${
                     isDarkMode ? 'text-telegram-dark-text' : 'text-telegram-text'
                   }`}>
-                    Текущий уровень
+                    {t.goals.stats.currentLevel}
                   </h3>
                   <p className={`text-xs md:text-sm ${
                     isDarkMode ? 'text-telegram-dark-textSecondary' : 'text-telegram-textSecondary'
@@ -306,12 +308,12 @@ export const UserStatsModal = memo(function UserStatsModal({ status, onClose }: 
                   <span className={`text-sm font-medium ${
                     isDarkMode ? 'text-telegram-dark-text' : 'text-telegram-text'
                   }`}>
-                    Прогресс до уровня {profile.level + 1}
+                    {t.goals.stats.progressToLevel} {profile.level + 1}
                   </span>
                   <span className={`text-xs ${
                     isDarkMode ? 'text-telegram-dark-textSecondary' : 'text-telegram-textSecondary'
                   }`}>
-                    {xpNeeded} XP осталось
+                    {xpNeeded} {t.goals.stats.xpRemaining}
                   </span>
                 </div>
                 <div className={`h-3 rounded-full overflow-hidden ${
@@ -335,7 +337,7 @@ export const UserStatsModal = memo(function UserStatsModal({ status, onClose }: 
                   <h3 className={`text-base md:text-lg font-semibold ${
                     isDarkMode ? 'text-telegram-dark-text' : 'text-telegram-text'
                   }`}>
-                    Серия дней
+                    {t.goals.stats.streakDays}
                   </h3>
                   <p className={`text-xs md:text-sm ${
                     isDarkMode ? 'text-telegram-dark-textSecondary' : 'text-telegram-textSecondary'
@@ -355,7 +357,7 @@ export const UserStatsModal = memo(function UserStatsModal({ status, onClose }: 
                 <div className={`text-xs md:text-sm ${
                   isDarkMode ? 'text-telegram-dark-textSecondary' : 'text-telegram-textSecondary'
                 }`}>
-                  дней подряд
+                  {t.goals.stats.daysInRow}
                 </div>
               </div>
             </div>
@@ -368,7 +370,7 @@ export const UserStatsModal = memo(function UserStatsModal({ status, onClose }: 
                   <h3 className={`text-base md:text-lg font-semibold ${
                     isDarkMode ? 'text-telegram-dark-text' : 'text-telegram-text'
                   }`}>
-                    Сердце Люси
+                    {t.goals.stats.lucyHeart}
                   </h3>
                   <p className={`text-xs md:text-sm ${
                     isDarkMode ? 'text-telegram-dark-textSecondary' : 'text-telegram-textSecondary'
@@ -384,7 +386,7 @@ export const UserStatsModal = memo(function UserStatsModal({ status, onClose }: 
                   <span className={`text-sm font-medium ${
                     isDarkMode ? 'text-telegram-dark-text' : 'text-telegram-text'
                   }`}>
-                    Текущий уровень
+                    {t.goals.stats.currentLevel}
                   </span>
                   <span className={`text-sm font-bold ${
                     isDarkMode ? 'text-pink-400' : 'text-pink-600'
@@ -414,7 +416,7 @@ export const UserStatsModal = memo(function UserStatsModal({ status, onClose }: 
                 <div className={`text-xs md:text-sm ${
                   isDarkMode ? 'text-telegram-dark-textSecondary' : 'text-telegram-textSecondary'
                 }`}>
-                  Всего XP заработано
+                  {t.goals.stats.totalXpEarned}
                 </div>
               </div>
               <div className="card p-3 text-center">
@@ -426,7 +428,7 @@ export const UserStatsModal = memo(function UserStatsModal({ status, onClose }: 
                 <div className={`text-xs md:text-sm ${
                   isDarkMode ? 'text-telegram-dark-textSecondary' : 'text-telegram-textSecondary'
                 }`}>
-                  Заданий выполнено
+                  {t.goals.stats.questsCompleted}
                 </div>
               </div>
             </div>

@@ -1,7 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../services/api'
+import { useI18n } from '../contexts/I18nContext'
 
 export function GamificationStatus() {
+  const { t } = useI18n()
   const { data: status, isLoading } = useQuery({
     queryKey: ['gamification-status'],
     queryFn: () => api.getGamificationStatus(),
@@ -11,7 +13,7 @@ export function GamificationStatus() {
   if (isLoading) {
     return (
       <div className="gamification-status loading">
-        <div className="skeleton">Загрузка...</div>
+        <div className="skeleton">{t.goals.stats.loading}</div>
       </div>
     )
   }
@@ -31,7 +33,7 @@ export function GamificationStatus() {
         <div className="flex items-center gap-3">
           <div className="level-badge bg-gradient-to-br from-yellow-400 to-orange-500 w-16 h-16 rounded-2xl flex flex-col items-center justify-center shadow-lg">
             <span className="level-number text-2xl font-bold text-white">{profile.level}</span>
-            <span className="level-label text-xs text-white/90 font-medium">Уровень</span>
+            <span className="level-label text-xs text-white/90 font-medium">{t.goals.stats.level}</span>
           </div>
           
           <div className="flex flex-col gap-2">
@@ -39,7 +41,7 @@ export function GamificationStatus() {
               <span className="streak-icon text-xl">🔥</span>
               <div className="flex flex-col">
                 <span className="streak-days text-lg font-bold text-orange-600 dark:text-orange-400">{profile.streak_days}</span>
-                <span className="streak-label text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary">дней подряд</span>
+                <span className="streak-label text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{t.goals.stats.daysInRow}</span>
               </div>
             </div>
             
@@ -47,7 +49,7 @@ export function GamificationStatus() {
               <span className="heart-icon text-xl">❤️</span>
               <div className="flex flex-col">
                 <span className="heart-level text-lg font-bold text-pink-600 dark:text-pink-400">{profile.heart_level}/100</span>
-                <span className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary">Сердце Люси</span>
+                <span className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{t.goals.stats.lucyHeart}</span>
               </div>
             </div>
           </div>
@@ -60,7 +62,7 @@ export function GamificationStatus() {
             {profile.xp} XP
           </span>
           <span className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-            До следующего уровня: {profile.xp_to_next_level} XP
+            {t.goals.stats.progressToLevel} {profile.level + 1}: {profile.xp_to_next_level} XP
           </span>
         </div>
         <div className="xp-bar h-3 bg-telegram-border dark:bg-telegram-dark-border rounded-full overflow-hidden">
