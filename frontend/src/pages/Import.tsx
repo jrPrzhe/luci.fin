@@ -165,8 +165,10 @@ export function Import() {
             className="block w-full p-4 border-2 border-dashed border-telegram-border dark:border-telegram-dark-border rounded-telegram hover:border-telegram-primary dark:hover:border-telegram-dark-primary hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors cursor-pointer text-center"
           >
             {selectedFile ? (
-              <div>
-                <p className="text-telegram-text dark:text-telegram-dark-text font-medium">{selectedFile.name}</p>
+              <div className="w-full">
+                <p className="text-telegram-text dark:text-telegram-dark-text font-medium break-words overflow-wrap-anywhere">
+                  {selectedFile.name}
+                </p>
                 <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
                   {(selectedFile.size / 1024).toFixed(2)} KB
                 </p>
