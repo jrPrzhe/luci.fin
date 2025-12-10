@@ -393,7 +393,7 @@ async def create_transaction(
     import logging
     logger = logging.getLogger(__name__)
     
-    logger.info(f"Creating transaction for user_id={current_user.id}, account_id={transaction_data.account_id}, type={transaction_data.transaction_type}")
+    logger.info(f"Creating transaction for user_id={current_user.id}, account_id={transaction_data.account_id}, type={transaction_data.transaction_type}, category_id={transaction_data.category_id}")
     
     # Verify account belongs to user or user has access through shared budget
     account = db.query(Account).filter(Account.id == transaction_data.account_id).first()

@@ -371,21 +371,34 @@ for domain in vercel_domains:
     if domain not in cors_origins:
         cors_origins.append(domain)
 
-# CORS middleware
+# Log CORS configuration for debugging
+import logging
+cors_logger = logging.getLogger(__name__)
+cors_logger.info(f"CORS origins configured: {cors_origins}")
+cors_logger.info(f"CORS origins count: {len(cors_origins)}")
+
+# CORS middleware - order matters! Must be before other middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins,
+    allow_origins=cors_origins if cors_origins else ["*"],  # Fallback to allow all if empty
     allow_origin_regex=r"https://.*\.ngrok-free\.app|https://.*\.ngrok\.app|https://.*\.ngrok\.io|https://.*\.vercel\.app|https://.*\.vk\.com|https://vk\.com|https://m\.vk\.com",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
     expose_headers=["*"],
+    max_age=3600,  # Cache preflight requests for 1 hour
 )
 
 # Rate limiting
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+@app.options("/{full_path:path}")
+async def options_handler(full_path: str):
+    """Handle OPTIONS requests for CORS preflight"""
+    return {"message": "OK"}
 
 
 @app.get("/")
