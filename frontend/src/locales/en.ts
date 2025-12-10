@@ -28,6 +28,7 @@ export const en = {
     copied: 'Copied',
     copy: 'Copy',
     from: 'From',
+    processing: 'Processing...',
   },
   
   // Navigation

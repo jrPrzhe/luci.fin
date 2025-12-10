@@ -63,7 +63,9 @@ export function Profile() {
   useEffect(() => {
     if (user) {
       setFirstName(user.first_name || '')
-      setDefaultCurrency(user.default_currency || 'RUB')
+      const userCurrency = user.default_currency || 'RUB'
+      setDefaultCurrency(userCurrency)
+      setInitialCurrency(userCurrency) // Обновляем initialCurrency при загрузке данных пользователя
     }
   }, [user])
 

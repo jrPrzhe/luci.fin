@@ -28,6 +28,7 @@ export const ru = {
     copied: 'Скопировано',
     copy: 'Копировать',
     from: 'От',
+    processing: 'Обработка...',
   },
   
   // Navigation

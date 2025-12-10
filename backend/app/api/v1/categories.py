@@ -405,10 +405,13 @@ async def create_category(
                 raise ValueError(f"Invalid transaction_type: {transaction_type_value}. Must be one of: income, expense, both")
             
             # Create category with lowercase string for transaction_type
+            # Ensure name is trimmed to 25 characters (additional safety check)
+            category_name = category.name[:25] if category.name else ""
+            
             db_category = Category(
                 user_id=current_user.id,
                 shared_budget_id=shared_budget_id,
-                name=category.name,
+                name=category_name,
                 transaction_type=transaction_type_value,  # Pass lowercase string directly
                 icon=category.icon,
                 color=category.color,
@@ -522,6 +525,10 @@ async def update_category(
     
     # Update fields
     update_data = category_update.model_dump(exclude_unset=True)
+    
+    # Ensure name is trimmed to 25 characters (additional safety check)
+    if 'name' in update_data and update_data['name']:
+        update_data['name'] = update_data['name'][:25]
     
     # Handle transaction_type conversion if present
     if 'transaction_type' in update_data:

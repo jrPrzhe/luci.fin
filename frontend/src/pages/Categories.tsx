@@ -149,8 +149,8 @@ export function Categories() {
 
     // Валидация длины названия
     const trimmedName = formData.name.trim()
-    if (trimmedName.length > 60) {
-      showError('Название категории не может превышать 60 символов')
+    if (trimmedName.length > 25) {
+      showError('Название категории не может превышать 25 символов')
       return
     }
 
@@ -462,14 +462,19 @@ export function Categories() {
               <input
                 type="text"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) => {
+                  const value = e.target.value
+                  // Trim to 25 characters to prevent bypassing the limit
+                  const trimmedValue = value.slice(0, 25)
+                  setFormData({ ...formData, name: trimmedValue })
+                }}
                 className="input"
                 placeholder={t.categories.form.namePlaceholder}
-                maxLength={60}
+                maxLength={25}
                 required
               />
               <div className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1 text-right">
-                {formData.name.length}/60
+                {formData.name.length}/25
               </div>
             </div>
 

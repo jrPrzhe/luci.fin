@@ -5,12 +5,20 @@ from app.models.category import TransactionType
 
 
 class CategoryBase(BaseModel):
-    name: str = Field(..., min_length=1, max_length=255, description="Category name")
+    name: str = Field(..., min_length=1, max_length=25, description="Category name")
     transaction_type: TransactionType = Field(..., description="Type of transactions this category applies to")
     icon: Optional[str] = Field(None, max_length=100, description="Icon emoji or identifier")
     color: Optional[str] = Field(None, max_length=7, description="HEX color code")
     parent_id: Optional[int] = Field(None, description="Parent category ID for subcategories")
     budget_limit: Optional[float] = Field(None, description="Monthly budget limit")
+    
+    @field_validator('name', mode='before')
+    @classmethod
+    def validate_name(cls, v):
+        """Trim category name to 25 characters"""
+        if isinstance(v, str):
+            return v[:25]
+        return v
     
     @field_validator('transaction_type', mode='before')
     @classmethod
@@ -38,7 +46,7 @@ class CategoryCreate(CategoryBase):
 
 
 class CategoryUpdate(BaseModel):
-    name: Optional[str] = Field(None, min_length=1, max_length=255)
+    name: Optional[str] = Field(None, min_length=1, max_length=25)
     transaction_type: Optional[TransactionType] = None
     icon: Optional[str] = Field(None, max_length=100)
     color: Optional[str] = Field(None, max_length=7)
@@ -46,6 +54,16 @@ class CategoryUpdate(BaseModel):
     is_favorite: Optional[bool] = None
     is_active: Optional[bool] = None
     budget_limit: Optional[float] = None
+    
+    @field_validator('name', mode='before')
+    @classmethod
+    def validate_name(cls, v):
+        """Trim category name to 25 characters"""
+        if v is None:
+            return None
+        if isinstance(v, str):
+            return v[:25]
+        return v
     
     @field_validator('transaction_type', mode='before')
     @classmethod

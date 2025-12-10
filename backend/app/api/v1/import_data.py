@@ -511,9 +511,12 @@ async def import_data(
                 elif cat_data['type'] == 'income':
                     category_type = CategoryTransactionType.INCOME
                 
+                # Trim category name to 25 characters
+                category_name = cat_data['name'][:25] if cat_data['name'] else ""
+                
                 new_category = Category(
                     user_id=current_user.id,
-                    name=cat_data['name'],
+                    name=category_name,
                     transaction_type=category_type,
                     is_active=True,
                     is_system=False
@@ -611,9 +614,12 @@ async def import_data(
                     elif trans_data['type'] == 'income':
                         category_type = CategoryTransactionType.INCOME
                     
+                    # Trim category name to 25 characters
+                    trimmed_category_name = category_name[:25] if category_name else ""
+                    
                     new_category = Category(
                         user_id=current_user.id,
-                        name=category_name,
+                        name=trimmed_category_name,
                         transaction_type=category_type,
                         is_active=True,
                         is_system=False
