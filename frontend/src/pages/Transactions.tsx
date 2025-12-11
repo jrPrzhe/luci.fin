@@ -281,16 +281,16 @@ export function Transactions() {
     if (state?.accountId) {
       // Save accountId from navigation
       const accountId = state.accountId
-      accountIdFromNavigation.current = accountId
-      setSelectedAccountId(accountId)
-      // Load data immediately with the account filter (pass accountId directly to avoid state timing issues)
-      loadData(true, accountId)
-      // Clear state to avoid re-applying on re-render
-      window.history.replaceState({}, document.title)
-    } else {
-      // If no accountId in state, load all transactions
-      if (selectedAccountId === null && transactions.length === 0) {
-        loadData()
+      // Only process if we haven't already processed this accountId
+      if (accountIdFromNavigation.current !== accountId) {
+        accountIdFromNavigation.current = accountId
+        // Set selectedAccountId first
+        setSelectedAccountId(accountId)
+        // Load data with the account filter immediately (pass accountId directly to avoid state timing issues)
+        loadData(true, accountId).then(() => {
+          // Clear state after data is loaded to avoid re-applying on re-render
+          window.history.replaceState({}, document.title)
+        })
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -300,7 +300,7 @@ export function Transactions() {
   useEffect(() => {
     // Only load if we didn't come from Accounts page (which will trigger loadData in the effect above)
     const state = location.state as { accountId?: number } | null
-    if (!state?.accountId && selectedAccountId === null) {
+    if (!state?.accountId && selectedAccountId === null && !accountIdFromNavigation.current) {
       loadData()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -918,7 +918,8 @@ export function Transactions() {
                   setShowDateFilter(false)
                   setSelectedAccountId(null)
                   accountIdFromNavigation.current = null
-                  loadData(true)
+                  // Load all transactions (no account filter)
+                  loadData(true, null)
                 }}
                 className="flex-1 btn-secondary py-3 text-base font-medium"
               >
