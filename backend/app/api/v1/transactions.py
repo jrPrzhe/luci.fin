@@ -1160,7 +1160,6 @@ async def create_transaction(
     
     # Build response manually to ensure transaction_type is lowercase string
     # Get account info using raw SQL to avoid relationship loading issues
-    from sqlalchemy import text as sa_text
     account_sql = "SELECT shared_budget_id FROM accounts WHERE id = :account_id"
     account_result = db.execute(sa_text(account_sql), {"account_id": transaction.account_id}).first()
     is_shared = account_result[0] is not None if account_result else False
