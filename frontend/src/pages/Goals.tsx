@@ -243,7 +243,7 @@ export function Goals() {
                         <span>{t.goals.form.remaining}</span>
                       </div>
                       <div className="text-xl font-bold text-orange-600 dark:text-orange-400">
-                        {Math.round(goal.target_amount - goal.current_amount).toLocaleString()} {goal.currency}
+                        {Math.max(0, Math.round(goal.target_amount - goal.current_amount)).toLocaleString()} {goal.currency}
                       </div>
                     </div>
                   </div>

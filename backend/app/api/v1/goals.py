@@ -78,17 +78,31 @@ async def get_goals(
             
             # Update progress percentage
             if goal.target_amount > 0:
-                # Calculate progress percentage (ensure it's between 0 and 100)
+                # Calculate progress percentage (can exceed 100% if user saves more than target)
                 progress = int((goal.current_amount / goal.target_amount) * 100)
-                goal.progress_percentage = max(0, min(100, progress))
+                # Allow progress to exceed 100% (user can save more than planned)
+                goal.progress_percentage = max(0, progress)  # Remove max(100) limit
                 
                 # Check if goal is completed
                 # Compare with enum value, not string
                 current_status = goal.status if isinstance(goal.status, GoalStatus) else GoalStatus(goal.status) if isinstance(goal.status, str) else goal.status
                 was_active = current_status == GoalStatus.ACTIVE
+                # Allow goals to exceed target_amount (user can save more than planned)
+                # Only mark as completed if it was active and reached/exceeded target
                 if goal.current_amount >= goal.target_amount and was_active:
                     goal.status = GoalStatus.COMPLETED
-                    goal.progress_percentage = 100
+                    # Keep actual progress percentage (can be > 100% if user saves more)
+                    goal.progress_percentage = max(100, int((goal.current_amount / goal.target_amount) * 100))
+                # If goal is already completed but amount increased, keep it completed
+                elif current_status == GoalStatus.COMPLETED:
+                    # Keep goal completed even if amount exceeds target
+                    # Update progress percentage to show actual progress (can be > 100%)
+                    if goal.target_amount > 0:
+                        goal.progress_percentage = max(100, int((goal.current_amount / goal.target_amount) * 100))
+                elif current_status == GoalStatus.ACTIVE and goal.current_amount < goal.target_amount:
+                    # Goal is still active, update progress normally
+                    if goal.target_amount > 0:
+                        goal.progress_percentage = int((goal.current_amount / goal.target_amount) * 100)
                     
                     # Send Telegram notification if user has telegram_id
                     if current_user.telegram_id:
@@ -376,12 +390,14 @@ async def add_progress_to_goal(
     
     # Update progress percentage
     if goal.target_amount > 0:
+        # Allow progress to exceed 100% (user can save more than planned)
         goal.progress_percentage = int((goal.current_amount / goal.target_amount) * 100)
         
         # Check if goal is completed
         if goal.current_amount >= goal.target_amount:
             goal.status = GoalStatus.COMPLETED
-            goal.progress_percentage = 100
+            # Keep actual progress percentage (can be > 100%)
+            goal.progress_percentage = max(100, int((goal.current_amount / goal.target_amount) * 100))
             
             # Create success notification
             notification = Notification(
