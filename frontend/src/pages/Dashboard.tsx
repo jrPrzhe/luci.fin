@@ -283,9 +283,13 @@ export function Dashboard() {
     queryFn: async () => {
       try {
         const analytics = await api.getAnalytics('month')
+        // API возвращает данные в формате { totals: { income, expense, ... } }
+        const income = analytics?.totals?.income || analytics?.total_income || 0
+        const expense = analytics?.totals?.expense || analytics?.total_expense || 0
+        console.log('[Dashboard] Monthly stats loaded:', { income, expense, analytics })
         return {
-          income: analytics.total_income || 0,
-          expense: analytics.total_expense || 0
+          income: typeof income === 'number' ? income : parseFloat(income) || 0,
+          expense: typeof expense === 'number' ? expense : parseFloat(expense) || 0
         }
       } catch (error) {
         console.error('Error fetching monthly stats:', error)
@@ -293,8 +297,8 @@ export function Dashboard() {
       }
     },
     retry: 1,
-    staleTime: 30000,
-    refetchOnWindowFocus: false,
+    staleTime: 10000, // Уменьшено с 30 до 10 секунд для более частого обновления
+    refetchOnWindowFocus: true, // Включено для обновления при возврате на вкладку
   })
 
   // Получаем цели для выбора в форме дохода
@@ -537,6 +541,7 @@ export function Dashboard() {
       Promise.all([
         queryClient.refetchQueries({ queryKey: ['balance'], type: 'active' }),
         queryClient.refetchQueries({ queryKey: ['recent-transactions'], type: 'active' }),
+        queryClient.refetchQueries({ queryKey: ['monthly-stats'], type: 'active' }), // Добавлено принудительное обновление monthly-stats
         queryClient.refetchQueries({ queryKey: ['goals'], type: 'active' }),
         // Force refetch all analytics queries (week, month, year) - both active and inactive
         // This ensures Reports page updates even if it's not currently open
