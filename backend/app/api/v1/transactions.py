@@ -700,6 +700,20 @@ async def create_transaction(
                 detail="Можно добавлять прогресс только к активным целям"
             )
         
+        # Check if transaction amount doesn't exceed remaining amount to reach goal
+        # Only for income transactions (adding money to goal)
+        if transaction_type_value == "income":
+            remaining_amount = goal.target_amount - goal.current_amount
+            transaction_amount_decimal = Decimal(str(transaction_data.amount))
+            
+            if transaction_amount_decimal > remaining_amount:
+                remaining_formatted = f"{float(remaining_amount):,.2f}".replace(',', ' ')
+                amount_formatted = f"{float(transaction_amount_decimal):,.2f}".replace(',', ' ')
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Нельзя перевести больше, чем осталось до цели. Осталось до цели: {remaining_formatted} {goal.currency}, вы пытаетесь перевести: {amount_formatted} {goal.currency}"
+                )
+        
         # If goal has an account, use it for the transaction
         if goal.account_id:
             goal_account_id = goal.account_id

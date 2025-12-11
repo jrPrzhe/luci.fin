@@ -73,36 +73,23 @@ async def get_goals(
                         elif trans.transaction_type == TransactionType.TRANSFER:
                             balance -= Decimal(str(trans.amount))
                     
-                    # Update goal current_amount from account balance (ensure not negative)
-                    goal.current_amount = max(Decimal(0), balance)
+                    # Update goal current_amount from account balance (ensure not negative and not exceeding target)
+                    goal.current_amount = max(Decimal(0), min(balance, goal.target_amount))
             
             # Update progress percentage
             if goal.target_amount > 0:
-                # Calculate progress percentage (can exceed 100% if user saves more than target)
+                # Calculate progress percentage (ensure it's between 0 and 100)
                 progress = int((goal.current_amount / goal.target_amount) * 100)
-                # Allow progress to exceed 100% (user can save more than planned)
-                goal.progress_percentage = max(0, progress)  # Remove max(100) limit
+                goal.progress_percentage = max(0, min(100, progress))
                 
                 # Check if goal is completed
                 # Compare with enum value, not string
                 current_status = goal.status if isinstance(goal.status, GoalStatus) else GoalStatus(goal.status) if isinstance(goal.status, str) else goal.status
                 was_active = current_status == GoalStatus.ACTIVE
-                # Allow goals to exceed target_amount (user can save more than planned)
-                # Only mark as completed if it was active and reached/exceeded target
+                # Only mark as completed if it was active and reached target exactly
                 if goal.current_amount >= goal.target_amount and was_active:
                     goal.status = GoalStatus.COMPLETED
-                    # Keep actual progress percentage (can be > 100% if user saves more)
-                    goal.progress_percentage = max(100, int((goal.current_amount / goal.target_amount) * 100))
-                # If goal is already completed but amount increased, keep it completed
-                elif current_status == GoalStatus.COMPLETED:
-                    # Keep goal completed even if amount exceeds target
-                    # Update progress percentage to show actual progress (can be > 100%)
-                    if goal.target_amount > 0:
-                        goal.progress_percentage = max(100, int((goal.current_amount / goal.target_amount) * 100))
-                elif current_status == GoalStatus.ACTIVE and goal.current_amount < goal.target_amount:
-                    # Goal is still active, update progress normally
-                    if goal.target_amount > 0:
-                        goal.progress_percentage = int((goal.current_amount / goal.target_amount) * 100)
+                    goal.progress_percentage = 100
                     
                     # Send Telegram notification if user has telegram_id
                     if current_user.telegram_id:
@@ -320,7 +307,8 @@ async def update_goal(
     if goal_update.target_date is not None:
         goal.target_date = goal_update.target_date
     if goal_update.current_amount is not None:
-        goal.current_amount = goal_update.current_amount
+        # Ensure current_amount doesn't exceed target_amount
+        goal.current_amount = min(goal_update.current_amount, goal.target_amount)
     if goal_update.status is not None:
         try:
             goal.status = GoalStatus(goal_update.status)
@@ -386,18 +374,30 @@ async def add_progress_to_goal(
             detail="Можно добавлять прогресс только к активным целям"
         )
     
+    # Check if amount doesn't exceed remaining amount to reach goal
+    remaining_amount = goal.target_amount - goal.current_amount
+    if amount > remaining_amount:
+        remaining_formatted = f"{float(remaining_amount):,.2f}".replace(',', ' ')
+        amount_formatted = f"{float(amount):,.2f}".replace(',', ' ')
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Нельзя перевести больше, чем осталось до цели. Осталось до цели: {remaining_formatted} {goal.currency}, вы пытаетесь перевести: {amount_formatted} {goal.currency}"
+        )
+    
     goal.current_amount += amount
+    # Ensure current_amount doesn't exceed target_amount
+    goal.current_amount = min(goal.current_amount, goal.target_amount)
     
     # Update progress percentage
     if goal.target_amount > 0:
-        # Allow progress to exceed 100% (user can save more than planned)
         goal.progress_percentage = int((goal.current_amount / goal.target_amount) * 100)
+        # Ensure progress doesn't exceed 100%
+        goal.progress_percentage = min(100, goal.progress_percentage)
         
         # Check if goal is completed
         if goal.current_amount >= goal.target_amount:
             goal.status = GoalStatus.COMPLETED
-            # Keep actual progress percentage (can be > 100%)
-            goal.progress_percentage = max(100, int((goal.current_amount / goal.target_amount) * 100))
+            goal.progress_percentage = 100
             
             # Create success notification
             notification = Notification(
