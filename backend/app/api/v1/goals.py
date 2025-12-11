@@ -51,13 +51,7 @@ async def get_goals(
         goals = query.order_by(Goal.created_at.desc()).all()
         
         # Update progress for each goal and sync with account if linked
-        # Also ensure enum fields are converted to strings for Pydantic validation
         for goal in goals:
-            # Ensure enum fields are strings (Pydantic expects strings in GoalResponse)
-            if hasattr(goal.status, 'value'):
-                goal.status = goal.status.value
-            if hasattr(goal.goal_type, 'value'):
-                goal.goal_type = goal.goal_type.value
             # If goal has linked account, sync with account balance
             if goal.account_id:
                 from app.models.account import Account
@@ -89,7 +83,9 @@ async def get_goals(
                 goal.progress_percentage = max(0, min(100, progress))
                 
                 # Check if goal is completed
-                was_active = goal.status == GoalStatus.ACTIVE
+                # Compare with enum value, not string
+                current_status = goal.status if isinstance(goal.status, GoalStatus) else GoalStatus(goal.status) if isinstance(goal.status, str) else goal.status
+                was_active = current_status == GoalStatus.ACTIVE
                 if goal.current_amount >= goal.target_amount and was_active:
                     goal.status = GoalStatus.COMPLETED
                     goal.progress_percentage = 100
@@ -141,7 +137,31 @@ async def get_goals(
             db.rollback()
             # Don't fail the request if commit fails, just log it
         
-        return goals
+        # Convert goals to response format with enum fields as strings
+        # This ensures Pydantic validation works correctly
+        goals_response = []
+        for goal in goals:
+            goal_dict = {
+                'id': goal.id,
+                'user_id': goal.user_id,
+                'goal_type': goal.goal_type.value if isinstance(goal.goal_type, GoalType) else (goal.goal_type.value if hasattr(goal.goal_type, 'value') else str(goal.goal_type)),
+                'name': goal.name,
+                'description': goal.description,
+                'target_amount': goal.target_amount,
+                'current_amount': goal.current_amount,
+                'currency': goal.currency,
+                'status': goal.status.value if isinstance(goal.status, GoalStatus) else (goal.status.value if hasattr(goal.status, 'value') else str(goal.status)),
+                'progress_percentage': goal.progress_percentage,
+                'roadmap': goal.roadmap,
+                'start_date': goal.start_date,
+                'target_date': goal.target_date,
+                'category_id': goal.category_id,
+                'created_at': goal.created_at,
+                'updated_at': goal.updated_at,
+            }
+            goals_response.append(GoalResponse(**goal_dict))
+        
+        return goals_response
     except HTTPException:
         raise
     except Exception as e:
