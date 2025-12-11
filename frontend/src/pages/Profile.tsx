@@ -170,8 +170,8 @@ export function Profile() {
               onChange={(e) => setDefaultCurrency(e.target.value)}
               className="input text-sm md:text-base"
             >
-              <option value="RUB">₽ RUB - Российский рубль</option>
-              <option value="USD">$ USD - Доллар США</option>
+              <option value="RUB">₽ RUB - {t.profile.currencyRUB}</option>
+              <option value="USD">$ USD - {t.profile.currencyUSD}</option>
             </select>
           </div>
           

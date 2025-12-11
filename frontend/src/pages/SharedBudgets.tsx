@@ -45,29 +45,7 @@ interface Invitation {
   expires_at?: string
 }
 
-// Функция для правильного склонения слова "участник"
-const getParticipantWord = (count: number): string => {
-  const lastDigit = count % 10
-  const lastTwoDigits = count % 100
-  
-  // Для чисел 11-14 всегда "участников"
-  if (lastTwoDigits >= 11 && lastTwoDigits <= 14) {
-    return 'участников'
-  }
-  
-  // Для чисел, оканчивающихся на 1 - "участник"
-  if (lastDigit === 1) {
-    return 'участник'
-  }
-  
-  // Для чисел, оканчивающихся на 2, 3, 4 - "участника"
-  if (lastDigit >= 2 && lastDigit <= 4) {
-    return 'участника'
-  }
-  
-  // Для остальных - "участников"
-  return 'участников'
-}
+// Функция для правильного склонения слова "участник" (используется внутри компонента с доступом к t)
 
 // Account type icons mapping
 const accountTypeIcons: Record<string, string> = {
@@ -82,7 +60,36 @@ const accountTypeIcons: Record<string, string> = {
 
 export function SharedBudgets() {
   const { showSuccess, showError } = useToast()
-  const { t } = useI18n()
+  const { t, language } = useI18n()
+  
+  // Функция для правильного склонения слова "участник"
+  const getParticipantWord = (count: number): string => {
+    if (language === 'en') {
+      return count === 1 ? t.sharedBudgets.participant : t.sharedBudgets.participants
+    }
+    
+    // Русский язык - склонение
+    const lastDigit = count % 10
+    const lastTwoDigits = count % 100
+    
+    // Для чисел 11-14 всегда "участников"
+    if (lastTwoDigits >= 11 && lastTwoDigits <= 14) {
+      return t.sharedBudgets.participants5
+    }
+    
+    // Для чисел, оканчивающихся на 1 - "участник"
+    if (lastDigit === 1) {
+      return t.sharedBudgets.participant
+    }
+    
+    // Для чисел, оканчивающихся на 2, 3, 4 - "участника"
+    if (lastDigit >= 2 && lastDigit <= 4) {
+      return t.sharedBudgets.participants2
+    }
+    
+    // Для остальных - "участников"
+    return t.sharedBudgets.participants5
+  }
   
   // Account type labels mapping
   const accountTypeLabels: Record<string, string> = {

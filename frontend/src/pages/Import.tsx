@@ -137,9 +137,11 @@ export function Import() {
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium text-telegram-text dark:text-telegram-dark-text">{source.name}</p>
+                    <p className="font-medium text-telegram-text dark:text-telegram-dark-text">
+                      {source.id === 'myfinance' ? t.profile.importSourceMyFinance : source.name}
+                    </p>
                     <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
-                      {source.description}
+                      {source.id === 'myfinance' ? t.profile.importSourceMyFinanceDesc : source.description}
                     </p>
                   </div>
                   {selectedSource === source.id && (

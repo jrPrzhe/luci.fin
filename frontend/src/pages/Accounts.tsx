@@ -38,7 +38,28 @@ export function Accounts() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { showError, showSuccess } = useToast()
-  const { t } = useI18n()
+  const { t, language } = useI18n()
+  
+  // Функция для перевода названий системных счетов
+  const translateAccountName = (name: string): string => {
+    if (name === 'Основной счёт' || name === 'Основной счет') {
+      return t.accounts.defaultAccount
+    }
+    if (name === 'Автоматически созданный счёт' || name === 'Автоматически созданный счет') {
+      return t.accounts.autoCreatedAccount
+    }
+    return name
+  }
+  
+  // Функция для перевода описаний системных счетов
+  const translateAccountDescription = (description: string | undefined): string | undefined => {
+    if (!description) return description
+    if (description === 'Автоматически созданный счёт' || description === 'Автоматически созданный счет') {
+      return t.accounts.autoCreatedAccount
+    }
+    return description
+  }
+  
   
   const accountTypeLabels: Record<string, string> = {
     cash: t.accounts.types.cash,
@@ -341,7 +362,8 @@ export function Accounts() {
   }
 
   const formatBalance = (balance: number, currency: string) => {
-    return new Intl.NumberFormat('ru-RU', {
+    const locale = language === 'en' ? 'en-US' : 'ru-RU'
+    return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: currency,
       minimumFractionDigits: 0,
@@ -351,7 +373,8 @@ export function Accounts() {
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return ''
-    return new Date(dateString).toLocaleDateString(navigator.language || 'en-US', {
+    const locale = language === 'en' ? 'en-US' : 'ru-RU'
+    return new Date(dateString).toLocaleDateString(locale, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -415,7 +438,7 @@ export function Accounts() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="font-semibold text-lg text-telegram-text dark:text-telegram-dark-text truncate flex-1 min-w-0">
-                        {account.name}
+                        {translateAccountName(account.name)}
                       </h3>
                       {account.is_shared && (
                         <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded flex-shrink-0">
@@ -458,7 +481,7 @@ export function Accounts() {
                 {/* Описание счета (если нет описания бюджета) */}
                 {account.description && !account.shared_budget_description && (
                   <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-2 line-clamp-2 break-words">
-                    {account.description}
+                    {translateAccountDescription(account.description)}
                   </p>
                 )}
               </div>

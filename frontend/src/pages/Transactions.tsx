@@ -1026,7 +1026,7 @@ export function Transactions() {
                     .sort((a, b) => (b.is_favorite ? 1 : 0) - (a.is_favorite ? 1 : 0))
                     .map(category => (
                       <option key={category.id} value={category.id}>
-                        {category.icon || '📦'} {category.name} {category.is_favorite ? '⭐' : ''}
+                        {category.icon || '📦'} {translateCategoryName(category.name)} {category.is_favorite ? '⭐' : ''}
                       </option>
                     ))}
                 </select>
