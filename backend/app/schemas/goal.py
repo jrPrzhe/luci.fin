@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, Dict, Any
 from datetime import datetime
 from decimal import Decimal
@@ -42,23 +42,21 @@ class GoalResponse(GoalBase):
     created_at: datetime
     updated_at: datetime
     
-    @model_validator(mode='before')
+    @field_validator('status', mode='before')
     @classmethod
-    def convert_enums_to_strings(cls, data: Any) -> Any:
-        """Convert enum fields to strings for compatibility"""
-        if isinstance(data, dict):
-            # If it's already a dict, ensure enum values are strings
-            if 'status' in data and hasattr(data['status'], 'value'):
-                data['status'] = data['status'].value
-            if 'goal_type' in data and hasattr(data['goal_type'], 'value'):
-                data['goal_type'] = data['goal_type'].value
-        elif hasattr(data, '__dict__'):
-            # If it's an object (SQLAlchemy model), convert enum attributes
-            if hasattr(data, 'status') and hasattr(data.status, 'value'):
-                data.status = data.status.value
-            if hasattr(data, 'goal_type') and hasattr(data.goal_type, 'value'):
-                data.goal_type = data.goal_type.value
-        return data
+    def convert_status_to_string(cls, v: Any) -> str:
+        """Convert status enum to string"""
+        if hasattr(v, 'value'):
+            return v.value
+        return str(v) if v is not None else 'active'
+    
+    @field_validator('goal_type', mode='before')
+    @classmethod
+    def convert_goal_type_to_string(cls, v: Any) -> str:
+        """Convert goal_type enum to string"""
+        if hasattr(v, 'value'):
+            return v.value
+        return str(v) if v is not None else 'save'
     
     class Config:
         from_attributes = True
