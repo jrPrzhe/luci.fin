@@ -18,6 +18,26 @@ interface Category {
   updated_at: string
 }
 
+// Предустановленные цвета для категорий
+const AVAILABLE_COLORS = [
+  '#4CAF50', // Зеленый
+  '#2196F3', // Синий
+  '#FF9800', // Оранжевый
+  '#F44336', // Красный
+  '#9C27B0', // Фиолетовый
+  '#00BCD4', // Голубой
+  '#FFEB3B', // Желтый
+  '#795548', // Коричневый
+  '#607D8B', // Сине-серый
+  '#E91E63', // Розовый
+  '#3F51B5', // Индиго
+  '#009688', // Бирюзовый
+  '#FF5722', // Красно-оранжевый
+  '#8BC34A', // Светло-зеленый
+  '#FFC107', // Янтарный
+  '#673AB7', // Глубокий фиолетовый
+]
+
 // Список доступных эмодзи для категорий (уникальные, без дубликатов)
 const AVAILABLE_EMOJIS = [
   // Базовые финансы
@@ -187,11 +207,14 @@ export function Categories() {
       return
     }
     setEditingCategory(category)
+    // Если цвет категории не в списке доступных, используем цвет по умолчанию
+    const categoryColor = category.color || '#4CAF50'
+    const validColor = AVAILABLE_COLORS.includes(categoryColor) ? categoryColor : '#4CAF50'
     setFormData({
       name: category.name,
       transaction_type: category.transaction_type,
       icon: category.icon || '',
-      color: category.color || '#4CAF50',
+      color: validColor,
       is_favorite: category.is_favorite,
     })
     setShowForm(true)
@@ -539,15 +562,30 @@ export function Categories() {
               <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
                 {t.categories.form.colorLabel}
               </label>
-              <input
-                type="color"
-                value={formData.color || '#4CAF50'}
-                onChange={(e) => {
-                  const colorValue = e.target.value || '#4CAF50'
-                  setFormData({ ...formData, color: colorValue })
-                }}
-                className="w-full h-12 rounded-telegram cursor-pointer"
-              />
+              <div className="grid grid-cols-8 gap-2">
+                {AVAILABLE_COLORS.map((color) => (
+                  <button
+                    key={color}
+                    type="button"
+                    onClick={() => {
+                      setFormData({ ...formData, color: color })
+                    }}
+                    className={`w-full h-10 rounded-telegram transition-all relative ${
+                      formData.color === color
+                        ? 'ring-2 ring-telegram-primary ring-offset-2 scale-110'
+                        : 'hover:scale-105'
+                    }`}
+                    style={{ backgroundColor: color }}
+                    title={color}
+                  >
+                    {formData.color === color && (
+                      <span className="absolute inset-0 flex items-center justify-center text-white text-sm font-bold drop-shadow-lg">
+                        ✓
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
