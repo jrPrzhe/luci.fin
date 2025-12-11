@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import { storageSync, storage } from '../utils/storage'
-import { isVKWebApp, isTelegramWebApp } from '../utils/storage'
+import { storageSync, isVKWebApp, isTelegramWebApp } from '../utils/storage'
+import storage from '../utils/storage'
 
 interface NewYearContextType {
   isEnabled: boolean

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { storageSync, storage } from '../utils/storage'
-import { isVKWebApp, isTelegramWebApp } from '../utils/storage'
+import { storageSync, isVKWebApp, isTelegramWebApp } from '../utils/storage'
+import storage from '../utils/storage'
 
 type Theme = 'light' | 'dark'
 
