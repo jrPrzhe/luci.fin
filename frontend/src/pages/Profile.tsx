@@ -274,7 +274,7 @@ export function Profile() {
             <div className="flex gap-2 flex-shrink-0 ml-2">
               <button
                 onClick={() => setLanguage('ru')}
-                className={`min-w-[3.5rem] max-w-[3.5rem] px-3 py-1.5 rounded-telegram text-sm font-medium transition-colors whitespace-nowrap overflow-hidden ${
+                className={`min-w-[3.5rem] max-w-[3.5rem] px-3 py-1.5 rounded-telegram text-sm font-medium transition-colors whitespace-nowrap overflow-hidden flex items-center justify-center ${
                   language === 'ru'
                     ? 'bg-telegram-primary text-white dark:bg-telegram-dark-primary'
                     : 'bg-telegram-border hover:bg-telegram-hover dark:bg-telegram-dark-border dark:hover:bg-telegram-dark-hover'
@@ -284,7 +284,7 @@ export function Profile() {
               </button>
               <button
                 onClick={() => setLanguage('en')}
-                className={`min-w-[3.5rem] max-w-[3.5rem] px-3 py-1.5 rounded-telegram text-sm font-medium transition-colors whitespace-nowrap overflow-hidden ${
+                className={`min-w-[3.5rem] max-w-[3.5rem] px-3 py-1.5 rounded-telegram text-sm font-medium transition-colors whitespace-nowrap overflow-hidden flex items-center justify-center ${
                   language === 'en'
                     ? 'bg-telegram-primary text-white dark:bg-telegram-dark-primary'
                     : 'bg-telegram-border hover:bg-telegram-hover dark:bg-telegram-dark-border dark:hover:bg-telegram-dark-hover'
