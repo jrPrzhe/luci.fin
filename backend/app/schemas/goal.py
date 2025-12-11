@@ -11,6 +11,14 @@ class GoalBase(BaseModel):
     currency: str = Field(default="RUB", min_length=3, max_length=3)
     target_date: Optional[datetime] = None
     category_id: Optional[int] = None
+    
+    @field_validator('name', mode='before')
+    @classmethod
+    def truncate_name(cls, v: Any) -> str:
+        """Truncate goal name to 15 characters if it's too long"""
+        if isinstance(v, str):
+            return v[:15] if len(v) > 15 else v
+        return str(v)[:15] if v is not None else ''
 
 
 class GoalCreate(GoalBase):
