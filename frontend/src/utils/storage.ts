@@ -334,7 +334,7 @@ export async function initStorage(): Promise<void> {
   if (isVKWebApp() || isTelegramWebApp()) {
     try {
       // Загружаем важные ключи в кэш для синхронного доступа
-      const importantKeys = ['token', 'refresh_token', 'language', 'theme', 'onboarding_completed']
+      const importantKeys = ['token', 'refresh_token', 'language', 'theme', 'newYearTheme', 'onboarding_completed']
       for (const key of importantKeys) {
         try {
           const value = await storage.getItem(key)

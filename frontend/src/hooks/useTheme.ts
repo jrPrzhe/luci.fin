@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { storageSync } from '../utils/storage'
+import { storageSync, storage } from '../utils/storage'
+import { isVKWebApp, isTelegramWebApp } from '../utils/storage'
 
 type Theme = 'light' | 'dark'
 
@@ -16,6 +17,27 @@ export function useTheme() {
     // По умолчанию темная тема
     return 'dark'
   })
+
+  // Загружаем тему асинхронно при монтировании (для VK и Telegram)
+  useEffect(() => {
+    const loadTheme = async () => {
+      // Для VK и Telegram загружаем из async storage
+      if (isVKWebApp() || isTelegramWebApp()) {
+        try {
+          const asyncTheme = await storage.getItem(THEME_STORAGE_KEY)
+          if (asyncTheme && (asyncTheme === 'light' || asyncTheme === 'dark')) {
+            setTheme(asyncTheme as Theme)
+            // Обновляем кэш
+            storageSync.setItem(THEME_STORAGE_KEY, asyncTheme)
+            return
+          }
+        } catch (error) {
+          console.log('Could not load theme from async storage:', error)
+        }
+      }
+    }
+    loadTheme()
+  }, [])
 
   useEffect(() => {
     const root = document.documentElement

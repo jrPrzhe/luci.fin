@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { storageSync } from './utils/storage'
+import { storageSync, initStorage } from './utils/storage'
 import { Layout } from './components/Layout'
 import { Dashboard } from './pages/Dashboard'
 import { Transactions } from './pages/Transactions'
@@ -762,7 +762,7 @@ function VKAuthHandler() {
 }
 
 function App() {
-  // Логируем инициализацию приложения
+  // Логируем инициализацию приложения и загружаем настройки из storage
   useEffect(() => {
     const isTelegram = isTelegramWebApp()
     const isVK = isVKWebApp()
@@ -781,6 +781,9 @@ function App() {
       console.warn('[App] WARNING: Both Telegram and VK detected! This should not happen.')
       console.warn('[App] Telegram will take priority.')
     }
+    
+    // Инициализируем storage и загружаем настройки (тема, новогодний режим и т.д.)
+    initStorage().catch(console.error)
   }, [])
 
   console.log('[App] Rendering App component...', {

@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import { storageSync } from '../utils/storage'
+import { storageSync, storage } from '../utils/storage'
+import { isVKWebApp, isTelegramWebApp } from '../utils/storage'
 
 interface NewYearContextType {
   isEnabled: boolean
@@ -22,6 +23,28 @@ export function NewYearProvider({ children }: { children: ReactNode }) {
     // По умолчанию новогодний режим включен
     return true
   })
+
+  // Загружаем новогодний режим асинхронно при монтировании (для VK и Telegram)
+  useEffect(() => {
+    const loadNewYearTheme = async () => {
+      // Для VK и Telegram загружаем из async storage
+      if (isVKWebApp() || isTelegramWebApp()) {
+        try {
+          const asyncValue = await storage.getItem(NEW_YEAR_THEME_KEY)
+          if (asyncValue !== null) {
+            const enabled = asyncValue === 'true'
+            setIsEnabled(enabled)
+            // Обновляем кэш
+            storageSync.setItem(NEW_YEAR_THEME_KEY, asyncValue)
+            return
+          }
+        } catch (error) {
+          console.log('Could not load newYearTheme from async storage:', error)
+        }
+      }
+    }
+    loadNewYearTheme()
+  }, [])
 
   useEffect(() => {
     // Сохраняем в storage (VK Storage, Telegram Cloud Storage или localStorage)
