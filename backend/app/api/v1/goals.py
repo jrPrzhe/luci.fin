@@ -51,7 +51,13 @@ async def get_goals(
         goals = query.order_by(Goal.created_at.desc()).all()
         
         # Update progress for each goal and sync with account if linked
+        # Also ensure enum fields are converted to strings for Pydantic validation
         for goal in goals:
+            # Ensure enum fields are strings (Pydantic expects strings in GoalResponse)
+            if hasattr(goal.status, 'value'):
+                goal.status = goal.status.value
+            if hasattr(goal.goal_type, 'value'):
+                goal.goal_type = goal.goal_type.value
             # If goal has linked account, sync with account balance
             if goal.account_id:
                 from app.models.account import Account

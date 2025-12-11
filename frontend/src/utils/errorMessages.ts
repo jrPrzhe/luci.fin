@@ -97,7 +97,11 @@ export function translateError(error: any): string {
   }
 
   // Ошибки валидации
-  if (errorLower.includes('validation error') || errorLower.includes('invalid')) {
+  // Проверяем конкретные сообщения перед общим правилом
+  if (errorLower.includes('invalid status filter')) {
+    return 'Неверный фильтр статуса цели.'
+  }
+  if (errorLower.includes('validation error') || (errorLower.includes('invalid') && !errorLower.includes('credentials') && !errorLower.includes('token'))) {
     return 'Ошибка валидации данных. Проверьте правильность введенных данных.'
   }
 
