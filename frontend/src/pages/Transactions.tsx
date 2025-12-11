@@ -220,10 +220,12 @@ export function Transactions() {
       const limit = 25
       const offset = reset ? 0 : transactions.length
       
-      // Use accountIdOverride if provided, otherwise use selectedAccountId
+      // Use accountIdOverride if provided (including null to explicitly clear filter), otherwise use selectedAccountId
       // Convert null to undefined for API call
+      // If accountIdOverride is explicitly null, use undefined to load all transactions
+      // If accountIdOverride is undefined, use selectedAccountId if it exists
       const accountIdParam = accountIdOverride !== undefined 
-        ? (accountIdOverride ?? undefined)
+        ? (accountIdOverride === null ? undefined : accountIdOverride)
         : (selectedAccountId || undefined)
       
       const batch = await api.getTransactions(
@@ -622,7 +624,9 @@ export function Transactions() {
             <button
               onClick={() => {
                 setSelectedAccountId(null)
-                loadData(true)
+                accountIdFromNavigation.current = null
+                // Explicitly pass null to loadData to ensure all transactions are loaded
+                loadData(true, null)
               }}
               className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 px-2 py-1 flex-shrink-0 whitespace-nowrap"
             >
@@ -901,7 +905,8 @@ export function Transactions() {
                   // Reset account filter when manually applying filters
                   setSelectedAccountId(null)
                   accountIdFromNavigation.current = null
-                  loadData(true)
+                  // Explicitly pass null to loadData to ensure account filter is not applied
+                  loadData(true, null)
                 }}
                 className="flex-1 btn-primary py-3 text-base font-medium"
               >
