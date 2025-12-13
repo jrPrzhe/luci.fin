@@ -514,6 +514,7 @@ class ApiClient {
     timezone?: string
     default_currency?: string
     language?: string
+    theme?: string
   }) => {
     return this.request<any>('/api/v1/auth/me', {
       method: 'PUT',
