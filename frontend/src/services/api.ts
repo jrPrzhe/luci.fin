@@ -220,12 +220,32 @@ class ApiClient {
     // чтобы гарантировать, что используется актуальный токен
     // Для VK и Telegram используем их хранилища, для веба - localStorage
     // Используем синхронный доступ через storageSync
-    const { storageSync } = await import('../utils/storage')
+    const { storageSync, default: storage, isVKWebApp, isTelegramWebApp } = await import('../utils/storage')
     let token = storageSync.getItem('token') || this.token
     
     // Fallback: для веба также проверяем localStorage напрямую
     if (!token && typeof window !== 'undefined' && window.localStorage) {
       token = localStorage.getItem('token') || this.token
+    }
+    
+    // Для VK и Telegram: если токен не найден синхронно, пробуем асинхронно
+    // Это важно, так как VK Storage может сохранять токен асинхронно
+    if (!token && (isVKWebApp() || isTelegramWebApp())) {
+      try {
+        // Пытаемся получить токен асинхронно с таймаутом
+        const asyncToken = await Promise.race([
+          storage.getItem('token'),
+          new Promise<string | null>((resolve) => setTimeout(() => resolve(null), 100))
+        ])
+        if (asyncToken) {
+          token = asyncToken
+          // Обновляем кэш для следующих запросов
+          storageSync.setItem('token', asyncToken)
+        }
+      } catch (error) {
+        // Игнорируем ошибки чтения из async storage
+        console.debug('[API] Failed to read token from async storage:', error)
+      }
     }
     
     // Обновляем this.token для синхронизации
@@ -562,6 +582,28 @@ class ApiClient {
     // Store tokens after successful VK login
     if (response.access_token) {
       this.setToken(response.access_token, response.refresh_token)
+      
+      // Для VK и Telegram ждем завершения сохранения токена
+      // чтобы гарантировать, что токен будет доступен для следующих запросов
+      try {
+        const { isVKWebApp, isTelegramWebApp, default: storage } = await import('../utils/storage')
+        if (isVKWebApp() || isTelegramWebApp()) {
+          // Ждем завершения сохранения в async storage
+          await Promise.race([
+            storage.setItem('token', response.access_token),
+            new Promise<void>((resolve) => setTimeout(() => resolve(), 500))
+          ])
+          if (response.refresh_token) {
+            await Promise.race([
+              storage.setItem('refresh_token', response.refresh_token),
+              new Promise<void>((resolve) => setTimeout(() => resolve(), 500))
+            ])
+          }
+        }
+      } catch (error) {
+        // Игнорируем ошибки сохранения - токен уже в кэше
+        console.debug('[ApiClient] Failed to wait for token save:', error)
+      }
     }
     return response
   }
