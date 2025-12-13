@@ -23,6 +23,7 @@ class User(Base):
     timezone = Column(String(50), default="UTC")
     default_currency = Column(String(3), default="USD")
     language = Column(String(5), default="en")
+    theme = Column(String(10), default="dark")  # "light" or "dark"
     
     # 2FA
     is_2fa_enabled = Column(Boolean, default=False)

@@ -1388,6 +1388,14 @@ async def update_current_user(
         current_user.default_currency = user_update.default_currency
     if user_update.language is not None:
         current_user.language = user_update.language
+    if user_update.theme is not None:
+        # Validate theme value
+        if user_update.theme not in ["light", "dark"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Theme must be 'light' or 'dark'"
+            )
+        current_user.theme = user_update.theme
     
     # Note: username and telegram_username cannot be changed via API
     # telegram_username is updated automatically via Telegram login

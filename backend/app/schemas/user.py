@@ -12,6 +12,7 @@ class UserBase(BaseModel):
     timezone: str = "UTC"
     default_currency: str = "USD"
     language: str = "en"
+    theme: str = "dark"  # "light" or "dark"
     
     @field_validator('email')
     @classmethod
@@ -40,6 +41,7 @@ class UserUpdate(BaseModel):
     timezone: Optional[str] = None
     default_currency: Optional[str] = None
     language: Optional[str] = None
+    theme: Optional[str] = None  # "light" or "dark"
 
 
 class UserResponse(UserBase):

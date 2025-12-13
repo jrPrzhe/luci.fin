@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text as sa_text
 from typing import List, Optional
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from app.core.database import get_db
 from app.api.v1.auth import get_current_user
 from app.models.user import User
@@ -12,6 +12,7 @@ from app.models.account import Account
 from app.models.goal import Goal, GoalStatus
 from decimal import Decimal
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -22,26 +23,52 @@ class TransactionCreate(BaseModel):
     account_id: int
     transaction_type: str  # "income", "expense", or "transfer"
     amount: float
-    currency: str = "USD"
+    currency: str = Field(default="USD", min_length=3, max_length=3)
     category_id: Optional[int] = None
     description: Optional[str] = None
     transaction_date: Optional[datetime] = None
     to_account_id: Optional[int] = None  # Required for transfer type
     shared_budget_id: Optional[int] = None  # Optional: link to shared budget
     goal_id: Optional[int] = None  # Optional: link to goal (for savings)
+    
+    @field_validator('currency')
+    @classmethod
+    def validate_currency(cls, v: str) -> str:
+        """Validate currency code: must be exactly 3 uppercase letters"""
+        if not v:
+            raise ValueError("Валюта не может быть пустой")
+        v = v.upper().strip()
+        if len(v) != 3:
+            raise ValueError("Код валюты должен содержать ровно 3 символа")
+        if not re.match(r'^[A-Z]{3}$', v):
+            raise ValueError("Код валюты должен содержать только буквы (например: USD, RUB, EUR)")
+        return v
 
 
 class TransactionUpdate(BaseModel):
     account_id: Optional[int] = None
     transaction_type: Optional[str] = None
     amount: Optional[float] = None
-    currency: Optional[str] = None
+    currency: Optional[str] = Field(None, min_length=3, max_length=3)
     category_id: Optional[int] = None
     description: Optional[str] = None
     transaction_date: Optional[datetime] = None
     to_account_id: Optional[int] = None
     shared_budget_id: Optional[int] = None
     goal_id: Optional[int] = None
+    
+    @field_validator('currency')
+    @classmethod
+    def validate_currency(cls, v: Optional[str]) -> Optional[str]:
+        """Validate currency code: must be exactly 3 uppercase letters"""
+        if v is None:
+            return v
+        v = v.upper().strip()
+        if len(v) != 3:
+            raise ValueError("Код валюты должен содержать ровно 3 символа")
+        if not re.match(r'^[A-Z]{3}$', v):
+            raise ValueError("Код валюты должен содержать только буквы (например: USD, RUB, EUR)")
+        return v
 
 
 class TransactionResponse(BaseModel):
@@ -970,17 +997,40 @@ async def create_transaction(
             logger.error(f"Error creating transfer transactions: {e}", exc_info=True)
             db.rollback()
             
-            # Check for database numeric overflow errors
             error_str = str(e).lower()
+            
+            # Check for database numeric overflow errors
             if 'numeric' in error_str or 'overflow' in error_str or 'value too large' in error_str or 'out of range' in error_str:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Сумма слишком большая. Максимальная сумма: 9 999 999 999 999.99"
                 )
             
+            # Check for string truncation errors (e.g., currency too long)
+            if 'stringdatarighttruncation' in error_str or 'value too long' in error_str or 'character varying' in error_str:
+                # Try to identify which field caused the error
+                if 'currency' in error_str:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Некорректный код валюты. Код валюты должен содержать ровно 3 буквы (например: USD, RUB, EUR)"
+                    )
+                else:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Одно из полей содержит слишком длинное значение"
+                    )
+            
+            # For other database errors, return a generic message without SQL details
+            if 'psycopg2' in error_str or 'sqlalchemy' in error_str or '[sql:' in error_str.lower():
+                logger.error(f"Database error details: {e}", exc_info=True)
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Ошибка валидации данных. Проверьте правильность введенных данных"
+                )
+            
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Ошибка при создании перевода: {str(e)}"
+                detail="Ошибка при создании перевода"
             )
     else:
         # For non-transfer transactions, use raw SQL to avoid enum issues
@@ -1037,17 +1087,40 @@ async def create_transaction(
             logger.error(f"Error creating transaction: {e}", exc_info=True)
             db.rollback()
             
-            # Check for database numeric overflow errors
             error_str = str(e).lower()
+            
+            # Check for database numeric overflow errors
             if 'numeric' in error_str or 'overflow' in error_str or 'value too large' in error_str or 'out of range' in error_str:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Сумма слишком большая. Максимальная сумма: 9 999 999 999 999.99"
                 )
             
+            # Check for string truncation errors (e.g., currency too long)
+            if 'stringdatarighttruncation' in error_str or 'value too long' in error_str or 'character varying' in error_str:
+                # Try to identify which field caused the error
+                if 'currency' in error_str:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Некорректный код валюты. Код валюты должен содержать ровно 3 буквы (например: USD, RUB, EUR)"
+                    )
+                else:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Одно из полей содержит слишком длинное значение"
+                    )
+            
+            # For other database errors, return a generic message without SQL details
+            if 'psycopg2' in error_str or 'sqlalchemy' in error_str or '[sql:' in error_str.lower():
+                logger.error(f"Database error details: {e}", exc_info=True)
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Ошибка валидации данных. Проверьте правильность введенных данных"
+                )
+            
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Ошибка при создании транзакции: {str(e)}"
+                detail="Ошибка при создании транзакции"
             )
     
     # If transaction is on goal's account, sync goal with account balance

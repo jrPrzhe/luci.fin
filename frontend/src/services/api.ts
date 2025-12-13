@@ -967,6 +967,7 @@ class ApiClient {
     vk_id: string | null
     default_currency: string
     language: string
+    theme: string
     is_premium: boolean
     is_admin: boolean
   }> {

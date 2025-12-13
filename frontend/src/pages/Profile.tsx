@@ -66,6 +66,12 @@ export function Profile() {
       const userCurrency = user.default_currency || 'RUB'
       setDefaultCurrency(userCurrency)
       setInitialCurrency(userCurrency) // Обновляем initialCurrency при загрузке данных пользователя
+      
+      // Синхронизируем тему из профиля пользователя
+      if (user.theme && (user.theme === 'light' || user.theme === 'dark')) {
+        // Тема будет загружена через useTheme, но мы можем принудительно обновить, если нужно
+        // useTheme уже загружает тему из профиля при монтировании
+      }
     }
   }, [user])
 
