@@ -13,6 +13,7 @@ class UserBase(BaseModel):
     default_currency: str = "USD"
     language: str = "en"
     theme: str = "dark"  # "light" or "dark"
+    new_year_theme: bool = True  # Новогодний режим
     
     @field_validator('email')
     @classmethod
@@ -42,6 +43,7 @@ class UserUpdate(BaseModel):
     default_currency: Optional[str] = None
     language: Optional[str] = None
     theme: Optional[str] = None  # "light" or "dark"
+    new_year_theme: Optional[bool] = None  # Новогодний режим
 
 
 class UserResponse(UserBase):

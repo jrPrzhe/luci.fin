@@ -1396,6 +1396,8 @@ async def update_current_user(
                 detail="Theme must be 'light' or 'dark'"
             )
         current_user.theme = user_update.theme
+    if user_update.new_year_theme is not None:
+        current_user.new_year_theme = user_update.new_year_theme
     
     # Note: username and telegram_username cannot be changed via API
     # telegram_username is updated automatically via Telegram login

@@ -24,6 +24,7 @@ class User(Base):
     default_currency = Column(String(3), default="USD")
     language = Column(String(5), default="en")
     theme = Column(String(10), default="dark")  # "light" or "dark"
+    new_year_theme = Column(Boolean, default=True)  # Новогодний режим
     
     # 2FA
     is_2fa_enabled = Column(Boolean, default=False)
