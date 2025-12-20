@@ -18,12 +18,12 @@ def verify_vk_signature(params: dict, secret_key: str) -> bool:
     """
     Verify VK Mini App launch params signature
     
-    Algorithm:
+    Algorithm (VK uses HMAC-SHA256 with base64 encoding):
     1. Extract all parameters starting with 'vk_' (except 'sign')
     2. Sort parameters by key in alphabetical order
     3. Create string: 'vk_key1=value1&vk_key2=value2&...'
-    4. Append secret_key: 'vk_key1=value1&vk_key2=value2&...&secret_key'
-    5. Calculate MD5 hash
+    4. Calculate HMAC-SHA256 using secret_key
+    5. Encode result in base64
     6. Compare with provided 'sign' parameter
     
     Args:
@@ -33,7 +33,9 @@ def verify_vk_signature(params: dict, secret_key: str) -> bool:
     Returns:
         True if signature is valid, False otherwise
     """
+    import hmac
     import hashlib
+    import base64
     import logging
     logger = logging.getLogger(__name__)
     
@@ -63,20 +65,34 @@ def verify_vk_signature(params: dict, secret_key: str) -> bool:
     # Create string: 'vk_key1=value1&vk_key2=value2&...'
     param_string = '&'.join([f"{key}={vk_params[key]}" for key in sorted_keys])
     
-    # Append secret_key
-    sign_string = f"{param_string}&{secret_key}"
+    # Calculate HMAC-SHA256 using secret_key
+    # Note: VK uses the param_string directly (without appending secret_key to the string)
+    # The secret_key is used as the HMAC key
+    hmac_digest = hmac.new(
+        secret_key.encode('utf-8'),
+        param_string.encode('utf-8'),
+        hashlib.sha256
+    ).digest()
     
-    # Calculate MD5 hash
-    calculated_sign = hashlib.md5(sign_string.encode('utf-8')).hexdigest()
+    # Encode in base64
+    calculated_sign = base64.b64encode(hmac_digest).decode('utf-8')
     
-    # Compare signatures (case-insensitive)
-    is_valid = calculated_sign.lower() == provided_sign.lower()
+    # Remove padding if present (VK signatures don't include padding)
+    calculated_sign = calculated_sign.rstrip('=')
+    
+    # Compare signatures (VK signatures are URL-safe base64)
+    # VK uses URL-safe base64, but sometimes uses regular base64
+    # Let's try both variants
+    is_valid = (calculated_sign == provided_sign) or (calculated_sign.replace('+', '-').replace('/', '_') == provided_sign)
     
     if is_valid:
         logger.info("VK signature verification passed")
     else:
         logger.error(f"VK signature verification failed. Expected: {calculated_sign}, Got: {provided_sign}")
-        logger.error(f"Sign string (without secret): {param_string}")
+        logger.error(f"Sign string: {param_string}")
+        # Try URL-safe variant
+        url_safe_expected = calculated_sign.replace('+', '-').replace('/', '_')
+        logger.error(f"URL-safe expected: {url_safe_expected}")
     
     return is_valid
 
