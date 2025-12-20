@@ -432,10 +432,62 @@ export function Transactions() {
       if (submitData) {
         console.error('[Transactions] Transaction data:', submitData)
       }
+      
+      // Check if error is timeout and transaction might have been created
+      const errorMessage = err?.message || String(err)
+      const isTimeoutError = errorMessage.includes('Превышено время ожидания') || 
+                            errorMessage.includes('timeout') ||
+                            errorMessage.includes('Timeout')
+      
+      if (isTimeoutError && !editingTransaction) {
+        // For timeout errors on create, check if transaction was actually created
+        console.log('[Transactions] Timeout error detected, checking for duplicate transaction...')
+        try {
+          // Reload transactions to check if the transaction was created
+          const recentTransactions = await api.getTransactions(10)
+          
+          // Check if a transaction with matching data exists
+          const duplicate = recentTransactions.find((t: Transaction) => {
+            const matches = 
+              t.account_id === submitData.account_id &&
+              t.transaction_type === submitData.transaction_type &&
+              Math.abs(t.amount - submitData.amount) < 0.01 && // Allow small floating point differences
+              t.currency === submitData.currency &&
+              (!submitData.category_id || t.category_id === submitData.category_id) &&
+              (!submitData.description || t.description === submitData.description)
+            
+            // Check if transaction was created in the last 30 seconds
+            const transactionDate = new Date(t.transaction_date)
+            const now = new Date()
+            const timeDiff = (now.getTime() - transactionDate.getTime()) / 1000 // seconds
+            return matches && timeDiff < 30
+          })
+          
+          if (duplicate) {
+            console.log('[Transactions] Duplicate transaction found, transaction was created successfully:', duplicate)
+            // Transaction was created, treat as success
+            resetForm()
+            await loadData()
+            await loadGoals()
+            setShowForm(false)
+            
+            queryClient.invalidateQueries({ queryKey: ['analytics'] })
+            queryClient.invalidateQueries({ queryKey: ['balance'] })
+            queryClient.invalidateQueries({ queryKey: ['recent-transactions'] })
+            
+            showSuccess(t.transactions.added)
+            return
+          }
+        } catch (checkError) {
+          console.error('[Transactions] Error checking for duplicate transaction:', checkError)
+          // If check fails, show original error
+        }
+      }
+      
       const { translateError } = await import('../utils/errorMessages')
-      const errorMessage = translateError(err)
-      console.error('[Transactions] Translated error:', errorMessage)
-      showError(errorMessage)
+      const translatedErrorMessage = translateError(err)
+      console.error('[Transactions] Translated error:', translatedErrorMessage)
+      showError(translatedErrorMessage)
     } finally {
       setIsSubmitting(false)
     }
