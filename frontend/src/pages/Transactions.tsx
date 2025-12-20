@@ -77,6 +77,14 @@ export function Transactions() {
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   
+  // Get current user to use default currency
+  const { data: currentUser } = useQuery({
+    queryKey: ['currentUser'],
+    queryFn: () => api.getCurrentUser(),
+    staleTime: 60000, // 1 minute
+    refetchOnWindowFocus: false,
+  })
+
   // Use React Query for accounts with caching (shared with Dashboard)
   const { data: accounts = [], error: accountsError, isLoading: accountsLoading } = useQuery<Account[]>({
     queryKey: ['accounts'],
@@ -170,18 +178,31 @@ export function Transactions() {
     return `${year}-${month}-${day}T${hours}:${minutes}`
   }
 
+  // Get default currency from user profile, fallback to RUB
+  const defaultCurrency = currentUser?.default_currency || 'RUB'
+
   // Form state
   const [formData, setFormData] = useState({
     account_id: '',
     transaction_type: 'expense' as 'income' | 'expense' | 'transfer',
     amount: '',
-    currency: 'RUB',
+    currency: defaultCurrency,
     category_id: '',
     description: '',
     transaction_date: formatLocalDateTime(new Date()),
     to_account_id: '',
     goal_id: '',
   })
+
+  // Update currency when user data is loaded or changes (but not when editing)
+  useEffect(() => {
+    if (currentUser?.default_currency && !editingTransaction && !showForm) {
+      setFormData(prev => ({
+        ...prev,
+        currency: currentUser.default_currency
+      }))
+    }
+  }, [currentUser?.default_currency, editingTransaction, showForm])
 
   const getDateRange = () => {
     const now = new Date()
@@ -590,11 +611,12 @@ export function Transactions() {
 
   const resetForm = () => {
     setEditingTransaction(null)
+    const userCurrency = currentUser?.default_currency || 'RUB'
     setFormData({
       account_id: '',
       transaction_type: 'expense',
       amount: '',
-      currency: 'RUB',
+      currency: userCurrency,
       category_id: '',
       description: '',
       transaction_date: formatLocalDateTime(new Date()),
