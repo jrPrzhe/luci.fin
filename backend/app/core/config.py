@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     # VK
     VK_BOT_TOKEN: str = ""
     VK_GROUP_ID: str = ""
+    VK_APP_SECRET: str = ""  # Secret Key for VK Mini App signature verification
     
     # External APIs
     EXCHANGE_RATE_API_KEY: str = ""

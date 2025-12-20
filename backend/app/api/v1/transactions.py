@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text as sa_text
 from typing import List, Optional
 from datetime import datetime
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel
 from app.core.database import get_db
 from app.api.v1.auth import get_current_user
 from app.models.user import User
@@ -12,7 +12,6 @@ from app.models.account import Account
 from app.models.goal import Goal, GoalStatus
 from decimal import Decimal
 import logging
-import re
 
 logger = logging.getLogger(__name__)
 
@@ -23,52 +22,26 @@ class TransactionCreate(BaseModel):
     account_id: int
     transaction_type: str  # "income", "expense", or "transfer"
     amount: float
-    currency: str = Field(default="USD", min_length=3, max_length=3)
+    currency: str = "USD"
     category_id: Optional[int] = None
     description: Optional[str] = None
     transaction_date: Optional[datetime] = None
     to_account_id: Optional[int] = None  # Required for transfer type
     shared_budget_id: Optional[int] = None  # Optional: link to shared budget
     goal_id: Optional[int] = None  # Optional: link to goal (for savings)
-    
-    @field_validator('currency')
-    @classmethod
-    def validate_currency(cls, v: str) -> str:
-        """Validate currency code: must be exactly 3 uppercase letters"""
-        if not v:
-            raise ValueError("Валюта не может быть пустой")
-        v = v.upper().strip()
-        if len(v) != 3:
-            raise ValueError("Код валюты должен содержать ровно 3 символа")
-        if not re.match(r'^[A-Z]{3}$', v):
-            raise ValueError("Код валюты должен содержать только буквы (например: USD, RUB, EUR)")
-        return v
 
 
 class TransactionUpdate(BaseModel):
     account_id: Optional[int] = None
     transaction_type: Optional[str] = None
     amount: Optional[float] = None
-    currency: Optional[str] = Field(None, min_length=3, max_length=3)
+    currency: Optional[str] = None
     category_id: Optional[int] = None
     description: Optional[str] = None
     transaction_date: Optional[datetime] = None
     to_account_id: Optional[int] = None
     shared_budget_id: Optional[int] = None
     goal_id: Optional[int] = None
-    
-    @field_validator('currency')
-    @classmethod
-    def validate_currency(cls, v: Optional[str]) -> Optional[str]:
-        """Validate currency code: must be exactly 3 uppercase letters"""
-        if v is None:
-            return v
-        v = v.upper().strip()
-        if len(v) != 3:
-            raise ValueError("Код валюты должен содержать ровно 3 символа")
-        if not re.match(r'^[A-Z]{3}$', v):
-            raise ValueError("Код валюты должен содержать только буквы (например: USD, RUB, EUR)")
-        return v
 
 
 class TransactionResponse(BaseModel):
@@ -86,7 +59,6 @@ class TransactionResponse(BaseModel):
     goal_name: Optional[str] = None
     transaction_date: datetime
     to_account_id: Optional[int] = None
-    parent_transaction_id: Optional[int] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
     user_id: Optional[int] = None
@@ -133,44 +105,14 @@ async def get_transactions(
     
     # Use raw SQL to avoid enum conversion issues
     # Build SQL query based on filters
-    # Use encode/decode to handle invalid UTF-8 sequences in database
-    # Try to use convert_from/convert_to, but if it fails, we'll use a fallback
     sql_query = """
         SELECT 
             t.id, t.account_id, t.transaction_type::text, t.amount, t.currency,
-            t.category_id, 
-            CASE 
-                WHEN t.description IS NOT NULL THEN 
-                    COALESCE(
-                        convert_from(convert_to(t.description, 'LATIN1'), 'UTF8'),
-                        encode(t.description::bytea, 'escape')::text,
-                        t.description
-                    )
-                ELSE NULL
-            END as description,
-            t.shared_budget_id, t.goal_id,
+            t.category_id, t.description, t.shared_budget_id, t.goal_id,
             t.transaction_date, t.to_account_id, t.created_at, t.updated_at, t.user_id,
-            t.parent_transaction_id,
             a.shared_budget_id as account_shared_budget_id,
-            CASE 
-                WHEN c.name IS NOT NULL THEN 
-                    COALESCE(
-                        convert_from(convert_to(c.name, 'LATIN1'), 'UTF8'),
-                        encode(c.name::bytea, 'escape')::text,
-                        c.name
-                    )
-                ELSE NULL
-            END as category_name,
-            c.icon as category_icon,
-            CASE 
-                WHEN g.name IS NOT NULL THEN 
-                    COALESCE(
-                        convert_from(convert_to(g.name, 'LATIN1'), 'UTF8'),
-                        encode(g.name::bytea, 'escape')::text,
-                        g.name
-                    )
-                ELSE NULL
-            END as goal_name
+            c.name as category_name, c.icon as category_icon,
+            g.name as goal_name
         FROM transactions t
         LEFT JOIN accounts a ON t.account_id = a.id
         LEFT JOIN categories c ON t.category_id = c.id
@@ -259,113 +201,23 @@ async def get_transactions(
     params["limit"] = limit
     params["offset"] = offset
     
-    # Execute raw SQL query with error handling
-    try:
-        logger.info(f"Executing SQL query with params: {list(params.keys())}")
-        # Use bindparam to handle encoding issues
-        result_rows = db.execute(sa_text(sql_query), params).fetchall()
-        logger.info(f"Found {len(result_rows)} transactions for user {current_user.id}, filter={filter_type}")
-    except Exception as e:
-        error_str = str(e)
-        # Check if it's an encoding error
-        if "CharacterNotInRepertoire" in error_str or "invalid byte sequence" in error_str:
-            logger.error(f"Encoding error in database data: {e}")
-            # Try simpler query without encoding conversions
-            try:
-                simple_sql = """
-                    SELECT 
-                        t.id, t.account_id, t.transaction_type::text, t.amount, t.currency,
-                        t.category_id, t.description, t.shared_budget_id, t.goal_id,
-                        t.transaction_date, t.to_account_id, t.created_at, t.updated_at, t.user_id,
-                        t.parent_transaction_id,
-                        a.shared_budget_id as account_shared_budget_id,
-                        c.name as category_name, c.icon as category_icon,
-                        g.name as goal_name
-                    FROM transactions t
-                    LEFT JOIN accounts a ON t.account_id = a.id
-                    LEFT JOIN categories c ON t.category_id = c.id
-                    LEFT JOIN goals g ON t.goal_id = g.id
-                    WHERE 1=1
-                """
-                # Rebuild WHERE clause from original query
-                where_parts = []
-                if account_id:
-                    where_parts.append("t.account_id = :account_id")
-                    if 'user_id' in params:
-                        where_parts.append("t.user_id = :user_id")
-                elif filter_type == "own":
-                    where_parts.append("t.user_id = :user_id")
-                elif filter_type == "shared":
-                    if shared_account_ids:
-                        placeholders = ','.join([f':shared_acc_{i}' for i in range(len(shared_account_ids))])
-                        where_parts.append(f"t.account_id IN ({placeholders})")
-                else:
-                    if shared_account_ids:
-                        placeholders = ','.join([f':shared_acc_{i}' for i in range(len(shared_account_ids))])
-                        where_parts.append(f"(t.user_id = :user_id OR t.account_id IN ({placeholders}))")
-                    else:
-                        where_parts.append("t.user_id = :user_id")
-                
-                if transaction_type and 'transaction_type' in params:
-                    where_parts.append("LOWER(t.transaction_type::text) = :transaction_type")
-                if start_date and 'start_date' in params:
-                    where_parts.append("t.transaction_date >= :start_date")
-                if end_date and 'end_date' in params:
-                    where_parts.append("t.transaction_date <= :end_date")
-                
-                if where_parts:
-                    simple_sql += " AND " + " AND ".join(where_parts)
-                simple_sql += " ORDER BY t.transaction_date DESC LIMIT :limit OFFSET :offset"
-                
-                logger.warning("Retrying transactions query without encoding conversions")
-                result_rows = db.execute(sa_text(simple_sql), params).fetchall()
-                logger.info(f"Found {len(result_rows)} transactions with fallback query")
-            except Exception as e2:
-                logger.error(f"Fallback query also failed: {e2}")
-                logger.warning("Returning empty transactions list due to encoding error in database")
-                return []
-        logger.error(f"Error executing SQL query: {e}", exc_info=True)
-        logger.error(f"SQL query: {sql_query[:500]}...")
-        logger.error(f"Params keys: {list(params.keys())}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Ошибка при получении транзакций: {str(e)}"
-        )
+    # Execute raw SQL query
+    result_rows = db.execute(sa_text(sql_query), params).fetchall()
+    
+    logger.info(f"Found {len(result_rows)} transactions for user {current_user.id}, filter={filter_type}")
     
     # Build response from raw SQL results
     result = []
     for row in result_rows:
         try:
-            # Helper function to safely decode strings
-            def safe_decode(value):
-                if value is None:
-                    return None
-                if isinstance(value, bytes):
-                    try:
-                        return value.decode('utf-8', errors='replace')
-                    except:
-                        return value.decode('latin-1', errors='replace')
-                if isinstance(value, str):
-                    # Try to fix encoding issues
-                    try:
-                        value.encode('utf-8')
-                        return value
-                    except UnicodeEncodeError:
-                        # If string has encoding issues, try to fix it
-                        try:
-                            return value.encode('latin-1').decode('utf-8', errors='replace')
-                        except:
-                            return value.encode('utf-8', errors='replace').decode('utf-8', errors='replace')
-                return value
-            
             trans_dict = {
                 "id": row[0],
                 "account_id": row[1],
-                "transaction_type": safe_decode(row[2]).lower() if row[2] else None,  # Convert to lowercase
+                "transaction_type": row[2].lower() if row[2] else None,  # Convert to lowercase
                 "amount": float(row[3]) if row[3] else 0.0,
-                "currency": safe_decode(row[4]) or "USD",
+                "currency": row[4] or "USD",
                 "category_id": row[5],
-                "description": safe_decode(row[6]),
+                "description": row[6],
                 "shared_budget_id": row[7],
                 "goal_id": row[8],
                 "transaction_date": row[9],
@@ -373,17 +225,15 @@ async def get_transactions(
                 "created_at": row[11],
                 "updated_at": row[12],
                 "user_id": row[13],
-                "parent_transaction_id": row[14],
-                "is_shared": row[15] is not None if row[15] is not None else False,
-                "category_name": safe_decode(row[16]),
-                "category_icon": safe_decode(row[17]),
-                "goal_name": safe_decode(row[18]),
+                "is_shared": row[14] is not None if row[14] is not None else False,
+                "category_name": row[15],
+                "category_icon": row[16],
+                "goal_name": row[17],
             }
             
             result.append(TransactionResponse(**trans_dict))
         except Exception as e:
             logger.error(f"Error serializing transaction {row[0] if row else 'unknown'}: {e}", exc_info=True)
-            logger.error(f"Row data: {row[:5] if row else 'no row'}")
             continue
     
     return result
@@ -417,6 +267,105 @@ def _update_account_balance(account_id: int, user_id: int, db: Session):
     
     # Note: We don't update account.initial_balance here
     # The balance is calculated on-the-fly from initial_balance + transactions
+
+
+def _update_goal_from_transaction(goal_id: int, transaction_type: str, amount: Decimal, user_id: int, db: Session):
+    """Update goal current_amount directly from transaction (for goals without linked account)"""
+    try:
+        goal = db.query(Goal).filter(
+            Goal.id == goal_id,
+            Goal.user_id == user_id
+        ).first()
+        
+        if not goal:
+            logger.warning(f"Goal {goal_id} not found for user {user_id}")
+            return
+        
+        if goal.status != GoalStatus.ACTIVE:
+            logger.info(f"Goal {goal_id} is not active, skipping update")
+            return
+        
+        # Update goal current_amount based on transaction type
+        if transaction_type == "income":
+            goal.current_amount = (goal.current_amount or Decimal(0)) + amount
+        elif transaction_type == "expense":
+            goal.current_amount = max(Decimal(0), (goal.current_amount or Decimal(0)) - amount)
+        # For transfer, we don't update goal (transfer doesn't affect goal directly)
+        
+        # Ensure current_amount is not negative
+        goal.current_amount = max(Decimal(0), goal.current_amount)
+        
+        # Update progress percentage
+        if goal.target_amount and goal.target_amount > 0:
+            try:
+                progress = int((goal.current_amount / goal.target_amount) * 100)
+                goal.progress_percentage = max(0, min(100, progress))
+            except (ZeroDivisionError, TypeError) as e:
+                logger.error(f"Error calculating goal progress: {e}")
+                goal.progress_percentage = 0
+            
+            # Check if goal is completed
+            was_active = goal.status == GoalStatus.ACTIVE
+            if goal.current_amount >= goal.target_amount and was_active:
+                goal.status = GoalStatus.COMPLETED
+                goal.progress_percentage = 100
+                
+                # Send Telegram notification if user has telegram_id
+                try:
+                    from app.models.user import User
+                    user = db.query(User).filter(User.id == user_id).first()
+                    if user and user.telegram_id:
+                        try:
+                            from app.core.config import settings
+                            import httpx
+                            
+                            if settings.TELEGRAM_BOT_TOKEN:
+                                message = f"""🎉 Поздравляем! Цель достигнута!
+
+✅ Вы успешно достигли цели: {goal.name}
+
+💰 Накоплено: {float(goal.current_amount):,.2f} {goal.currency}
+🎯 Цель: {float(goal.target_amount):,.2f} {goal.currency}
+
+Продолжайте в том же духе! 🚀"""
+                                url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendMessage"
+                                payload = {
+                                    "chat_id": user.telegram_id,
+                                    "text": message
+                                }
+                                
+                                # Send notification in background (don't wait)
+                                try:
+                                    import threading
+                                    def send_notification():
+                                        try:
+                                            with httpx.Client(timeout=10.0) as client:
+                                                client.post(url, json=payload)
+                                        except Exception as e:
+                                            logger.error(f"Failed to send goal completion notification: {e}")
+                                    
+                                    thread = threading.Thread(target=send_notification)
+                                    thread.daemon = True
+                                    thread.start()
+                                except Exception as e:
+                                    logger.error(f"Error sending goal completion notification: {e}")
+                        except Exception as e:
+                            logger.error(f"Error preparing goal completion notification: {e}")
+                except Exception as e:
+                    logger.error(f"Error querying user for goal notification: {e}")
+        
+        # Commit the goal update
+        try:
+            db.commit()
+            logger.info(f"Goal {goal_id} updated: current_amount={goal.current_amount}, progress={goal.progress_percentage}%")
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error committing goal update for goal {goal_id}: {e}")
+            raise
+    except Exception as e:
+        logger.error(f"Error in _update_goal_from_transaction for goal {goal_id}: {e}", exc_info=True)
+        # Re-raise to let the caller handle it
+        raise
 
 
 def _sync_goal_with_account(account_id: int, user_id: int, db: Session):
@@ -540,7 +489,7 @@ async def create_transaction(
     import logging
     logger = logging.getLogger(__name__)
     
-    logger.info(f"Creating transaction for user_id={current_user.id}, account_id={transaction_data.account_id}, type={transaction_data.transaction_type}, category_id={transaction_data.category_id}")
+    logger.info(f"Creating transaction for user_id={current_user.id}, account_id={transaction_data.account_id}, type={transaction_data.transaction_type}")
     
     # Verify account belongs to user or user has access through shared budget
     account = db.query(Account).filter(Account.id == transaction_data.account_id).first()
@@ -629,11 +578,6 @@ async def create_transaction(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Некорректная сумма: {str(e)}"
         )
-    
-    # Note: We don't validate transaction_date against current time here
-    # because users in different timezones may have local times that appear
-    # to be in the future when converted to UTC. The frontend validates
-    # that the transaction date is not in the future in the user's local timezone.
     
     # For transfer, verify to_account_id
     to_account = None
@@ -727,20 +671,6 @@ async def create_transaction(
                 detail="Можно добавлять прогресс только к активным целям"
             )
         
-        # Check if transaction amount doesn't exceed remaining amount to reach goal
-        # Only for income transactions (adding money to goal)
-        if transaction_type_value == "income":
-            remaining_amount = goal.target_amount - goal.current_amount
-            transaction_amount_decimal = Decimal(str(transaction_data.amount))
-            
-            if transaction_amount_decimal > remaining_amount:
-                remaining_formatted = f"{float(remaining_amount):,.2f}".replace(',', ' ')
-                amount_formatted = f"{float(transaction_amount_decimal):,.2f}".replace(',', ' ')
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Нельзя перевести больше, чем осталось до цели. Осталось до цели: {remaining_formatted} {goal.currency}, вы пытаетесь перевести: {amount_formatted} {goal.currency}"
-                )
-        
         # If goal has an account, use it for the transaction
         if goal.account_id:
             goal_account_id = goal.account_id
@@ -786,128 +716,11 @@ async def create_transaction(
             detail=f"Invalid transaction_type: {transaction_data.transaction_type}. Must be 'income', 'expense', or 'transfer'"
         )
     
-    # Validate category_id for income and expense transactions
-    if transaction_type_value in ["income", "expense"]:
-        if not transaction_data.category_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Категория обязательна для доходов и расходов"
-            )
-        
-        # Verify category exists and belongs to user or shared budget
-        from app.models.category import Category
-        category = db.query(Category).filter(Category.id == transaction_data.category_id).first()
-        
-        if not category:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Категория не найдена"
-            )
-        
-        # Check if category is for the correct transaction type
-        if category.transaction_type.value not in ["both", transaction_type_value]:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Категория не подходит для типа транзакции '{transaction_type_value}'"
-            )
-        
-        # Check access: category must belong to user or shared budget
-        has_category_access = False
-        if category.user_id == current_user.id:
-            has_category_access = True
-        elif category.shared_budget_id:
-            from app.models.shared_budget import SharedBudgetMember
-            membership = db.query(SharedBudgetMember).filter(
-                SharedBudgetMember.shared_budget_id == category.shared_budget_id,
-                SharedBudgetMember.user_id == current_user.id
-            ).first()
-            has_category_access = membership is not None
-        
-        if not has_category_access:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="У вас нет доступа к этой категории"
-            )
-    
-    # Check balance for expense and transfer transactions
-    if transaction_type_value in ["expense", "transfer"]:
-        try:
-            logger.info(f"Checking balance for {transaction_type_value} transaction, account_id={final_account_id}, user_id={current_user.id}")
-            
-            # Calculate current account balance
-            # For shared accounts, count ALL transactions (from all members)
-            # For personal accounts, count only user's transactions
-            if final_account.shared_budget_id:
-                # Shared account: count all transactions
-                logger.info(f"Checking balance for shared account {final_account_id}")
-                transactions_result = db.execute(
-                    sa_text("""
-                        SELECT transaction_type::text, amount 
-                        FROM transactions 
-                        WHERE account_id = :account_id
-                    """),
-                    {"account_id": final_account_id}
-                )
-            else:
-                # Personal account: count only user's transactions
-                logger.info(f"Checking balance for personal account {final_account_id}, user_id={current_user.id}")
-                transactions_result = db.execute(
-                    sa_text("""
-                        SELECT transaction_type::text, amount 
-                        FROM transactions 
-                        WHERE account_id = :account_id AND user_id = :user_id
-                    """),
-                    {"account_id": final_account_id, "user_id": current_user.id}
-                )
-            
-            # Calculate balance
-            balance = Decimal(str(final_account.initial_balance)) if final_account.initial_balance else Decimal("0")
-            logger.info(f"Initial balance: {balance}")
-            
-            transaction_count = 0
-            for row in transactions_result:
-                transaction_count += 1
-                trans_type = row[0].lower() if row[0] else ''
-                amount = Decimal(str(row[1])) if row[1] else Decimal("0")
-                
-                if trans_type == 'income':
-                    balance += amount
-                elif trans_type == 'expense':
-                    balance -= amount
-                elif trans_type == 'transfer':
-                    # Transfer уменьшает баланс счета отправления
-                    balance -= amount
-            
-            logger.info(f"Balance after {transaction_count} transactions: {balance}")
-            
-            # Check if balance is sufficient
-            transaction_amount = Decimal(str(transaction_data.amount))
-            logger.info(f"Transaction amount: {transaction_amount}, Current balance: {balance}")
-            
-            if balance < transaction_amount:
-                logger.warning(f"Insufficient balance: {balance} < {transaction_amount}")
-                # Format balance and amount for display
-                balance_formatted = f"{float(balance):,.2f}".replace(',', ' ')
-                amount_formatted = f"{float(transaction_amount):,.2f}".replace(',', ' ')
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Недостаточно средств на счете. Текущий баланс: {balance_formatted} {final_account.currency}, требуется: {amount_formatted} {final_account.currency}"
-                )
-            
-            logger.info(f"Balance check passed: {balance} >= {transaction_amount}")
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"Error checking balance for expense transaction: {e}", exc_info=True)
-            # Re-raise the exception to prevent transaction creation if balance check fails
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Ошибка при проверке баланса счета: {str(e)}"
-            )
-    
     # For transfers, use raw SQL to avoid enum issues completely
     if transaction_data.transaction_type == "transfer" and to_transaction:
         try:
+            from sqlalchemy import text as sa_text
+            
             # Insert source transaction (transfer) using raw SQL
             source_transaction_sql = """
                 INSERT INTO transactions 
@@ -916,25 +729,13 @@ async def create_transaction(
                 (:user_id, :account_id, :transaction_type, :amount, :currency, :description, :transaction_date, :to_account_id, :shared_budget_id, :goal_id)
                 RETURNING id, created_at, updated_at
             """
-            # Get to_account for description
-            to_account = db.query(Account).filter(Account.id == transaction_data.to_account_id).first()
-            to_account_name = to_account.name if to_account else "счет"
-            
-            # Create description for transfer transaction
-            # Use format similar to income transaction: "Перевод из {account.name}" or "Перевод из {account.name}: {user_description}"
-            # This makes it clear that this is a transfer transaction
-            if transaction_data.description and transaction_data.description.strip():
-                transfer_description = f"Перевод из {final_account.name}: {transaction_data.description}"
-            else:
-                transfer_description = f"Перевод из {final_account.name}"
-            
             source_params = {
                 "user_id": current_user.id,
                 "account_id": final_account_id,
                 "transaction_type": "transfer",  # lowercase
                 "amount": transaction_data.amount,
                 "currency": transaction_data.currency or final_account.currency,
-                "description": transfer_description,
+                "description": transaction_data.description,
                 "transaction_date": transaction_data.transaction_date or datetime.utcnow(),
                 "to_account_id": transaction_data.to_account_id,
                 "shared_budget_id": transaction_data.shared_budget_id,
@@ -947,12 +748,11 @@ async def create_transaction(
             source_updated_at = source_row[2]
             
             # Insert destination transaction (income) using raw SQL
-            # Use parent_transaction_id to link it to the transfer transaction
             to_transaction_sql = """
                 INSERT INTO transactions 
-                (user_id, account_id, transaction_type, amount, currency, description, transaction_date, shared_budget_id, goal_id, parent_transaction_id)
+                (user_id, account_id, transaction_type, amount, currency, description, transaction_date, shared_budget_id, goal_id)
                 VALUES 
-                (:user_id, :account_id, :transaction_type, :amount, :currency, :description, :transaction_date, :shared_budget_id, :goal_id, :parent_transaction_id)
+                (:user_id, :account_id, :transaction_type, :amount, :currency, :description, :transaction_date, :shared_budget_id, :goal_id)
                 RETURNING id, created_at, updated_at
             """
             to_params = {
@@ -964,8 +764,7 @@ async def create_transaction(
                 "description": f"Перевод из {account.name}" + (f": {transaction_data.description}" if transaction_data.description else ""),
                 "transaction_date": transaction_data.transaction_date or datetime.utcnow(),
                 "shared_budget_id": transaction_data.shared_budget_id,
-                "goal_id": transaction_data.goal_id,
-                "parent_transaction_id": source_transaction_id  # Link to transfer transaction
+                "goal_id": transaction_data.goal_id
             }
             to_result = db.execute(sa_text(to_transaction_sql), to_params)
             to_row = to_result.first()
@@ -997,44 +796,23 @@ async def create_transaction(
             logger.error(f"Error creating transfer transactions: {e}", exc_info=True)
             db.rollback()
             
-            error_str = str(e).lower()
-            
             # Check for database numeric overflow errors
+            error_str = str(e).lower()
             if 'numeric' in error_str or 'overflow' in error_str or 'value too large' in error_str or 'out of range' in error_str:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Сумма слишком большая. Максимальная сумма: 9 999 999 999 999.99"
                 )
             
-            # Check for string truncation errors (e.g., currency too long)
-            if 'stringdatarighttruncation' in error_str or 'value too long' in error_str or 'character varying' in error_str:
-                # Try to identify which field caused the error
-                if 'currency' in error_str:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="Некорректный код валюты. Код валюты должен содержать ровно 3 буквы (например: USD, RUB, EUR)"
-                    )
-                else:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="Одно из полей содержит слишком длинное значение"
-                    )
-            
-            # For other database errors, return a generic message without SQL details
-            if 'psycopg2' in error_str or 'sqlalchemy' in error_str or '[sql:' in error_str.lower():
-                logger.error(f"Database error details: {e}", exc_info=True)
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Ошибка валидации данных. Проверьте правильность введенных данных"
-                )
-            
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Ошибка при создании перевода"
+                detail=f"Ошибка при создании перевода: {str(e)}"
             )
     else:
         # For non-transfer transactions, use raw SQL to avoid enum issues
         try:
+            from sqlalchemy import text as sa_text
+            
             # Insert transaction using raw SQL with lowercase transaction_type
             transaction_sql = """
                 INSERT INTO transactions 
@@ -1087,45 +865,41 @@ async def create_transaction(
             logger.error(f"Error creating transaction: {e}", exc_info=True)
             db.rollback()
             
-            error_str = str(e).lower()
-            
             # Check for database numeric overflow errors
+            error_str = str(e).lower()
             if 'numeric' in error_str or 'overflow' in error_str or 'value too large' in error_str or 'out of range' in error_str:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Сумма слишком большая. Максимальная сумма: 9 999 999 999 999.99"
                 )
             
-            # Check for string truncation errors (e.g., currency too long)
-            if 'stringdatarighttruncation' in error_str or 'value too long' in error_str or 'character varying' in error_str:
-                # Try to identify which field caused the error
-                if 'currency' in error_str:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="Некорректный код валюты. Код валюты должен содержать ровно 3 буквы (например: USD, RUB, EUR)"
-                    )
-                else:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="Одно из полей содержит слишком длинное значение"
-                    )
-            
-            # For other database errors, return a generic message without SQL details
-            if 'psycopg2' in error_str or 'sqlalchemy' in error_str or '[sql:' in error_str.lower():
-                logger.error(f"Database error details: {e}", exc_info=True)
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Ошибка валидации данных. Проверьте правильность введенных данных"
-                )
-            
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Ошибка при создании транзакции"
+                detail=f"Ошибка при создании транзакции: {str(e)}"
             )
     
-    # If transaction is on goal's account, sync goal with account balance
-    if goal_account_id:
-        _sync_goal_with_account(goal_account_id, current_user.id, db)
+    # Update goal if specified in transaction
+    if transaction_data.goal_id:
+        if goal_account_id:
+            # Goal has linked account: sync goal with account balance
+            _sync_goal_with_account(goal_account_id, current_user.id, db)
+        else:
+            # Goal doesn't have linked account: update goal directly from transaction
+            # Only update for income transactions (adding money to goal)
+            if transaction_data.transaction_type == "income":
+                try:
+                    amount_decimal = Decimal(str(transaction_data.amount))
+                    _update_goal_from_transaction(
+                        transaction_data.goal_id,
+                        transaction_data.transaction_type,
+                        amount_decimal,
+                        current_user.id,
+                        db
+                    )
+                except Exception as e:
+                    logger.error(f"Error updating goal {transaction_data.goal_id} from transaction: {e}", exc_info=True)
+                    # Don't fail transaction creation if goal update fails
+                    # But log the error for debugging
     
     # Gamification: Update streak, add XP, check achievements
     # НЕ применяем геймификацию для transfer (это не трата и не доход)
@@ -1247,6 +1021,7 @@ async def create_transaction(
     
     # Build response manually to ensure transaction_type is lowercase string
     # Get account info using raw SQL to avoid relationship loading issues
+    from sqlalchemy import text as sa_text
     account_sql = "SELECT shared_budget_id FROM accounts WHERE id = :account_id"
     account_result = db.execute(sa_text(account_sql), {"account_id": transaction.account_id}).first()
     is_shared = account_result[0] is not None if account_result else False
@@ -1678,3 +1453,4 @@ async def delete_transaction(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred while deleting the transaction"
         )
+

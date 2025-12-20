@@ -14,6 +14,73 @@ router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 
+def verify_vk_signature(params: dict, secret_key: str) -> bool:
+    """
+    Verify VK Mini App launch params signature
+    
+    Algorithm:
+    1. Extract all parameters starting with 'vk_' (except 'sign')
+    2. Sort parameters by key in alphabetical order
+    3. Create string: 'vk_key1=value1&vk_key2=value2&...'
+    4. Append secret_key: 'vk_key1=value1&vk_key2=value2&...&secret_key'
+    5. Calculate MD5 hash
+    6. Compare with provided 'sign' parameter
+    
+    Args:
+        params: Dictionary of parsed launch params
+        secret_key: VK App Secret Key (from VK_APP_SECRET env var)
+    
+    Returns:
+        True if signature is valid, False otherwise
+    """
+    import hashlib
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    if not secret_key:
+        logger.error("VK_APP_SECRET is not configured. Cannot verify signature.")
+        return False
+    
+    # Get sign parameter
+    provided_sign = params.get('sign', '')
+    if not provided_sign:
+        logger.warning("No 'sign' parameter found in launch params")
+        return False
+    
+    # Extract all vk_* parameters except 'sign'
+    vk_params = {}
+    for key, value in params.items():
+        if key.startswith('vk_') and key != 'sign':
+            vk_params[key] = value
+    
+    if not vk_params:
+        logger.warning("No vk_* parameters found in launch params")
+        return False
+    
+    # Sort parameters by key in alphabetical order
+    sorted_keys = sorted(vk_params.keys())
+    
+    # Create string: 'vk_key1=value1&vk_key2=value2&...'
+    param_string = '&'.join([f"{key}={vk_params[key]}" for key in sorted_keys])
+    
+    # Append secret_key
+    sign_string = f"{param_string}&{secret_key}"
+    
+    # Calculate MD5 hash
+    calculated_sign = hashlib.md5(sign_string.encode('utf-8')).hexdigest()
+    
+    # Compare signatures (case-insensitive)
+    is_valid = calculated_sign.lower() == provided_sign.lower()
+    
+    if is_valid:
+        logger.info("VK signature verification passed")
+    else:
+        logger.error(f"VK signature verification failed. Expected: {calculated_sign}, Got: {provided_sign}")
+        logger.error(f"Sign string (without secret): {param_string}")
+    
+    return is_valid
+
+
 def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
@@ -80,59 +147,14 @@ def get_current_user(
             detail="Пользователь не найден",
         )
     
-    # Явно загружаем is_premium из БД, если атрибут отсутствует
-    # Это необходимо, так как столбец мог быть добавлен позже
-    if not hasattr(user, 'is_premium') or getattr(user, 'is_premium', None) is None:
-        from sqlalchemy import text
-        try:
-            result = db.execute(text("SELECT is_premium FROM users WHERE id = :user_id"), {"user_id": user_id})
-            row = result.first()
-            if row is not None:
-                is_premium_value = row[0] if row[0] is not None else False
-                user.is_premium = is_premium_value
-                logger.debug(f"Loaded is_premium from DB for user {user_id}: {is_premium_value}")
-        except Exception as e:
-            logger.warning(f"Failed to load is_premium from DB for user {user_id}: {e}")
-            # Устанавливаем значение по умолчанию
-            user.is_premium = False
-    
-    # Синхронизируем статус админа для пользователей с Telegram username
-    if user.telegram_username:
-        username_lower = user.telegram_username.lower().lstrip('@')
-        should_be_admin = username_lower in settings.ADMIN_TELEGRAM_USERNAMES
-        
-        if user.is_admin != should_be_admin:
-            logger.info(f"Syncing admin status in get_current_user for user {user.id}: telegram_username={user.telegram_username}, current={user.is_admin}, should_be={should_be_admin}")
-            user.is_admin = should_be_admin
-            db.commit()
-            db.refresh(user)
-            logger.info(f"Updated admin status for user {user.id}: is_admin={should_be_admin}")
-    
-    logger.info(f"User found: id={user.id}, email={user.email}, telegram_id={user.telegram_id}, is_admin={user.is_admin}, is_premium={getattr(user, 'is_premium', None)}")
+    logger.info(f"User found: id={user.id}, email={user.email}, telegram_id={user.telegram_id}")
     return user
 
 
 def get_current_admin(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_user)
 ) -> User:
     """Get current user and verify admin status"""
-    import logging
-    logger = logging.getLogger(__name__)
-    
-    # Синхронизируем статус админа для пользователей с Telegram username
-    if current_user.telegram_username:
-        from app.core.config import settings
-        username_lower = current_user.telegram_username.lower().lstrip('@')
-        should_be_admin = username_lower in settings.ADMIN_TELEGRAM_USERNAMES
-        
-        if current_user.is_admin != should_be_admin:
-            logger.info(f"Syncing admin status for user {current_user.id}: telegram_username={current_user.telegram_username}, current={current_user.is_admin}, should_be={should_be_admin}")
-            current_user.is_admin = should_be_admin
-            db.commit()
-            db.refresh(current_user)
-            logger.info(f"Updated admin status for user {current_user.id}: is_admin={should_be_admin}")
-    
     if not current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -543,14 +565,13 @@ async def login_telegram(
             
             # Check if user is admin
             from app.core.config import settings
-            username_lower = (telegram_username or '').lower().lstrip('@')
-            is_admin = username_lower in settings.ADMIN_TELEGRAM_USERNAMES if username_lower else False
+            is_admin = str(telegram_id) in settings.ADMIN_TELEGRAM_IDS
             logger.info("=" * 60)
             logger.info("ADMIN STATUS CHECK (New User)")
             logger.info("=" * 60)
-            logger.info(f"telegram_username = {telegram_username} (type: {type(telegram_username)})")
-            logger.info(f"ADMIN_TELEGRAM_USERNAMES = {settings.ADMIN_TELEGRAM_USERNAMES} (type: {type(settings.ADMIN_TELEGRAM_USERNAMES)})")
-            logger.info(f"username_lower in ADMIN_TELEGRAM_USERNAMES = {is_admin}")
+            logger.info(f"telegram_id = {telegram_id} (type: {type(telegram_id)})")
+            logger.info(f"ADMIN_TELEGRAM_IDS = {settings.ADMIN_TELEGRAM_IDS} (type: {type(settings.ADMIN_TELEGRAM_IDS)})")
+            logger.info(f"str(telegram_id) in ADMIN_TELEGRAM_IDS = {is_admin}")
             logger.info(f"✅ New user will be created with is_admin = {is_admin}")
             logger.info("=" * 60)
             
@@ -584,16 +605,13 @@ async def login_telegram(
             
             # Update admin status based on config
             from app.core.config import settings
-            # Use telegram_username from user or from request
-            check_username = user.telegram_username or telegram_username
-            username_lower = (check_username or '').lower().lstrip('@')
-            should_be_admin = username_lower in settings.ADMIN_TELEGRAM_USERNAMES if username_lower else False
+            should_be_admin = str(telegram_id) in settings.ADMIN_TELEGRAM_IDS
             logger.info("=" * 60)
             logger.info("ADMIN STATUS CHECK (Existing User)")
             logger.info("=" * 60)
-            logger.info(f"telegram_username = {check_username} (type: {type(check_username)})")
-            logger.info(f"ADMIN_TELEGRAM_USERNAMES = {settings.ADMIN_TELEGRAM_USERNAMES} (type: {type(settings.ADMIN_TELEGRAM_USERNAMES)})")
-            logger.info(f"username_lower in ADMIN_TELEGRAM_USERNAMES = {should_be_admin}")
+            logger.info(f"telegram_id = {telegram_id} (type: {type(telegram_id)})")
+            logger.info(f"ADMIN_TELEGRAM_IDS = {settings.ADMIN_TELEGRAM_IDS} (type: {type(settings.ADMIN_TELEGRAM_IDS)})")
+            logger.info(f"str(telegram_id) in ADMIN_TELEGRAM_IDS = {should_be_admin}")
             logger.info(f"current_is_admin = {user.is_admin}")
             logger.info(f"should_be_admin = {should_be_admin}")
             if user.is_admin != should_be_admin:
@@ -608,21 +626,7 @@ async def login_telegram(
         db.commit()
         db.refresh(user)
         
-        # Явно загружаем is_premium из БД, если атрибут отсутствует
-        if not hasattr(user, 'is_premium') or getattr(user, 'is_premium', None) is None:
-            from sqlalchemy import text
-            try:
-                result = db.execute(text("SELECT is_premium FROM users WHERE id = :user_id"), {"user_id": user.id})
-                row = result.first()
-                if row is not None:
-                    is_premium_value = row[0] if row[0] is not None else False
-                    user.is_premium = is_premium_value
-                    logger.debug(f"Loaded is_premium from DB for user {user.id} after Telegram login: {is_premium_value}")
-            except Exception as e:
-                logger.warning(f"Failed to load is_premium from DB for user {user.id} after Telegram login: {e}")
-                user.is_premium = False
-        
-        logger.info(f"User processed: id={user.id}, telegram_id={user.telegram_id}, is_new={is_new_user}, is_premium={getattr(user, 'is_premium', None)}")
+        logger.info(f"User processed: id={user.id}, telegram_id={user.telegram_id}, is_new={is_new_user}")
         
         # Create default account and categories for new users
         if is_new_user:
@@ -789,6 +793,21 @@ async def login_vk(
         
         logger.info(f"Parsed launch params keys: {list(params.keys())}")
         logger.info(f"Parsed launch params values (first 200 chars each): {[(k, str(v)[:200]) for k, v in params.items()]}")
+        
+        # Verify VK signature to prevent parameter tampering
+        if not settings.VK_APP_SECRET:
+            logger.error("VK_APP_SECRET is not configured. VK authentication is disabled for security.")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="VK authentication is not properly configured. Please contact support."
+            )
+        
+        if not verify_vk_signature(params, settings.VK_APP_SECRET):
+            logger.error("Invalid VK signature. Launch params may be tampered with.")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Неверная подпись авторизации VK. Убедитесь, что вы открыли приложение через VK Mini App."
+            )
         
         # Extract vk_user_id - try different possible keys
         vk_user_id_raw = params.get('vk_user_id') or params.get('user_id') or params.get('uid')
@@ -963,21 +982,7 @@ async def login_vk(
         db.commit()
         db.refresh(user)
         
-        # Явно загружаем is_premium из БД, если атрибут отсутствует
-        if not hasattr(user, 'is_premium') or getattr(user, 'is_premium', None) is None:
-            from sqlalchemy import text
-            try:
-                result = db.execute(text("SELECT is_premium FROM users WHERE id = :user_id"), {"user_id": user.id})
-                row = result.first()
-                if row is not None:
-                    is_premium_value = row[0] if row[0] is not None else False
-                    user.is_premium = is_premium_value
-                    logger.debug(f"Loaded is_premium from DB for user {user.id} after VK login: {is_premium_value}")
-            except Exception as e:
-                logger.warning(f"Failed to load is_premium from DB for user {user.id} after VK login: {e}")
-                user.is_premium = False
-        
-        logger.info(f"User processed: id={user.id}, vk_id={user.vk_id}, is_new={is_new_user}, is_premium={getattr(user, 'is_premium', None)}")
+        logger.info(f"User processed: id={user.id}, vk_id={user.vk_id}, is_new={is_new_user}")
         
         # Check if user has categories (for both new and existing users)
         from app.models.category import Category
@@ -1344,8 +1349,7 @@ async def get_bot_token_vk(
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(
     request: Request,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    current_user: User = Depends(get_current_user)
 ):
     """Get current user information"""
     import logging
@@ -1354,18 +1358,6 @@ async def get_current_user_info(
     # Логирование заголовков для отладки
     auth_header = request.headers.get("authorization")
     logger.info(f"/me endpoint called, Authorization header present: {bool(auth_header)}, value: {auth_header[:50] + '...' if auth_header and len(auth_header) > 50 else auth_header}")
-    
-    # Синхронизируем статус админа для пользователей с Telegram username
-    if current_user.telegram_username:
-        username_lower = current_user.telegram_username.lower().lstrip('@')
-        should_be_admin = username_lower in settings.ADMIN_TELEGRAM_USERNAMES
-        
-        if current_user.is_admin != should_be_admin:
-            logger.info(f"Syncing admin status in /me for user {current_user.id}: telegram_username={current_user.telegram_username}, current={current_user.is_admin}, should_be={should_be_admin}")
-            current_user.is_admin = should_be_admin
-            db.commit()
-            db.refresh(current_user)
-            logger.info(f"Updated admin status for user {current_user.id}: is_admin={should_be_admin}")
     
     return UserResponse.model_validate(current_user)
 
@@ -1388,16 +1380,6 @@ async def update_current_user(
         current_user.default_currency = user_update.default_currency
     if user_update.language is not None:
         current_user.language = user_update.language
-    if user_update.theme is not None:
-        # Validate theme value
-        if user_update.theme not in ["light", "dark"]:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Theme must be 'light' or 'dark'"
-            )
-        current_user.theme = user_update.theme
-    if user_update.new_year_theme is not None:
-        current_user.new_year_theme = user_update.new_year_theme
     
     # Note: username and telegram_username cannot be changed via API
     # telegram_username is updated automatically via Telegram login
@@ -1429,11 +1411,6 @@ async def reset_account(
         from app.models.shared_budget import SharedBudgetMember, SharedBudget
         
         logger.info(f"Starting account reset for user {current_user.id}")
-        
-        # Save current language and currency before reset (these should not be reset)
-        saved_language = current_user.language or "ru"
-        saved_default_currency = current_user.default_currency or ("RUB" if current_user.telegram_id else "USD")
-        logger.info(f"Preserving user settings: language={saved_language}, currency={saved_default_currency}")
         
         # Get user's accounts first to get account IDs
         user_accounts = db.query(Account).filter(Account.user_id == current_user.id).all()
@@ -1498,195 +1475,17 @@ async def reset_account(
                 db.delete(member)
                 logger.info(f"Removed user from shared budget {member.shared_budget_id}")
         
-        # Reset user settings to defaults (but keep authentication data, user name, language, and currency)
-        # Keep first_name and last_name - they are not part of financial data
-        # Keep language and default_currency - these are user preferences, not financial data
+        # Reset user settings to defaults (but keep authentication data)
+        current_user.first_name = None
+        current_user.last_name = None
         current_user.timezone = "UTC"
-        # Don't reset default_currency - preserve user's preference
-        # Don't reset language - preserve user's preference
+        current_user.default_currency = "RUB" if current_user.telegram_id else "USD"
+        current_user.language = "en"
         current_user.is_2fa_enabled = False
         current_user.two_factor_secret = None
         current_user.backup_codes = None
         
         # Commit all deletions first
-        db.commit()
-        logger.info("All deletions committed")
-        
-        # Create default account
-        default_account = Account(
-            user_id=current_user.id,
-            name="Основной счёт",
-            account_type=AccountType.CASH,
-            currency=current_user.default_currency,
-            initial_balance=0.0,
-            is_active=True,
-            description="Автоматически созданный счёт"
-        )
-        db.add(default_account)
-        db.flush()  # Flush to get account ID if needed
-        logger.info(f"Created default account: {default_account.name}")
-        
-        # Create default categories
-        DEFAULT_EXPENSE_CATEGORIES = [
-            {"name": "Продукты", "icon": "🛒", "color": "#4CAF50", "transaction_type": TransactionType.EXPENSE, "is_favorite": True},
-            {"name": "Транспорт", "icon": "🚗", "color": "#2196F3", "transaction_type": TransactionType.EXPENSE, "is_favorite": True},
-            {"name": "Коммунальные услуги", "icon": "💡", "color": "#FFC107", "transaction_type": TransactionType.EXPENSE, "is_favorite": True},
-            {"name": "Связь и интернет", "icon": "📱", "color": "#00BCD4", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
-            {"name": "Кафе и рестораны", "icon": "🍽️", "color": "#FF9800", "transaction_type": TransactionType.EXPENSE, "is_favorite": True},
-            {"name": "Доставка еды", "icon": "🍕", "color": "#FF5722", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
-            {"name": "Здоровье", "icon": "🏥", "color": "#F44336", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
-            {"name": "Аптека", "icon": "💊", "color": "#E91E63", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
-            {"name": "Красота и уход", "icon": "💅", "color": "#9C27B0", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
-            {"name": "Одежда", "icon": "👕", "color": "#E91E63", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
-            {"name": "Обувь", "icon": "👟", "color": "#795548", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
-            {"name": "Бытовая техника", "icon": "🏠", "color": "#607D8B", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
-            {"name": "Развлечения", "icon": "🎬", "color": "#9C27B0", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
-            {"name": "Кино и театр", "icon": "🎭", "color": "#673AB7", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
-            {"name": "Хобби", "icon": "🎨", "color": "#9C27B0", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
-            {"name": "Образование", "icon": "📚", "color": "#3F51B5", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
-            {"name": "Курсы", "icon": "🎓", "color": "#2196F3", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
-            {"name": "Подарки", "icon": "🎁", "color": "#FF5722", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
-            {"name": "Праздники", "icon": "🎉", "color": "#FF9800", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
-            {"name": "Дети", "icon": "👶", "color": "#FFC107", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
-            {"name": "Домашние животные", "icon": "🐾", "color": "#795548", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
-            {"name": "Прочее", "icon": "📦", "color": "#607D8B", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
-        ]
-        DEFAULT_INCOME_CATEGORIES = [
-            {"name": "Зарплата", "icon": "💰", "color": "#4CAF50", "transaction_type": TransactionType.INCOME, "is_favorite": True},
-            {"name": "Премия", "icon": "🎯", "color": "#FFC107", "transaction_type": TransactionType.INCOME, "is_favorite": False},
-            {"name": "Фриланс", "icon": "💼", "color": "#9C27B0", "transaction_type": TransactionType.INCOME, "is_favorite": True},
-            {"name": "Подработка", "icon": "⚡", "color": "#FF9800", "transaction_type": TransactionType.INCOME, "is_favorite": False},
-            {"name": "Инвестиции", "icon": "📈", "color": "#2196F3", "transaction_type": TransactionType.INCOME, "is_favorite": False},
-            {"name": "Дивиденды", "icon": "💹", "color": "#4CAF50", "transaction_type": TransactionType.INCOME, "is_favorite": False},
-            {"name": "Подарки", "icon": "🎁", "color": "#FF9800", "transaction_type": TransactionType.INCOME, "is_favorite": False},
-            {"name": "Возврат покупки", "icon": "↩️", "color": "#00BCD4", "transaction_type": TransactionType.INCOME, "is_favorite": False},
-            {"name": "Кэшбэк", "icon": "💳", "color": "#4CAF50", "transaction_type": TransactionType.INCOME, "is_favorite": False},
-            {"name": "Прочее", "icon": "📦", "color": "#607D8B", "transaction_type": TransactionType.INCOME, "is_favorite": False},
-        ]
-        
-        categories = []
-        for cat_data in DEFAULT_EXPENSE_CATEGORIES + DEFAULT_INCOME_CATEGORIES:
-            categories.append(Category(
-                user_id=current_user.id,
-                name=cat_data["name"],
-                transaction_type=cat_data["transaction_type"],
-                icon=cat_data["icon"],
-                color=cat_data["color"],
-                is_system=True,
-                is_active=True,
-                is_favorite=cat_data.get("is_favorite", False)
-            ))
-        
-        db.bulk_save_objects(categories)
-        db.flush()
-        logger.info(f"Created {len(categories)} default categories")
-        
-        # Final commit
-        db.commit()
-        db.refresh(current_user)
-        
-        logger.info(f"Account reset completed for user {current_user.id}. Default account and {len(categories)} categories created.")
-        
-        return UserResponse.model_validate(current_user)
-        
-    except Exception as e:
-        logger.error(f"Error resetting account for user {current_user.id}: {e}", exc_info=True)
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Ошибка при сбросе данных: {str(e)}"
-        )
-
-
-        db.commit()
-        logger.info("All deletions committed")
-        
-        # Create default account
-        default_account = Account(
-            user_id=current_user.id,
-            name="Основной счёт",
-            account_type=AccountType.CASH,
-            currency=current_user.default_currency,
-            initial_balance=0.0,
-            is_active=True,
-            description="Автоматически созданный счёт"
-        )
-        db.add(default_account)
-        db.flush()  # Flush to get account ID if needed
-        logger.info(f"Created default account: {default_account.name}")
-        
-        # Create default categories
-        DEFAULT_EXPENSE_CATEGORIES = [
-            {"name": "Продукты", "icon": "🛒", "color": "#4CAF50", "transaction_type": TransactionType.EXPENSE, "is_favorite": True},
-            {"name": "Транспорт", "icon": "🚗", "color": "#2196F3", "transaction_type": TransactionType.EXPENSE, "is_favorite": True},
-            {"name": "Коммунальные услуги", "icon": "💡", "color": "#FFC107", "transaction_type": TransactionType.EXPENSE, "is_favorite": True},
-            {"name": "Связь и интернет", "icon": "📱", "color": "#00BCD4", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
-            {"name": "Кафе и рестораны", "icon": "🍽️", "color": "#FF9800", "transaction_type": TransactionType.EXPENSE, "is_favorite": True},
-            {"name": "Доставка еды", "icon": "🍕", "color": "#FF5722", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
-            {"name": "Здоровье", "icon": "🏥", "color": "#F44336", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
-            {"name": "Аптека", "icon": "💊", "color": "#E91E63", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
-            {"name": "Красота и уход", "icon": "💅", "color": "#9C27B0", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
-            {"name": "Одежда", "icon": "👕", "color": "#E91E63", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
-            {"name": "Обувь", "icon": "👟", "color": "#795548", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
-            {"name": "Бытовая техника", "icon": "🏠", "color": "#607D8B", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
-            {"name": "Развлечения", "icon": "🎬", "color": "#9C27B0", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
-            {"name": "Кино и театр", "icon": "🎭", "color": "#673AB7", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
-            {"name": "Хобби", "icon": "🎨", "color": "#9C27B0", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
-            {"name": "Образование", "icon": "📚", "color": "#3F51B5", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
-            {"name": "Курсы", "icon": "🎓", "color": "#2196F3", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
-            {"name": "Подарки", "icon": "🎁", "color": "#FF5722", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
-            {"name": "Праздники", "icon": "🎉", "color": "#FF9800", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
-            {"name": "Дети", "icon": "👶", "color": "#FFC107", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
-            {"name": "Домашние животные", "icon": "🐾", "color": "#795548", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
-            {"name": "Прочее", "icon": "📦", "color": "#607D8B", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
-        ]
-        DEFAULT_INCOME_CATEGORIES = [
-            {"name": "Зарплата", "icon": "💰", "color": "#4CAF50", "transaction_type": TransactionType.INCOME, "is_favorite": True},
-            {"name": "Премия", "icon": "🎯", "color": "#FFC107", "transaction_type": TransactionType.INCOME, "is_favorite": False},
-            {"name": "Фриланс", "icon": "💼", "color": "#9C27B0", "transaction_type": TransactionType.INCOME, "is_favorite": True},
-            {"name": "Подработка", "icon": "⚡", "color": "#FF9800", "transaction_type": TransactionType.INCOME, "is_favorite": False},
-            {"name": "Инвестиции", "icon": "📈", "color": "#2196F3", "transaction_type": TransactionType.INCOME, "is_favorite": False},
-            {"name": "Дивиденды", "icon": "💹", "color": "#4CAF50", "transaction_type": TransactionType.INCOME, "is_favorite": False},
-            {"name": "Подарки", "icon": "🎁", "color": "#FF9800", "transaction_type": TransactionType.INCOME, "is_favorite": False},
-            {"name": "Возврат покупки", "icon": "↩️", "color": "#00BCD4", "transaction_type": TransactionType.INCOME, "is_favorite": False},
-            {"name": "Кэшбэк", "icon": "💳", "color": "#4CAF50", "transaction_type": TransactionType.INCOME, "is_favorite": False},
-            {"name": "Прочее", "icon": "📦", "color": "#607D8B", "transaction_type": TransactionType.INCOME, "is_favorite": False},
-        ]
-        
-        categories = []
-        for cat_data in DEFAULT_EXPENSE_CATEGORIES + DEFAULT_INCOME_CATEGORIES:
-            categories.append(Category(
-                user_id=current_user.id,
-                name=cat_data["name"],
-                transaction_type=cat_data["transaction_type"],
-                icon=cat_data["icon"],
-                color=cat_data["color"],
-                is_system=True,
-                is_active=True,
-                is_favorite=cat_data.get("is_favorite", False)
-            ))
-        
-        db.bulk_save_objects(categories)
-        db.flush()
-        logger.info(f"Created {len(categories)} default categories")
-        
-        # Final commit
-        db.commit()
-        db.refresh(current_user)
-        
-        logger.info(f"Account reset completed for user {current_user.id}. Default account and {len(categories)} categories created.")
-        
-        return UserResponse.model_validate(current_user)
-        
-    except Exception as e:
-        logger.error(f"Error resetting account for user {current_user.id}: {e}", exc_info=True)
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Ошибка при сбросе данных: {str(e)}"
-        )
-
-
         db.commit()
         logger.info("All deletions committed")
         
