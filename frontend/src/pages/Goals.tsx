@@ -999,9 +999,27 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
         margin: 0,
         padding: '1rem'
       }}
-      onClick={() => {
+      onClick={(e) => {
         // Don't close modal during loading
-        if (!loading) {
+        if (loading) return
+        
+        // Don't close if clicking on interactive elements (select, input, button, etc.)
+        const target = e.target as HTMLElement
+        if (
+          target.tagName === 'SELECT' ||
+          target.tagName === 'INPUT' ||
+          target.tagName === 'BUTTON' ||
+          target.tagName === 'TEXTAREA' ||
+          target.closest('select') ||
+          target.closest('input') ||
+          target.closest('button') ||
+          target.closest('textarea')
+        ) {
+          return
+        }
+        
+        // Only close if clicking on the backdrop (the dark overlay)
+        if (target === e.currentTarget) {
           onClose()
         }
       }}
@@ -1009,6 +1027,8 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
       <div
         className="bg-telegram-surface dark:bg-telegram-dark-surface rounded-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
+        onTouchStart={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-bold text-telegram-text dark:text-telegram-dark-text">
@@ -1043,6 +1063,9 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
                   setFormData({ ...formData, name: value })
                 }
               }}
+              onClick={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              onFocus={(e) => e.stopPropagation()}
               maxLength={15}
               className="w-full px-4 py-2 rounded-lg bg-telegram-hover dark:bg-telegram-dark-hover border border-telegram-border dark:border-telegram-dark-border text-telegram-text dark:text-telegram-dark-text disabled:opacity-50 disabled:cursor-not-allowed"
               placeholder={t.goals.goalNamePlaceholder}
@@ -1059,6 +1082,9 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
               inputMode="decimal"
               value={formData.target_amount}
               onChange={handleAmountChange}
+              onClick={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              onFocus={(e) => e.stopPropagation()}
               className={`w-full px-4 py-2 rounded-lg bg-telegram-hover dark:bg-telegram-dark-hover border ${
                 amountError 
                   ? 'border-red-500 dark:border-red-500' 
@@ -1079,6 +1105,9 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
             <select
               value={formData.currency}
               onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+              onClick={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
               className="w-full px-4 py-2 rounded-lg bg-telegram-hover dark:bg-telegram-dark-hover border border-telegram-border dark:border-telegram-dark-border text-telegram-text dark:text-telegram-dark-text disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={loading}
             >
@@ -1095,6 +1124,10 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
               type="date"
               value={formData.target_date}
               onChange={(e) => setFormData({ ...formData, target_date: e.target.value })}
+              onClick={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              onFocus={(e) => e.stopPropagation()}
               min={new Date().toISOString().split('T')[0]}
               className="w-full px-4 py-2 rounded-lg bg-telegram-hover dark:bg-telegram-dark-hover border border-telegram-border dark:border-telegram-dark-border text-telegram-text dark:text-telegram-dark-text disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={loading}
@@ -1113,6 +1146,9 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onClick={(e) => e.stopPropagation()}
+              onTouchStart={(e) => e.stopPropagation()}
+              onFocus={(e) => e.stopPropagation()}
               className="w-full px-4 py-2 rounded-lg bg-telegram-hover dark:bg-telegram-dark-hover border border-telegram-border dark:border-telegram-dark-border text-telegram-text dark:text-telegram-dark-text resize-none overflow-y-auto disabled:opacity-50 disabled:cursor-not-allowed"
               rows={3}
               style={{ maxHeight: '120px', minHeight: '80px', resize: 'none' }}
