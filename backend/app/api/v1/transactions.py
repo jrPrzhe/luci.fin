@@ -671,6 +671,35 @@ async def create_transaction(
                 detail="Можно добавлять прогресс только к активным целям"
             )
         
+        # Validate income amount for goals: don't allow exceeding target amount
+        if transaction_data.transaction_type == "income":
+            try:
+                amount_decimal = Decimal(str(transaction_data.amount))
+                current_amount = goal.current_amount or Decimal(0)
+                target_amount = goal.target_amount or Decimal(0)
+                remaining_amount = target_amount - current_amount
+                
+                # If goal is already reached or exceeded
+                if remaining_amount <= 0:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Цель уже достигнута. Нельзя добавлять средства к завершенной цели"
+                    )
+                
+                # If income exceeds remaining amount needed to reach goal
+                if amount_decimal > remaining_amount:
+                    # Format remaining amount for display (2 decimal places)
+                    remaining_formatted = float(remaining_amount).__format__('.2f')
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Пополнение больше цели. Вы сможете пополнить только {remaining_formatted} {goal.currency}"
+                    )
+            except HTTPException:
+                raise
+            except (ValueError, TypeError) as e:
+                logger.error(f"Error validating goal amount: {e}")
+                # If validation fails, continue (don't block transaction)
+        
         # If goal has an account, use it for the transaction
         if goal.account_id:
             goal_account_id = goal.account_id
