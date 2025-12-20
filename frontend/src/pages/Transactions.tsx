@@ -1013,7 +1013,7 @@ export function Transactions() {
                 className="flex-1 btn-primary py-3 text-base font-medium"
                 disabled={loading}
               >
-                🔍 {loading ? (t.transactions.loading || 'Загрузка...') : t.transactions.filters.apply}
+                🔍 {loading ? 'Загрузка...' : t.transactions.filters.apply}
               </button>
               <button
                 onClick={() => {
@@ -1085,9 +1085,9 @@ export function Transactions() {
               >
                 <option value="">
                   {accountsLoading 
-                    ? t.transactions.form.loadingAccounts || 'Загрузка счетов...'
+                    ? 'Загрузка счетов...'
                     : accountsError || accounts.length === 0
-                    ? t.transactions.form.noAccounts || 'Нет доступных счетов'
+                    ? 'Нет доступных счетов'
                     : t.transactions.form.selectAccount}
                 </option>
                 {accounts.map(account => (
@@ -1098,7 +1098,7 @@ export function Transactions() {
               </select>
               {accountsError && accounts.length === 0 && !accountsLoading && (
                 <p className="text-sm text-red-500 dark:text-red-400 mt-1">
-                  {t.transactions.form.accountsError || 'Не удалось загрузить счета. Пожалуйста, перезагрузите страницу.'}
+                  Не удалось загрузить счета. Пожалуйста, перезагрузите страницу.
                 </p>
               )}
             </div>

@@ -816,8 +816,8 @@ export function Reports() {
       {dailyFlowData && Array.isArray(dailyFlowData) && dailyFlowData.length > 0 && (() => {
         // Вычисляем min и max значения для правильного шага на оси Y
         const allValues = dailyFlowData.flatMap(item => [
-          item[t.reports.income] || 0,
-          item[t.reports.expenses] || 0
+          Number(item[t.reports.income]) || 0,
+          Number(item[t.reports.expenses]) || 0
         ])
         const minValue = Math.min(...allValues, 0)
         const maxValue = Math.max(...allValues)
