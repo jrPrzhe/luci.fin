@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text as sa_text
 from typing import List, Optional
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from app.core.database import get_db
 from app.api.v1.auth import get_current_user
 from app.models.user import User
@@ -14,10 +14,14 @@ from app.core.config import settings
 from decimal import Decimal
 import logging
 import httpx
+import re
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# Supported currencies (ISO 4217 codes)
+SUPPORTED_CURRENCIES = {"USD", "RUB", "EUR", "GBP", "JPY", "CNY", "CAD", "AUD", "CHF", "NZD"}
 
 
 async def get_exchange_rate(from_currency: str, to_currency: str) -> Optional[Decimal]:
@@ -78,6 +82,31 @@ class TransactionCreate(BaseModel):
     to_account_id: Optional[int] = None  # Required for transfer type
     shared_budget_id: Optional[int] = None  # Optional: link to shared budget
     goal_id: Optional[int] = None  # Optional: link to goal (for savings)
+    
+    @field_validator('currency')
+    @classmethod
+    def validate_currency(cls, v: str) -> str:
+        """Validate currency code: must be 3 uppercase letters and supported"""
+        if not isinstance(v, str):
+            raise ValueError('Валюта должна быть строкой')
+        
+        # Convert to uppercase for consistency
+        v_upper = v.upper().strip()
+        
+        # Check length (must be exactly 3 characters)
+        if len(v_upper) != 3:
+            raise ValueError('Код валюты должен состоять из 3 символов (например: USD, RUB)')
+        
+        # Check format: must be only letters
+        if not re.match(r'^[A-Z]{3}$', v_upper):
+            raise ValueError('Код валюты должен содержать только латинские буквы (например: USD, RUB)')
+        
+        # Check if currency is supported
+        if v_upper not in SUPPORTED_CURRENCIES:
+            supported_list = ', '.join(sorted(SUPPORTED_CURRENCIES))
+            raise ValueError(f'Неподдерживаемая валюта: {v_upper}. Поддерживаемые валюты: {supported_list}')
+        
+        return v_upper
 
 
 class TransactionUpdate(BaseModel):
@@ -91,6 +120,34 @@ class TransactionUpdate(BaseModel):
     to_account_id: Optional[int] = None
     shared_budget_id: Optional[int] = None
     goal_id: Optional[int] = None
+    
+    @field_validator('currency')
+    @classmethod
+    def validate_currency(cls, v: Optional[str]) -> Optional[str]:
+        """Validate currency code: must be 3 uppercase letters and supported"""
+        if v is None:
+            return None
+        
+        if not isinstance(v, str):
+            raise ValueError('Валюта должна быть строкой')
+        
+        # Convert to uppercase for consistency
+        v_upper = v.upper().strip()
+        
+        # Check length (must be exactly 3 characters)
+        if len(v_upper) != 3:
+            raise ValueError('Код валюты должен состоять из 3 символов (например: USD, RUB)')
+        
+        # Check format: must be only letters
+        if not re.match(r'^[A-Z]{3}$', v_upper):
+            raise ValueError('Код валюты должен содержать только латинские буквы (например: USD, RUB)')
+        
+        # Check if currency is supported
+        if v_upper not in SUPPORTED_CURRENCIES:
+            supported_list = ', '.join(sorted(SUPPORTED_CURRENCIES))
+            raise ValueError(f'Неподдерживаемая валюта: {v_upper}. Поддерживаемые валюты: {supported_list}')
+        
+        return v_upper
 
 
 class TransactionResponse(BaseModel):
@@ -591,6 +648,45 @@ def _sync_goal_with_account(account_id: int, user_id: int, db: Session):
         raise
 
 
+def _extract_user_friendly_error(error: Exception) -> str:
+    """Extract user-friendly error message without SQL details"""
+    error_str = str(error)
+    
+    # Remove SQL query details from error message
+    # Pattern: [SQL: ...] or (Background on this error...)
+    import re
+    
+    # Remove [SQL: ...] blocks
+    error_str = re.sub(r'\[SQL:.*?\]', '', error_str, flags=re.DOTALL)
+    
+    # Remove [parameters: ...] blocks
+    error_str = re.sub(r'\[parameters:.*?\]', '', error_str, flags=re.DOTALL)
+    
+    # Remove (Background on this error...) blocks
+    error_str = re.sub(r'\(Background on this error.*?\)', '', error_str, flags=re.DOTALL)
+    
+    # Extract the main error message (usually before the SQL part)
+    # For psycopg2 errors, extract the error type and message
+    if 'psycopg2' in error_str.lower():
+        # Pattern: (psycopg2.errors.XXX) message
+        match = re.search(r'\(psycopg2\.errors\.\w+\)\s*(.+)', error_str)
+        if match:
+            error_str = match.group(1).strip()
+    
+    # Clean up extra whitespace
+    error_str = re.sub(r'\s+', ' ', error_str).strip()
+    
+    # If we still have a very long error or SQL-like content, provide generic message
+    if len(error_str) > 200 or 'INSERT INTO' in error_str.upper() or 'SELECT' in error_str.upper():
+        return "Ошибка при создании транзакции. Проверьте корректность введенных данных."
+    
+    # Return cleaned error message
+    if error_str:
+        return f"Ошибка при создании транзакции: {error_str}"
+    else:
+        return "Ошибка при создании транзакции. Проверьте корректность введенных данных."
+
+
 @router.post("/", response_model=TransactionResponse, status_code=status.HTTP_201_CREATED)
 async def create_transaction(
     transaction_data: TransactionCreate,
@@ -1028,6 +1124,9 @@ async def create_transaction(
             logger.error(f"Error creating transfer transactions: {e}", exc_info=True)
             db.rollback()
             
+            # Extract error message without SQL details
+            error_message = _extract_user_friendly_error(e)
+            
             # Check for database numeric overflow errors
             error_str = str(e).lower()
             if 'numeric' in error_str or 'overflow' in error_str or 'value too large' in error_str or 'out of range' in error_str:
@@ -1036,9 +1135,21 @@ async def create_transaction(
                     detail="Сумма слишком большая. Максимальная сумма: 9 999 999 999 999.99"
                 )
             
+            # Check for string truncation errors (currency too long)
+            if 'stringdata' in error_str or 'string data right truncation' in error_str or 'value too long' in error_str:
+                if 'currency' in error_str or 'character varying(3)' in error_str:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Некорректная валюта. Код валюты должен состоять из 3 латинских букв (например: USD, RUB)"
+                    )
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Превышена максимальная длина поля"
+                )
+            
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Ошибка при создании перевода: {str(e)}"
+                detail=error_message
             )
     else:
         # For non-transfer transactions, use raw SQL to avoid enum issues
@@ -1088,6 +1199,9 @@ async def create_transaction(
             logger.error(f"Error creating transaction: {e}", exc_info=True)
             db.rollback()
             
+            # Extract error message without SQL details
+            error_message = _extract_user_friendly_error(e)
+            
             # Check for database numeric overflow errors
             error_str = str(e).lower()
             if 'numeric' in error_str or 'overflow' in error_str or 'value too large' in error_str or 'out of range' in error_str:
@@ -1096,9 +1210,21 @@ async def create_transaction(
                     detail="Сумма слишком большая. Максимальная сумма: 9 999 999 999 999.99"
                 )
             
+            # Check for string truncation errors (currency too long)
+            if 'stringdata' in error_str or 'string data right truncation' in error_str or 'value too long' in error_str:
+                if 'currency' in error_str or 'character varying(3)' in error_str:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Некорректная валюта. Код валюты должен состоять из 3 латинских букв (например: USD, RUB)"
+                    )
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Превышена максимальная длина поля"
+                )
+            
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Ошибка при создании транзакции: {str(e)}"
+                detail=error_message
             )
     
     # Update goal if specified in transaction

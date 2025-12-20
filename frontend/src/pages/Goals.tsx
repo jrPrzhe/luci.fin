@@ -1060,7 +1060,18 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
         <form
           onSubmit={(e) => {
             e.preventDefault()
+            e.stopPropagation()
             handleCreate()
+          }}
+          onKeyDown={(e) => {
+            // Prevent form submission on Enter key unless it's the submit button
+            if (e.key === 'Enter' && e.target !== e.currentTarget) {
+              const target = e.target as HTMLElement
+              if (target.tagName !== 'BUTTON' || target.getAttribute('type') !== 'submit') {
+                e.preventDefault()
+                e.stopPropagation()
+              }
+            }
           }}
           className="space-y-4"
         >
@@ -1075,6 +1086,12 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
                 const value = e.target.value
                 if (value.length <= 15) {
                   setFormData({ ...formData, name: value })
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  e.stopPropagation()
                 }
               }}
               onClick={(e) => e.stopPropagation()}
@@ -1096,6 +1113,12 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
               inputMode="decimal"
               value={formData.target_amount}
               onChange={handleAmountChange}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  e.stopPropagation()
+                }
+              }}
               onClick={(e) => e.stopPropagation()}
               onTouchStart={(e) => e.stopPropagation()}
               onFocus={(e) => e.stopPropagation()}
@@ -1138,6 +1161,12 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
               type="date"
               value={formData.target_date}
               onChange={(e) => setFormData({ ...formData, target_date: e.target.value })}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  e.stopPropagation()
+                }
+              }}
               onClick={(e) => e.stopPropagation()}
               onTouchStart={(e) => e.stopPropagation()}
               onMouseDown={(e) => e.stopPropagation()}
@@ -1160,6 +1189,18 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
             <textarea
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              onKeyDown={(e) => {
+                // Allow Enter in textarea for multi-line input, but prevent form submission
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                  // Ctrl+Enter or Cmd+Enter can submit if needed, but we prevent it here
+                  e.preventDefault()
+                  e.stopPropagation()
+                } else if (e.key === 'Enter' && !e.shiftKey) {
+                  // Regular Enter in textarea - allow it for new lines, but prevent form submission
+                  // We'll let the default behavior happen for textarea, but prevent bubbling
+                  e.stopPropagation()
+                }
+              }}
               onClick={(e) => e.stopPropagation()}
               onTouchStart={(e) => e.stopPropagation()}
               onFocus={(e) => e.stopPropagation()}
@@ -1173,7 +1214,12 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
 
           <div className="flex gap-3 mt-6">
             <button
-              type="submit"
+              type="button"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                handleCreate()
+              }}
               className="flex-1 btn-primary"
               disabled={loading || !!amountError || !formData.name || !formData.target_amount}
             >
