@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { api } from '../services/api'
 import { useToast } from '../contexts/ToastContext'
 import { useI18n } from '../contexts/I18nContext'
+import { LoadingSpinner } from '../components/LoadingSpinner'
 
 interface ImportSource {
   id: string
@@ -21,11 +23,25 @@ export function Import() {
   const [importStartTime, setImportStartTime] = useState<number | null>(null)
   const [elapsedTime, setElapsedTime] = useState(0)
 
+  // Проверяем премиум статус пользователя
+  const { data: user, isLoading: isLoadingUser } = useQuery({
+    queryKey: ['currentUser'],
+    queryFn: api.getCurrentUser,
+  })
+
   useEffect(() => {
-    loadSources()
-    // Скроллим к началу страницы при открытии
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }, [])
+    // Если пользователь не премиум, перенаправляем в профиль
+    if (user && !user.is_premium) {
+      navigate('/profile')
+      return
+    }
+    
+    if (user?.is_premium) {
+      loadSources()
+      // Скроллим к началу страницы при открытии
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }, [user, navigate])
 
   const loadSources = async () => {
     try {
@@ -103,6 +119,16 @@ export function Import() {
       setElapsedTime(0)
     }
   }, [isUploading, importStartTime])
+
+  // Показываем загрузку, пока проверяем премиум статус
+  if (isLoadingUser) {
+    return <LoadingSpinner fullScreen={true} size="md" />
+  }
+
+  // Если пользователь не премиум, не показываем страницу (должен быть перенаправлен)
+  if (!user?.is_premium) {
+    return null
+  }
 
   return (
     <div className="min-h-screen p-4 md:p-6 animate-fade-in max-w-2xl mx-auto w-full">

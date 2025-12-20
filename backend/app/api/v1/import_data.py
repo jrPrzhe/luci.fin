@@ -403,6 +403,10 @@ async def import_data(
     """
     Импортирует данные из внешнего приложения
     """
+    # Проверяем премиум статус
+    from app.services.premium import require_premium
+    require_premium(current_user, db)
+    
     if source != "myfinance":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

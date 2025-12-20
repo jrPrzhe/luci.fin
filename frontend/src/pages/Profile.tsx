@@ -304,26 +304,28 @@ export function Profile() {
       </div>
 
       {/* Information Section */}
-      <div className="card p-4 md:p-5 mt-4 md:mt-6">
-        <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
-          {t.profile.info}
-        </h2>
-        <div className="space-y-3">
-          <button
-            onClick={() => navigate('/import')}
-            className="w-full flex items-center justify-between p-3 rounded-telegram hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors text-left"
-          >
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">📥</span>
-              <div>
-                <p className="font-medium text-telegram-text dark:text-telegram-dark-text">{t.profile.importData}</p>
-                <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{t.profile.importDataDesc}</p>
+      {user?.is_premium && (
+        <div className="card p-4 md:p-5 mt-4 md:mt-6">
+          <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
+            {t.profile.info}
+          </h2>
+          <div className="space-y-3">
+            <button
+              onClick={() => navigate('/import')}
+              className="w-full flex items-center justify-between p-3 rounded-telegram hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors text-left"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">📥</span>
+                <div>
+                  <p className="font-medium text-telegram-text dark:text-telegram-dark-text">{t.profile.importData}</p>
+                  <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{t.profile.importDataDesc}</p>
+                </div>
               </div>
-            </div>
-            <span className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">→</span>
-          </button>
+              <span className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">→</span>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Reset Account Section */}
       <div className="card p-4 md:p-5 mt-4 md:mt-6 border-2 border-red-200 dark:border-red-800">
