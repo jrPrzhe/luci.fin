@@ -58,6 +58,97 @@ interface AnalyticsData {
 
 const COLORS = ['#3390EC', '#6CC3F2', '#4CAF50', '#FF9800', '#9C27B0', '#F44336', '#00BCD4', '#FFC107', '#607D8B', '#E91E63']
 
+// Функция для расчета правильного шага значений на осях графиков
+// Возвращает массив значений для отображения на оси с правильным шагом (0, 1, 2, 3 и т.д.)
+const calculateTicks = (min: number, max: number, count: number = 5): number[] => {
+  // Обработка случая, когда все значения одинаковые или равны нулю
+  if (min === max || (min === 0 && max === 0)) {
+    if (min === 0 && max === 0) {
+      return [0, 1, 2, 3, 4]
+    }
+    // Если min и max одинаковые, возвращаем несколько значений вокруг этого числа
+    const step = Math.max(1, Math.abs(min) / 10) || 1
+    const roundedStep = Math.max(1, Math.round(step))
+    return [min - roundedStep, min, min + roundedStep, min + roundedStep * 2, min + roundedStep * 3]
+  }
+  
+  // Вычисляем оптимальный шаг
+  const range = max - min
+  const rawStep = range / (count - 1)
+  
+  // Округляем шаг до "красивого" числа (1, 2, 5, 10, 20, 50, 100, и т.д.)
+  if (rawStep === 0) {
+    return [0, 1, 2, 3, 4]
+  }
+  
+  const magnitude = Math.pow(10, Math.floor(Math.log10(Math.abs(rawStep))))
+  const normalizedStep = Math.abs(rawStep) / magnitude
+  
+  let step: number
+  if (normalizedStep <= 1) {
+    step = 1 * magnitude
+  } else if (normalizedStep <= 2) {
+    step = 2 * magnitude
+  } else if (normalizedStep <= 5) {
+    step = 5 * magnitude
+  } else {
+    step = 10 * magnitude
+  }
+  
+  // Округляем шаг до целого числа для целочисленных значений
+  step = Math.max(1, Math.round(step))
+  
+  // Начинаем с округленного вниз значения (но не меньше 0, если min >= 0)
+  let start = Math.floor(min / step) * step
+  if (min >= 0 && start < 0) {
+    start = 0
+  }
+  
+  const ticks: number[] = []
+  
+  // Генерируем значения с правильным шагом
+  for (let value = start; value <= max + step * 2; value += step) {
+    if (value >= min - step && value <= max + step * 2) {
+      ticks.push(Math.round(value))
+    }
+    // Ограничиваем количество тиков
+    if (ticks.length >= count + 2) break
+  }
+  
+  // Убеждаемся, что у нас есть минимум и максимум
+  if (ticks.length === 0 || ticks[0] > min) {
+    const firstTick = Math.floor(min / step) * step
+    if (firstTick < 0 && min >= 0) {
+      ticks.unshift(0)
+    } else {
+      ticks.unshift(Math.round(firstTick))
+    }
+  }
+  if (ticks.length === 0 || ticks[ticks.length - 1] < max) {
+    ticks.push(Math.round(Math.ceil(max / step) * step))
+  }
+  
+  // Удаляем дубликаты, сортируем и округляем до целых
+  const uniqueTicks = [...new Set(ticks.map(t => Math.round(t)))].sort((a, b) => a - b)
+  
+  // Убеждаемся, что шаг между значениями одинаковый (0, 1, 2, 3...)
+  if (uniqueTicks.length > 1) {
+    const firstStep = uniqueTicks[1] - uniqueTicks[0]
+    const normalizedTicks = [uniqueTicks[0]]
+    
+    for (let i = 1; i < uniqueTicks.length; i++) {
+      const diff = uniqueTicks[i] - normalizedTicks[normalizedTicks.length - 1]
+      if (diff >= firstStep) {
+        normalizedTicks.push(uniqueTicks[i])
+      }
+    }
+    
+    return normalizedTicks.length >= 2 ? normalizedTicks : uniqueTicks
+  }
+  
+  return uniqueTicks
+}
+
 // Маппинг английских названий месяцев на русские
 const MONTH_MAPPING: Record<string, string> = {
   'Jan': 'Янв', 'Feb': 'Фев', 'Mar': 'Мар', 'Apr': 'Апр',
@@ -722,30 +813,42 @@ export function Reports() {
       )}
 
       {/* Daily Flow Chart */}
-      {dailyFlowData && Array.isArray(dailyFlowData) && dailyFlowData.length > 0 && (
-        <div className="card p-5 mb-6" style={{ overflow: 'visible' }}>
-          <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
-            {t.reports.dailyFlow}
-          </h2>
-          <div style={{ width: '100%', height: 300, overflow: 'visible', padding: '10px' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart 
-                data={dailyFlowData}
-                margin={{ top: 10, right: 10, bottom: 10, left: 10 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E5E5" className="dark:stroke-telegram-dark-border" />
-                <XAxis 
-                  dataKey="date" 
-                  stroke="#707579"
-                  className="dark:stroke-telegram-dark-textSecondary"
-                  style={{ fontSize: '12px' }}
-                />
-                <YAxis 
-                  stroke="#707579"
-                  className="dark:stroke-telegram-dark-textSecondary"
-                  style={{ fontSize: '12px' }}
-                  tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
-                />
+      {dailyFlowData && Array.isArray(dailyFlowData) && dailyFlowData.length > 0 && (() => {
+        // Вычисляем min и max значения для правильного шага на оси Y
+        const allValues = dailyFlowData.flatMap(item => [
+          item[t.reports.income] || 0,
+          item[t.reports.expenses] || 0
+        ])
+        const minValue = Math.min(...allValues, 0)
+        const maxValue = Math.max(...allValues)
+        const yTicks = calculateTicks(minValue, maxValue, 5)
+        
+        return (
+          <div className="card p-5 mb-6" style={{ overflow: 'visible' }}>
+            <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
+              {t.reports.dailyFlow}
+            </h2>
+            <div style={{ width: '100%', height: 300, overflow: 'visible', padding: '10px' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart 
+                  data={dailyFlowData}
+                  margin={{ top: 10, right: 10, bottom: 10, left: 10 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E5E5" className="dark:stroke-telegram-dark-border" />
+                  <XAxis 
+                    dataKey="date" 
+                    stroke="#707579"
+                    className="dark:stroke-telegram-dark-textSecondary"
+                    style={{ fontSize: '12px' }}
+                  />
+                  <YAxis 
+                    stroke="#707579"
+                    className="dark:stroke-telegram-dark-textSecondary"
+                    style={{ fontSize: '12px' }}
+                    tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+                    ticks={yTicks}
+                    domain={[Math.min(...yTicks), Math.max(...yTicks)]}
+                  />
                 <Tooltip content={CustomTooltip} />
                 <Legend />
                 <Line 
@@ -768,44 +871,57 @@ export function Reports() {
             </ResponsiveContainer>
           </div>
         </div>
-      )}
+        )
+      })()}
 
       {/* Monthly Comparison */}
-      {monthlyData && Array.isArray(monthlyData) && monthlyData.length > 0 && (
-        <div className="card p-5 mb-6">
-          <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
-            {t.reports.monthlyComparison}
-          </h2>
-          <div className="w-full" style={{ minHeight: '300px', minWidth: '100%' }}>
-            <ResponsiveContainer width="100%" height={period === 'year' ? 350 : 300} minHeight={300}>
-              <BarChart 
-                data={monthlyData} 
-                margin={{ 
-                  top: 30, 
-                  right: 10, 
-                  left: 10, 
-                  bottom: period === 'year' ? 60 : 30 
-                }}
-                barCategoryGap="30%"
-                barGap={10}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E5E5" className="dark:stroke-telegram-dark-border" />
-                <XAxis 
-                  dataKey="month" 
-                  stroke="#707579"
-                  className="dark:stroke-telegram-dark-textSecondary"
-                  style={{ fontSize: '12px' }}
-                  angle={period === 'year' ? -45 : 0}
-                  textAnchor={period === 'year' ? 'end' : 'middle'}
-                  height={period === 'year' ? 60 : 30}
-                />
-                <YAxis 
-                  stroke="#707579"
-                  className="dark:stroke-telegram-dark-textSecondary"
-                  style={{ fontSize: '12px' }}
-                  tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
-                  width={50}
-                />
+      {monthlyData && Array.isArray(monthlyData) && monthlyData.length > 0 && (() => {
+        // Вычисляем min и max значения для правильного шага на оси Y
+        const allValues = monthlyData.flatMap(item => [
+          item.income || 0,
+          item.expense || 0
+        ])
+        const minValue = Math.min(...allValues, 0)
+        const maxValue = Math.max(...allValues)
+        const yTicks = calculateTicks(minValue, maxValue, 5)
+        
+        return (
+          <div className="card p-5 mb-6">
+            <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
+              {t.reports.monthlyComparison}
+            </h2>
+            <div className="w-full" style={{ minHeight: '300px', minWidth: '100%' }}>
+              <ResponsiveContainer width="100%" height={period === 'year' ? 350 : 300} minHeight={300}>
+                <BarChart 
+                  data={monthlyData} 
+                  margin={{ 
+                    top: 30, 
+                    right: 10, 
+                    left: 10, 
+                    bottom: period === 'year' ? 60 : 30 
+                  }}
+                  barCategoryGap="30%"
+                  barGap={10}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E5E5" className="dark:stroke-telegram-dark-border" />
+                  <XAxis 
+                    dataKey="month" 
+                    stroke="#707579"
+                    className="dark:stroke-telegram-dark-textSecondary"
+                    style={{ fontSize: '12px' }}
+                    angle={period === 'year' ? -45 : 0}
+                    textAnchor={period === 'year' ? 'end' : 'middle'}
+                    height={period === 'year' ? 60 : 30}
+                  />
+                  <YAxis 
+                    stroke="#707579"
+                    className="dark:stroke-telegram-dark-textSecondary"
+                    style={{ fontSize: '12px' }}
+                    tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+                    width={50}
+                    ticks={yTicks}
+                    domain={[Math.min(...yTicks), Math.max(...yTicks)]}
+                  />
                 <Tooltip 
                   content={CustomTooltip}
                   cursor={{ fill: 'rgba(0, 0, 0, 0.05)' }}
@@ -837,7 +953,8 @@ export function Reports() {
             </ResponsiveContainer>
           </div>
         </div>
-      )}
+        )
+      })()}
 
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -889,29 +1006,40 @@ export function Reports() {
         )}
 
         {/* Top Expense Categories Bar Chart */}
-        {analytics.top_expense_categories && Array.isArray(analytics.top_expense_categories) && analytics.top_expense_categories.length > 0 && (
-          <div className="card p-5">
-            <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
-              {t.reports.topExpenseCategories}
-            </h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart 
-                data={(analytics.top_expense_categories && Array.isArray(analytics.top_expense_categories) ? analytics.top_expense_categories.slice(0, 5) : []).map(cat => ({
-                  name: (cat.icon || '📦') + ' ' + translateCategoryName(cat.name || 'Без названия'),
-                  originalName: cat.name || 'Без названия',
-                  amount: cat.amount || 0,
-                  color: cat.color || '#607D8B',
-                }))}
-                layout="vertical"
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E5E5" className="dark:stroke-telegram-dark-border" />
-                <XAxis 
-                  type="number"
-                  stroke="#707579"
-                  className="dark:stroke-telegram-dark-textSecondary"
-                  style={{ fontSize: '12px' }}
-                  tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
-                />
+        {analytics.top_expense_categories && Array.isArray(analytics.top_expense_categories) && analytics.top_expense_categories.length > 0 && (() => {
+          const barChartData = (analytics.top_expense_categories && Array.isArray(analytics.top_expense_categories) ? analytics.top_expense_categories.slice(0, 5) : []).map(cat => ({
+            name: (cat.icon || '📦') + ' ' + translateCategoryName(cat.name || 'Без названия'),
+            originalName: cat.name || 'Без названия',
+            amount: cat.amount || 0,
+            color: cat.color || '#607D8B',
+          }))
+          
+          // Вычисляем min и max значения для правильного шага на оси X
+          const amounts = barChartData.map(item => item.amount)
+          const minValue = Math.min(...amounts, 0)
+          const maxValue = Math.max(...amounts)
+          const xTicks = calculateTicks(minValue, maxValue, 5)
+          
+          return (
+            <div className="card p-5">
+              <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
+                {t.reports.topExpenseCategories}
+              </h2>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart 
+                  data={barChartData}
+                  layout="vertical"
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E5E5" className="dark:stroke-telegram-dark-border" />
+                  <XAxis 
+                    type="number"
+                    stroke="#707579"
+                    className="dark:stroke-telegram-dark-textSecondary"
+                    style={{ fontSize: '12px' }}
+                    tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+                    ticks={xTicks}
+                    domain={[Math.min(...xTicks), Math.max(...xTicks)]}
+                  />
                 <YAxis 
                   type="category" 
                   dataKey="name"
@@ -960,7 +1088,8 @@ export function Reports() {
               </BarChart>
             </ResponsiveContainer>
           </div>
-        )}
+          )
+        })()}
       </div>
     </div>
   )
