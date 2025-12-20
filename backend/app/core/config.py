@@ -48,6 +48,10 @@ class Settings(BaseSettings):
         default=[],
         description="List of Telegram usernames (without @) that should have admin access"
     )
+    ADMIN_TELEGRAM_IDS: Union[List[str], str] = Field(
+        default=[],
+        description="List of Telegram user IDs (as strings) that should have admin access"
+    )
     
     # VK
     VK_BOT_TOKEN: str = ""
@@ -121,6 +125,38 @@ class Settings(BaseSettings):
                 # Convert to lowercase for case-insensitive comparison
                 if username:
                     normalized.append(username.lower())
+        return normalized
+    
+    @field_validator('ADMIN_TELEGRAM_IDS', mode='before')
+    @classmethod
+    def parse_admin_telegram_ids(cls, v):
+        result = []
+        if isinstance(v, str):
+            # Try to parse as JSON first
+            try:
+                parsed = json.loads(v)
+                if isinstance(parsed, list):
+                    result = parsed
+                else:
+                    return []
+            except (json.JSONDecodeError, ValueError):
+                # If not JSON, parse as comma-separated string
+                if v.strip():
+                    result = [telegram_id.strip() for telegram_id in v.split(',') if telegram_id.strip()]
+                else:
+                    return []
+        elif isinstance(v, list):
+            result = v
+        else:
+            return []
+        
+        # Normalize all IDs: convert to string
+        normalized = []
+        for telegram_id in result:
+            if telegram_id is not None:
+                telegram_id = str(telegram_id).strip()
+                if telegram_id:
+                    normalized.append(telegram_id)
         return normalized
     
     model_config = SettingsConfigDict(
