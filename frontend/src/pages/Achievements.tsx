@@ -135,7 +135,7 @@ export function Achievements() {
               return (
                 <div 
                   key={achievement.id} 
-                  className={`achievement-card bg-gradient-to-br ${style.gradient} rounded-2xl p-5 border-2 ${style.border} ${style.glow} transition-all duration-300 hover:scale-105 hover:shadow-xl relative overflow-hidden group`}
+                  className={`achievement-card bg-gradient-to-br ${style.gradient} rounded-2xl p-5 border-2 ${style.border} ${style.glow} transition-all duration-300 hover:scale-105 hover:shadow-xl relative overflow-hidden group z-0`}
                 >
                   {/* Shine effect */}
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>

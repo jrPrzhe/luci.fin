@@ -581,7 +581,7 @@ export function Layout() {
       </aside>
 
       {/* Mobile/Tablet Header - скрыт на больших экранах (xl+) */}
-      <header className="xl:hidden bg-telegram-surface dark:bg-telegram-dark-surface border-b border-telegram-border dark:border-telegram-dark-border px-4 py-3 flex items-center justify-between sticky top-0 z-10 relative gap-2">
+      <header className="xl:hidden bg-telegram-surface dark:bg-telegram-dark-surface border-b border-telegram-border dark:border-telegram-dark-border px-4 py-3 flex items-center justify-between sticky top-0 z-50 relative gap-2 backdrop-blur-sm">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <button
             onClick={() => setShowStories(true)}
