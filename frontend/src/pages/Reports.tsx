@@ -578,12 +578,12 @@ export function Reports() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="card p-5">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
               <span className="text-xl">💰</span>
             </div>
-            <div>
+            <div className="min-w-0 flex-1 overflow-hidden">
               <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{t.reports.income}</p>
-              <p className="text-xl font-bold text-green-600 dark:text-green-400">
+              <p className="text-base md:text-lg lg:text-xl font-bold text-green-600 dark:text-green-400 break-words" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                 {formatCurrency(analytics.totals?.income || 0)}
               </p>
             </div>
@@ -592,12 +592,12 @@ export function Reports() {
 
         <div className="card p-5">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
               <span className="text-xl">💸</span>
             </div>
-            <div>
+            <div className="min-w-0 flex-1 overflow-hidden">
               <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{t.reports.expenses}</p>
-              <p className="text-xl font-bold text-red-600 dark:text-red-400">
+              <p className="text-base md:text-lg lg:text-xl font-bold text-red-600 dark:text-red-400 break-words" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                 {formatCurrency(analytics.totals?.expense || 0)}
               </p>
             </div>
@@ -606,16 +606,16 @@ export function Reports() {
 
         <div className="card p-5">
           <div className="flex items-center gap-3 mb-2">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
               (analytics.totals?.net || 0) >= 0 ? 'bg-blue-100' : 'bg-orange-100'
             }`}>
               <span className="text-xl">📊</span>
             </div>
-            <div>
+            <div className="min-w-0 flex-1 overflow-hidden">
               <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{t.reports.total}</p>
-              <p className={`text-xl font-bold ${
+              <p className={`text-base md:text-lg lg:text-xl font-bold break-words ${
                 (analytics.totals?.net || 0) >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'
-              }`}>
+              }`} style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                 {formatCurrency(analytics.totals?.net || 0)}
               </p>
             </div>

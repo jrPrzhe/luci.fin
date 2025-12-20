@@ -218,6 +218,14 @@ export function Categories() {
       is_favorite: category.is_favorite,
     })
     setShowForm(true)
+    
+    // Прокручиваем к форме редактирования после небольшой задержки для рендеринга
+    setTimeout(() => {
+      const formElement = document.getElementById(`edit-form-${category.id}`)
+      if (formElement) {
+        formElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    }, 100)
   }
 
   const handleDelete = (id: number) => {
@@ -389,6 +397,13 @@ export function Categories() {
               onClick={() => {
                 resetForm()
                 setShowForm(true)
+                // Прокручиваем к форме создания после небольшой задержки для рендеринга
+                setTimeout(() => {
+                  const formElement = document.getElementById('new-category-form')
+                  if (formElement) {
+                    formElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  }
+                }, 100)
               }}
               className="btn-primary"
             >
@@ -462,9 +477,12 @@ export function Categories() {
         )}
       </div>
 
-      {/* Create/Edit Form */}
-      {showForm && (
-        <div className="card mb-6">
+      {/* Create Form (only for new categories, not for editing) */}
+      {showForm && !editingCategory && (
+        <div 
+          id="new-category-form"
+          className="card mb-6"
+        >
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold text-telegram-text dark:text-telegram-dark-text">
               {editingCategory ? t.categories.filters.editCategory : t.categories.filters.newCategory}
@@ -627,7 +645,19 @@ export function Categories() {
           <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-6">
             {t.categories.noCategoriesDesc}
           </p>
-          <button onClick={() => setShowForm(true)} className="btn-primary">
+          <button 
+            onClick={() => {
+              setShowForm(true)
+              // Прокручиваем к форме создания после небольшой задержки для рендеринга
+              setTimeout(() => {
+                const formElement = document.getElementById('new-category-form')
+                if (formElement) {
+                  formElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }
+              }, 100)
+            }} 
+            className="btn-primary"
+          >
             ➕ {t.categories.filters.addCategory}
           </button>
         </div>
@@ -651,79 +681,235 @@ export function Categories() {
               {showFavoritesSection && (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
                   {favoriteCategories.map((category) => (
-                    <div
-                      key={category.id}
-                      className="card hover:shadow-lg transition-all relative group p-2 md:p-4"
-                      style={{
-                        borderLeft: `3px solid ${category.color || '#4CAF50'}`,
-                      }}
-                    >
-                      {/* Кнопка редактирования в правом верхнем углу - только для несистемных категорий */}
-                      {isEditingMode && !category.is_system && (
-                        <button
-                          onClick={() => handleEdit(category)}
-                          className="absolute top-2 right-2 p-1.5 text-telegram-primary hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover rounded-full transition-all active:scale-95"
-                          title={t.common.edit}
-                        >
-                          <span className="text-base">✏️</span>
-                        </button>
-                      )}
-                      
-                      <div className="flex flex-col items-center gap-2 md:gap-2.5">
-                        {/* Иконка категории */}
-                        <div
-                          className="w-10 h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 rounded-full flex items-center justify-center text-xl md:text-2xl lg:text-3xl flex-shrink-0"
-                          style={{ backgroundColor: `${category.color || '#4CAF50'}20` }}
-                        >
-                          {category.icon || '📦'}
-                        </div>
+                    <div key={`category-wrapper-${category.id}`}>
+                      <div
+                        id={`category-${category.id}`}
+                        className="card hover:shadow-lg transition-all relative group p-2 md:p-4"
+                        style={{
+                          borderLeft: `3px solid ${category.color || '#4CAF50'}`,
+                        }}
+                      >
+                        {/* Кнопка редактирования в правом верхнем углу - только для несистемных категорий */}
+                        {isEditingMode && !category.is_system && (
+                          <button
+                            onClick={() => handleEdit(category)}
+                            className="absolute top-2 right-2 p-1.5 text-telegram-primary hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover rounded-full transition-all active:scale-95"
+                            title={t.common.edit}
+                          >
+                            <span className="text-base">✏️</span>
+                          </button>
+                        )}
                         
-                        {/* Название категории */}
-                        <div className="w-full text-center px-2">
-                          <h4 className="font-semibold text-telegram-text dark:text-telegram-dark-text text-sm md:text-base lg:text-lg mb-1 text-center break-words">
-                            {translateCategoryName(category.name)}
-                          </h4>
-                          <p className="text-xs md:text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-1">
-                            {getTransactionTypeIcon(category.transaction_type)} {getTransactionTypeLabel(category.transaction_type)}
-                          </p>
-                          {(category.is_system || category.shared_budget_id) && (
-                            <div className="flex items-center justify-center gap-1.5 mt-1">
-                              {category.is_system && (
-                                <span className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary" title="Базовая категория">
-                                  📋
-                                </span>
-                              )}
-                              {category.shared_budget_id && (
-                                <span className="text-xs text-blue-600 dark:text-blue-400" title="Общая категория">
-                                  👥
-                                </span>
+                        <div className="flex flex-col items-center gap-2 md:gap-2.5">
+                          {/* Иконка категории */}
+                          <div
+                            className="w-10 h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 rounded-full flex items-center justify-center text-xl md:text-2xl lg:text-3xl flex-shrink-0"
+                            style={{ backgroundColor: `${category.color || '#4CAF50'}20` }}
+                          >
+                            {category.icon || '📦'}
+                          </div>
+                          
+                          {/* Название категории */}
+                          <div className="w-full text-center px-2">
+                            <h4 className="font-semibold text-telegram-text dark:text-telegram-dark-text text-sm md:text-base lg:text-lg mb-1 text-center break-words">
+                              {translateCategoryName(category.name)}
+                            </h4>
+                            <p className="text-xs md:text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-1">
+                              {getTransactionTypeIcon(category.transaction_type)} {getTransactionTypeLabel(category.transaction_type)}
+                            </p>
+                            {(category.is_system || category.shared_budget_id) && (
+                              <div className="flex items-center justify-center gap-1.5 mt-1">
+                                {category.is_system && (
+                                  <span className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary" title="Базовая категория">
+                                    📋
+                                  </span>
+                                )}
+                                {category.shared_budget_id && (
+                                  <span className="text-xs text-blue-600 dark:text-blue-400" title="Общая категория">
+                                    👥
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Кнопки редактирования - внизу карточки (только избранное и удаление) */}
+                          {isEditingMode && (
+                            <div className="flex items-center justify-center gap-2 w-full pt-2 border-t border-telegram-hover dark:border-telegram-dark-hover mt-auto">
+                              <button
+                                onClick={() => handleToggleFavorite(category.id, category.is_favorite)}
+                                className="p-2 text-yellow-500 hover:text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/30 rounded-full transition-all active:scale-95"
+                                title="Убрать из избранного"
+                              >
+                                <span className="text-base md:text-lg">⭐</span>
+                              </button>
+                              {!category.is_system && (
+                                <button
+                                  onClick={() => handleDelete(category.id)}
+                                  className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-all active:scale-95"
+                                  title="Удалить"
+                                >
+                                  <span className="text-base md:text-lg">🗑️</span>
+                                </button>
                               )}
                             </div>
                           )}
                         </div>
-
-                        {/* Кнопки редактирования - внизу карточки (только избранное и удаление) */}
-                        {isEditingMode && (
-                          <div className="flex items-center justify-center gap-2 w-full pt-2 border-t border-telegram-hover dark:border-telegram-dark-hover mt-auto">
-                            <button
-                              onClick={() => handleToggleFavorite(category.id, category.is_favorite)}
-                              className="p-2 text-yellow-500 hover:text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/30 rounded-full transition-all active:scale-95"
-                              title="Убрать из избранного"
-                            >
-                              <span className="text-base md:text-lg">⭐</span>
-                            </button>
-                            {!category.is_system && (
-                              <button
-                                onClick={() => handleDelete(category.id)}
-                                className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-all active:scale-95"
-                                title="Удалить"
-                              >
-                                <span className="text-base md:text-lg">🗑️</span>
-                              </button>
-                            )}
-                          </div>
-                        )}
                       </div>
+                      
+                      {/* Форма редактирования показывается сразу под редактируемой категорией */}
+                      {editingCategory && editingCategory.id === category.id && (
+                        <div id={`edit-form-${category.id}`} className="card mb-3 mt-3">
+                          <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-semibold text-telegram-text dark:text-telegram-dark-text">
+                              {t.categories.filters.editCategory}
+                            </h2>
+                            <button
+                              onClick={resetForm}
+                              className="text-telegram-textSecondary hover:text-telegram-text"
+                            >
+                              ✕
+                            </button>
+                          </div>
+
+                          <form onSubmit={handleSubmit} className="space-y-4">
+                            <div>
+                              <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
+                                {t.categories.form.nameLabel} <span className="text-red-500 dark:text-red-400">*</span>
+                              </label>
+                              <input
+                                type="text"
+                                value={formData.name}
+                                onChange={(e) => {
+                                  const value = e.target.value
+                                  const trimmedValue = value.slice(0, 25)
+                                  setFormData({ ...formData, name: trimmedValue })
+                                }}
+                                className="input"
+                                placeholder={t.categories.form.namePlaceholder}
+                                maxLength={25}
+                                required
+                              />
+                              <div className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1 text-right">
+                                {formData.name.length}/25
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
+                                {t.categories.form.typeLabel} <span className="text-red-500 dark:text-red-400">*</span>
+                              </label>
+                              <select
+                                value={formData.transaction_type}
+                                onChange={(e) => setFormData({ ...formData, transaction_type: e.target.value as any })}
+                                className="input"
+                                required
+                              >
+                                <option value="expense">💸 {t.categories.filters.transactionType.expense}</option>
+                                <option value="income">💰 {t.categories.filters.transactionType.income}</option>
+                                <option value="both">💵 {t.categories.filters.transactionType.both}</option>
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
+                                {t.categories.form.iconLabel}
+                              </label>
+                              <div className="relative emoji-picker-container">
+                                <button
+                                  type="button"
+                                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                                  className="w-full input flex items-center justify-between cursor-pointer hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors"
+                                >
+                                  <span className="text-2xl">{formData.icon || '📦'}</span>
+                                  <span className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+                                    {showEmojiPicker ? '▼' : '▶'}
+                                  </span>
+                                </button>
+                                {showEmojiPicker && (
+                                  <div className="absolute z-50 mt-2 w-full bg-telegram-surface dark:bg-telegram-dark-surface border border-telegram-border dark:border-telegram-dark-border rounded-telegram shadow-lg max-h-64 overflow-y-auto">
+                                    <div className="p-2 sm:p-3 grid grid-cols-6 sm:grid-cols-8 gap-1 sm:gap-2">
+                                      {AVAILABLE_EMOJIS.map((emoji, index) => (
+                                        <button
+                                          key={index}
+                                          type="button"
+                                          onClick={() => {
+                                            setFormData({ ...formData, icon: emoji })
+                                            setShowEmojiPicker(false)
+                                          }}
+                                          className="text-xl sm:text-2xl p-1.5 sm:p-2 hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover rounded-telegram transition-colors active:scale-95"
+                                          title={emoji}
+                                        >
+                                          {emoji}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
+                                {t.categories.form.iconHint}
+                              </p>
+                            </div>
+
+                            <div>
+                              <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
+                                {t.categories.form.colorLabel}
+                              </label>
+                              <div className="grid grid-cols-8 gap-2">
+                                {AVAILABLE_COLORS.map((color) => (
+                                  <button
+                                    key={color}
+                                    type="button"
+                                    onClick={() => {
+                                      setFormData({ ...formData, color: color })
+                                    }}
+                                    className={`w-full h-10 rounded-telegram transition-all relative ${
+                                      formData.color === color
+                                        ? 'ring-2 ring-telegram-primary ring-offset-2 scale-110'
+                                        : 'hover:scale-105'
+                                    }`}
+                                    style={{ backgroundColor: color }}
+                                    title={color}
+                                  >
+                                    {formData.color === color && (
+                                      <span className="absolute inset-0 flex items-center justify-center text-white text-sm font-bold drop-shadow-lg">
+                                        ✓
+                                      </span>
+                                    )}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                id={`is_favorite_${category.id}`}
+                                checked={formData.is_favorite}
+                                onChange={(e) => setFormData({ ...formData, is_favorite: e.target.checked })}
+                                className="w-4 h-4 rounded"
+                              />
+                              <label htmlFor={`is_favorite_${category.id}`} className="text-sm text-telegram-text dark:text-telegram-dark-text">
+                                {t.categories.form.favoriteLabel}
+                              </label>
+                            </div>
+
+                            <div className="flex gap-3">
+                              <button type="submit" className="btn-primary flex-1">
+                                {t.categories.form.save}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={resetForm}
+                                className="btn-secondary"
+                              >
+                                {t.categories.form.cancel}
+                              </button>
+                            </div>
+                          </form>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -752,81 +938,237 @@ export function Categories() {
                 regularCategories.length > 0 ? (
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
                     {regularCategories.map((category) => (
-                  <div
-                    key={category.id}
-                    className="card hover:shadow-lg transition-all relative group p-2 md:p-4"
-                    style={{
-                      borderLeft: `3px solid ${category.color || '#4CAF50'}`,
-                    }}
-                  >
-                    {/* Кнопка редактирования в правом верхнем углу */}
-                    {isEditingMode && (
-                      <button
-                        onClick={() => handleEdit(category)}
-                        className="absolute top-2 right-2 p-1.5 text-telegram-primary hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover rounded-full transition-all active:scale-95"
-                        title="Редактировать"
-                      >
-                        <span className="text-base">✏️</span>
-                      </button>
-                    )}
-                    
-                    <div className="flex flex-col items-center gap-2 md:gap-2.5">
-                      {/* Иконка категории */}
-                      <div
-                        className="w-10 h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 rounded-full flex items-center justify-center text-xl md:text-2xl lg:text-3xl flex-shrink-0"
-                        style={{ backgroundColor: `${category.color || '#4CAF50'}20` }}
-                      >
-                        {category.icon || '📦'}
-                      </div>
-                      
-                      {/* Название категории */}
-                      <div className="w-full text-center px-2">
-                        <h4 className="font-semibold text-telegram-text dark:text-telegram-dark-text text-sm md:text-base lg:text-lg mb-1 text-center break-words">
-                          {translateCategoryName(category.name)}
-                        </h4>
-                        <p className="text-xs md:text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-1">
-                          {getTransactionTypeIcon(category.transaction_type)} {getTransactionTypeLabel(category.transaction_type)}
-                        </p>
-                        {(category.is_system || category.shared_budget_id) && (
-                          <div className="flex items-center justify-center gap-1.5 mt-1">
-                            {category.is_system && (
-                              <span className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary" title="Базовая категория">
-                                📋
-                              </span>
+                      <div key={`category-wrapper-${category.id}`}>
+                        <div
+                          id={`category-${category.id}`}
+                          className="card hover:shadow-lg transition-all relative group p-2 md:p-4"
+                          style={{
+                            borderLeft: `3px solid ${category.color || '#4CAF50'}`,
+                          }}
+                        >
+                          {/* Кнопка редактирования в правом верхнем углу */}
+                          {isEditingMode && (
+                            <button
+                              onClick={() => handleEdit(category)}
+                              className="absolute top-2 right-2 p-1.5 text-telegram-primary hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover rounded-full transition-all active:scale-95"
+                              title="Редактировать"
+                            >
+                              <span className="text-base">✏️</span>
+                            </button>
+                          )}
+                          
+                          <div className="flex flex-col items-center gap-2 md:gap-2.5">
+                            {/* Иконка категории */}
+                            <div
+                              className="w-10 h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 rounded-full flex items-center justify-center text-xl md:text-2xl lg:text-3xl flex-shrink-0"
+                              style={{ backgroundColor: `${category.color || '#4CAF50'}20` }}
+                            >
+                              {category.icon || '📦'}
+                            </div>
+                            
+                            {/* Название категории */}
+                            <div className="w-full text-center px-2">
+                              <h4 className="font-semibold text-telegram-text dark:text-telegram-dark-text text-sm md:text-base lg:text-lg mb-1 text-center break-words">
+                                {translateCategoryName(category.name)}
+                              </h4>
+                              <p className="text-xs md:text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-1">
+                                {getTransactionTypeIcon(category.transaction_type)} {getTransactionTypeLabel(category.transaction_type)}
+                              </p>
+                              {(category.is_system || category.shared_budget_id) && (
+                                <div className="flex items-center justify-center gap-1.5 mt-1">
+                                  {category.is_system && (
+                                    <span className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary" title="Базовая категория">
+                                      📋
+                                    </span>
+                                  )}
+                                  {category.shared_budget_id && (
+                                    <span className="text-xs text-blue-600 dark:text-blue-400" title="Общая категория">
+                                      👥
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Кнопки редактирования - внизу карточки (только избранное и удаление) */}
+                            {isEditingMode && (
+                              <div className="flex items-center justify-center gap-2 w-full pt-2 border-t border-telegram-hover dark:border-telegram-dark-hover mt-auto">
+                                <button
+                                  onClick={() => handleToggleFavorite(category.id, category.is_favorite)}
+                                  className="p-2 text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-yellow-500 dark:hover:text-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-900/30 rounded-full transition-all active:scale-95"
+                                  title="Добавить в избранное"
+                                >
+                                  <span className="text-base md:text-lg">⭐</span>
+                                </button>
+                                {!category.is_system && (
+                                  <button
+                                    onClick={() => handleDelete(category.id)}
+                                    className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-all active:scale-95"
+                                    title="Удалить"
+                                  >
+                                    <span className="text-base md:text-lg">🗑️</span>
+                                  </button>
+                                )}
+                              </div>
                             )}
-                            {category.shared_budget_id && (
-                              <span className="text-xs text-blue-600 dark:text-blue-400" title="Общая категория">
-                                👥
-                              </span>
-                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Форма редактирования показывается сразу под редактируемой категорией */}
+                        {editingCategory && editingCategory.id === category.id && (
+                          <div id={`edit-form-${category.id}`} className="card mb-3 mt-3">
+                            <div className="flex justify-between items-center mb-4">
+                              <h2 className="text-xl font-semibold text-telegram-text dark:text-telegram-dark-text">
+                                {t.categories.filters.editCategory}
+                              </h2>
+                              <button
+                                onClick={resetForm}
+                                className="text-telegram-textSecondary hover:text-telegram-text"
+                              >
+                                ✕
+                              </button>
+                            </div>
+
+                            <form onSubmit={handleSubmit} className="space-y-4">
+                              <div>
+                                <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
+                                  {t.categories.form.nameLabel} <span className="text-red-500 dark:text-red-400">*</span>
+                                </label>
+                                <input
+                                  type="text"
+                                  value={formData.name}
+                                  onChange={(e) => {
+                                    const value = e.target.value
+                                    const trimmedValue = value.slice(0, 25)
+                                    setFormData({ ...formData, name: trimmedValue })
+                                  }}
+                                  className="input"
+                                  placeholder={t.categories.form.namePlaceholder}
+                                  maxLength={25}
+                                  required
+                                />
+                                <div className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1 text-right">
+                                  {formData.name.length}/25
+                                </div>
+                              </div>
+
+                              <div>
+                                <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
+                                  {t.categories.form.typeLabel} <span className="text-red-500 dark:text-red-400">*</span>
+                                </label>
+                                <select
+                                  value={formData.transaction_type}
+                                  onChange={(e) => setFormData({ ...formData, transaction_type: e.target.value as any })}
+                                  className="input"
+                                  required
+                                >
+                                  <option value="expense">💸 {t.categories.filters.transactionType.expense}</option>
+                                  <option value="income">💰 {t.categories.filters.transactionType.income}</option>
+                                  <option value="both">💵 {t.categories.filters.transactionType.both}</option>
+                                </select>
+                              </div>
+
+                              <div>
+                                <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
+                                  {t.categories.form.iconLabel}
+                                </label>
+                                <div className="relative emoji-picker-container">
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                                    className="w-full input flex items-center justify-between cursor-pointer hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors"
+                                  >
+                                    <span className="text-2xl">{formData.icon || '📦'}</span>
+                                    <span className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+                                      {showEmojiPicker ? '▼' : '▶'}
+                                    </span>
+                                  </button>
+                                  {showEmojiPicker && (
+                                    <div className="absolute z-50 mt-2 w-full bg-telegram-surface dark:bg-telegram-dark-surface border border-telegram-border dark:border-telegram-dark-border rounded-telegram shadow-lg max-h-64 overflow-y-auto">
+                                      <div className="p-2 sm:p-3 grid grid-cols-6 sm:grid-cols-8 gap-1 sm:gap-2">
+                                        {AVAILABLE_EMOJIS.map((emoji, index) => (
+                                          <button
+                                            key={index}
+                                            type="button"
+                                            onClick={() => {
+                                              setFormData({ ...formData, icon: emoji })
+                                              setShowEmojiPicker(false)
+                                            }}
+                                            className="text-xl sm:text-2xl p-1.5 sm:p-2 hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover rounded-telegram transition-colors active:scale-95"
+                                            title={emoji}
+                                          >
+                                            {emoji}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                                <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
+                                  {t.categories.form.iconHint}
+                                </p>
+                              </div>
+
+                              <div>
+                                <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
+                                  {t.categories.form.colorLabel}
+                                </label>
+                                <div className="grid grid-cols-8 gap-2">
+                                  {AVAILABLE_COLORS.map((color) => (
+                                    <button
+                                      key={color}
+                                      type="button"
+                                      onClick={() => {
+                                        setFormData({ ...formData, color: color })
+                                      }}
+                                      className={`w-full h-10 rounded-telegram transition-all relative ${
+                                        formData.color === color
+                                          ? 'ring-2 ring-telegram-primary ring-offset-2 scale-110'
+                                          : 'hover:scale-105'
+                                      }`}
+                                      style={{ backgroundColor: color }}
+                                      title={color}
+                                    >
+                                      {formData.color === color && (
+                                        <span className="absolute inset-0 flex items-center justify-center text-white text-sm font-bold drop-shadow-lg">
+                                          ✓
+                                        </span>
+                                      )}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  id={`is_favorite_${category.id}`}
+                                  checked={formData.is_favorite}
+                                  onChange={(e) => setFormData({ ...formData, is_favorite: e.target.checked })}
+                                  className="w-4 h-4 rounded"
+                                />
+                                <label htmlFor={`is_favorite_${category.id}`} className="text-sm text-telegram-text dark:text-telegram-dark-text">
+                                  {t.categories.form.favoriteLabel}
+                                </label>
+                              </div>
+
+                              <div className="flex gap-3">
+                                <button type="submit" className="btn-primary flex-1">
+                                  {t.categories.form.save}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={resetForm}
+                                  className="btn-secondary"
+                                >
+                                  {t.categories.form.cancel}
+                                </button>
+                              </div>
+                            </form>
                           </div>
                         )}
                       </div>
-
-                      {/* Кнопки редактирования - внизу карточки (только избранное и удаление) */}
-                      {isEditingMode && (
-                        <div className="flex items-center justify-center gap-2 w-full pt-2 border-t border-telegram-hover dark:border-telegram-dark-hover mt-auto">
-                          <button
-                            onClick={() => handleToggleFavorite(category.id, category.is_favorite)}
-                            className="p-2 text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-yellow-500 dark:hover:text-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-900/30 rounded-full transition-all active:scale-95"
-                            title="Добавить в избранное"
-                          >
-                            <span className="text-base md:text-lg">⭐</span>
-                          </button>
-                          {!category.is_system && (
-                            <button
-                              onClick={() => handleDelete(category.id)}
-                              className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-all active:scale-95"
-                              title="Удалить"
-                            >
-                              <span className="text-base md:text-lg">🗑️</span>
-                            </button>
-                          )}
-                        </div>
-                      )}
-                      </div>
-                    </div>
-                  ))}
+                    ))}
                   </div>
                 ) : (
                   <div className="text-center py-8">

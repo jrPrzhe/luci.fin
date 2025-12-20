@@ -11,10 +11,58 @@ from app.schemas.account import AccountCreate, AccountUpdate
 from decimal import Decimal
 import logging
 import re
+import httpx
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+async def get_exchange_rate(from_currency: str, to_currency: str) -> Optional[Decimal]:
+    """Get exchange rate from one currency to another"""
+    if from_currency == to_currency:
+        return Decimal("1.0")
+    
+    try:
+        # Try using exchangerate-api.com (free, no API key needed for basic usage)
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            # First, get rate from base currency (USD)
+            if from_currency == "USD":
+                url = f"https://api.exchangerate-api.com/v4/latest/USD"
+                response = await client.get(url)
+                if response.status_code == 200:
+                    data = response.json()
+                    rates = data.get("rates", {})
+                    if to_currency in rates:
+                        return Decimal(str(rates[to_currency]))
+            elif to_currency == "USD":
+                url = f"https://api.exchangerate-api.com/v4/latest/USD"
+                response = await client.get(url)
+                if response.status_code == 200:
+                    data = response.json()
+                    rates = data.get("rates", {})
+                    if from_currency in rates:
+                        # Convert: 1 USD = X FROM, so 1 FROM = 1/X USD
+                        rate_from_to_usd = Decimal(str(rates[from_currency]))
+                        return Decimal("1.0") / rate_from_to_usd
+            else:
+                # Both currencies are not USD, convert through USD
+                url = f"https://api.exchangerate-api.com/v4/latest/USD"
+                response = await client.get(url)
+                if response.status_code == 200:
+                    data = response.json()
+                    rates = data.get("rates", {})
+                    if from_currency in rates and to_currency in rates:
+                        # 1 FROM = X USD, 1 USD = Y TO, so 1 FROM = X * Y TO
+                        rate_from_to_usd = Decimal(str(rates[from_currency]))
+                        rate_usd_to_to = Decimal(str(rates[to_currency]))
+                        return rate_usd_to_to / rate_from_to_usd
+        
+        logger.warning(f"Failed to get exchange rate from {from_currency} to {to_currency}")
+        return None
+    except Exception as e:
+        logger.error(f"Error getting exchange rate: {e}", exc_info=True)
+        return None
 
 
 @router.get("/", response_model=List[dict])
@@ -232,21 +280,43 @@ async def get_balance(
         except Exception as e:
             logger.error(f"Error calculating shared account balances: {e}", exc_info=True)
     
-    # Convert to list and calculate total
+    # Convert to list and calculate total with currency conversion
+    target_currency = (current_user.default_currency or "USD").upper()
     account_balances = []
+    total_balance = Decimal("0")
+    
     for account_id, acc_data in account_balances_map.items():
         balance_float = float(acc_data["balance"])
-        total_balance += acc_data["balance"]  # For simplicity, assume same currency
+        account_currency = (acc_data["currency"] or "USD").upper()
+        
+        # Convert balance to target currency
+        if account_currency == target_currency:
+            # Same currency, no conversion needed
+            converted_balance = acc_data["balance"]
+        else:
+            # Convert to target currency
+            exchange_rate = await get_exchange_rate(account_currency, target_currency)
+            if exchange_rate is not None:
+                converted_balance = acc_data["balance"] * exchange_rate
+                logger.info(f"Converted {acc_data['balance']} {account_currency} to {converted_balance} {target_currency} (rate: {exchange_rate})")
+            else:
+                # If exchange rate unavailable, log warning and skip this account from total
+                logger.warning(f"Could not convert {account_currency} to {target_currency} for account {account_id}, skipping from total balance")
+                # Don't add to total if conversion failed to avoid incorrect totals
+                converted_balance = Decimal("0")
+        
+        total_balance += converted_balance
+        
         account_balances.append({
             "id": acc_data["id"],
             "name": acc_data["name"],
             "balance": balance_float,
-            "currency": acc_data["currency"]
+            "currency": account_currency
         })
     
     return {
         "total": float(total_balance),
-        "currency": current_user.default_currency or "USD",
+        "currency": target_currency,
         "accounts": account_balances
     }
 

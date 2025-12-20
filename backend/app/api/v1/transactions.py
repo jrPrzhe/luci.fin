@@ -135,11 +135,11 @@ async def get_transactions(
     import logging
     logger = logging.getLogger(__name__)
     
-    logger.info(f"Getting transactions for user_id={current_user.id}, limit={limit}, offset={offset}, account_id={account_id}")
+    logger.info(f"Getting transactions for user_id={current_user.id}, limit={limit}, offset={offset}, account_id={account_id}, filter_type={filter_type}")
     
-    # Get shared account IDs if needed (for filter_type)
+    # Get shared account IDs if needed (for filter_type "shared" or "all", but NOT for "own")
     shared_account_ids = []
-    if not account_id:
+    if not account_id and filter_type != "own":
         from app.models.shared_budget import SharedBudgetMember
         budget_memberships = db.query(SharedBudgetMember).filter(
             SharedBudgetMember.user_id == current_user.id
@@ -250,10 +250,16 @@ async def get_transactions(
     params["limit"] = limit
     params["offset"] = offset
     
-    # Execute raw SQL query
-    result_rows = db.execute(sa_text(sql_query), params).fetchall()
-    
-    logger.info(f"Found {len(result_rows)} transactions for user {current_user.id}, filter={filter_type}")
+    # Execute raw SQL query with error handling
+    try:
+        result_rows = db.execute(sa_text(sql_query), params).fetchall()
+        logger.info(f"Found {len(result_rows)} transactions for user {current_user.id}, filter={filter_type}, limit={limit}, offset={offset}")
+    except Exception as e:
+        logger.error(f"Error executing transaction query for user {current_user.id}, filter={filter_type}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Ошибка при загрузке транзакций. Попробуйте позже."
+        )
     
     # Build response from raw SQL results
     result = []
