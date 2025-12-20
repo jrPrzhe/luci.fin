@@ -10,6 +10,29 @@
     <!-- Load synchronously to ensure it's available before React app starts -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script>
+      // Apply theme synchronously before React renders to prevent flash
+      (function() {
+        const themeKey = 'theme';
+        let savedTheme = 'dark'; // default
+        
+        // Try to get theme from localStorage synchronously
+        try {
+          const stored = localStorage.getItem(themeKey);
+          if (stored === 'light' || stored === 'dark') {
+            savedTheme = stored;
+          }
+        } catch (e) {
+          // Ignore errors, use default
+        }
+        
+        // Apply theme immediately
+        if (savedTheme === 'dark') {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      })();
+      
       // Log when Telegram SDK loads
       window.addEventListener('load', function() {
         console.log('[index.html] Page loaded, Telegram SDK status:', {
