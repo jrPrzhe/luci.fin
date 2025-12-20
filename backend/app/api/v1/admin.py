@@ -403,7 +403,7 @@ async def sync_admin_status(
     db: Session = Depends(get_db)
 ):
     """
-    Sync admin status for current user based on ADMIN_TELEGRAM_USERNAMES
+    Sync admin status for current user based on ADMIN_TELEGRAM_USERNAMES and ADMIN_TELEGRAM_IDS
     This endpoint can be called by any authenticated user to update their admin status
     """
     import logging
@@ -411,28 +411,48 @@ async def sync_admin_status(
     
     logger = logging.getLogger(__name__)
     
-    if not current_user.telegram_username:
+    if not current_user.telegram_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="This endpoint is only for Telegram users with username"
+            detail="This endpoint is only for Telegram users"
         )
     
-    username_lower = current_user.telegram_username.lower().lstrip('@')
-    should_be_admin = username_lower in settings.ADMIN_TELEGRAM_USERNAMES
+    # Check by telegram_id (ADMIN_TELEGRAM_IDS)
+    is_admin_by_id = str(current_user.telegram_id) in (settings.ADMIN_TELEGRAM_IDS or [])
     
-    logger.info(f"Syncing admin status for user {current_user.id}, telegram_username={current_user.telegram_username}, should_be_admin={should_be_admin}, current_is_admin={current_user.is_admin}")
+    # Check by username (ADMIN_TELEGRAM_USERNAMES) if username exists
+    is_admin_by_username = False
+    if current_user.telegram_username:
+        username_lower = current_user.telegram_username.lower().lstrip('@')
+        is_admin_by_username = username_lower in (settings.ADMIN_TELEGRAM_USERNAMES or [])
+    
+    # User should be admin if they are in either list
+    should_be_admin = is_admin_by_id or is_admin_by_username
+    
+    logger.info(f"Syncing admin status for user {current_user.id}")
+    logger.info(f"  telegram_id={current_user.telegram_id}, is_admin_by_id={is_admin_by_id}")
+    logger.info(f"  telegram_username={current_user.telegram_username}, is_admin_by_username={is_admin_by_username}")
+    logger.info(f"  ADMIN_TELEGRAM_IDS={settings.ADMIN_TELEGRAM_IDS}")
+    logger.info(f"  ADMIN_TELEGRAM_USERNAMES={settings.ADMIN_TELEGRAM_USERNAMES}")
+    logger.info(f"  should_be_admin={should_be_admin}, current_is_admin={current_user.is_admin}")
     
     if current_user.is_admin != should_be_admin:
         current_user.is_admin = should_be_admin
         db.commit()
         db.refresh(current_user)
-        logger.info(f"Updated admin status for user {current_user.id}: is_admin={should_be_admin}")
+        logger.info(f"✅ Updated admin status for user {current_user.id}: is_admin={should_be_admin}")
+    else:
+        logger.info(f"ℹ️  No change needed: is_admin already {current_user.is_admin}")
     
     return {
         "is_admin": current_user.is_admin,
+        "telegram_id": current_user.telegram_id,
         "telegram_username": current_user.telegram_username,
-        "in_admin_list": should_be_admin,
-        "admin_list": settings.ADMIN_TELEGRAM_USERNAMES
+        "is_admin_by_id": is_admin_by_id,
+        "is_admin_by_username": is_admin_by_username,
+        "should_be_admin": should_be_admin,
+        "admin_ids": settings.ADMIN_TELEGRAM_IDS or [],
+        "admin_usernames": settings.ADMIN_TELEGRAM_USERNAMES or []
     }
 
 
