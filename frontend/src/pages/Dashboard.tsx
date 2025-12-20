@@ -224,7 +224,7 @@ export function Dashboard() {
     }
   }, [showQuickForm])
 
-  const { data: balance, isLoading: balanceLoading } = useQuery({
+  const { data: balance, isLoading: balanceLoading, isError: balanceError } = useQuery({
     queryKey: ['balance'],
     queryFn: async () => {
       try {
@@ -237,9 +237,10 @@ export function Dashboard() {
     retry: 1,
     staleTime: 30000, // 30 seconds
     refetchOnWindowFocus: false,
+    gcTime: 0, // Не кешировать при ошибках, чтобы избежать проблем с кешем
   })
 
-  const { data: accounts, isLoading: accountsLoading } = useQuery({
+  const { data: accounts, isLoading: accountsLoading, isError: accountsError } = useQuery({
     queryKey: ['accounts'],
     queryFn: async () => {
       try {
@@ -252,9 +253,10 @@ export function Dashboard() {
     retry: 1,
     staleTime: 60000, // 1 minute
     refetchOnWindowFocus: false,
+    gcTime: 0, // Не кешировать при ошибках, чтобы избежать проблем с кешем
   })
 
-  const { data: recentTransactions, isLoading: transactionsLoading } = useQuery({
+  const { data: recentTransactions, isLoading: transactionsLoading, isError: transactionsError } = useQuery({
     queryKey: ['recent-transactions'],
     queryFn: async () => {
       try {
@@ -267,6 +269,7 @@ export function Dashboard() {
     retry: 1,
     staleTime: 30000, // 30 seconds
     refetchOnWindowFocus: false,
+    gcTime: 0, // Не кешировать при ошибках, чтобы избежать проблем с кешем
   })
 
   // Получаем данные текущего пользователя для проверки премиум статуса
@@ -365,7 +368,7 @@ export function Dashboard() {
     
     // Reset form data
     // Filter active accounts only
-    const activeAccounts = (accounts as Account[] || []).filter(acc => acc.is_active !== false)
+    const activeAccounts = (accountsData as Account[] || []).filter(acc => acc.is_active !== false)
     setQuickFormData({
       category_id: '',
       account_id: activeAccounts && activeAccounts.length > 0 ? activeAccounts[0].id.toString() : '',
@@ -442,7 +445,7 @@ export function Dashboard() {
 
     let submitData: any = null
     try {
-      const account = (accounts as Account[]).find(a => a.id === parseInt(quickFormData.account_id))
+      const account = (accountsData as Account[]).find(a => a.id === parseInt(quickFormData.account_id))
       if (!account) {
         showError(t.errors.notFound)
         setSubmitting(false)
@@ -574,13 +577,62 @@ export function Dashboard() {
     }
   }
 
+  // Используем состояние для отслеживания таймаута загрузки
+  const [loadingTimeout, setLoadingTimeout] = useState(false)
+  
+  // Устанавливаем таймаут для загрузки - если загрузка длится больше 15 секунд, показываем контент
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (balanceLoading || accountsLoading || transactionsLoading) {
+        console.warn('[Dashboard] Loading timeout - showing content with default values')
+        setLoadingTimeout(true)
+      }
+    }, 15000) // 15 секунд таймаут
+    
+    return () => clearTimeout(timeoutId)
+  }, [balanceLoading, accountsLoading, transactionsLoading])
+  
+  // Сбрасываем таймаут когда загрузка завершается
+  useEffect(() => {
+    if (!balanceLoading && !accountsLoading && !transactionsLoading) {
+      setLoadingTimeout(false)
+    }
+  }, [balanceLoading, accountsLoading, transactionsLoading])
+
+  // Очищаем кеш при ошибках таймаута, чтобы избежать проблем с кешем
+  const queryClient = useQueryClient()
+  useEffect(() => {
+    if (balanceError || accountsError || transactionsError) {
+      console.warn('[Dashboard] Query error detected - clearing cache for failed queries')
+      if (balanceError) {
+        queryClient.removeQueries({ queryKey: ['balance'] })
+      }
+      if (accountsError) {
+        queryClient.removeQueries({ queryKey: ['accounts'] })
+      }
+      if (transactionsError) {
+        queryClient.removeQueries({ queryKey: ['recent-transactions'] })
+      }
+    }
+  }, [balanceError, accountsError, transactionsError, queryClient])
+
   // Показываем общий LoadingSpinner при первой загрузке основных данных
-  // Это предотвращает "дополнительную загрузку" после холодного старта
-  const isInitialLoading = balanceLoading || accountsLoading || transactionsLoading
+  // НО только если нет ошибок и не истек таймаут
+  // Это предотвращает бесконечную загрузку при проблемах с сетью
+  const isInitialLoading = (balanceLoading || accountsLoading || transactionsLoading) && 
+                           !loadingTimeout && 
+                           !balanceError && 
+                           !accountsError && 
+                           !transactionsError
 
   if (isInitialLoading) {
     return <LoadingSpinner fullScreen={true} size="md" />
   }
+
+  // Обеспечиваем, что данные всегда доступны (даже при ошибках)
+  const balanceData = balance || { total: 0, currency: 'RUB', accounts: [] }
+  const accountsData = accounts || []
+  const transactionsData = recentTransactions || []
 
   return (
     <div className="min-h-screen animate-fade-in w-full">
@@ -610,11 +662,11 @@ export function Dashboard() {
               )}
               <p className="text-xs md:text-sm opacity-90">{t.dashboard.totalBalance}</p>
             </div>
-            {balanceLoading ? (
+            {balanceLoading && !loadingTimeout ? (
               <div className="h-8 md:h-10 w-24 md:w-32 bg-white/20 rounded-telegram animate-pulse"></div>
             ) : (
               <p className="text-2xl md:text-4xl font-bold break-all">
-                {Math.round(balance?.total || 0).toLocaleString('ru-RU')} {balance?.currency || '₽'}
+                {Math.round(balanceData.total || 0).toLocaleString('ru-RU')} {balanceData.currency || '₽'}
               </p>
             )}
           </div>
@@ -632,8 +684,8 @@ export function Dashboard() {
                 {(() => {
                   const income = Math.round(monthlyStats?.income || 0)
                   return income === 0 
-                    ? `${income.toLocaleString('ru-RU')} ${balance?.currency || '₽'}`
-                    : `+${income.toLocaleString('ru-RU')} ${balance?.currency || '₽'}`
+                    ? `${income.toLocaleString('ru-RU')} ${balanceData.currency || '₽'}`
+                    : `+${income.toLocaleString('ru-RU')} ${balanceData.currency || '₽'}`
                 })()}
               </p>
             )}
@@ -647,8 +699,8 @@ export function Dashboard() {
                 {(() => {
                   const expense = Math.round(monthlyStats?.expense || 0)
                   return expense === 0 
-                    ? `${expense.toLocaleString('ru-RU')} ${balance?.currency || '₽'}`
-                    : `-${expense.toLocaleString('ru-RU')} ${balance?.currency || '₽'}`
+                    ? `${expense.toLocaleString('ru-RU')} ${balanceData.currency || '₽'}`
+                    : `-${expense.toLocaleString('ru-RU')} ${balanceData.currency || '₽'}`
                 })()}
               </p>
             )}
