@@ -10,12 +10,61 @@ from app.models.user import User
 from app.models.transaction import Transaction, TransactionType
 from app.models.account import Account
 from app.models.goal import Goal, GoalStatus
+from app.core.config import settings
 from decimal import Decimal
 import logging
+import httpx
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+async def get_exchange_rate(from_currency: str, to_currency: str) -> Optional[Decimal]:
+    """Get exchange rate from one currency to another"""
+    if from_currency == to_currency:
+        return Decimal("1.0")
+    
+    try:
+        # Try using exchangerate-api.com (free, no API key needed for basic usage)
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            # First, get rate from base currency (USD)
+            if from_currency == "USD":
+                url = f"https://api.exchangerate-api.com/v4/latest/USD"
+                response = await client.get(url)
+                if response.status_code == 200:
+                    data = response.json()
+                    rates = data.get("rates", {})
+                    if to_currency in rates:
+                        return Decimal(str(rates[to_currency]))
+            elif to_currency == "USD":
+                url = f"https://api.exchangerate-api.com/v4/latest/USD"
+                response = await client.get(url)
+                if response.status_code == 200:
+                    data = response.json()
+                    rates = data.get("rates", {})
+                    if from_currency in rates:
+                        # Convert: 1 USD = X FROM, so 1 FROM = 1/X USD
+                        rate_from_to_usd = Decimal(str(rates[from_currency]))
+                        return Decimal("1.0") / rate_from_to_usd
+            else:
+                # Both currencies are not USD, convert through USD
+                url = f"https://api.exchangerate-api.com/v4/latest/USD"
+                response = await client.get(url)
+                if response.status_code == 200:
+                    data = response.json()
+                    rates = data.get("rates", {})
+                    if from_currency in rates and to_currency in rates:
+                        # 1 FROM = X USD, 1 USD = Y TO, so 1 FROM = X * Y TO
+                        rate_from_to_usd = Decimal(str(rates[from_currency]))
+                        rate_usd_to_to = Decimal(str(rates[to_currency]))
+                        return rate_usd_to_to / rate_from_to_usd
+        
+        logger.warning(f"Failed to get exchange rate from {from_currency} to {to_currency}")
+        return None
+    except Exception as e:
+        logger.error(f"Error getting exchange rate: {e}", exc_info=True)
+        return None
 
 
 class TransactionCreate(BaseModel):
@@ -745,6 +794,37 @@ async def create_transaction(
             detail=f"Invalid transaction_type: {transaction_data.transaction_type}. Must be 'income', 'expense', or 'transfer'"
         )
     
+    # Currency conversion logic
+    transaction_currency = transaction_data.currency or final_account.currency
+    account_currency = final_account.currency
+    
+    # Original amount in transaction currency
+    original_amount = Decimal(str(transaction_data.amount))
+    converted_amount = original_amount
+    exchange_rate = None
+    amount_in_account_currency = original_amount
+    
+    # If transaction currency differs from account currency, convert
+    if transaction_currency != account_currency:
+        logger.info(f"Converting {original_amount} {transaction_currency} to {account_currency}")
+        exchange_rate_decimal = await get_exchange_rate(transaction_currency, account_currency)
+        
+        if exchange_rate_decimal is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Не удалось получить курс валют для конвертации {transaction_currency} в {account_currency}. Пожалуйста, попробуйте позже."
+            )
+        
+        exchange_rate = float(exchange_rate_decimal)
+        # Convert: amount in account currency = original amount * exchange rate
+        converted_amount = original_amount * exchange_rate_decimal
+        amount_in_account_currency = converted_amount
+        
+        logger.info(f"Exchange rate {transaction_currency} -> {account_currency}: {exchange_rate}, converted amount: {converted_amount}")
+    
+    # Use converted amount for account operations (in account currency)
+    amount_to_use = float(converted_amount)
+    
     # For transfers, use raw SQL to avoid enum issues completely
     if transaction_data.transaction_type == "transfer" and to_transaction:
         try:
@@ -753,22 +833,24 @@ async def create_transaction(
             # Insert source transaction (transfer) using raw SQL
             source_transaction_sql = """
                 INSERT INTO transactions 
-                (user_id, account_id, transaction_type, amount, currency, description, transaction_date, to_account_id, shared_budget_id, goal_id)
+                (user_id, account_id, transaction_type, amount, currency, description, transaction_date, to_account_id, shared_budget_id, goal_id, amount_in_default_currency, exchange_rate)
                 VALUES 
-                (:user_id, :account_id, :transaction_type, :amount, :currency, :description, :transaction_date, :to_account_id, :shared_budget_id, :goal_id)
+                (:user_id, :account_id, :transaction_type, :amount, :currency, :description, :transaction_date, :to_account_id, :shared_budget_id, :goal_id, :amount_in_default_currency, :exchange_rate)
                 RETURNING id, created_at, updated_at
             """
             source_params = {
                 "user_id": current_user.id,
                 "account_id": final_account_id,
                 "transaction_type": "transfer",  # lowercase
-                "amount": transaction_data.amount,
-                "currency": transaction_data.currency or final_account.currency,
+                "amount": amount_to_use,  # Use converted amount in account currency
+                "currency": account_currency,  # Always use account currency for amount
                 "description": transaction_data.description,
                 "transaction_date": transaction_data.transaction_date or datetime.utcnow(),
                 "to_account_id": transaction_data.to_account_id,
                 "shared_budget_id": transaction_data.shared_budget_id,
-                "goal_id": transaction_data.goal_id
+                "goal_id": transaction_data.goal_id,
+                "amount_in_default_currency": float(original_amount) if transaction_currency != account_currency else None,
+                "exchange_rate": exchange_rate
             }
             source_result = db.execute(sa_text(source_transaction_sql), source_params)
             source_row = source_result.first()
@@ -779,21 +861,40 @@ async def create_transaction(
             # Insert destination transaction (income) using raw SQL
             to_transaction_sql = """
                 INSERT INTO transactions 
-                (user_id, account_id, transaction_type, amount, currency, description, transaction_date, shared_budget_id, goal_id)
+                (user_id, account_id, transaction_type, amount, currency, description, transaction_date, shared_budget_id, goal_id, amount_in_default_currency, exchange_rate)
                 VALUES 
-                (:user_id, :account_id, :transaction_type, :amount, :currency, :description, :transaction_date, :shared_budget_id, :goal_id)
+                (:user_id, :account_id, :transaction_type, :amount, :currency, :description, :transaction_date, :shared_budget_id, :goal_id, :amount_in_default_currency, :exchange_rate)
                 RETURNING id, created_at, updated_at
             """
+            # For destination account, convert to its currency if different
+            to_account_currency = to_account.currency
+            to_amount = Decimal(str(amount_to_use))
+            to_exchange_rate = exchange_rate
+            to_original_amount = float(original_amount)
+            
+            # If destination account has different currency, convert again
+            if account_currency != to_account_currency:
+                to_exchange_rate_decimal = await get_exchange_rate(account_currency, to_account_currency)
+                if to_exchange_rate_decimal is not None:
+                    to_amount = to_amount * to_exchange_rate_decimal
+                    to_exchange_rate = float(to_exchange_rate_decimal)
+                    logger.info(f"Converting transfer amount {amount_to_use} {account_currency} to {to_account_currency}: {to_amount}")
+                else:
+                    # Fallback: use same amount (not ideal, but better than failing)
+                    logger.warning(f"Could not convert {account_currency} to {to_account_currency}, using same amount")
+            
             to_params = {
                 "user_id": current_user.id,
                 "account_id": transaction_data.to_account_id,
                 "transaction_type": "income",  # lowercase
-                "amount": transaction_data.amount,
-                "currency": transaction_data.currency or account.currency,
+                "amount": float(to_amount),
+                "currency": to_account_currency,  # Destination account currency
                 "description": f"Перевод из {account.name}" + (f": {transaction_data.description}" if transaction_data.description else ""),
                 "transaction_date": transaction_data.transaction_date or datetime.utcnow(),
                 "shared_budget_id": transaction_data.shared_budget_id,
-                "goal_id": transaction_data.goal_id
+                "goal_id": transaction_data.goal_id,
+                "amount_in_default_currency": to_original_amount if transaction_currency != to_account_currency else None,
+                "exchange_rate": to_exchange_rate
             }
             to_result = db.execute(sa_text(to_transaction_sql), to_params)
             to_row = to_result.first()
@@ -807,8 +908,10 @@ async def create_transaction(
                 user_id=current_user.id,
                 account_id=final_account_id,
                 transaction_type="transfer",
-                amount=transaction_data.amount,
-                currency=transaction_data.currency or final_account.currency,
+                amount=amount_to_use,  # Converted amount in account currency
+                currency=account_currency,  # Account currency
+                amount_in_default_currency=float(original_amount) if transaction_currency != account_currency else None,
+                exchange_rate=exchange_rate,
                 category_id=None,
                 description=transaction_data.description,
                 transaction_date=transaction_data.transaction_date or datetime.utcnow(),
@@ -845,22 +948,24 @@ async def create_transaction(
             # Insert transaction using raw SQL with lowercase transaction_type
             transaction_sql = """
                 INSERT INTO transactions 
-                (user_id, account_id, transaction_type, amount, currency, category_id, description, transaction_date, shared_budget_id, goal_id)
+                (user_id, account_id, transaction_type, amount, currency, category_id, description, transaction_date, shared_budget_id, goal_id, amount_in_default_currency, exchange_rate)
                 VALUES 
-                (:user_id, :account_id, :transaction_type, :amount, :currency, :category_id, :description, :transaction_date, :shared_budget_id, :goal_id)
+                (:user_id, :account_id, :transaction_type, :amount, :currency, :category_id, :description, :transaction_date, :shared_budget_id, :goal_id, :amount_in_default_currency, :exchange_rate)
                 RETURNING id, created_at, updated_at
             """
             transaction_params = {
                 "user_id": current_user.id,
                 "account_id": final_account_id,
                 "transaction_type": transaction_type_value,  # lowercase
-                "amount": transaction_data.amount,
-                "currency": transaction_data.currency or final_account.currency,
+                "amount": amount_to_use,  # Use converted amount in account currency
+                "currency": account_currency,  # Always use account currency for amount
                 "category_id": transaction_data.category_id,
                 "description": transaction_data.description,
                 "transaction_date": transaction_data.transaction_date or datetime.utcnow(),
                 "shared_budget_id": transaction_data.shared_budget_id,
-                "goal_id": transaction_data.goal_id
+                "goal_id": transaction_data.goal_id,
+                "amount_in_default_currency": float(original_amount) if transaction_currency != account_currency else None,
+                "exchange_rate": exchange_rate
             }
             result = db.execute(sa_text(transaction_sql), transaction_params)
             row = result.first()
@@ -876,8 +981,10 @@ async def create_transaction(
                 user_id=current_user.id,
                 account_id=final_account_id,
                 transaction_type=transaction_type_value,
-                amount=transaction_data.amount,
-                currency=transaction_data.currency or final_account.currency,
+                amount=amount_to_use,  # Converted amount in account currency
+                currency=account_currency,  # Account currency
+                amount_in_default_currency=float(original_amount) if transaction_currency != account_currency else None,
+                exchange_rate=exchange_rate,
                 category_id=transaction_data.category_id,
                 description=transaction_data.description,
                 transaction_date=transaction_data.transaction_date or datetime.utcnow(),
