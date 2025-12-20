@@ -161,17 +161,23 @@ def verify_vk_signature(params: dict, secret_key: str) -> bool:
     # Remove padding if present (VK signatures don't include padding)
     calculated_sign = calculated_sign.rstrip('=')
     
-    # Compare signatures
-    is_valid = calculated_sign == provided_sign
+    # Compare signatures using constant-time comparison to prevent timing attacks
+    # Also try URL-safe variant in case of encoding differences
+    is_valid = hmac.compare_digest(calculated_sign, provided_sign)
+    
+    # If direct comparison fails, try URL-safe variant
+    if not is_valid:
+        url_safe_calculated = calculated_sign.replace('+', '-').replace('/', '_')
+        is_valid = hmac.compare_digest(url_safe_calculated, provided_sign)
     
     if is_valid:
         logger.info("VK signature verification passed")
     else:
         logger.error(f"VK signature verification failed. Expected: {calculated_sign}, Got: {provided_sign}")
         logger.error(f"Sign string: {param_string}")
-        # Try URL-safe variant
-        url_safe_expected = calculated_sign.replace('+', '-').replace('/', '_')
-        logger.error(f"URL-safe expected: {url_safe_expected}")
+        logger.error(f"URL-safe expected: {calculated_sign.replace('+', '-').replace('/', '_')}")
+        # Log security warning
+        logger.warning("SECURITY: Potential VK signature tampering attempt detected!")
     
     return is_valid
 
