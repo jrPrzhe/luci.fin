@@ -70,7 +70,6 @@ export function Accounts() {
     investment: t.accounts.types.investment,
     other: t.accounts.types.other,
   }
-  const [loading, setLoading] = useState(false)
   
   // Use React Query for accounts with caching (shared with Dashboard)
   const { data: accountsData = [], isLoading: accountsLoading } = useQuery<Account[]>({
@@ -535,12 +534,13 @@ export function Accounts() {
                               setIsDeleting(true)
                               try {
                                 await api.deleteAccount(account.id)
-                                await loadAccounts()
+                                // Invalidate React Query cache
+                                await queryClient.invalidateQueries({ queryKey: ['accounts'] })
                                 // Also invalidate goals query in case this was a goal account
-                                queryClient.invalidateQueries({ queryKey: ['goals'] })
-                                queryClient.invalidateQueries({ queryKey: ['transactions'] })
-                                queryClient.invalidateQueries({ queryKey: ['analytics'] })
-                                queryClient.invalidateQueries({ queryKey: ['balance'] })
+                                await queryClient.invalidateQueries({ queryKey: ['goals'] })
+                                await queryClient.invalidateQueries({ queryKey: ['transactions'] })
+                                await queryClient.invalidateQueries({ queryKey: ['analytics'] })
+                                await queryClient.invalidateQueries({ queryKey: ['balance'] })
                                 showSuccess(t.accounts.messages.deleted)
                                 setConfirmModal({ show: false, message: '', onConfirm: () => {} })
                               } catch (err: any) {

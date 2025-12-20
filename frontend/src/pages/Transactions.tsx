@@ -77,7 +77,7 @@ export function Transactions() {
   const [loading, setLoading] = useState(true)
   
   // Use React Query for accounts with caching (shared with Dashboard)
-  const { data: accounts = [], isLoading: accountsLoading } = useQuery<Account[]>({
+  const { data: accounts = [] } = useQuery<Account[]>({
     queryKey: ['accounts'],
     queryFn: async () => {
       try {
