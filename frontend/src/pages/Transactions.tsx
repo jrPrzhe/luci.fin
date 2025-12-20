@@ -970,10 +970,17 @@ export function Transactions() {
                             e.stopPropagation()
                             setCustomStartDate('')
                           }}
-                          onTouchStart={(e) => {
+                          onMouseDown={(e) => {
+                            e.preventDefault()
                             e.stopPropagation()
+                            setCustomStartDate('')
                           }}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text text-base font-bold z-20 cursor-pointer p-1 min-w-[24px] min-h-[24px] flex items-center justify-center"
+                          onTouchStart={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            setCustomStartDate('')
+                          }}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text text-base font-bold z-30 cursor-pointer p-1 min-w-[24px] min-h-[24px] flex items-center justify-center pointer-events-auto"
                           title={t.transactions.resetFilter}
                           aria-label={t.transactions.resetFilter}
                         >
@@ -1003,10 +1010,17 @@ export function Transactions() {
                             e.stopPropagation()
                             setCustomEndDate('')
                           }}
-                          onTouchStart={(e) => {
+                          onMouseDown={(e) => {
+                            e.preventDefault()
                             e.stopPropagation()
+                            setCustomEndDate('')
                           }}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text text-base font-bold z-20 cursor-pointer p-1 min-w-[24px] min-h-[24px] flex items-center justify-center"
+                          onTouchStart={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            setCustomEndDate('')
+                          }}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text text-base font-bold z-30 cursor-pointer p-1 min-w-[24px] min-h-[24px] flex items-center justify-center pointer-events-auto"
                           title={t.transactions.resetFilter}
                           aria-label={t.transactions.resetFilter}
                         >
