@@ -354,6 +354,8 @@ export function Categories() {
     }
   }
 
+  // When showFavoritesOnly is true, categories are already filtered on server
+  // So we just need to filter by transaction type if needed
   const filteredCategories = categories.filter(cat => {
     if (filterType === 'all') return true
     if (filterType === 'income') return cat.transaction_type === 'income' || cat.transaction_type === 'both'
@@ -361,8 +363,14 @@ export function Categories() {
     return true
   })
 
-  const favoriteCategories = filteredCategories.filter(cat => cat.is_favorite)
-  const regularCategories = filteredCategories.filter(cat => !cat.is_favorite)
+  // When showFavoritesOnly is true, all categories from server are already favorites
+  // So we display them all as favorites
+  const favoriteCategories = showFavoritesOnly 
+    ? filteredCategories  // All are favorites when filter is active
+    : filteredCategories.filter(cat => cat.is_favorite)
+  const regularCategories = showFavoritesOnly 
+    ? []  // No regular categories when showing only favorites
+    : filteredCategories.filter(cat => !cat.is_favorite)
 
   if (loading) {
     return <LoadingSpinner />
@@ -756,7 +764,7 @@ export function Categories() {
           )}
 
           {/* Regular Categories */}
-          {(!showFavoritesOnly || favoriteCategories.length === 0) && regularCategories.length > 0 && (
+          {!showFavoritesOnly && regularCategories.length > 0 && (
             <div>
               {!showFavoritesOnly && (
                 <h3 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-3 flex items-center justify-between">
