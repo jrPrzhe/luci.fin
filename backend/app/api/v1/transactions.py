@@ -688,8 +688,8 @@ async def create_transaction(
                 
                 # If income exceeds remaining amount needed to reach goal
                 if amount_decimal > remaining_amount:
-                    # Format remaining amount for display (2 decimal places)
-                    remaining_formatted = float(remaining_amount).__format__('.2f')
+                    # Format remaining amount for display (2 decimal places, remove trailing zeros if integer)
+                    remaining_formatted = f"{float(remaining_amount):.2f}".rstrip('0').rstrip('.')
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
                         detail=f"Пополнение больше цели. Вы сможете пополнить только {remaining_formatted} {goal.currency}"
