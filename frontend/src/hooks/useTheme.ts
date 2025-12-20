@@ -17,35 +17,47 @@ export function useTheme() {
     return 'dark'
   })
 
-  // Use useLayoutEffect to apply theme synchronously before paint
-  useLayoutEffect(() => {
+  // Helper function to apply theme synchronously
+  const applyTheme = (newTheme: Theme) => {
     const root = document.documentElement
-    if (theme === 'dark') {
+    if (newTheme === 'dark') {
       root.classList.add('dark')
     } else {
       root.classList.remove('dark')
     }
-    // Сохраняем в storage (VK Storage, Telegram Cloud Storage или localStorage)
-    storageSync.setItem(THEME_STORAGE_KEY, theme)
+    // Save to storage
+    storageSync.setItem(THEME_STORAGE_KEY, newTheme)
+  }
+
+  // Use useLayoutEffect to apply theme synchronously before paint
+  useLayoutEffect(() => {
+    applyTheme(theme)
   }, [theme])
 
   const toggleTheme = () => {
     setTheme((prev) => {
       const newTheme = prev === 'light' ? 'dark' : 'light'
       // Apply theme synchronously before state update to prevent flicker
-      const root = document.documentElement
-      if (newTheme === 'dark') {
-        root.classList.add('dark')
-      } else {
-        root.classList.remove('dark')
-      }
-      // Also save to storage immediately
-      storageSync.setItem(THEME_STORAGE_KEY, newTheme)
+      applyTheme(newTheme)
       return newTheme
     })
   }
 
-  return { theme, setTheme, toggleTheme }
+  // Wrapper for setTheme that applies theme synchronously
+  const setThemeSync = (newTheme: Theme | ((prev: Theme) => Theme)) => {
+    if (typeof newTheme === 'function') {
+      setTheme((prev) => {
+        const result = newTheme(prev)
+        applyTheme(result)
+        return result
+      })
+    } else {
+      applyTheme(newTheme)
+      setTheme(newTheme)
+    }
+  }
+
+  return { theme, setTheme: setThemeSync, toggleTheme }
 }
 
 
