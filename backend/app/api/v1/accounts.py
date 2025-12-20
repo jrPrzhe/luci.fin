@@ -25,7 +25,8 @@ async def get_exchange_rate(from_currency: str, to_currency: str) -> Optional[De
     
     try:
         # Try using exchangerate-api.com (free, no API key needed for basic usage)
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        # Increased timeout to 10 seconds to handle slow connections
+        async with httpx.AsyncClient(timeout=10.0) as client:
             # First, get rate from base currency (USD)
             if from_currency == "USD":
                 url = f"https://api.exchangerate-api.com/v4/latest/USD"
@@ -60,8 +61,17 @@ async def get_exchange_rate(from_currency: str, to_currency: str) -> Optional[De
         
         logger.warning(f"Failed to get exchange rate from {from_currency} to {to_currency}")
         return None
+    except httpx.TimeoutException as e:
+        logger.warning(f"Timeout getting exchange rate from {from_currency} to {to_currency}: {e}")
+        return None
+    except httpx.ConnectTimeout as e:
+        logger.warning(f"Connection timeout getting exchange rate from {from_currency} to {to_currency}: {e}")
+        return None
+    except httpx.ConnectError as e:
+        logger.warning(f"Connection error getting exchange rate from {from_currency} to {to_currency}: {e}")
+        return None
     except Exception as e:
-        logger.error(f"Error getting exchange rate: {e}", exc_info=True)
+        logger.error(f"Error getting exchange rate from {from_currency} to {to_currency}: {e}", exc_info=True)
         return None
 
 

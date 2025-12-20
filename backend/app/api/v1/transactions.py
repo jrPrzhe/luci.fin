@@ -981,26 +981,13 @@ async def create_transaction(
             
             db.commit()
             
-            # Create Transaction object for response
-            transaction = Transaction(
-                id=transaction_id,
-                user_id=current_user.id,
-                account_id=final_account_id,
-                transaction_type=transaction_type_value,
-                amount=amount_to_use,  # Converted amount in account currency
-                currency=account_currency,  # Account currency
-                amount_in_default_currency=float(original_amount) if transaction_currency != account_currency else None,
-                exchange_rate=exchange_rate,
-                category_id=transaction_data.category_id,
-                description=transaction_data.description,
-                transaction_date=transaction_data.transaction_date or datetime.utcnow(),
-                to_account_id=None,
-                shared_budget_id=transaction_data.shared_budget_id,
-                goal_id=transaction_data.goal_id,
-                created_at=transaction_created_at,
-                updated_at=transaction_updated_at
-            )
-            transaction.account = final_account  # Set for is_shared check
+            # Get transaction from database to ensure it's in session
+            transaction = db.query(Transaction).filter(Transaction.id == transaction_id).first()
+            if not transaction:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Транзакция не была создана"
+                )
             
             logger.info(f"Transaction created: id={transaction_id}, type={transaction_type_value}")
         except Exception as e:
