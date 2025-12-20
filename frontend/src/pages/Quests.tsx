@@ -1,9 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
 import { useI18n } from '../contexts/I18nContext'
 
 export function Quests() {
   const { t, translateQuest } = useI18n()
+  const navigate = useNavigate()
   const { data: quests, isLoading } = useQuery({
     queryKey: ['daily-quests'],
     queryFn: () => api.getDailyQuests(),
@@ -65,6 +67,19 @@ export function Quests() {
     }
   }
 
+  const handleQuestClick = (questType: string) => {
+    // Navigate to dashboard with action parameter for expense/income quests
+    if (questType === 'record_expense') {
+      navigate('/?action=expense')
+    } else if (questType === 'record_income') {
+      navigate('/?action=income')
+    } else if (questType === 'review_transactions') {
+      navigate('/transactions')
+    } else if (questType === 'check_balance') {
+      navigate('/')
+    }
+  }
+
   const activeQuests = quests.filter(q => q.status === 'pending')
   const completedQuests = quests.filter(q => q.status === 'completed')
 
@@ -83,7 +98,10 @@ export function Quests() {
             {activeQuests.map((quest) => (
               <div 
                 key={quest.id} 
-                className={`quest-item bg-gradient-to-br ${getQuestColor(quest.quest_type)} rounded-xl p-4 border transition-all duration-300 hover:scale-[1.02] shadow-md hover:shadow-lg`}
+                onClick={() => handleQuestClick(quest.quest_type)}
+                className={`quest-item bg-gradient-to-br ${getQuestColor(quest.quest_type)} rounded-xl p-4 border transition-all duration-300 hover:scale-[1.02] shadow-md hover:shadow-lg cursor-pointer ${
+                  (quest.quest_type === 'record_expense' || quest.quest_type === 'record_income') ? 'hover:shadow-xl' : ''
+                }`}
               >
                 <div className="flex items-start gap-3">
                   <div className="quest-icon text-3xl flex-shrink-0">

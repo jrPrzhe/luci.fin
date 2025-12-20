@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { api } from '../services/api'
 import { useI18n } from '../contexts/I18nContext'
 import { AchievementModal } from '../components/AchievementModal'
@@ -31,6 +31,7 @@ export function Dashboard() {
   const { t, translateCategoryName } = useI18n()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const location = useLocation()
   const { showError, showSuccess } = useToast()
   const [showQuickForm, setShowQuickForm] = useState(false)
   const [quickFormStep, setQuickFormStep] = useState<'category' | 'form'>('category')
@@ -401,6 +402,21 @@ export function Dashboard() {
     }
     console.log(`[handleQuickAction] Completed`)
   }
+
+  // Handle URL parameters for quick action (from quests)
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search)
+    const action = searchParams.get('action')
+    
+    if (action === 'expense' || action === 'income') {
+      // Remove the query parameter from URL
+      navigate(location.pathname, { replace: true })
+      
+      // Open the quick form modal (handleQuickAction handles accountsData internally)
+      handleQuickAction(action as 'income' | 'expense')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.search, navigate, location.pathname])
 
   const handleCategorySelect = (categoryId: number) => {
     setQuickFormData({ ...quickFormData, category_id: categoryId.toString() })
