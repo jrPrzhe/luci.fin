@@ -627,7 +627,25 @@ async def get_analytics(
     facts = []
     
     if total_expense > 0:
-        avg_daily_expense = total_expense / max(len(daily_flow_list), 1)
+        # Calculate number of days in the period
+        # For week: 7 days (from start_date to end_date inclusive)
+        # For month: days from 1st of month to today (inclusive)
+        # For year: days from January 1st to today (inclusive)
+        if period == "week":
+            # Calculate days from start_date to end_date (inclusive)
+            days_in_period = (end_date.date() - start_date.date()).days + 1
+        elif period == "month":
+            # Days from 1st of current month to today (inclusive)
+            days_in_period = end_date.day
+        elif period == "year":
+            # Days from January 1st to today (inclusive)
+            # Calculate day of year
+            days_in_period = (end_date.date() - datetime(end_date.year, 1, 1).date()).days + 1
+        else:
+            # Default to month calculation
+            days_in_period = end_date.day
+        
+        avg_daily_expense = total_expense / max(days_in_period, 1)
         facts.append({
             "icon": "📊",
             "text": f"Средний расход в день: {avg_daily_expense:,.0f} {current_user.default_currency}",

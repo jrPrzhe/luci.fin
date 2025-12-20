@@ -41,6 +41,182 @@ export function QuestNotifications({ variant = 'header' }: QuestNotificationsPro
     }
   }, [showModal])
 
+  // Prevent scroll and close modal on tab switch when modal is open
+  useEffect(() => {
+    if (!showModal) return
+
+    // Сохраняем текущую позицию прокрутки
+    const scrollY = window.scrollY
+    const scrollX = window.scrollX
+    
+    // Сохраняем оригинальные стили для body и html
+    const originalBodyOverflow = document.body.style.overflow
+    const originalBodyPosition = document.body.style.position
+    const originalBodyTop = document.body.style.top
+    const originalBodyLeft = document.body.style.left
+    const originalBodyWidth = document.body.style.width
+    const originalBodyHeight = document.body.style.height
+    const originalBodyTouchAction = document.body.style.touchAction
+    
+    const originalHtmlOverflow = document.documentElement.style.overflow
+    const originalHtmlPosition = document.documentElement.style.position
+    const originalHtmlTop = document.documentElement.style.top
+    const originalHtmlLeft = document.documentElement.style.left
+    const originalHtmlWidth = document.documentElement.style.width
+    const originalHtmlHeight = document.documentElement.style.height
+    const originalHtmlTouchAction = document.documentElement.style.touchAction
+    
+    // Применяем стили для предотвращения прокрутки на body и html
+    const preventScrollStyles = {
+      overflow: 'hidden',
+      position: 'fixed',
+      top: `-${scrollY}px`,
+      left: `-${scrollX}px`,
+      width: '100%',
+      height: '100%',
+      touchAction: 'none',
+    }
+    
+    Object.assign(document.body.style, preventScrollStyles)
+    Object.assign(document.documentElement.style, preventScrollStyles)
+    
+    // Предотвращаем события прокрутки с помощью обработчиков событий
+    const preventWheel = (e: WheelEvent) => {
+      // Разрешаем прокрутку только внутри модального контента
+      const target = e.target as HTMLElement
+      const modalContent = target.closest('[class*="overflow-y-auto"]')
+      if (!modalContent) {
+        e.preventDefault()
+        e.stopPropagation()
+        e.stopImmediatePropagation()
+        return false
+      }
+    }
+    
+    const preventTouchMove = (e: TouchEvent) => {
+      // Разрешаем прокрутку только внутри модального контента
+      const target = e.target as HTMLElement
+      const modalContent = target.closest('[class*="overflow-y-auto"]')
+      if (!modalContent) {
+        e.preventDefault()
+        e.stopPropagation()
+        e.stopImmediatePropagation()
+        return false
+      }
+    }
+    
+    const preventScroll = (e: Event) => {
+      const target = e.target as HTMLElement
+      const modalContent = target.closest('[class*="overflow-y-auto"]')
+      if (!modalContent && target !== document.body && target !== document.documentElement) {
+        e.preventDefault()
+        e.stopPropagation()
+        e.stopImmediatePropagation()
+        return false
+      }
+    }
+    
+    // Добавляем обработчики событий с passive: false для возможности preventDefault
+    document.addEventListener('wheel', preventWheel, { passive: false, capture: true })
+    document.addEventListener('touchmove', preventTouchMove, { passive: false, capture: true })
+    document.addEventListener('scroll', preventScroll, { passive: false, capture: true })
+    window.addEventListener('scroll', preventScroll, { passive: false, capture: true })
+    
+    // Закрываем модалку при переключении вкладки
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        setShowModal(false)
+      }
+    }
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    return () => {
+      // Удаляем обработчики событий
+      document.removeEventListener('wheel', preventWheel, { capture: true } as EventListenerOptions)
+      document.removeEventListener('touchmove', preventTouchMove, { capture: true } as EventListenerOptions)
+      document.removeEventListener('scroll', preventScroll, { capture: true } as EventListenerOptions)
+      window.removeEventListener('scroll', preventScroll, { capture: true } as EventListenerOptions)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      
+      // Восстанавливаем оригинальные стили
+      if (originalBodyOverflow) {
+        document.body.style.overflow = originalBodyOverflow
+      } else {
+        document.body.style.removeProperty('overflow')
+      }
+      if (originalBodyPosition) {
+        document.body.style.position = originalBodyPosition
+      } else {
+        document.body.style.removeProperty('position')
+      }
+      if (originalBodyTop) {
+        document.body.style.top = originalBodyTop
+      } else {
+        document.body.style.removeProperty('top')
+      }
+      if (originalBodyLeft) {
+        document.body.style.left = originalBodyLeft
+      } else {
+        document.body.style.removeProperty('left')
+      }
+      if (originalBodyWidth) {
+        document.body.style.width = originalBodyWidth
+      } else {
+        document.body.style.removeProperty('width')
+      }
+      if (originalBodyHeight) {
+        document.body.style.height = originalBodyHeight
+      } else {
+        document.body.style.removeProperty('height')
+      }
+      if (originalBodyTouchAction) {
+        document.body.style.touchAction = originalBodyTouchAction
+      } else {
+        document.body.style.removeProperty('touchAction')
+      }
+      
+      if (originalHtmlOverflow) {
+        document.documentElement.style.overflow = originalHtmlOverflow
+      } else {
+        document.documentElement.style.removeProperty('overflow')
+      }
+      if (originalHtmlPosition) {
+        document.documentElement.style.position = originalHtmlPosition
+      } else {
+        document.documentElement.style.removeProperty('position')
+      }
+      if (originalHtmlTop) {
+        document.documentElement.style.top = originalHtmlTop
+      } else {
+        document.documentElement.style.removeProperty('top')
+      }
+      if (originalHtmlLeft) {
+        document.documentElement.style.left = originalHtmlLeft
+      } else {
+        document.documentElement.style.removeProperty('left')
+      }
+      if (originalHtmlWidth) {
+        document.documentElement.style.width = originalHtmlWidth
+      } else {
+        document.documentElement.style.removeProperty('width')
+      }
+      if (originalHtmlHeight) {
+        document.documentElement.style.height = originalHtmlHeight
+      } else {
+        document.documentElement.style.removeProperty('height')
+      }
+      if (originalHtmlTouchAction) {
+        document.documentElement.style.touchAction = originalHtmlTouchAction
+      } else {
+        document.documentElement.style.removeProperty('touchAction')
+      }
+      
+      // Восстанавливаем позицию прокрутки
+      window.scrollTo(scrollX, scrollY)
+    }
+  }, [showModal])
+
   const handleClick = () => {
     if (variant === 'header') {
       // Check theme immediately before opening modal
