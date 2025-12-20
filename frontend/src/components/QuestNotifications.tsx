@@ -26,18 +26,6 @@ export function QuestNotifications({ variant = 'header' }: QuestNotificationsPro
     navigate('/quests')
   }
 
-  const getQuestIcon = (questType: string) => {
-    switch (questType) {
-      case 'record_expense': return '💸'
-      case 'record_income': return '💰'
-      case 'review_transactions': return '📊'
-      case 'check_balance': return '💳'
-      case 'ask_lucy': return '💬'
-      case 'save_money': return '💎'
-      default: return '📋'
-    }
-  }
-
   if (variant === 'header') {
     return (
       <button
