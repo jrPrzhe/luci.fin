@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from sqlalchemy import text as sa_text, func
+from sqlalchemy import text as sa_text
 from typing import List, Optional
 from app.core.database import get_db
 from app.api.v1.auth import get_current_user
@@ -286,31 +286,32 @@ async def create_account(
     # Check for duplicate account name (case-insensitive)
     # For personal accounts: check within user's accounts
     # For shared accounts: check within shared budget accounts
+    trimmed_name_lower = trimmed_name.lower()
     if shared_budget_id:
         # Check for duplicate name in shared budget
-        existing_account = db.query(Account).filter(
+        existing_accounts = db.query(Account).filter(
             Account.shared_budget_id == shared_budget_id,
-            Account.is_active == True,
-            func.lower(Account.name) == func.lower(trimmed_name)
-        ).first()
-        if existing_account:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Счет с таким названием уже существует в этом общем бюджете"
-            )
+            Account.is_active == True
+        ).all()
+        for acc in existing_accounts:
+            if acc.name and acc.name.lower() == trimmed_name_lower:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Счет с таким названием уже существует в этом общем бюджете"
+                )
     else:
         # Check for duplicate name in user's personal accounts
-        existing_account = db.query(Account).filter(
+        existing_accounts = db.query(Account).filter(
             Account.user_id == current_user.id,
             Account.shared_budget_id.is_(None),
-            Account.is_active == True,
-            func.lower(Account.name) == func.lower(trimmed_name)
-        ).first()
-        if existing_account:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="У вас уже есть счет с таким названием"
-            )
+            Account.is_active == True
+        ).all()
+        for acc in existing_accounts:
+            if acc.name and acc.name.lower() == trimmed_name_lower:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="У вас уже есть счет с таким названием"
+                )
     
     # Validate description length (Pydantic should handle this, but double-check)
     if account_data.description and len(account_data.description) > 500:
@@ -498,33 +499,34 @@ async def update_account(
         # Check for duplicate account name (case-insensitive, excluding current account)
         # For personal accounts: check within user's accounts
         # For shared accounts: check within shared budget accounts
+        trimmed_name_lower = trimmed_name.lower()
         if account.shared_budget_id:
             # Check for duplicate name in shared budget (excluding current account)
-            existing_account = db.query(Account).filter(
+            existing_accounts = db.query(Account).filter(
                 Account.shared_budget_id == account.shared_budget_id,
                 Account.id != account_id,
-                Account.is_active == True,
-                func.lower(Account.name) == func.lower(trimmed_name)
-            ).first()
-            if existing_account:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Счет с таким названием уже существует в этом общем бюджете"
-                )
+                Account.is_active == True
+            ).all()
+            for acc in existing_accounts:
+                if acc.name and acc.name.lower() == trimmed_name_lower:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Счет с таким названием уже существует в этом общем бюджете"
+                    )
         else:
             # Check for duplicate name in user's personal accounts (excluding current account)
-            existing_account = db.query(Account).filter(
+            existing_accounts = db.query(Account).filter(
                 Account.user_id == current_user.id,
                 Account.shared_budget_id.is_(None),
                 Account.id != account_id,
-                Account.is_active == True,
-                func.lower(Account.name) == func.lower(trimmed_name)
-            ).first()
-            if existing_account:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="У вас уже есть счет с таким названием"
-                )
+                Account.is_active == True
+            ).all()
+            for acc in existing_accounts:
+                if acc.name and acc.name.lower() == trimmed_name_lower:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="У вас уже есть счет с таким названием"
+                    )
         
         account.name = trimmed_name
     if account_update.account_type is not None:
