@@ -74,16 +74,15 @@ def verify_vk_signature(params: dict, secret_key: str) -> bool:
         hashlib.sha256
     ).digest()
     
-    # Encode in base64
-    calculated_sign = base64.b64encode(hmac_digest).decode('utf-8')
+    # Encode in URL-safe base64 (VK uses URL-safe base64 encoding)
+    # URL-safe base64 uses '-' instead of '+' and '_' instead of '/'
+    calculated_sign = base64.urlsafe_b64encode(hmac_digest).decode('utf-8')
     
     # Remove padding if present (VK signatures don't include padding)
     calculated_sign = calculated_sign.rstrip('=')
     
-    # Compare signatures (VK signatures are URL-safe base64)
-    # VK uses URL-safe base64, but sometimes uses regular base64
-    # Let's try both variants
-    is_valid = (calculated_sign == provided_sign) or (calculated_sign.replace('+', '-').replace('/', '_') == provided_sign)
+    # Compare signatures
+    is_valid = calculated_sign == provided_sign
     
     if is_valid:
         logger.info("VK signature verification passed")
