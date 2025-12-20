@@ -303,6 +303,54 @@ async def get_transactions(
     return result
 
 
+def _calculate_account_balance(account_id: int, user_id: int, db: Session, account: Account = None) -> Decimal:
+    """Calculate current account balance based on transactions"""
+    if not account:
+        account = db.query(Account).filter(Account.id == account_id).first()
+        if not account:
+            return Decimal("0")
+    
+    from sqlalchemy import text as sa_text
+    
+    # For shared accounts, count ALL transactions (from all members)
+    # For personal accounts, count only user's transactions
+    if account.shared_budget_id:
+        # Shared account: count all transactions
+        transactions_result = db.execute(
+            sa_text("""
+                SELECT transaction_type::text, amount 
+                FROM transactions 
+                WHERE account_id = :account_id
+            """),
+            {"account_id": account_id}
+        )
+    else:
+        # Personal account: count only user's transactions
+        transactions_result = db.execute(
+            sa_text("""
+                SELECT transaction_type::text, amount 
+                FROM transactions 
+                WHERE account_id = :account_id AND user_id = :user_id
+            """),
+            {"account_id": account_id, "user_id": user_id}
+        )
+    
+    balance = Decimal(str(account.initial_balance)) if account.initial_balance else Decimal("0")
+    for row in transactions_result:
+        trans_type = row[0].lower() if row[0] else ''
+        amount = Decimal(str(row[1])) if row[1] else Decimal("0")
+        
+        if trans_type == 'income':
+            balance += amount
+        elif trans_type == 'expense':
+            balance -= amount
+        elif trans_type == 'transfer':
+            # Transfer уменьшает баланс счета отправления
+            balance -= amount
+    
+    return balance
+
+
 def _update_account_balance(account_id: int, user_id: int, db: Session):
     """Recalculate account balance based on transactions"""
     account = db.query(Account).filter(
@@ -839,6 +887,43 @@ async def create_transaction(
     
     # Use converted amount for account operations (in account currency)
     amount_to_use = float(converted_amount)
+    
+    # For transfers, check if source account has sufficient balance
+    # This check happens after currency conversion to ensure we're comparing in the same currency
+    if transaction_data.transaction_type == "transfer" and to_transaction:
+        # For transfers, always check the original source account (account_id), not final_account_id
+        # because final_account_id might be changed if a goal is specified
+        source_account = account  # Use the original account from the beginning of the function
+        
+        # Calculate current balance of source account (in account currency)
+        source_balance = _calculate_account_balance(
+            transaction_data.account_id, 
+            current_user.id, 
+            db, 
+            account=source_account
+        )
+        
+        # For transfer, we need to check balance in the source account's currency
+        # If transaction currency differs from source account currency, we need to convert
+        source_account_currency = source_account.currency
+        if transaction_currency != source_account_currency:
+            # Convert transfer amount to source account currency
+            source_exchange_rate = await get_exchange_rate(transaction_currency, source_account_currency)
+            if source_exchange_rate is None:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Не удалось получить курс валют для проверки баланса. Пожалуйста, попробуйте позже."
+                )
+            transfer_amount_in_source_currency = original_amount * source_exchange_rate
+        else:
+            transfer_amount_in_source_currency = original_amount
+        
+        # Check if balance is sufficient
+        if source_balance < transfer_amount_in_source_currency:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Недостаточно средств на счете. Доступно: {source_balance:.2f} {source_account_currency}, требуется: {transfer_amount_in_source_currency:.2f} {source_account_currency}"
+            )
     
     # For transfers, use raw SQL to avoid enum issues completely
     if transaction_data.transaction_type == "transfer" and to_transaction:
