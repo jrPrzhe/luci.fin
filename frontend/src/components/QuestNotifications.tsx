@@ -21,7 +21,8 @@ export function QuestNotifications({ variant = 'header' }: QuestNotificationsPro
       // Закрываем модальное окно синхронно, чтобы cleanup функция успела выполниться
       setShowModal(false)
     }
-  }, [location.pathname, showModal])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname])
 
   const { data: quests, isLoading } = useQuery({
     queryKey: ['daily-quests'],
