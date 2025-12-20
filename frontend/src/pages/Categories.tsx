@@ -663,21 +663,23 @@ export function Categories() {
       ) : (
         <div className="space-y-6">
           {/* Favorite Categories */}
-          {!showFavoritesOnly && favoriteCategories.length > 0 && (
+          {favoriteCategories.length > 0 && (
             <div>
               <h3 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-3 flex items-center justify-between">
                 <span className="flex items-center gap-2">
-                  ⭐ {t.categories.filters.favoriteCategories}
+                  ⭐ {showFavoritesOnly ? t.categories.filters.favorites : t.categories.filters.favoriteCategories}
                 </span>
-                <button
-                  onClick={() => setShowFavoritesSection(!showFavoritesSection)}
-                  className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text text-sm"
-                  title={showFavoritesSection ? 'Скрыть' : 'Показать'}
-                >
-                  {showFavoritesSection ? '▼' : '▶'}
-                </button>
+                {!showFavoritesOnly && (
+                  <button
+                    onClick={() => setShowFavoritesSection(!showFavoritesSection)}
+                    className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text text-sm"
+                    title={showFavoritesSection ? 'Скрыть' : 'Показать'}
+                  >
+                    {showFavoritesSection ? '▼' : '▶'}
+                  </button>
+                )}
               </h3>
-              {showFavoritesSection && (
+              {(showFavoritesSection || showFavoritesOnly) && (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
                   {favoriteCategories.map((category) => (
                     <div key={`category-wrapper-${category.id}`}>
