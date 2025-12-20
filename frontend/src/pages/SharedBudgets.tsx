@@ -1072,7 +1072,17 @@ export function SharedBudgets() {
                   <input
                     type="text"
                     value={joinCode}
-                    onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                    onChange={(e) => {
+                      // Remove spaces and limit to 6 characters
+                      const value = e.target.value.replace(/\s/g, '').toUpperCase().slice(0, 6)
+                      setJoinCode(value)
+                    }}
+                    onPaste={(e) => {
+                      e.preventDefault()
+                      // Get pasted text, remove spaces, uppercase, limit to 6 chars
+                      const pastedText = e.clipboardData.getData('text').replace(/\s/g, '').toUpperCase().slice(0, 6)
+                      setJoinCode(pastedText)
+                    }}
                     className="w-full px-4 py-2 border border-gray-300 dark:border-telegram-dark-border rounded-lg focus:ring-2 focus:ring-telegram-primary dark:focus:ring-telegram-dark-primary focus:border-transparent text-2xl text-center font-bold tracking-widest bg-white dark:bg-telegram-dark-bg text-telegram-text dark:text-telegram-dark-text"
                     placeholder="ABC123"
                     maxLength={6}
