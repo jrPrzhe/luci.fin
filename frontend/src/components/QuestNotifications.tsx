@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { api } from '../services/api'
 import { useI18n } from '../contexts/I18nContext'
 
@@ -11,8 +11,17 @@ interface QuestNotificationsProps {
 export function QuestNotifications({ variant = 'header' }: QuestNotificationsProps) {
   const { t, translateQuest } = useI18n()
   const navigate = useNavigate()
+  const location = useLocation()
   const [showModal, setShowModal] = useState(false)
   const [isDarkMode, setIsDarkMode] = useState(false)
+
+  // Закрываем модальное окно при изменении маршрута
+  useEffect(() => {
+    if (showModal) {
+      // Закрываем модальное окно синхронно, чтобы cleanup функция успела выполниться
+      setShowModal(false)
+    }
+  }, [location.pathname, showModal])
 
   const { data: quests, isLoading } = useQuery({
     queryKey: ['daily-quests'],
@@ -258,14 +267,29 @@ export function QuestNotifications({ variant = 'header' }: QuestNotificationsPro
         {/* Modal для отображения квестов */}
         {showModal && (
           <div 
-            className="fixed inset-0 bg-black/50 dark:bg-black/70 z-[9999] flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/50 dark:bg-black/70 z-50 flex items-center justify-center p-4"
             onClick={() => setShowModal(false)}
+            style={{ 
+              position: 'fixed', 
+              top: 0, 
+              left: 0, 
+              right: 0, 
+              bottom: 0,
+              zIndex: 50,
+              overflow: 'auto'
+            }}
           >
             <div 
-              className={`rounded-2xl shadow-2xl max-w-md w-full max-h-[80vh] overflow-hidden relative z-[10000] ${
+              className={`rounded-2xl shadow-2xl max-w-md w-full max-h-[85vh] overflow-hidden relative ${
                 isDarkMode ? 'bg-telegram-dark-surface' : 'bg-telegram-surface'
               }`}
               onClick={(e) => e.stopPropagation()}
+              style={{ 
+                maxHeight: '85vh', 
+                margin: 'auto',
+                position: 'relative',
+                zIndex: 51
+              }}
             >
               <div className="p-4 border-b border-telegram-border dark:border-telegram-dark-border flex items-center justify-between">
                 <h2 className="text-lg font-bold text-telegram-text dark:text-telegram-dark-text">
