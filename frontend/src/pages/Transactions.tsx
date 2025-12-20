@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useLocation } from 'react-router-dom'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../services/api'
 import { useToast } from '../contexts/ToastContext'
 import { useI18n } from '../contexts/I18nContext'
@@ -73,9 +73,24 @@ export function Transactions() {
   const { showError, showSuccess } = useToast()
   const { t, translateCategoryName } = useI18n()
   const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [accounts, setAccounts] = useState<Account[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
+  
+  // Use React Query for accounts with caching (shared with Dashboard)
+  const { data: accounts = [], isLoading: accountsLoading } = useQuery<Account[]>({
+    queryKey: ['accounts'],
+    queryFn: async () => {
+      try {
+        return await api.getAccounts()
+      } catch (error) {
+        console.error('Error fetching accounts:', error)
+        return []
+      }
+    },
+    retry: 1,
+    staleTime: 60000, // 1 minute - same as Dashboard
+    refetchOnWindowFocus: false,
+  })
   const [showForm, setShowForm] = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -247,11 +262,7 @@ export function Transactions() {
         setTransactions([...transactions, ...batch])
       }
       
-      // Загружаем счета только при первой загрузке
-      if (reset && accounts.length === 0) {
-        const accountsData = await api.getAccounts()
-        setAccounts(accountsData)
-      }
+      // Accounts are now loaded via React Query, no need to load here
     } catch (err: any) {
       showError(err.message || 'Ошибка загрузки данных')
     } finally {

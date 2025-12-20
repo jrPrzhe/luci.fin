@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../services/api'
 import { useToast } from '../contexts/ToastContext'
 import { useI18n } from '../contexts/I18nContext'
@@ -70,15 +70,59 @@ export function Accounts() {
     investment: t.accounts.types.investment,
     other: t.accounts.types.other,
   }
-  const [accounts, setAccounts] = useState<Account[]>([])
-  const [sharedBudgets, setSharedBudgets] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
+  
+  // Use React Query for accounts with caching (shared with Dashboard)
+  const { data: accountsData = [], isLoading: accountsLoading } = useQuery<Account[]>({
+    queryKey: ['accounts'],
+    queryFn: async () => {
+      try {
+        return await api.getAccounts()
+      } catch (error) {
+        console.error('Error fetching accounts:', error)
+        return []
+      }
+    },
+    retry: 1,
+    staleTime: 60000, // 1 minute - same as Dashboard
+    refetchOnWindowFocus: false,
+  })
+  
+  // Use React Query for shared budgets
+  const { data: sharedBudgets = [] } = useQuery({
+    queryKey: ['shared-budgets'],
+    queryFn: async () => {
+      try {
+        const budgets = await api.getSharedBudgets()
+        return budgets || []
+      } catch (err) {
+        console.error('Error loading shared budgets:', err)
+        return []
+      }
+    },
+    retry: 1,
+    staleTime: 60000, // 1 minute
+    refetchOnWindowFocus: false,
+  })
+  
+  // Enrich accounts with budget descriptions
+  const accounts = accountsData.map((account: Account) => {
+    if (account.shared_budget_id) {
+      const budget = sharedBudgets.find((b: any) => b.id === account.shared_budget_id)
+      if (budget) {
+        return {
+          ...account,
+          shared_budget_description: budget.description
+        }
+      }
+    }
+    return account
+  })
   const [showForm, setShowForm] = useState(false)
   const [editingAccount, setEditingAccount] = useState<Account | null>(null)
   const [expandedDescriptions, setExpandedDescriptions] = useState<Set<number>>(new Set())
   const [isDeleting, setIsDeleting] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [currentUser, setCurrentUser] = useState<any>(null)
   const [budgetMembers, setBudgetMembers] = useState<Record<number, any[]>>({})
   
   // Confirmation modal state
@@ -109,25 +153,13 @@ export function Accounts() {
     }
   }, [formData, editingAccount, showForm])
 
-  useEffect(() => {
-    const initialize = async () => {
-      // Загружаем текущего пользователя
-      try {
-        const user = await api.getCurrentUser()
-        setCurrentUser(user)
-      } catch (err) {
-        console.error('Failed to load current user:', err)
-      }
-      
-      const budgets = await loadSharedBudgets()
-      if (budgets) {
-        await loadAccounts(budgets)
-      } else {
-        await loadAccounts()
-      }
-    }
-    initialize()
-  }, [])
+  // Use React Query for current user
+  const { data: currentUser } = useQuery({
+    queryKey: ['currentUser'],
+    queryFn: () => api.getCurrentUser(),
+    staleTime: 60000, // 1 minute
+    refetchOnWindowFocus: false,
+  })
   
   // Загружаем участников бюджетов после загрузки пользователя и счетов
   useEffect(() => {
@@ -171,45 +203,7 @@ export function Accounts() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.id, accounts.length])
 
-  const loadSharedBudgets = async () => {
-    try {
-      const budgets = await api.getSharedBudgets()
-      const budgetsArray = budgets || []
-      setSharedBudgets(budgetsArray)
-      return budgetsArray
-    } catch (err) {
-      // Ignore errors - budgets might not be accessible
-      console.error('Error loading shared budgets:', err)
-      setSharedBudgets([])
-      return []
-    }
-  }
-
-  const loadAccounts = async (budgets?: any[]) => {
-    try {
-      setLoading(true)
-      const accountsData = await api.getAccounts()
-      const budgetsToUse = budgets || sharedBudgets
-      // Обогащаем счета описаниями бюджетов
-      const enrichedAccounts = accountsData.map((account: Account) => {
-        if (account.shared_budget_id) {
-          const budget = budgetsToUse.find(b => b.id === account.shared_budget_id)
-          if (budget) {
-            return {
-              ...account,
-              shared_budget_description: budget.description
-            }
-          }
-        }
-        return account
-      })
-      setAccounts(enrichedAccounts)
-    } catch (err: any) {
-      showError(err.message || 'Ошибка загрузки счетов')
-    } finally {
-      setLoading(false)
-    }
-  }
+  // Accounts and budgets are now loaded via React Query, no need for separate load functions
   
   // Функция для проверки, является ли текущий пользователь администратором бюджета
   const isUserAdminOfBudget = (budgetId?: number): boolean => {
@@ -334,10 +328,9 @@ export function Accounts() {
       })
       setShowForm(false)
       setEditingAccount(null)
-      await loadAccounts()
       // Invalidate React Query cache for accounts so other pages see the new account
-      queryClient.invalidateQueries({ queryKey: ['accounts'] })
-      queryClient.invalidateQueries({ queryKey: ['balance'] })
+      await queryClient.invalidateQueries({ queryKey: ['accounts'] })
+      await queryClient.invalidateQueries({ queryKey: ['balance'] })
     } catch (err: any) {
       const { translateError } = await import('../utils/errorMessages')
       showError(translateError(err))
@@ -388,7 +381,7 @@ export function Accounts() {
     return !isNaN(balanceNumber) && balanceNumber >= 0
   })() : true
 
-  if (loading) {
+  if (accountsLoading) {
     return <LoadingSpinner />
   }
 
@@ -568,11 +561,12 @@ export function Accounts() {
                               setIsDeleting(true)
                               try {
                                 await api.deleteAccount(account.id)
-                                await loadAccounts()
-                                queryClient.invalidateQueries({ queryKey: ['goals'] })
-                                queryClient.invalidateQueries({ queryKey: ['transactions'] })
-                                queryClient.invalidateQueries({ queryKey: ['analytics'] })
-                                queryClient.invalidateQueries({ queryKey: ['balance'] })
+                                // Invalidate React Query cache
+                                await queryClient.invalidateQueries({ queryKey: ['accounts'] })
+                                await queryClient.invalidateQueries({ queryKey: ['goals'] })
+                                await queryClient.invalidateQueries({ queryKey: ['transactions'] })
+                                await queryClient.invalidateQueries({ queryKey: ['analytics'] })
+                                await queryClient.invalidateQueries({ queryKey: ['balance'] })
                                 showSuccess(t.accounts.messages.deleted)
                                 setConfirmModal({ show: false, message: '', onConfirm: () => {} })
                               } catch (err: any) {

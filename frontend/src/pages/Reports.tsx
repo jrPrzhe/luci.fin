@@ -153,11 +153,14 @@ export function Reports() {
   const [isDownloading, setIsDownloading] = useState(false)
   const locale = language === 'ru' ? 'ru-RU' : 'en-US'
   
-  // Invalidate cache when period changes
+  // Prefetch data when period changes (but don't invalidate - use cache if available)
   useEffect(() => {
-    console.log(`[Reports] Period changed to: ${period}, invalidating cache`)
-    queryClient.invalidateQueries({ queryKey: ['analytics', period] })
-    queryClient.invalidateQueries({ queryKey: ['analytics'] })
+    console.log(`[Reports] Period changed to: ${period}, prefetching if needed`)
+    queryClient.prefetchQuery({
+      queryKey: ['analytics', period],
+      queryFn: () => api.getAnalytics(period),
+      staleTime: 60000,
+    })
   }, [period, queryClient])
   
   // Function to translate Interesting Facts texts
@@ -219,12 +222,12 @@ export function Reports() {
         throw err
       }
     },
-    staleTime: 0, // Always consider data stale to allow immediate updates
-    refetchOnWindowFocus: true, // Refetch when window gets focus
-    refetchOnMount: 'always', // Always refetch when component mounts
+    staleTime: 60000, // Cache for 1 minute - data is fresh for 1 minute
+    refetchOnWindowFocus: false, // Don't refetch on window focus to improve performance
+    refetchOnMount: false, // Use cached data if available
     refetchInterval: false, // Don't auto-refetch on interval
     retry: 1, // Retry once on failure
-    gcTime: 0, // Don't cache data (formerly cacheTime)
+    gcTime: 300000, // Keep in cache for 5 minutes (formerly cacheTime)
   })
 
   const { data: user } = useQuery({
