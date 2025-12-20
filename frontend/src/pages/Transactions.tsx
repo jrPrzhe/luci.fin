@@ -810,12 +810,13 @@ export function Transactions() {
               </div>
             </div>
 
-            {/* Фильтр по типу - Доход/Расход */}
-            <div>
-              <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                {t.transactions.filters.incomeExpense}
-              </label>
-              <div className="flex gap-2 flex-wrap">
+            {/* Фильтр по типу - Доход/Расход - скрыт при выборе "Мои" */}
+            {filterType !== 'own' && (
+              <div>
+                <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
+                  {t.transactions.filters.incomeExpense}
+                </label>
+                <div className="flex gap-2 flex-wrap">
                 <button
                 onClick={() => setTransactionTypeFilter('all')}
                 className={`px-4 py-2 rounded-telegram transition-all text-sm ${
@@ -858,6 +859,7 @@ export function Transactions() {
               </button>
               </div>
             </div>
+            )}
 
             {/* Фильтр по датам */}
             <div>

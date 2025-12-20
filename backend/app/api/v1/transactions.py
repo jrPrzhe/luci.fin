@@ -182,9 +182,16 @@ async def get_transactions(
                 SharedBudgetMember.user_id == current_user.id
             ).first()
             if membership:
-                # User has access, get all transactions for this account
-                sql_query += " AND t.account_id = :account_id"
-                params["account_id"] = account_id
+                # User has access to shared account
+                if filter_type == "own":
+                    # For "own" filter, only show user's transactions even on shared account
+                    sql_query += " AND t.account_id = :account_id AND t.user_id = :user_id"
+                    params["account_id"] = account_id
+                    params["user_id"] = current_user.id
+                else:
+                    # For "all" or "shared", get all transactions for this account
+                    sql_query += " AND t.account_id = :account_id"
+                    params["account_id"] = account_id
             else:
                 # User doesn't have access, only their own transactions
                 sql_query += " AND t.account_id = :account_id AND t.user_id = :user_id"
@@ -196,7 +203,9 @@ async def get_transactions(
             params["account_id"] = account_id
             params["user_id"] = current_user.id
     elif filter_type == "own":
-        sql_query += " AND t.user_id = :user_id"
+        # Only user's transactions from personal accounts (exclude shared account transactions)
+        # This means: transactions where user_id matches AND account is not shared
+        sql_query += " AND t.user_id = :user_id AND a.shared_budget_id IS NULL"
         params["user_id"] = current_user.id
     elif filter_type == "shared":
         if shared_account_ids:
