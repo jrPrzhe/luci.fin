@@ -43,6 +43,10 @@ export function Goals() {
     refetchInterval: 30000, // Refetch every 30 seconds to update progress
     staleTime: 10000, // Consider data stale after 10 seconds
     retry: 2,
+    // Не кешировать при ошибках, чтобы избежать проблем с кешем в режиме инкогнито
+    gcTime: 0,
+    // Принудительно обновлять при фокусе окна (может помочь в режиме инкогнито)
+    refetchOnWindowFocus: true,
   })
 
   // Debug logging
@@ -956,8 +960,18 @@ function CreateGoalModal({ onClose, onSuccess }: { onClose: () => void; onSucces
       showSuccess(t.goals.goalCreated)
       
       // Invalidate and refetch goals query to refresh the list immediately
+      // Используем await для гарантии обновления, особенно важно в режиме инкогнито
       await queryClient.invalidateQueries({ queryKey: ['goals'] })
-      await queryClient.refetchQueries({ queryKey: ['goals'] })
+      // Принудительно обновляем данные, игнорируя staleTime
+      await queryClient.refetchQueries({ 
+        queryKey: ['goals'],
+        type: 'active' // Обновляем только активные запросы
+      })
+      
+      // Дополнительная проверка: если данные не обновились, принудительно обновляем
+      setTimeout(async () => {
+        await queryClient.refetchQueries({ queryKey: ['goals'] })
+      }, 500)
       
       onSuccess()
     } catch (error: any) {

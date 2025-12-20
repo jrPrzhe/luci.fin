@@ -5,6 +5,7 @@ import { api } from '../services/api'
 import { useToast } from '../contexts/ToastContext'
 import { useI18n } from '../contexts/I18nContext'
 import { LoadingSpinner } from '../components/LoadingSpinner'
+import { storageSync } from '../utils/storage'
 
 interface Transaction {
   id: number
@@ -77,27 +78,37 @@ export function Transactions() {
   const [loading, setLoading] = useState(true)
   
   // Use React Query for accounts with caching (shared with Dashboard)
-  const { data: accounts = [] } = useQuery<Account[]>({
+  const { data: accounts = [], error: accountsError, isLoading: accountsLoading } = useQuery<Account[]>({
     queryKey: ['accounts'],
     queryFn: async () => {
       try {
         return await api.getAccounts()
       } catch (error) {
         console.error('Error fetching accounts:', error)
+        // В режиме инкогнито могут быть проблемы с токенами - показываем ошибку пользователю
+        const errorMessage = error instanceof Error ? error.message : 'Не удалось загрузить счета'
+        if (errorMessage.includes('401') || errorMessage.includes('Unauthorized') || errorMessage.includes('токен')) {
+          showError('Ошибка авторизации. Пожалуйста, перезагрузите страницу.')
+        } else {
+          showError('Не удалось загрузить счета. Пожалуйста, попробуйте позже.')
+        }
         return []
       }
     },
     retry: 1,
     staleTime: 60000, // 1 minute - same as Dashboard
     refetchOnWindowFocus: false,
+    // Не кешировать при ошибках, чтобы избежать проблем с кешем в режиме инкогнито
+    gcTime: 0,
   })
   const [showForm, setShowForm] = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  // Загружаем сохраненные фильтры из localStorage при инициализации
+  // Загружаем сохраненные фильтры из storage при инициализации
+  // Используем storageSync для поддержки режима инкогнито
   const loadSavedFilters = () => {
     try {
-      const saved = localStorage.getItem('transactionsFilters')
+      const saved = storageSync.getItem('transactionsFilters')
       if (saved) {
         const filters = JSON.parse(saved)
         return {
@@ -110,7 +121,8 @@ export function Transactions() {
         }
       }
     } catch (e) {
-      console.error('Error loading saved filters:', e)
+      // В режиме инкогнито localStorage может быть недоступен - это нормально
+      console.warn('Error loading saved filters (may be incognito mode):', e)
     }
     return {
       filterType: 'all' as const,
@@ -264,7 +276,22 @@ export function Transactions() {
       
       // Accounts are now loaded via React Query, no need to load here
     } catch (err: any) {
-      showError(err.message || 'Ошибка загрузки данных')
+      console.error('Error loading transactions:', err)
+      const errorMessage = err?.message || String(err) || 'Ошибка загрузки данных'
+      
+      // В режиме инкогнито могут быть проблемы с авторизацией
+      if (errorMessage.includes('401') || errorMessage.includes('Unauthorized') || errorMessage.includes('токен')) {
+        showError('Ошибка авторизации. Пожалуйста, перезагрузите страницу.')
+      } else if (errorMessage.includes('timeout') || errorMessage.includes('Timeout')) {
+        showError('Превышено время ожидания. Пожалуйста, попробуйте еще раз.')
+      } else {
+        showError(errorMessage)
+      }
+      
+      // В случае ошибки, все равно очищаем состояние загрузки
+      if (reset) {
+        setTransactions([])
+      }
     } finally {
       setLoading(false)
       setLoadingMore(false)
@@ -275,7 +302,8 @@ export function Transactions() {
     await loadData(false)
   }
 
-  // Сохраняем фильтры в localStorage при их изменении
+  // Сохраняем фильтры в storage при их изменении
+  // Используем storageSync для поддержки режима инкогнито
   useEffect(() => {
     const filtersToSave = {
       filterType,
@@ -285,7 +313,13 @@ export function Transactions() {
       customEndDate,
       showDateFilter,
     }
-    localStorage.setItem('transactionsFilters', JSON.stringify(filtersToSave))
+    try {
+      storageSync.setItem('transactionsFilters', JSON.stringify(filtersToSave))
+    } catch (e) {
+      // В режиме инкогнито localStorage может быть недоступен - это нормально
+      // Фильтры все равно будут работать в текущей сессии
+      console.warn('Error saving filters (may be incognito mode):', e)
+    }
   }, [filterType, transactionTypeFilter, dateFilter, customStartDate, customEndDate, showDateFilter])
 
   // Check if we came from Accounts page with accountId
@@ -964,16 +998,22 @@ export function Transactions() {
             {/* Кнопка применения фильтров */}
             <div className="pt-4 border-t border-telegram-border dark:border-telegram-dark-border flex gap-2">
               <button
-                onClick={() => {
-                  // Reset account filter when manually applying filters
-                  setSelectedAccountId(null)
-                  accountIdFromNavigation.current = null
-                  // Explicitly pass null to loadData to ensure account filter is not applied
-                  loadData(true, null)
+                onClick={async () => {
+                  try {
+                    // Reset account filter when manually applying filters
+                    setSelectedAccountId(null)
+                    accountIdFromNavigation.current = null
+                    // Explicitly pass null to loadData to ensure account filter is not applied
+                    await loadData(true, null)
+                  } catch (error) {
+                    // Ошибка уже обработана в loadData, но на всякий случай
+                    console.error('Error applying filters:', error)
+                  }
                 }}
                 className="flex-1 btn-primary py-3 text-base font-medium"
+                disabled={loading}
               >
-                🔍 {t.transactions.filters.apply}
+                🔍 {loading ? (t.transactions.loading || 'Загрузка...') : t.transactions.filters.apply}
               </button>
               <button
                 onClick={() => {
@@ -1041,14 +1081,26 @@ export function Transactions() {
                 onChange={(e) => setFormData({ ...formData, account_id: e.target.value })}
                 className="input"
                 required
+                disabled={accountsLoading}
               >
-                <option value="">{t.transactions.form.selectAccount}</option>
+                <option value="">
+                  {accountsLoading 
+                    ? t.transactions.form.loadingAccounts || 'Загрузка счетов...'
+                    : accountsError || accounts.length === 0
+                    ? t.transactions.form.noAccounts || 'Нет доступных счетов'
+                    : t.transactions.form.selectAccount}
+                </option>
                 {accounts.map(account => (
                   <option key={account.id} value={account.id}>
                     {account.name} ({formatAmount(account.balance, account.currency)})
                   </option>
                 ))}
               </select>
+              {accountsError && accounts.length === 0 && !accountsLoading && (
+                <p className="text-sm text-red-500 dark:text-red-400 mt-1">
+                  {t.transactions.form.accountsError || 'Не удалось загрузить счета. Пожалуйста, перезагрузите страницу.'}
+                </p>
+              )}
             </div>
 
             {formData.transaction_type === 'transfer' && (
