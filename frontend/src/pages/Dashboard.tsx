@@ -600,7 +600,6 @@ export function Dashboard() {
   }, [balanceLoading, accountsLoading, transactionsLoading])
 
   // Очищаем кеш при ошибках таймаута, чтобы избежать проблем с кешем
-  const queryClient = useQueryClient()
   useEffect(() => {
     if (balanceError || accountsError || transactionsError) {
       console.warn('[Dashboard] Query error detected - clearing cache for failed queries')
@@ -632,7 +631,6 @@ export function Dashboard() {
   // Обеспечиваем, что данные всегда доступны (даже при ошибках)
   const balanceData = balance || { total: 0, currency: 'RUB', accounts: [] }
   const accountsData = accounts || []
-  const transactionsData = recentTransactions || []
 
   return (
     <div className="min-h-screen animate-fade-in w-full">
