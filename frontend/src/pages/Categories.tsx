@@ -200,6 +200,19 @@ export function Categories() {
     }
   }
 
+  const resetForm = () => {
+    setEditingCategory(null)
+    setShowForm(false)
+    setFormData({
+      name: '',
+      transaction_type: 'expense',
+      icon: '',
+      color: '#4CAF50',
+      is_favorite: false,
+    })
+    setShowEmojiPicker(false)
+  }
+
   const handleEdit = (category: Category) => {
     // Не позволяем редактировать системные категории
     if (category.is_system) {
@@ -217,15 +230,6 @@ export function Categories() {
       color: validColor,
       is_favorite: category.is_favorite,
     })
-    setShowForm(true)
-    
-    // Прокручиваем к форме редактирования после небольшой задержки для рендеринга
-    setTimeout(() => {
-      const formElement = document.getElementById(`edit-form-${category.id}`)
-      if (formElement) {
-        formElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      }
-    }, 100)
   }
 
   const handleDelete = (id: number) => {
@@ -757,159 +761,6 @@ export function Categories() {
                         </div>
                       </div>
                       
-                      {/* Форма редактирования показывается сразу под редактируемой категорией */}
-                      {editingCategory && editingCategory.id === category.id && (
-                        <div id={`edit-form-${category.id}`} className="card mb-3 mt-3">
-                          <div className="flex justify-between items-center mb-4">
-                            <h2 className="text-xl font-semibold text-telegram-text dark:text-telegram-dark-text">
-                              {t.categories.filters.editCategory}
-                            </h2>
-                            <button
-                              onClick={resetForm}
-                              className="text-telegram-textSecondary hover:text-telegram-text"
-                            >
-                              ✕
-                            </button>
-                          </div>
-
-                          <form onSubmit={handleSubmit} className="space-y-4">
-                            <div>
-                              <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                                {t.categories.form.nameLabel} <span className="text-red-500 dark:text-red-400">*</span>
-                              </label>
-                              <input
-                                type="text"
-                                value={formData.name}
-                                onChange={(e) => {
-                                  const value = e.target.value
-                                  const trimmedValue = value.slice(0, 25)
-                                  setFormData({ ...formData, name: trimmedValue })
-                                }}
-                                className="input"
-                                placeholder={t.categories.form.namePlaceholder}
-                                maxLength={25}
-                                required
-                              />
-                              <div className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1 text-right">
-                                {formData.name.length}/25
-                              </div>
-                            </div>
-
-                            <div>
-                              <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                                {t.categories.form.typeLabel} <span className="text-red-500 dark:text-red-400">*</span>
-                              </label>
-                              <select
-                                value={formData.transaction_type}
-                                onChange={(e) => setFormData({ ...formData, transaction_type: e.target.value as any })}
-                                className="input"
-                                required
-                              >
-                                <option value="expense">💸 {t.categories.filters.transactionType.expense}</option>
-                                <option value="income">💰 {t.categories.filters.transactionType.income}</option>
-                                <option value="both">💵 {t.categories.filters.transactionType.both}</option>
-                              </select>
-                            </div>
-
-                            <div>
-                              <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                                {t.categories.form.iconLabel}
-                              </label>
-                              <div className="relative emoji-picker-container">
-                                <button
-                                  type="button"
-                                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                                  className="w-full input flex items-center justify-between cursor-pointer hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors"
-                                >
-                                  <span className="text-2xl">{formData.icon || '📦'}</span>
-                                  <span className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-                                    {showEmojiPicker ? '▼' : '▶'}
-                                  </span>
-                                </button>
-                                {showEmojiPicker && (
-                                  <div className="absolute z-50 mt-2 w-full bg-telegram-surface dark:bg-telegram-dark-surface border border-telegram-border dark:border-telegram-dark-border rounded-telegram shadow-lg max-h-64 overflow-y-auto">
-                                    <div className="p-2 sm:p-3 grid grid-cols-6 sm:grid-cols-8 gap-1 sm:gap-2">
-                                      {AVAILABLE_EMOJIS.map((emoji, index) => (
-                                        <button
-                                          key={index}
-                                          type="button"
-                                          onClick={() => {
-                                            setFormData({ ...formData, icon: emoji })
-                                            setShowEmojiPicker(false)
-                                          }}
-                                          className="text-xl sm:text-2xl p-1.5 sm:p-2 hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover rounded-telegram transition-colors active:scale-95"
-                                          title={emoji}
-                                        >
-                                          {emoji}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                              <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
-                                {t.categories.form.iconHint}
-                              </p>
-                            </div>
-
-                            <div>
-                              <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                                {t.categories.form.colorLabel}
-                              </label>
-                              <div className="grid grid-cols-8 gap-2">
-                                {AVAILABLE_COLORS.map((color) => (
-                                  <button
-                                    key={color}
-                                    type="button"
-                                    onClick={() => {
-                                      setFormData({ ...formData, color: color })
-                                    }}
-                                    className={`w-full h-10 rounded-telegram transition-all relative ${
-                                      formData.color === color
-                                        ? 'ring-2 ring-telegram-primary ring-offset-2 scale-110'
-                                        : 'hover:scale-105'
-                                    }`}
-                                    style={{ backgroundColor: color }}
-                                    title={color}
-                                  >
-                                    {formData.color === color && (
-                                      <span className="absolute inset-0 flex items-center justify-center text-white text-sm font-bold drop-shadow-lg">
-                                        ✓
-                                      </span>
-                                    )}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="checkbox"
-                                id={`is_favorite_${category.id}`}
-                                checked={formData.is_favorite}
-                                onChange={(e) => setFormData({ ...formData, is_favorite: e.target.checked })}
-                                className="w-4 h-4 rounded"
-                              />
-                              <label htmlFor={`is_favorite_${category.id}`} className="text-sm text-telegram-text dark:text-telegram-dark-text">
-                                {t.categories.form.favoriteLabel}
-                              </label>
-                            </div>
-
-                            <div className="flex gap-3">
-                              <button type="submit" className="btn-primary flex-1">
-                                {t.categories.form.save}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={resetForm}
-                                className="btn-secondary"
-                              >
-                                {t.categories.form.cancel}
-                              </button>
-                            </div>
-                          </form>
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>
@@ -1180,6 +1031,176 @@ export function Categories() {
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Edit Category Modal */}
+      {editingCategory && (
+        <div 
+          className="fixed inset-0 bg-black/50 dark:bg-black/70 z-50 flex items-center justify-center p-4"
+          onClick={resetForm}
+        >
+          <div 
+            className="bg-telegram-surface dark:bg-telegram-dark-surface rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="p-5 border-b border-telegram-border dark:border-telegram-dark-border">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-telegram-text dark:text-telegram-dark-text">
+                  {t.categories.filters.editCategory}
+                </h2>
+                <button
+                  onClick={resetForm}
+                  className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Form Content */}
+            <div className="p-5">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
+                    {t.categories.form.nameLabel} <span className="text-red-500 dark:text-red-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => {
+                      const value = e.target.value
+                      const trimmedValue = value.slice(0, 25)
+                      setFormData({ ...formData, name: trimmedValue })
+                    }}
+                    className="input"
+                    placeholder={t.categories.form.namePlaceholder}
+                    maxLength={25}
+                    required
+                  />
+                  <div className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1 text-right">
+                    {formData.name.length}/25
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
+                    {t.categories.form.typeLabel} <span className="text-red-500 dark:text-red-400">*</span>
+                  </label>
+                  <select
+                    value={formData.transaction_type}
+                    onChange={(e) => setFormData({ ...formData, transaction_type: e.target.value as any })}
+                    className="input"
+                    required
+                  >
+                    <option value="expense">💸 {t.categories.filters.transactionType.expense}</option>
+                    <option value="income">💰 {t.categories.filters.transactionType.income}</option>
+                    <option value="both">💵 {t.categories.filters.transactionType.both}</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
+                    {t.categories.form.iconLabel}
+                  </label>
+                  <div className="relative emoji-picker-container">
+                    <button
+                      type="button"
+                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                      className="w-full input flex items-center justify-between cursor-pointer hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors"
+                    >
+                      <span className="text-2xl">{formData.icon || '📦'}</span>
+                      <span className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+                        {showEmojiPicker ? '▼' : '▶'}
+                      </span>
+                    </button>
+                    {showEmojiPicker && (
+                      <div className="absolute z-50 mt-2 w-full bg-telegram-surface dark:bg-telegram-dark-surface border border-telegram-border dark:border-telegram-dark-border rounded-telegram shadow-lg max-h-64 overflow-y-auto">
+                        <div className="p-2 sm:p-3 grid grid-cols-6 sm:grid-cols-8 gap-1 sm:gap-2">
+                          {AVAILABLE_EMOJIS.map((emoji, index) => (
+                            <button
+                              key={index}
+                              type="button"
+                              onClick={() => {
+                                setFormData({ ...formData, icon: emoji })
+                                setShowEmojiPicker(false)
+                              }}
+                              className="text-xl sm:text-2xl p-1.5 sm:p-2 hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover rounded-telegram transition-colors active:scale-95"
+                              title={emoji}
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
+                    {t.categories.form.iconHint}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
+                    {t.categories.form.colorLabel}
+                  </label>
+                  <div className="grid grid-cols-8 gap-2">
+                    {AVAILABLE_COLORS.map((color) => (
+                      <button
+                        key={color}
+                        type="button"
+                        onClick={() => {
+                          setFormData({ ...formData, color: color })
+                        }}
+                        className={`w-full h-10 rounded-telegram transition-all relative ${
+                          formData.color === color
+                            ? 'ring-2 ring-telegram-primary ring-offset-2 scale-110'
+                            : 'hover:scale-105'
+                        }`}
+                        style={{ backgroundColor: color }}
+                        title={color}
+                      >
+                        {formData.color === color && (
+                          <span className="absolute inset-0 flex items-center justify-center text-white text-sm font-bold drop-shadow-lg">
+                            ✓
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="is_favorite_edit"
+                    checked={formData.is_favorite}
+                    onChange={(e) => setFormData({ ...formData, is_favorite: e.target.checked })}
+                    className="w-4 h-4 rounded"
+                  />
+                  <label htmlFor="is_favorite_edit" className="text-sm text-telegram-text dark:text-telegram-dark-text">
+                    {t.categories.form.favoriteLabel}
+                  </label>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button type="submit" className="btn-primary flex-1">
+                    {t.categories.form.save}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={resetForm}
+                    className="btn-secondary"
+                  >
+                    {t.categories.form.cancel}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         </div>
       )}
 
