@@ -283,6 +283,9 @@ async def create_account(
             detail="Название счета может содержать только буквы, цифры, пробелы, дефисы и подчеркивания"
         )
     
+    # Get shared_budget_id before checking for duplicates
+    shared_budget_id = account_data.shared_budget_id
+    
     # Check for duplicate account name (case-insensitive)
     # For personal accounts: check within user's accounts
     # For shared accounts: check within shared budget accounts
@@ -321,7 +324,6 @@ async def create_account(
         )
     
     # If shared_budget_id is provided, verify user is a member
-    shared_budget_id = account_data.shared_budget_id
     if shared_budget_id:
         from app.models.shared_budget import SharedBudget, SharedBudgetMember, MemberRole
         # Check if budget exists
@@ -380,7 +382,7 @@ async def create_account(
         account = Account(
             user_id=current_user.id,  # Creator
             shared_budget_id=shared_budget_id,  # Can be None for personal accounts
-            name=account_data.name,
+            name=trimmed_name,  # Use trimmed name
             account_type=account_type,
             currency=account_data.currency or current_user.default_currency,
             initial_balance=initial_balance_decimal,
@@ -393,6 +395,7 @@ async def create_account(
         db.refresh(account)
     except Exception as e:
         db.rollback()
+        logger.error(f"Error creating account for user {current_user.id}: {e}", exc_info=True)
         # Check if it's a numeric overflow error
         error_str = str(e).lower()
         if 'numeric' in error_str or 'overflow' in error_str or 'value too large' in error_str or 'out of range' in error_str:
@@ -400,8 +403,12 @@ async def create_account(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Сумма слишком большая. Максимальная сумма: 999 999 999 999 999.99"
             )
-        # Re-raise other exceptions
-        raise
+        # Log and re-raise other exceptions with user-friendly message
+        logger.error(f"Unexpected error creating account: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Произошла ошибка при создании счета. Пожалуйста, попробуйте еще раз."
+        )
     
     # Get shared budget name if applicable
     shared_budget_name = None
