@@ -368,8 +368,9 @@ export function Dashboard() {
     console.log(`[handleQuickAction] Set categoriesLoading = true`)
     
     // Reset form data
-    // Filter active accounts only
-    const activeAccounts = (accountsData as Account[] || []).filter(acc => acc.is_active !== false)
+    // Filter active accounts only (use accounts directly from query)
+    const accountsList = (accounts as Account[] || [])
+    const activeAccounts = accountsList.filter(acc => acc.is_active !== false)
     setQuickFormData({
       category_id: '',
       account_id: activeAccounts && activeAccounts.length > 0 ? activeAccounts[0].id.toString() : '',
