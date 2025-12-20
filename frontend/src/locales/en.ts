@@ -756,6 +756,7 @@ export const en = {
     deleted: 'Budget deleted successfully',
     leaveConfirm: 'Are you sure you want to leave this budget?',
     deleteConfirm: 'Are you sure you want to delete this budget?',
+    deleteBudgetConfirm: 'Are you sure you want to delete this budget?\n\n⚠️ Warning: This action is irreversible!\n\nWhen deleting the budget, the following will be deleted:\n• All budget accounts\n• All transactions for these accounts\n• All budget members\n• All invitations\n\nThis action cannot be undone.',
     removeMemberConfirm: 'Are you sure you want to remove this member?',
     updateRoleConfirm: 'Are you sure you want to assign this user as {role}?',
     admin: 'administrator',

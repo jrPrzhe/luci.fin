@@ -569,32 +569,59 @@ export function SharedBudgets() {
                   </div>
                 </div>
               </div>
-              <button
-                onClick={async () => {
-                  try {
-                    await api.leaveBudget(selectedBudget.id)
-                    setSelectedBudget(null)
-                    await loadData()
-                    showSuccess(t.sharedBudgets.leaveSuccess)
-                  } catch (err: any) {
-                    // Check if error is about being the last admin
-                    if (err.message && (err.message.includes('LAST_ADMIN_CANNOT_LEAVE') || err.message.includes('последний администратор'))) {
-                      setConfirmModal({
-                        show: true,
-                        message: 'Вы не можете выйти из бюджета, так как являетесь единственным администратором.\n\nПеред выходом необходимо назначить другого участника администратором. Для этого нажмите на кнопку "⭐ Сделать админом" рядом с нужным участником.',
-                        onConfirm: () => {
+              {/* Show "Delete Budget" for creator, "Leave" for other members */}
+              {currentUser && selectedBudget.created_by === currentUser.id ? (
+                <button
+                  onClick={() => {
+                    setConfirmModal({
+                      show: true,
+                      message: t.sharedBudgets.deleteBudgetConfirm,
+                      onConfirm: async () => {
+                        try {
+                          await api.deleteBudget(selectedBudget.id)
+                          setSelectedBudget(null)
+                          await loadData()
+                          showSuccess(t.sharedBudgets.deleted || 'Бюджет успешно удален')
                           setConfirmModal({ show: false, message: '', onConfirm: () => {} })
-                        },
-                      })
-                    } else {
-                      setError(err.message || 'Ошибка выхода из бюджета')
+                        } catch (err: any) {
+                          setError(err.message || 'Ошибка удаления бюджета')
+                          setConfirmModal({ show: false, message: '', onConfirm: () => {} })
+                        }
+                      },
+                    })
+                  }}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium whitespace-nowrap"
+                >
+                  🗑️ {t.sharedBudgets.delete || 'Удалить бюджет'}
+                </button>
+              ) : (
+                <button
+                  onClick={async () => {
+                    try {
+                      await api.leaveBudget(selectedBudget.id)
+                      setSelectedBudget(null)
+                      await loadData()
+                      showSuccess(t.sharedBudgets.leaveSuccess)
+                    } catch (err: any) {
+                      // Check if error is about being the last admin
+                      if (err.message && (err.message.includes('LAST_ADMIN_CANNOT_LEAVE') || err.message.includes('последний администратор'))) {
+                        setConfirmModal({
+                          show: true,
+                          message: 'Вы не можете выйти из бюджета, так как являетесь единственным администратором.\n\nПеред выходом необходимо назначить другого участника администратором. Для этого нажмите на кнопку "⭐ Сделать админом" рядом с нужным участником.',
+                          onConfirm: () => {
+                            setConfirmModal({ show: false, message: '', onConfirm: () => {} })
+                          },
+                        })
+                      } else {
+                        setError(err.message || 'Ошибка выхода из бюджета')
+                      }
                     }
-                  }
-                }}
-                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium whitespace-nowrap"
-              >
-                🚪 {t.sharedBudgets.leave}
-              </button>
+                  }}
+                  className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium whitespace-nowrap"
+                >
+                  🚪 {t.sharedBudgets.leave}
+                </button>
+              )}
             </div>
           </div>
 

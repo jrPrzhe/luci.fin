@@ -833,6 +833,12 @@ class ApiClient {
     })
   }
 
+  async deleteBudget(budgetId: number) {
+    return this.request<any>(`/api/v1/shared-budgets/${budgetId}`, {
+      method: 'DELETE',
+    })
+  }
+
   // Categories API
   async getCategories(transactionType?: string, favoritesOnly?: boolean, includeShared: boolean = true): Promise<any[]> {
     const params = new URLSearchParams()

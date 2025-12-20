@@ -935,18 +935,109 @@ async def leave_budget(
     return {"message": "Successfully left the budget"}
 
 
+@router.delete("/{budget_id}", response_model=dict)
+async def delete_budget(
+    budget_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Delete a shared budget (only creator can delete)"""
+    # Get budget
+    budget = db.query(SharedBudget).filter(SharedBudget.id == budget_id).first()
     
-    # Remove membership
-    db.delete(membership)
-    db.commit()
+    if not budget:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Бюджет не найден"
+        )
     
-    return {"message": "Successfully left the budget"}
-
-
+    # Only the creator can delete the budget
+    if budget.created_by != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Только создатель бюджета может удалить бюджет"
+        )
     
-    # Remove membership
-    db.delete(membership)
-    db.commit()
-    
-    return {"message": "Successfully left the budget"}
+    try:
+        # Get all accounts for this budget
+        from app.models.account import Account
+        from app.models.transaction import Transaction
+        
+        budget_accounts = db.query(Account).filter(
+            Account.shared_budget_id == budget_id
+        ).all()
+        
+        account_ids = [acc.id for acc in budget_accounts]
+        
+        # Delete all transactions for these accounts
+        if account_ids:
+            # Delete transactions where account is source
+            transactions = db.query(Transaction).filter(
+                Transaction.account_id.in_(account_ids)
+            ).all()
+            
+            # Also get transfer destination transactions
+            transfer_transactions = db.query(Transaction).filter(
+                Transaction.to_account_id.in_(account_ids)
+            ).all()
+            
+            all_transactions = transactions + transfer_transactions
+            
+            # Delete transfer pairs properly
+            for transaction in transactions:
+                if transaction.transaction_type == 'transfer' and transaction.to_account_id:
+                    dest_transaction = db.query(Transaction).filter(
+                        Transaction.account_id == transaction.to_account_id,
+                        Transaction.transaction_type == 'income',
+                        Transaction.amount == transaction.amount,
+                        Transaction.transaction_date == transaction.transaction_date
+                    ).first()
+                    if dest_transaction:
+                        db.delete(dest_transaction)
+                db.delete(transaction)
+            
+            # Delete remaining transfer destination transactions
+            for transaction in transfer_transactions:
+                if transaction not in all_transactions or transaction.transaction_type == 'income':
+                    db.delete(transaction)
+            
+            # Delete all accounts
+            for account in budget_accounts:
+                db.delete(account)
+        
+        # Delete all invitations for this budget
+        invitations = db.query(Invitation).filter(
+            Invitation.shared_budget_id == budget_id
+        ).all()
+        for invitation in invitations:
+            db.delete(invitation)
+        
+        # Delete all members
+        members = db.query(SharedBudgetMember).filter(
+            SharedBudgetMember.shared_budget_id == budget_id
+        ).all()
+        for member in members:
+            db.delete(member)
+        
+        # Delete the budget itself
+        db.delete(budget)
+        
+        db.commit()
+        
+        logger.info(f"Budget {budget_id} deleted by user {current_user.id}")
+        
+        return {
+            "message": "Бюджет успешно удален",
+            "budget_id": budget_id,
+            "accounts_deleted": len(budget_accounts),
+            "members_deleted": len(members),
+            "invitations_deleted": len(invitations)
+        }
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error deleting budget {budget_id}: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Ошибка при удалении бюджета"
+        )
 
