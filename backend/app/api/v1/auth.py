@@ -14,6 +14,86 @@ router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 
+def verify_telegram_signature(params: dict, bot_token: str) -> bool:
+    """
+    Verify Telegram Mini App initData hash signature
+    
+    Algorithm (Telegram uses HMAC-SHA256 with hex encoding):
+    1. Extract all parameters except 'hash'
+    2. Sort parameters by key in alphabetical order
+    3. Create string: 'key1=value1\nkey2=value2\n...' (with newlines, not &)
+    4. Calculate secret_key = HMAC-SHA256("WebAppData", bot_token)
+    5. Calculate HMAC-SHA256(data_check_string, secret_key)
+    6. Encode result in hex
+    7. Compare with provided 'hash' parameter using constant-time comparison
+    
+    Args:
+        params: Dictionary of parsed initData params
+        bot_token: Telegram Bot Token (from TELEGRAM_BOT_TOKEN env var)
+    
+    Returns:
+        True if signature is valid, False otherwise
+    """
+    import hmac
+    import hashlib
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    if not bot_token:
+        logger.error("TELEGRAM_BOT_TOKEN is not configured. Cannot verify signature.")
+        return False
+    
+    # Get hash parameter
+    provided_hash = params.get('hash', '')
+    if not provided_hash:
+        logger.warning("No 'hash' parameter found in initData")
+        return False
+    
+    # Extract all parameters except 'hash'
+    data_params = {}
+    for key, value in params.items():
+        if key != 'hash':
+            data_params[key] = value
+    
+    if not data_params:
+        logger.warning("No parameters found in initData (except hash)")
+        return False
+    
+    # Sort parameters by key in alphabetical order
+    sorted_keys = sorted(data_params.keys())
+    
+    # Create string: 'key1=value1\nkey2=value2\n...' (Telegram uses newlines, not &)
+    data_check_string = '\n'.join([f"{key}={data_params[key]}" for key in sorted_keys])
+    
+    # Calculate HMAC-SHA256 using bot_token as secret
+    # Telegram uses the bot token as the HMAC secret key
+    secret_key = hmac.new(
+        "WebAppData".encode('utf-8'),
+        bot_token.encode('utf-8'),
+        hashlib.sha256
+    ).digest()
+    
+    hmac_digest = hmac.new(
+        secret_key,
+        data_check_string.encode('utf-8'),
+        hashlib.sha256
+    ).digest()
+    
+    # Encode in hex
+    calculated_hash = hmac_digest.hex()
+    
+    # Compare hashes using constant-time comparison to prevent timing attacks
+    is_valid = hmac.compare_digest(calculated_hash, provided_hash)
+    
+    if is_valid:
+        logger.info("Telegram signature verification passed")
+    else:
+        logger.error(f"Telegram signature verification failed. Expected: {calculated_hash}, Got: {provided_hash}")
+        logger.error(f"Data check string: {data_check_string}")
+    
+    return is_valid
+
+
 def verify_vk_signature(params: dict, secret_key: str) -> bool:
     """
     Verify VK Mini App launch params signature
@@ -485,6 +565,21 @@ async def login_telegram(
                 params[key] = urllib.parse.unquote(value)
         
         logger.info(f"Parsed initData params: {list(params.keys())}")
+        
+        # Verify Telegram signature to prevent parameter tampering
+        if not settings.TELEGRAM_BOT_TOKEN:
+            logger.error("TELEGRAM_BOT_TOKEN is not configured. Telegram authentication is disabled for security.")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Telegram authentication is not properly configured. Please contact support."
+            )
+        
+        if not verify_telegram_signature(params, settings.TELEGRAM_BOT_TOKEN):
+            logger.error("Invalid Telegram signature. InitData may be tampered with.")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Неверная подпись авторизации Telegram. Убедитесь, что вы открыли приложение через Telegram Mini App."
+            )
         
         # Extract and parse user data from initData
         user_str = params.get('user', '')
