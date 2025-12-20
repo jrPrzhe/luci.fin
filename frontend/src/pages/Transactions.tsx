@@ -194,15 +194,15 @@ export function Transactions() {
     goal_id: '',
   })
 
-  // Update currency when user data is loaded or changes (but not when editing)
+  // Update currency when user data is loaded or changes (but not when editing existing transaction)
   useEffect(() => {
-    if (currentUser?.default_currency && !editingTransaction && !showForm) {
+    if (currentUser?.default_currency && !editingTransaction) {
       setFormData(prev => ({
         ...prev,
         currency: currentUser.default_currency
       }))
     }
-  }, [currentUser?.default_currency, editingTransaction, showForm])
+  }, [currentUser?.default_currency, editingTransaction])
 
   const getDateRange = () => {
     const now = new Date()
