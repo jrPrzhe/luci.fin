@@ -167,9 +167,34 @@ def get_current_user(
 
 
 def get_current_admin(
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ) -> User:
     """Get current user and verify admin status"""
+    # Auto-sync admin status for Telegram users before checking admin access
+    if current_user.telegram_id:
+        try:
+            # Check by telegram_id (ADMIN_TELEGRAM_IDS)
+            is_admin_by_id = str(current_user.telegram_id) in (settings.ADMIN_TELEGRAM_IDS or [])
+            
+            # Check by username (ADMIN_TELEGRAM_USERNAMES) if username exists
+            is_admin_by_username = False
+            if current_user.telegram_username:
+                username_lower = current_user.telegram_username.lower().lstrip('@')
+                is_admin_by_username = username_lower in (settings.ADMIN_TELEGRAM_USERNAMES or [])
+            
+            # User should be admin if they are in either list
+            should_be_admin = is_admin_by_id or is_admin_by_username
+            
+            if current_user.is_admin != should_be_admin:
+                logger.info(f"Auto-syncing admin status in get_current_admin for user {current_user.id} (telegram_id={current_user.telegram_id}): {current_user.is_admin} -> {should_be_admin}")
+                current_user.is_admin = should_be_admin
+                db.commit()
+                db.refresh(current_user)
+        except Exception as e:
+            logger.error(f"Error auto-syncing admin status in get_current_admin: {e}", exc_info=True)
+            # Don't fail the request if sync fails, but log the error
+    
     if not current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
