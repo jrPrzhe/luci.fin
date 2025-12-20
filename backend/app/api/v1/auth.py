@@ -941,7 +941,6 @@ async def login_vk(
                 counter += 1
             
             # Check if user is admin (can add VK admin IDs to config if needed)
-            from app.core.config import settings
             # For now, VK users are not admins by default
             # Can add ADMIN_VK_IDS to settings if needed
             is_admin = False
