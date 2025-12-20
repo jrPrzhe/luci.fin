@@ -200,19 +200,6 @@ export function Categories() {
     }
   }
 
-  const resetForm = () => {
-    setEditingCategory(null)
-    setShowForm(false)
-    setFormData({
-      name: '',
-      transaction_type: 'expense',
-      icon: '',
-      color: '#4CAF50',
-      is_favorite: false,
-    })
-    setShowEmojiPicker(false)
-  }
-
   const handleEdit = (category: Category) => {
     // Не позволяем редактировать системные категории
     if (category.is_system) {
