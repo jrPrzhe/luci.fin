@@ -38,11 +38,31 @@ export async function getPlatformAuthData(platform: Platform, maxWaitMs: number 
     case 'telegram': {
       // Initialize Telegram Web App first
       logger.log('[platform] Initializing Telegram Web App...')
-      await initTelegramWebApp()
+      const initSuccess = await initTelegramWebApp()
+      
+      if (!initSuccess) {
+        logger.warn('[platform] Telegram WebApp initialization failed or incomplete')
+        // Still try to get initData - sometimes it's available even if init failed
+      }
+      
+      // Give Telegram WebApp a moment to fully initialize after ready()
+      // Sometimes initData appears with a delay after ready() is called
+      await new Promise(resolve => setTimeout(resolve, 500))
       
       // Wait for initData to be available
       logger.log('[platform] Waiting for Telegram initData...')
       const initData = await waitForInitData(maxWaitMs)
+      
+      if (!initData || initData.length === 0) {
+        logger.error('[platform] Failed to get Telegram initData', {
+          hasWebApp: typeof window !== 'undefined' && !!window.Telegram?.WebApp,
+          initDataRaw: typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData : 'N/A',
+          initDataLength: typeof window !== 'undefined' ? window.Telegram?.WebApp?.initData?.length : 0,
+          userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'N/A',
+          url: typeof window !== 'undefined' ? window.location.href : 'N/A'
+        })
+      }
+      
       return initData && initData.length > 0 ? initData : null
     }
     

@@ -437,8 +437,19 @@ export async function waitForInitData(maxWaitMs: number = 5000): Promise<string>
   // Ensure WebApp is ready
   try {
     webApp.ready()
+    logger.log('[waitForInitData] Called ready(), waiting for initData...')
   } catch (error) {
     logger.warn('[waitForInitData] Error calling ready():', error)
+  }
+  
+  // Give Telegram a moment to populate initData after ready()
+  // Sometimes initData appears with a small delay
+  await new Promise(resolve => setTimeout(resolve, 200))
+  
+  // Check again after the delay
+  if (isValidInitData(webApp.initData)) {
+    logger.log('[waitForInitData] InitData available after ready() delay')
+    return webApp.initData
   }
 
   // Helper function to validate initData
@@ -447,14 +458,42 @@ export async function waitForInitData(maxWaitMs: number = 5000): Promise<string>
       return false
     }
     // Valid initData should contain at least user data or hash
+    // Also check for minimum length (initData should be at least 50 chars)
+    if (data.length < 50) {
+      return false
+    }
     return data.includes('user=') || data.includes('hash=')
+  }
+  
+  // Helper function to try to reconstruct initData from initDataUnsafe if needed
+  const tryGetInitDataFromUnsafe = (webApp: any): string | null => {
+    try {
+      if (webApp?.initDataUnsafe?.user) {
+        // If we have user data but initData is empty, this might be a timing issue
+        // Return empty string to continue waiting
+        logger.log('[waitForInitData] initDataUnsafe has user but initData is empty, continuing to wait...')
+        return null
+      }
+    } catch (error) {
+      // Ignore errors
+    }
+    return null
   }
 
   // If initData is already available and valid, return it immediately
   if (isValidInitData(webApp.initData)) {
-    logger.log('[waitForInitData] InitData already available')
+    logger.log('[waitForInitData] InitData already available, length:', webApp.initData.length)
     return webApp.initData
   }
+  
+  // Log current state for debugging
+  logger.log('[waitForInitData] InitData not immediately available', {
+    hasWebApp: !!webApp,
+    initDataLength: webApp.initData?.length || 0,
+    initDataPreview: webApp.initData?.substring(0, 50) || 'empty',
+    hasInitDataUnsafe: !!webApp.initDataUnsafe,
+    hasUser: !!webApp.initDataUnsafe?.user
+  })
 
   // Wait for initData to become available
   const startTime = Date.now()
@@ -500,9 +539,23 @@ export async function waitForInitData(maxWaitMs: number = 5000): Promise<string>
           // Игнорируем ошибки импорта
         }
         
-        logger.log('[waitForInitData] InitData became available after', Date.now() - startTime, 'ms')
+        logger.log('[waitForInitData] InitData became available after', Date.now() - startTime, 'ms', {
+          initDataLength: currentWebApp.initData.length,
+          initDataPreview: currentWebApp.initData.substring(0, 50),
+          hasUser: !!currentWebApp.initDataUnsafe?.user,
+          userId: currentWebApp.initDataUnsafe?.user?.id
+        })
         resolve(currentWebApp.initData)
         return
+      }
+      
+      // If initData is not valid but we have initDataUnsafe with user, log for debugging
+      if (currentWebApp.initDataUnsafe?.user && !isValidInitData(currentWebApp.initData)) {
+        logger.warn('[waitForInitData] initDataUnsafe has user but initData is invalid', {
+          initDataLength: currentWebApp.initData?.length || 0,
+          initDataPreview: currentWebApp.initData?.substring(0, 50) || 'empty',
+          userId: currentWebApp.initDataUnsafe.user.id
+        })
       }
 
       // Check timeout

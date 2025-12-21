@@ -87,21 +87,35 @@ export function UnifiedAuthHandler() {
 
         // Step 5: Get platform-specific auth data
         logger.log('[UnifiedAuthHandler] Getting auth data for platform:', platform)
-        const authData = await getPlatformAuthData(platform, 8000)
+        const authData = await getPlatformAuthData(platform, 10000) // Increased timeout to 10 seconds
         
         if (!authData || authData.length === 0) {
-          logger.warn('[UnifiedAuthHandler] No auth data available for platform:', platform)
+          logger.error('[UnifiedAuthHandler] No auth data available for platform:', platform, {
+            platform,
+            url: window.location.href,
+            hasTelegramSDK: typeof window !== 'undefined' && !!window.Telegram?.WebApp,
+            hasVKBridge: typeof window !== 'undefined' && !!(window as any).vkBridge,
+            userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'N/A'
+          })
+          
           if (mounted) {
             clearTimeout(timeoutId)
             setIsChecking(false)
             
-            // Only redirect to login if not already there
+            // For Telegram, if we're on login/register page, let the user try manually
+            // Otherwise redirect to login
             if (location.pathname !== '/login' && location.pathname !== '/register') {
               navigate('/login')
             }
           }
           return
         }
+        
+        logger.log('[UnifiedAuthHandler] Auth data obtained successfully', {
+          platform,
+          authDataLength: authData.length,
+          authDataPreview: authData.substring(0, 50)
+        })
 
         // Step 6: Perform authentication
         logger.log('[UnifiedAuthHandler] Attempting authentication for platform:', platform)
