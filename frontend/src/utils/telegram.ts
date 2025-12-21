@@ -428,6 +428,19 @@ export async function waitForInitData(maxWaitMs: number = 5000): Promise<string>
     return ''
   }
   
+  // Helper function to validate initData (declared before use)
+  const isValidInitData = (data: string): boolean => {
+    if (!data || data.length === 0) {
+      return false
+    }
+    // Valid initData should contain at least user data or hash
+    // Also check for minimum length (initData should be at least 50 chars)
+    if (data.length < 50) {
+      return false
+    }
+    return data.includes('user=') || data.includes('hash=')
+  }
+
   const webApp = getTelegramWebApp()
   if (!webApp) {
     logger.warn('[waitForInitData] Telegram WebApp not available')
@@ -450,34 +463,6 @@ export async function waitForInitData(maxWaitMs: number = 5000): Promise<string>
   if (isValidInitData(webApp.initData)) {
     logger.log('[waitForInitData] InitData available after ready() delay')
     return webApp.initData
-  }
-
-  // Helper function to validate initData
-  const isValidInitData = (data: string): boolean => {
-    if (!data || data.length === 0) {
-      return false
-    }
-    // Valid initData should contain at least user data or hash
-    // Also check for minimum length (initData should be at least 50 chars)
-    if (data.length < 50) {
-      return false
-    }
-    return data.includes('user=') || data.includes('hash=')
-  }
-  
-  // Helper function to try to reconstruct initData from initDataUnsafe if needed
-  const tryGetInitDataFromUnsafe = (webApp: any): string | null => {
-    try {
-      if (webApp?.initDataUnsafe?.user) {
-        // If we have user data but initData is empty, this might be a timing issue
-        // Return empty string to continue waiting
-        logger.log('[waitForInitData] initDataUnsafe has user but initData is empty, continuing to wait...')
-        return null
-      }
-    } catch (error) {
-      // Ignore errors
-    }
-    return null
   }
 
   // If initData is already available and valid, return it immediately
