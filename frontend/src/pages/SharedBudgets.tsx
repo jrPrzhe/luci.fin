@@ -378,10 +378,11 @@ export function SharedBudgets() {
       const shareMessage = `Приглашаю тебя в бюджет "${budgetName}", вот код #${inviteCode}`
       
       // Use VK Bridge share functionality with Mini App link and message
+      // Note: VK Bridge types don't include 'text' parameter, but it's supported by the API
       await bridge.send('VKWebAppShare', {
         link: miniAppLink,
         text: shareMessage
-      })
+      } as any)
       
       // Also copy to clipboard as fallback with budget name
       const message = `Приглашение в совместный бюджет "${budgetName}"\n\nКод: ${inviteCode}\n\nСсылка: ${miniAppLink}`
@@ -612,7 +613,7 @@ export function SharedBudgets() {
                   onClick={() => {
                     setConfirmModal({
                       show: true,
-                      message: t.sharedBudgets.deleteBudgetConfirm,
+                      message: t.sharedBudgets.deleteConfirm,
                       onConfirm: async () => {
                         try {
                           await api.deleteBudget(selectedBudget.id)
