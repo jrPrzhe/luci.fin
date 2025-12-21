@@ -374,9 +374,13 @@ export function SharedBudgets() {
         inviteCode: inviteCode
       })
       
-      // Use VK Bridge share functionality with Mini App link
+      // Create invitation message with code
+      const shareMessage = `Приглашаю тебя в бюджет "${budgetName}", вот код #${inviteCode}`
+      
+      // Use VK Bridge share functionality with Mini App link and message
       await bridge.send('VKWebAppShare', {
-        link: miniAppLink
+        link: miniAppLink,
+        text: shareMessage
       })
       
       // Also copy to clipboard as fallback with budget name
