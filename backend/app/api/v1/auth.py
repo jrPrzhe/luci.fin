@@ -555,6 +555,9 @@ async def login_telegram(
         
         # Log for debugging (without sensitive data)
         logger.info(f"Received Telegram login request, initData length: {len(init_data) if init_data else 0}")
+        logger.info(f"InitData preview (first 200 chars): {init_data[:200] if init_data else 'empty'}")
+        logger.info(f"InitData contains 'user=': {init_data and 'user=' in init_data}")
+        logger.info(f"InitData contains 'hash=': {init_data and 'hash=' in init_data}")
         
         if not init_data or len(init_data) == 0:
             logger.warning("Empty initData received")
@@ -565,12 +568,20 @@ async def login_telegram(
         
         # Parse initData - Format: key1=value1&key2=value2&hash=...
         params = {}
-        for param in init_data.split('&'):
-            if '=' in param:
-                key, value = param.split('=', 1)
-                params[key] = urllib.parse.unquote(value)
+        try:
+            for param in init_data.split('&'):
+                if '=' in param:
+                    key, value = param.split('=', 1)
+                    params[key] = urllib.parse.unquote(value)
+        except Exception as parse_error:
+            logger.error(f"Error parsing initData: {parse_error}, initData: {init_data[:500]}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Ошибка парсинга данных Telegram: {str(parse_error)}"
+            )
         
         logger.info(f"Parsed initData params: {list(params.keys())}")
+        logger.info(f"Has 'user' param: {'user' in params}, Has 'hash' param: {'hash' in params}")
         
         # Verify Telegram signature to prevent parameter tampering
         if not settings.TELEGRAM_BOT_TOKEN:
