@@ -93,30 +93,53 @@ export function Layout() {
         // Если да, даем больше времени на сохранение токена
         const vkAuthCompleted = sessionStorage.getItem('vkAuthCompleted') === 'true'
         
-        // Для Web версии (не Mini App) сразу редиректим на логин
-        if (!isMiniApp && !vkAuthCompleted) {
+        // КРИТИЧЕСКИ ВАЖНО: Для VK Mini App при первом запуске параметры могут загружаться с задержкой
+        // Проверяем еще раз, может быть мы в VK Mini App, но еще не определили это
+        // Проверяем наличие VK Bridge или параметров в URL
+        const mightBeVK = (window as any).vkBridge || 
+                          window.location.search.includes('vk_') ||
+                          window.location.hash.includes('vk_') ||
+                          sessionStorage.getItem('isVKWebApp') === 'true'
+        
+        // Если возможно, что мы в VK Mini App, даем больше времени на определение
+        const isLikelyVK = isMiniApp || mightBeVK
+        
+        // Для Web версии (не Mini App и не похоже на VK) сразу редиректим на логин
+        if (!isLikelyVK && !vkAuthCompleted) {
           setIsAuthorized(false)
           setIsCheckingAuth(false)
           navigate('/login')
           return
         }
         
-        // Для Mini App даем время на авторизацию
+        // Для Mini App или возможного VK даем время на авторизацию
         // Сохраняем текущий путь для редиректа после авторизации
         const returnTo = location.pathname
-        // Если VK авторизация завершена, даем больше времени на сохранение токена (5 секунд)
+        // Если VK авторизация завершена или возможно, что мы в VK, даем больше времени (5 секунд)
         // Иначе стандартное время (2 секунды)
-        const waitTime = vkAuthCompleted ? 5000 : 2000
+        const waitTime = (vkAuthCompleted || isLikelyVK) ? 5000 : 2000
         // Даем время на авторизацию через Mini App (Telegram/VK)
         // Если через waitTime токен не появился, редиректим на логин
         setTimeout(() => {
+          // Проверяем еще раз, может быть VK параметры загрузились
+          const finalIsVK = isVKWebApp() || isTelegramWebApp()
           const finalToken = storageSync.getItem('token')
+          
           if (!finalToken) {
             // Если VK авторизация была завершена, но токен все еще не найден,
             // очищаем флаг и редиректим на логин
             if (vkAuthCompleted) {
               sessionStorage.removeItem('vkAuthCompleted')
             }
+            
+            // Если мы все еще в VK Mini App, НЕ редиректим на логин - даем больше времени
+            // VKAuthHandler должен обработать авторизацию
+            if (finalIsVK) {
+              console.log('[Layout] Still in VK Mini App without token, waiting for VKAuthHandler...')
+              setIsCheckingAuth(false)
+              return
+            }
+            
             setIsAuthorized(false)
             setIsCheckingAuth(false)
             navigate(`/login?returnTo=${encodeURIComponent(returnTo)}`)

@@ -629,12 +629,23 @@ function VKAuthHandler() {
         }
 
         // Автоматическая авторизация через VK Mini App
-        const launchParams = await getVKLaunchParams()
+        // КРИТИЧЕСКИ ВАЖНО: При первом запуске VK параметры могут загружаться с задержкой
+        // Даем дополнительное время на загрузку параметров
+        let launchParams = await getVKLaunchParams()
+        
+        // Если параметры не найдены сразу, ждем немного и проверяем еще раз
+        if (!launchParams || launchParams.length === 0) {
+          console.log('[VKAuthHandler] Launch params not found immediately, waiting...')
+          await new Promise(resolve => setTimeout(resolve, 500))
+          launchParams = await getVKLaunchParams()
+        }
+        
         console.log('VK auto-auth check:', { 
           hasLaunchParams: !!launchParams, 
           launchParamsLength: launchParams?.length || 0,
           isMiniApp: isVKWebApp(),
-          currentPath: location.pathname
+          currentPath: location.pathname,
+          url: window.location.href
         })
         
         if (launchParams && launchParams.length > 0) {

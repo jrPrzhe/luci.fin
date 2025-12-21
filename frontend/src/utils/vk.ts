@@ -27,7 +27,24 @@ export function isVKWebApp(): boolean {
     return false
   }
   
-  // PRIORITY: Check for VK launch params in URL FIRST (most reliable indicator)
+  // PRIORITY 1: Check for VK Bridge FIRST (available immediately on first load)
+  // VK Bridge is available before URL parameters are processed
+  try {
+    if ((window as any).vkBridge) {
+      console.log('[isVKWebApp] Detected via VK Bridge (priority check)')
+      // Сохраняем информацию о VK в sessionStorage
+      try {
+        sessionStorage.setItem('isVKWebApp', 'true')
+      } catch (error) {
+        // Игнорируем ошибки sessionStorage
+      }
+      return true
+    }
+  } catch (error) {
+    // Игнорируем ошибки доступа к window.vkBridge
+  }
+  
+  // PRIORITY 2: Check for VK launch params in URL (most reliable indicator)
   // If VK parameters exist, we're definitely in VK, regardless of other factors
   const urlParams = new URLSearchParams(window.location.search)
   const hasVKParams = urlParams.has('vk_user_id') || urlParams.has('vk_app_id')
@@ -43,7 +60,7 @@ export function isVKWebApp(): boolean {
     return true
   }
   
-  // Дополнительная проверка: проверяем hash для SPA навигации
+  // PRIORITY 3: Дополнительная проверка: проверяем hash для SPA навигации
   // На мобильных устройствах ВК параметры могут быть в hash после навигации
   const hash = window.location.hash
   if (hash) {
@@ -61,25 +78,9 @@ export function isVKWebApp(): boolean {
     }
   }
   
-  // Проверка через VK Bridge (если доступен)
-  // На мобильных устройствах ВК Bridge может быть доступен даже без параметров в URL
-  try {
-    if ((window as any).vkBridge) {
-      console.log('[isVKWebApp] VK Bridge detected')
-      // Сохраняем информацию о VK в sessionStorage
-      try {
-        sessionStorage.setItem('isVKWebApp', 'true')
-      } catch (error) {
-        // Игнорируем ошибки sessionStorage
-      }
-      return true
-    }
-  } catch (error) {
-    // Игнорируем ошибки доступа к window.vkBridge
-  }
-  
-  // Если URL параметры отсутствуют, проверяем sessionStorage
+  // PRIORITY 4: Если URL параметры отсутствуют, проверяем sessionStorage
   // Это позволяет сохранить статус VK миниаппа при навигации через React Router
+  // КРИТИЧЕСКИ ВАЖНО: При первом запуске это может помочь, если VK Bridge еще не загружен
   try {
     const savedVKStatus = sessionStorage.getItem('isVKWebApp')
     if (savedVKStatus === 'true') {
