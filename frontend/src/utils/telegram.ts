@@ -441,7 +441,79 @@ export async function waitForInitData(maxWaitMs: number = 5000): Promise<string>
     return data.includes('user=') || data.includes('hash=')
   }
 
+  // Helper function to extract initData from URL hash
+  // Telegram sometimes passes initData in URL hash as #tgWebAppData=...
+  const getInitDataFromURL = (): string | null => {
+    try {
+      // Check hash first (most common case)
+      const hash = window.location.hash
+      if (hash) {
+        // Try to parse as query string in hash: #tgWebAppData=...
+        // Format can be: #tgWebAppData=user%3D... or #?tgWebAppData=user%3D...
+        const hashMatch = hash.match(/[#&?]tgWebAppData=([^&]*)/)
+        if (hashMatch && hashMatch[1]) {
+          try {
+            const decoded = decodeURIComponent(hashMatch[1])
+            if (isValidInitData(decoded)) {
+              logger.log('[waitForInitData] Found initData in URL hash (tgWebAppData), length:', decoded.length)
+              return decoded
+            } else {
+              logger.warn('[waitForInitData] Found tgWebAppData in URL but it\'s not valid initData', {
+                length: decoded.length,
+                preview: decoded.substring(0, 50)
+              })
+            }
+          } catch (decodeError) {
+            logger.warn('[waitForInitData] Error decoding tgWebAppData from URL:', decodeError)
+          }
+        }
+        
+        // Also try parsing hash as query params
+        const hashWithoutHash = hash.substring(1)
+        const hashParams = new URLSearchParams(hashWithoutHash.split('?')[1] || hashWithoutHash)
+        const tgWebAppData = hashParams.get('tgWebAppData')
+        if (tgWebAppData) {
+          try {
+            const decoded = decodeURIComponent(tgWebAppData)
+            if (isValidInitData(decoded)) {
+              logger.log('[waitForInitData] Found initData in URL hash params (tgWebAppData), length:', decoded.length)
+              return decoded
+            }
+          } catch (decodeError) {
+            logger.warn('[waitForInitData] Error decoding tgWebAppData from hash params:', decodeError)
+          }
+        }
+      }
+      
+      // Also check URL search params
+      const urlParams = new URLSearchParams(window.location.search)
+      const tgWebAppData = urlParams.get('tgWebAppData')
+      if (tgWebAppData) {
+        try {
+          const decoded = decodeURIComponent(tgWebAppData)
+          if (isValidInitData(decoded)) {
+            logger.log('[waitForInitData] Found initData in URL search params (tgWebAppData), length:', decoded.length)
+            return decoded
+          }
+        } catch (decodeError) {
+          logger.warn('[waitForInitData] Error decoding tgWebAppData from search params:', decodeError)
+        }
+      }
+    } catch (error) {
+      logger.warn('[waitForInitData] Error extracting initData from URL:', error)
+    }
+    return null
+  }
+
   const webApp = getTelegramWebApp()
+  
+  // First, try to get initData from URL (it might be there before WebApp is ready)
+  const urlInitData = getInitDataFromURL()
+  if (urlInitData) {
+    logger.log('[waitForInitData] Using initData from URL')
+    return urlInitData
+  }
+  
   if (!webApp) {
     logger.warn('[waitForInitData] Telegram WebApp not available')
     return ''
@@ -459,15 +531,16 @@ export async function waitForInitData(maxWaitMs: number = 5000): Promise<string>
   // Sometimes initData appears with a small delay
   await new Promise(resolve => setTimeout(resolve, 200))
   
-  // Check again after the delay
-  if (isValidInitData(webApp.initData)) {
-    logger.log('[waitForInitData] InitData available after ready() delay')
-    return webApp.initData
+  // Check again after the delay - try URL first, then webApp
+  const urlInitDataAfterDelay = getInitDataFromURL()
+  if (urlInitDataAfterDelay) {
+    logger.log('[waitForInitData] Using initData from URL after delay')
+    return urlInitDataAfterDelay
   }
-
-  // If initData is already available and valid, return it immediately
+  
+  // Check if initData is already available in webApp
   if (isValidInitData(webApp.initData)) {
-    logger.log('[waitForInitData] InitData already available, length:', webApp.initData.length)
+    logger.log('[waitForInitData] InitData available in webApp after delay, length:', webApp.initData.length)
     return webApp.initData
   }
   
@@ -498,6 +571,14 @@ export async function waitForInitData(maxWaitMs: number = 5000): Promise<string>
         // Игнорируем ошибки импорта
       }
       
+      // First, check URL for initData (it might appear there)
+      const urlInitData = getInitDataFromURL()
+      if (urlInitData) {
+        logger.log('[waitForInitData] Found initData in URL during wait')
+        resolve(urlInitData)
+        return
+      }
+      
       const currentWebApp = getTelegramWebApp()
       
       if (!currentWebApp) {
@@ -510,7 +591,7 @@ export async function waitForInitData(maxWaitMs: number = 5000): Promise<string>
         return
       }
 
-      // Check if initData is available and valid
+      // Check if initData is available and valid in webApp
       if (isValidInitData(currentWebApp.initData)) {
         // Финальная проверка на ВК перед возвратом данных
         try {
