@@ -304,7 +304,8 @@ export function Login() {
           }
           
           // Ждем, пока Telegram WebApp будет готов и initData станет доступен
-          waitForInitData(5000).then((initData) => {
+          // Увеличено время ожидания до 8 секунд для медленных устройств
+          waitForInitData(8000).then((initData) => {
             // Проверяем платформу еще раз после получения initData
             const afterCheckIsVK = isVKWebApp()
             if (afterCheckIsVK) {
@@ -318,7 +319,10 @@ export function Login() {
               initDataLength: initData?.length || 0
             })
             
-            if (initData && initData.length > 0) {
+            // Проверяем, что initData валиден (содержит user= или hash=)
+            const isValidInitData = initData && initData.length > 0 && (initData.includes('user=') || initData.includes('hash='))
+            
+            if (isValidInitData) {
               handleTelegramLogin()
             } else {
               // ПРОВЕРКА: Если мы в ВК, не показываем ошибку Telegram
@@ -337,14 +341,18 @@ export function Login() {
                 return
               }
               
-              const errorMsg = 'Не удалось получить данные авторизации Telegram. Убедитесь, что открыто через Telegram Mini App и попробуйте обновить страницу.'
-              console.error('[Login]', errorMsg)
-              console.error('[Login] Debug info:', {
+              // Если initData пустой или невалидный, но мы в Telegram, это может быть временная проблема
+              // Показываем более мягкое сообщение и даем возможность попробовать снова
+              const errorMsg = 'Не удалось получить данные авторизации Telegram. Попробуйте обновить страницу или откройте приложение через Telegram Mini App.'
+              console.warn('[Login]', errorMsg)
+              console.warn('[Login] Debug info:', {
                 hasWebApp: !!window.Telegram?.WebApp,
                 initData: window.Telegram?.WebApp?.initData || 'empty',
+                initDataLength: window.Telegram?.WebApp?.initData?.length || 0,
                 initDataUnsafe: window.Telegram?.WebApp?.initDataUnsafe || null,
                 isVK: finalVKCheck,
-                isTelegram: isTelegram
+                isTelegram: isTelegram,
+                url: window.location.href
               })
               showError(errorMsg)
               setIsLoading(false)

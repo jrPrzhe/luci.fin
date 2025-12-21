@@ -264,7 +264,8 @@ function TelegramAuthHandler() {
         // Автоматическая авторизация через Telegram Mini App
         // Ждем, пока Telegram WebApp будет готов и initData станет доступен
         console.log('[TelegramAuthHandler] Telegram auto-auth check: waiting for initData...')
-        const initData = await waitForInitData(5000) // Ждем до 5 секунд для полной инициализации
+        // Увеличено время ожидания до 8 секунд для медленных устройств или медленного интернета
+        const initData = await waitForInitData(8000) // Ждем до 8 секунд для полной инициализации
         
         // ПРОВЕРКА ПОСЛЕ waitForInitData: Если мы в ВК, НЕ продолжаем
         const checkIsVKAfterWait = isVKWebApp()
@@ -288,7 +289,10 @@ function TelegramAuthHandler() {
           webAppPlatform: window.Telegram?.WebApp?.platform
         })
         
-        if (initData && initData.length > 0) {
+        // Проверяем, что initData валиден (содержит user= или hash=)
+        const isValidInitData = initData && initData.length > 0 && (initData.includes('user=') || initData.includes('hash='))
+        
+        if (isValidInitData) {
           hasAttemptedAuth.current = true
           try {
             console.log('Attempting automatic Telegram login...')
@@ -348,10 +352,30 @@ function TelegramAuthHandler() {
               return
             }
             
+            // Проверяем тип ошибки - если это ошибка из-за пустого initData, не показываем общую ошибку
+            const errorMessage = error?.message || String(error) || ''
+            const errorLower = errorMessage.toLowerCase()
+            const isInitDataError = errorLower.includes('initdata') || 
+                                   errorLower.includes('не получены данные') ||
+                                   errorLower.includes('empty initdata') ||
+                                   !initData || initData.length === 0
+            
             if (mounted) {
               clearTimeout(timeoutId)
               setIsChecking(false)
-              // Если авторизация не удалась, редиректим на логин
+              
+              // Если это ошибка из-за пустого initData, не показываем общую ошибку
+              // Пользователь может попробовать обновить страницу
+              if (isInitDataError) {
+                console.log('[TelegramAuthHandler] InitData error - not showing error message, user can retry')
+                // Только редиректим на логин, если не на странице логина/регистрации
+                if (location.pathname !== '/login' && location.pathname !== '/register') {
+                  navigate('/login')
+                }
+                return
+              }
+              
+              // Для других ошибок редиректим на логин
               if (location.pathname !== '/login' && location.pathname !== '/register') {
                 navigate('/login')
               }
@@ -370,25 +394,34 @@ function TelegramAuthHandler() {
             return
           }
           
-          // Только если мы действительно в Telegram, показываем ошибку
-          console.error('[TelegramAuthHandler] No initData available for Telegram auto-auth after waiting')
-          console.error('[TelegramAuthHandler] Debug info:', {
+          // Только если мы действительно в Telegram, проверяем ситуацию
+          const finalIsTelegram = isTelegramWebApp()
+          console.warn('[TelegramAuthHandler] No initData available for Telegram auto-auth after waiting')
+          console.warn('[TelegramAuthHandler] Debug info:', {
             hasWebApp: !!window.Telegram?.WebApp,
             initData: window.Telegram?.WebApp?.initData || 'empty',
+            initDataLength: window.Telegram?.WebApp?.initData?.length || 0,
             initDataUnsafe: window.Telegram?.WebApp?.initDataUnsafe || null,
             webAppVersion: window.Telegram?.WebApp?.version,
             webAppPlatform: window.Telegram?.WebApp?.platform,
             isVK: finalVKCheck,
-            isTelegram: isTelegramWebApp()
+            isTelegram: finalIsTelegram,
+            url: window.location.href
           })
+          
           if (mounted) {
             clearTimeout(timeoutId)
             setIsChecking(false)
-            // Если на странице логина/регистрации, остаемся там (пользователь может попробовать снова)
-            // На других страницах редиректим на логин
+            
+            // Если мы в Telegram, но initData не получен, это может быть временная проблема
+            // Не показываем ошибку сразу - возможно, пользователь может попробовать обновить страницу
+            // Только редиректим на логин, если не на странице логина/регистрации
+            // На странице логина пользователь может попробовать авторизоваться вручную
             if (location.pathname !== '/login' && location.pathname !== '/register') {
               navigate('/login')
             }
+            // НЕ показываем ошибку здесь - пусть Login компонент обработает это
+            // Это предотвращает показ ошибки при временных проблемах с получением initData
           }
         }
       } catch (error) {

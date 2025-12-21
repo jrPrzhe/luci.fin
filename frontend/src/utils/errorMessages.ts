@@ -211,8 +211,17 @@ export function translateError(error: any): string {
     return 'Сессия истекла. Пожалуйста, войдите в систему снова.'
   }
 
-  // Ошибки Telegram/VK
+  // Ошибки Telegram/VK - более специфичная обработка
+  // Проверяем только критические ошибки, связанные с авторизацией
   if (errorLower.includes('telegram') || errorLower.includes('initdata') || errorLower.includes('vk')) {
+    // Если это ошибка о пустых данных или неверной подписи, показываем более конкретное сообщение
+    if (errorLower.includes('не получены данные') || errorLower.includes('empty') || errorLower.includes('пуст')) {
+      return 'Не удалось получить данные авторизации. Попробуйте обновить страницу или откройте приложение через Telegram Mini App.'
+    }
+    if (errorLower.includes('подпись') || errorLower.includes('signature') || errorLower.includes('неверная')) {
+      return 'Ошибка проверки подписи авторизации. Убедитесь, что вы открыли приложение через Telegram Mini App.'
+    }
+    // Для других ошибок показываем общее сообщение
     return 'Ошибка авторизации через Telegram/VK. Убедитесь, что вы открыли приложение через Mini App.'
   }
 

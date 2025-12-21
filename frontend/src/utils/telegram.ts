@@ -517,8 +517,21 @@ export async function waitForInitData(maxWaitMs: number = 5000): Promise<string>
           // Игнорируем ошибки импорта
         }
         
+        // Timeout reached, но пробуем еще раз с небольшим ожиданием
+        // Иногда initData появляется с небольшой задержкой после ready()
+        if (currentWebApp && !isValidInitData(currentWebApp.initData)) {
+          console.log('[waitForInitData] WebApp available but initData empty at timeout, waiting a bit more...')
+          // Даем еще 1 секунду на появление initData
+          await new Promise(resolve => setTimeout(resolve, 1000))
+          if (isValidInitData(currentWebApp.initData)) {
+            console.log('[waitForInitData] InitData appeared after additional wait')
+            resolve(currentWebApp.initData)
+            return
+          }
+        }
+        
         // Timeout reached, return whatever we have (might be empty)
-        const finalData = currentWebApp.initData || ''
+        const finalData = currentWebApp?.initData || ''
         console.warn('[waitForInitData] Timeout reached after', maxWaitMs, 'ms. InitData:', finalData ? `available (${finalData.length} chars) but might be incomplete` : 'not available')
         resolve(finalData)
         return
