@@ -4,6 +4,7 @@
  */
 
 import bridge from '@vkontakte/vk-bridge'
+import { logger } from './logger'
 
 // Type definitions for VK Bridge
 interface VKUser {
@@ -31,7 +32,7 @@ export function isVKWebApp(): boolean {
   // VK Bridge is available before URL parameters are processed
   try {
     if ((window as any).vkBridge) {
-      console.log('[isVKWebApp] Detected via VK Bridge (priority check)')
+      logger.log('[isVKWebApp] Detected via VK Bridge (priority check)')
       // Сохраняем информацию о VK в sessionStorage
       try {
         sessionStorage.setItem('isVKWebApp', 'true')
@@ -50,7 +51,7 @@ export function isVKWebApp(): boolean {
   const hasVKParams = urlParams.has('vk_user_id') || urlParams.has('vk_app_id')
   
   if (hasVKParams) {
-    console.log('[isVKWebApp] Detected via URL parameters (vk_user_id or vk_app_id)')
+    logger.log('[isVKWebApp] Detected via URL parameters (vk_user_id or vk_app_id)')
     // Сохраняем информацию о VK в sessionStorage для сохранения при навигации
     try {
       sessionStorage.setItem('isVKWebApp', 'true')
@@ -67,7 +68,7 @@ export function isVKWebApp(): boolean {
     const hashParams = new URLSearchParams(hash.split('?')[1] || '')
     const hasVKParamsInHash = hashParams.has('vk_user_id') || hashParams.has('vk_app_id')
     if (hasVKParamsInHash) {
-      console.log('[isVKWebApp] Detected via hash parameters (vk_user_id or vk_app_id)')
+      logger.log('[isVKWebApp] Detected via hash parameters (vk_user_id or vk_app_id)')
       // Сохраняем информацию о VK в sessionStorage
       try {
         sessionStorage.setItem('isVKWebApp', 'true')
@@ -84,7 +85,7 @@ export function isVKWebApp(): boolean {
   try {
     const savedVKStatus = sessionStorage.getItem('isVKWebApp')
     if (savedVKStatus === 'true') {
-      console.log('[isVKWebApp] Detected via sessionStorage (preserved from previous navigation)')
+      logger.log('[isVKWebApp] Detected via sessionStorage (preserved from previous navigation)')
       return true
     }
   } catch (error) {
@@ -122,7 +123,7 @@ export async function initVKWebApp(): Promise<void> {
         vkUserCache = userInfo as VKUser
       }
     } catch (error) {
-      console.warn('Failed to get VK user info:', error)
+      logger.warn('Failed to get VK user info:', error)
     }
   } catch (error) {
     console.warn('Failed to initialize VK Web App:', error)
@@ -255,7 +256,7 @@ export async function getVKUserAsync(): Promise<VKUser | null> {
       return vkUserCache
     }
   } catch (error) {
-    console.warn('Failed to get VK user info:', error)
+    logger.warn('Failed to get VK user info:', error)
   }
 
   return null
@@ -268,7 +269,7 @@ export async function getVKUserAsync(): Promise<VKUser | null> {
 export async function showVKAlert(message: string, callback?: () => void): Promise<void> {
   if (!isVKWebApp()) {
     // No browser alerts allowed - log to console instead
-    console.warn('[VK Alert]', message)
+    logger.warn('[VK Alert]', message)
     callback?.()
     return
   }
@@ -287,8 +288,8 @@ export async function showVKAlert(message: string, callback?: () => void): Promi
     callback?.()
   } catch (error) {
     // No browser alerts allowed - log to console instead
-    console.warn('[VK Alert] Failed to show VK snackbar:', error)
-    console.warn('[VK Alert] Message:', message)
+    logger.warn('[VK Alert] Failed to show VK snackbar:', error)
+    logger.warn('[VK Alert] Message:', message)
     callback?.()
   }
 }
@@ -303,7 +304,7 @@ export async function showVKSnackbar(
 ): Promise<void> {
   if (!isVKWebApp()) {
     // Fallback to console if not in VK
-    console.info(message)
+    logger.info(message)
     return
   }
 
@@ -315,9 +316,9 @@ export async function showVKSnackbar(
       duration
     })
   } catch (error) {
-    console.warn('Failed to show VK snackbar:', error)
+    logger.warn('Failed to show VK snackbar:', error)
     // Fallback to console
-    console.info(message)
+    logger.info(message)
   }
 }
 
@@ -449,8 +450,8 @@ export function monitorBrowserAlerts(
   // Wrap alert to monitor it (but don't actually show alerts)
   window.alert = function(message: string) {
     // Log to console instead of showing alert
-    console.warn('[Browser Alert Blocked]', message)
-    console.warn('[Browser Alert Blocked] Use ToastContext or platform-specific methods instead')
+    logger.warn('[Browser Alert Blocked]', message)
+    logger.warn('[Browser Alert Blocked] Use ToastContext or platform-specific methods instead')
     
     // Call callback if provided
     onAlert?.(message)

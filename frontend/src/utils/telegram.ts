@@ -3,6 +3,8 @@
  * https://core.telegram.org/bots/webapps
  */
 
+import { logger } from './logger'
+
 // Type definitions for Telegram Web App API
 declare global {
   interface Window {
@@ -153,7 +155,7 @@ export function isTelegramWebApp(): boolean {
     try {
       const savedVKStatus = sessionStorage.getItem('isVKWebApp')
       if (savedVKStatus === 'true') {
-        console.log('[isTelegramWebApp] VK detected via sessionStorage, returning false')
+        logger.log('[isTelegramWebApp] VK detected via sessionStorage, returning false')
         return false
       }
     } catch (error) {
@@ -191,13 +193,13 @@ export function isTelegramWebApp(): boolean {
                           (window as any).vkBridge
       if (finalVKCheck) {
         // VK detected, not Telegram
-        console.log('[isTelegramWebApp] VK detected in final check, returning false')
+        logger.log('[isTelegramWebApp] VK detected in final check, returning false')
         return false
       }
       
       // Only log once to avoid spam
       if (!(window as any).__telegramDetected) {
-        console.log('[isTelegramWebApp] Detected via window.Telegram.WebApp')
+        logger.log('[isTelegramWebApp] Detected via window.Telegram.WebApp')
         ;(window as any).__telegramDetected = true
       }
       return true
@@ -206,7 +208,7 @@ export function isTelegramWebApp(): boolean {
     // Method 2: Check URL parameters (Telegram Mini Apps often have tgWebAppData or similar)
     if (urlParams.has('tgWebAppData') || urlParams.has('tgWebAppStartParam')) {
       if (!(window as any).__telegramDetected) {
-        console.log('[isTelegramWebApp] Detected via URL parameters')
+        logger.log('[isTelegramWebApp] Detected via URL parameters')
         ;(window as any).__telegramDetected = true
       }
       return true
@@ -219,7 +221,7 @@ export function isTelegramWebApp(): boolean {
     if ((userAgent.includes('Telegram') || userAgent.includes('WebApp')) && 
         (urlParams.has('tgWebAppData') || urlParams.has('tgWebAppStartParam') || window.Telegram?.WebApp)) {
       if (!(window as any).__telegramDetected) {
-        console.log('[isTelegramWebApp] Detected via user agent:', userAgent)
+        logger.log('[isTelegramWebApp] Detected via user agent:', userAgent)
         ;(window as any).__telegramDetected = true
       }
       return true
@@ -232,7 +234,7 @@ export function isTelegramWebApp(): boolean {
     if ((referrer.includes('telegram.org') || referrer.includes('t.me')) &&
         (urlParams.has('tgWebAppData') || urlParams.has('tgWebAppStartParam') || window.Telegram?.WebApp)) {
       if (!(window as any).__telegramDetected) {
-        console.log('[isTelegramWebApp] Detected via referrer:', referrer)
+        logger.log('[isTelegramWebApp] Detected via referrer:', referrer)
         ;(window as any).__telegramDetected = true
       }
       return true
@@ -240,7 +242,7 @@ export function isTelegramWebApp(): boolean {
 
     return false
   } catch (error) {
-    console.error('[isTelegramWebApp] Error checking Telegram WebApp:', error)
+    logger.error('[isTelegramWebApp] Error checking Telegram WebApp:', error)
     return false
   }
 }
@@ -255,7 +257,7 @@ export function getTelegramWebApp() {
     }
     return window.Telegram?.WebApp || null
   } catch (error) {
-    console.warn('[getTelegramWebApp] Error getting Telegram WebApp:', error)
+    logger.warn('[getTelegramWebApp] Error getting Telegram WebApp:', error)
     return null
   }
 }
@@ -267,14 +269,14 @@ export function getTelegramWebApp() {
 export async function waitForTelegramSDK(maxWaitMs: number = 5000): Promise<boolean> {
   // If already available, return immediately
   if (window.Telegram?.WebApp) {
-    console.log('[waitForTelegramSDK] Telegram SDK already loaded')
+    logger.log('[waitForTelegramSDK] Telegram SDK already loaded')
     return true
   }
 
   // Check if script tag exists
   const scriptTag = document.querySelector('script[src*="telegram-web-app.js"]')
   if (!scriptTag) {
-    console.warn('[waitForTelegramSDK] Telegram Web App SDK script tag not found in HTML')
+    logger.warn('[waitForTelegramSDK] Telegram Web App SDK script tag not found in HTML')
     // Still wait a bit in case it's loaded dynamically
   }
 
@@ -284,14 +286,14 @@ export async function waitForTelegramSDK(maxWaitMs: number = 5000): Promise<bool
   return new Promise((resolve) => {
     const checkSDK = () => {
       if (window.Telegram?.WebApp) {
-        console.log('[waitForTelegramSDK] Telegram SDK loaded after', Date.now() - startTime, 'ms')
+        logger.log('[waitForTelegramSDK] Telegram SDK loaded after', Date.now() - startTime, 'ms')
         resolve(true)
         return
       }
 
       if (Date.now() - startTime >= maxWaitMs) {
-        console.warn('[waitForTelegramSDK] Timeout: Telegram SDK not loaded after', maxWaitMs, 'ms')
-        console.warn('[waitForTelegramSDK] Debug info:', {
+        logger.warn('[waitForTelegramSDK] Timeout: Telegram SDK not loaded after', maxWaitMs, 'ms')
+        logger.warn('[waitForTelegramSDK] Debug info:', {
           hasWindow: typeof window !== 'undefined',
           hasTelegram: !!window.Telegram,
           hasWebApp: !!window.Telegram?.WebApp,
@@ -317,39 +319,39 @@ export async function waitForTelegramSDK(maxWaitMs: number = 5000): Promise<bool
  * Now returns a Promise to allow async initialization
  */
 export async function initTelegramWebApp(): Promise<boolean> {
-  console.log('[initTelegramWebApp] Starting initialization...')
+  logger.log('[initTelegramWebApp] Starting initialization...')
   
   try {
     // First, wait for SDK to load if we detect we're in Telegram
     const isTelegram = isTelegramWebApp()
-    console.log('[initTelegramWebApp] isTelegramWebApp() returned:', isTelegram)
+    logger.log('[initTelegramWebApp] isTelegramWebApp() returned:', isTelegram)
     
     if (isTelegram) {
-      console.log('[initTelegramWebApp] Detected Telegram environment, waiting for SDK...')
+      logger.log('[initTelegramWebApp] Detected Telegram environment, waiting for SDK...')
       const sdkLoaded = await waitForTelegramSDK(5000)
       
       if (!sdkLoaded) {
-        console.error('[initTelegramWebApp] Telegram SDK failed to load after timeout')
-        console.error('[initTelegramWebApp] This might cause issues with Telegram Mini App functionality')
+        logger.error('[initTelegramWebApp] Telegram SDK failed to load after timeout')
+        logger.error('[initTelegramWebApp] This might cause issues with Telegram Mini App functionality')
         // Continue anyway - app should still work
       }
     }
 
     const webApp = getTelegramWebApp()
     if (!webApp) {
-      console.warn('[initTelegramWebApp] Telegram WebApp not available after waiting')
-      console.warn('[initTelegramWebApp] App will continue but Telegram-specific features may not work')
+      logger.warn('[initTelegramWebApp] Telegram WebApp not available after waiting')
+      logger.warn('[initTelegramWebApp] App will continue but Telegram-specific features may not work')
       return false
     }
 
-    console.log('[initTelegramWebApp] Telegram WebApp found, initializing...')
+    logger.log('[initTelegramWebApp] Telegram WebApp found, initializing...')
 
     // Expand to full height
     try {
       webApp.expand()
-      console.log('[initTelegramWebApp] Expanded to full height')
+      logger.log('[initTelegramWebApp] Expanded to full height')
     } catch (error) {
-      console.warn('[initTelegramWebApp] Failed to expand:', error)
+      logger.warn('[initTelegramWebApp] Failed to expand:', error)
     }
 
     // Set theme colors if available
@@ -367,23 +369,23 @@ export async function initTelegramWebApp(): Promise<boolean> {
       if (themeParams && themeParams.button_text_color) {
         document.documentElement.style.setProperty('--tg-theme-button-text-color', themeParams.button_text_color)
       }
-      console.log('[initTelegramWebApp] Theme colors set')
+      logger.log('[initTelegramWebApp] Theme colors set')
     } catch (error) {
-      console.warn('[initTelegramWebApp] Failed to set theme colors:', error)
+      logger.warn('[initTelegramWebApp] Failed to set theme colors:', error)
     }
 
     // Notify Telegram that app is ready
     try {
       webApp.ready()
-      console.log('[initTelegramWebApp] Called ready()')
+      logger.log('[initTelegramWebApp] Called ready()')
     } catch (error) {
-      console.warn('[initTelegramWebApp] Failed to call ready():', error)
+      logger.warn('[initTelegramWebApp] Failed to call ready():', error)
     }
 
-    console.log('[initTelegramWebApp] Initialization complete')
+    logger.log('[initTelegramWebApp] Initialization complete')
     return true
   } catch (error) {
-    console.error('[initTelegramWebApp] Initialization error:', error)
+    logger.error('[initTelegramWebApp] Initialization error:', error)
     return false
   }
 }
@@ -413,22 +415,22 @@ export async function waitForInitData(maxWaitMs: number = 5000): Promise<string>
     // Импортируем функцию проверки ВК динамически, чтобы избежать циклических зависимостей
     const { isVKWebApp } = await import('./vk')
     if (isVKWebApp()) {
-      console.log('[waitForInitData] VK detected (PRIORITY CHECK), returning empty string immediately')
+      logger.log('[waitForInitData] VK detected (PRIORITY CHECK), returning empty string immediately')
       return ''
     }
   } catch (error) {
     // Игнорируем ошибки импорта - продолжаем проверку
-    console.warn('[waitForInitData] Could not check VK status:', error)
+    logger.warn('[waitForInitData] Could not check VK status:', error)
   }
   
   if (!isTelegramWebApp()) {
-    console.log('[waitForInitData] Not in Telegram Mini App, returning empty string')
+    logger.log('[waitForInitData] Not in Telegram Mini App, returning empty string')
     return ''
   }
   
   const webApp = getTelegramWebApp()
   if (!webApp) {
-    console.warn('[waitForInitData] Telegram WebApp not available')
+    logger.warn('[waitForInitData] Telegram WebApp not available')
     return ''
   }
 
@@ -436,7 +438,7 @@ export async function waitForInitData(maxWaitMs: number = 5000): Promise<string>
   try {
     webApp.ready()
   } catch (error) {
-    console.warn('[waitForInitData] Error calling ready():', error)
+    logger.warn('[waitForInitData] Error calling ready():', error)
   }
 
   // Helper function to validate initData
@@ -450,7 +452,7 @@ export async function waitForInitData(maxWaitMs: number = 5000): Promise<string>
 
   // If initData is already available and valid, return it immediately
   if (isValidInitData(webApp.initData)) {
-    console.log('[waitForInitData] InitData already available')
+    logger.log('[waitForInitData] InitData already available')
     return webApp.initData
   }
 
@@ -464,7 +466,7 @@ export async function waitForInitData(maxWaitMs: number = 5000): Promise<string>
       try {
         const { isVKWebApp } = await import('./vk')
         if (isVKWebApp()) {
-          console.log('[waitForInitData] VK detected during wait, returning empty string')
+          logger.log('[waitForInitData] VK detected during wait, returning empty string')
           resolve('')
           return
         }
@@ -476,7 +478,7 @@ export async function waitForInitData(maxWaitMs: number = 5000): Promise<string>
       
       if (!currentWebApp) {
         if (Date.now() - startTime >= maxWaitMs) {
-          console.warn('[waitForInitData] Timeout: WebApp not available')
+          logger.warn('[waitForInitData] Timeout: WebApp not available')
           resolve('')
           return
         }
@@ -490,7 +492,7 @@ export async function waitForInitData(maxWaitMs: number = 5000): Promise<string>
         try {
           const { isVKWebApp } = await import('./vk')
           if (isVKWebApp()) {
-            console.log('[waitForInitData] VK detected before returning initData, returning empty string')
+            logger.log('[waitForInitData] VK detected before returning initData, returning empty string')
             resolve('')
             return
           }
@@ -498,7 +500,7 @@ export async function waitForInitData(maxWaitMs: number = 5000): Promise<string>
           // Игнорируем ошибки импорта
         }
         
-        console.log('[waitForInitData] InitData became available after', Date.now() - startTime, 'ms')
+        logger.log('[waitForInitData] InitData became available after', Date.now() - startTime, 'ms')
         resolve(currentWebApp.initData)
         return
       }
@@ -509,7 +511,7 @@ export async function waitForInitData(maxWaitMs: number = 5000): Promise<string>
         try {
           const { isVKWebApp } = await import('./vk')
           if (isVKWebApp()) {
-            console.log('[waitForInitData] VK detected at timeout, returning empty string')
+            logger.log('[waitForInitData] VK detected at timeout, returning empty string')
             resolve('')
             return
           }
@@ -520,11 +522,11 @@ export async function waitForInitData(maxWaitMs: number = 5000): Promise<string>
         // Timeout reached, но пробуем еще раз с небольшим ожиданием
         // Иногда initData появляется с небольшой задержкой после ready()
         if (currentWebApp && !isValidInitData(currentWebApp.initData)) {
-          console.log('[waitForInitData] WebApp available but initData empty at timeout, waiting a bit more...')
+          logger.log('[waitForInitData] WebApp available but initData empty at timeout, waiting a bit more...')
           // Даем еще 1 секунду на появление initData
           await new Promise(resolve => setTimeout(resolve, 1000))
           if (isValidInitData(currentWebApp.initData)) {
-            console.log('[waitForInitData] InitData appeared after additional wait')
+            logger.log('[waitForInitData] InitData appeared after additional wait')
             resolve(currentWebApp.initData)
             return
           }
@@ -532,7 +534,7 @@ export async function waitForInitData(maxWaitMs: number = 5000): Promise<string>
         
         // Timeout reached, return whatever we have (might be empty)
         const finalData = currentWebApp?.initData || ''
-        console.warn('[waitForInitData] Timeout reached after', maxWaitMs, 'ms. InitData:', finalData ? `available (${finalData.length} chars) but might be incomplete` : 'not available')
+        logger.warn('[waitForInitData] Timeout reached after', maxWaitMs, 'ms. InitData:', finalData ? `available (${finalData.length} chars) but might be incomplete` : 'not available')
         resolve(finalData)
         return
       }
@@ -566,7 +568,7 @@ export function showTelegramAlert(message: string, callback?: () => void) {
     webApp.showAlert(message, callback)
   } else {
     // No browser alerts allowed - log to console instead
-    console.warn('[Telegram Alert]', message)
+    logger.warn('[Telegram Alert]', message)
     callback?.()
   }
 }
@@ -581,7 +583,7 @@ export function showTelegramConfirm(message: string, callback?: (confirmed: bool
     webApp.showConfirm(message, callback)
   } else {
     // No browser dialogs allowed - log to console and return false
-    console.warn('[Telegram Confirm]', message)
+    logger.warn('[Telegram Confirm]', message)
     callback?.(false)
   }
 }

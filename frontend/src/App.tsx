@@ -1,5 +1,5 @@
-import { useEffect, useState, useRef } from 'react'
-import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom'
+import { useEffect } from 'react'
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { storageSync, initStorage } from './utils/storage'
 import { Layout } from './components/Layout'
@@ -20,9 +20,9 @@ import { Statistics } from './pages/Statistics'
 import { Achievements } from './pages/Achievements'
 import { Quests } from './pages/Quests'
 import { Analytics } from './pages/Analytics'
-import { isTelegramWebApp, getTelegramUser, waitForInitData } from './utils/telegram'
-import { isVKWebApp, getVKLaunchParams, getVKUserId, initVKWebApp, getVKUser } from './utils/vk'
-import { api } from './services/api'
+import { detectPlatform } from './utils/platform'
+import { UnifiedAuthHandler } from './components/UnifiedAuthHandler'
+import { logger } from './utils/logger'
 import { NewYearProvider } from './contexts/NewYearContext'
 import { I18nProvider } from './contexts/I18nContext'
 import { ToastProvider } from './contexts/ToastContext'
@@ -39,18 +39,86 @@ const queryClient = new QueryClient({
   },
 })
 
-function TelegramAuthHandler() {
-  const navigate = useNavigate()
-  const location = useLocation()
-  const [isChecking, setIsChecking] = useState(true)
-  const hasAttemptedAuth = useRef(false)
+// Old TelegramAuthHandler and VKAuthHandler removed - now using UnifiedAuthHandler
+// See components/UnifiedAuthHandler.tsx for the unified implementation
 
+function App() {
+  // Логируем инициализацию приложения и загружаем настройки из storage
   useEffect(() => {
-    let mounted = true
-    let timeoutId: ReturnType<typeof setTimeout>
+    const platform = detectPlatform()
+    
+    logger.log('[App] Initializing...', {
+      platform,
+      url: window.location.href,
+      pathname: window.location.pathname,
+      hasTelegramSDK: !!window.Telegram?.WebApp,
+      hasVKParams: new URLSearchParams(window.location.search).has('vk_user_id')
+    })
+    
+    // Инициализируем storage и загружаем настройки (тема, новогодний режим и т.д.)
+    initStorage().catch(logger.error)
+  }, [])
 
-    const checkTelegramAuth = async () => {
-      console.log('[TelegramAuthHandler] Starting auth check...', {
+  logger.log('[App] Rendering App component...', {
+    timestamp: new Date().toISOString(),
+    pathname: window.location.pathname
+  })
+
+  return (
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <ErrorBoundary>
+          <I18nProvider>
+            <ErrorBoundary>
+              <NewYearProvider>
+                <ErrorBoundary>
+                  <ToastProvider>
+                    <ErrorBoundary>
+                      <Router>
+                        <ErrorBoundary>
+                          <UnifiedAuthHandler />
+                        </ErrorBoundary>
+                        <ErrorBoundary>
+                          <Routes>
+                            <Route path="/login" element={<Login />} />
+                            <Route path="/register" element={<Register />} />
+                            <Route path="/onboarding" element={<Onboarding />} />
+                            <Route path="/" element={<Layout />}>
+                              <Route index element={<Dashboard />} />
+                              <Route path="transactions" element={<Transactions />} />
+                              <Route path="accounts" element={<Accounts />} />
+                              <Route path="categories" element={<Categories />} />
+                              <Route path="goals" element={<Goals />} />
+                              <Route path="reports" element={
+                                <ErrorBoundary>
+                                  <Reports />
+                                </ErrorBoundary>
+                              } />
+                              <Route path="shared-budgets" element={<SharedBudgets />} />
+                              <Route path="profile" element={<Profile />} />
+                              <Route path="statistics" element={<Statistics />} />
+                              <Route path="analytics" element={<Analytics />} />
+                              <Route path="import" element={<Import />} />
+                              <Route path="about" element={<About />} />
+                              <Route path="achievements" element={<Achievements />} />
+                              <Route path="quests" element={<Quests />} />
+                            </Route>
+                          </Routes>
+                        </ErrorBoundary>
+                      </Router>
+                    </ErrorBoundary>
+                  </ToastProvider>
+                </ErrorBoundary>
+              </NewYearProvider>
+            </ErrorBoundary>
+          </I18nProvider>
+        </ErrorBoundary>
+      </QueryClientProvider>
+    </ErrorBoundary>
+  )
+}
+
+export default App
         pathname: location.pathname,
         url: window.location.href,
         hasTelegramSDK: !!window.Telegram?.WebApp,
@@ -808,29 +876,21 @@ function VKAuthHandler() {
 function App() {
   // Логируем инициализацию приложения и загружаем настройки из storage
   useEffect(() => {
-    const isTelegram = isTelegramWebApp()
-    const isVK = isVKWebApp()
+    const platform = detectPlatform()
     
-    console.log('[App] Initializing...', {
-      isTelegram,
-      isVK,
+    logger.log('[App] Initializing...', {
+      platform,
       url: window.location.href,
       pathname: window.location.pathname,
       hasTelegramSDK: !!window.Telegram?.WebApp,
       hasVKParams: new URLSearchParams(window.location.search).has('vk_user_id')
     })
     
-    // Предупреждение, если оба определены (не должно происходить после исправления)
-    if (isTelegram && isVK) {
-      console.warn('[App] WARNING: Both Telegram and VK detected! This should not happen.')
-      console.warn('[App] Telegram will take priority.')
-    }
-    
     // Инициализируем storage и загружаем настройки (тема, новогодний режим и т.д.)
-    initStorage().catch(console.error)
+    initStorage().catch(logger.error)
   }, [])
 
-  console.log('[App] Rendering App component...', {
+  logger.log('[App] Rendering App component...', {
     timestamp: new Date().toISOString(),
     pathname: window.location.pathname
   })
@@ -847,10 +907,7 @@ function App() {
                     <ErrorBoundary>
                       <Router>
                         <ErrorBoundary>
-                          <TelegramAuthHandler />
-                        </ErrorBoundary>
-                        <ErrorBoundary>
-                          <VKAuthHandler />
+                          <UnifiedAuthHandler />
                         </ErrorBoundary>
                         <ErrorBoundary>
                           <Routes>
