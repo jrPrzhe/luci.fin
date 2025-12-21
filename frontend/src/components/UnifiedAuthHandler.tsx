@@ -42,7 +42,7 @@ export function UnifiedAuthHandler() {
 
         // Step 2: If web platform, skip auto-auth
         if (platform === 'web') {
-          console.log('[UnifiedAuthHandler] Web platform detected, skipping auto-auth')
+          logger.log('[UnifiedAuthHandler] Web platform detected, skipping auto-auth')
           if (mounted) {
             clearTimeout(timeoutId)
             setIsChecking(false)
@@ -56,7 +56,7 @@ export function UnifiedAuthHandler() {
           try {
             const user = await api.getCurrentUser()
             if (user && mounted) {
-              console.log('[UnifiedAuthHandler] Valid token exists, user authenticated')
+              logger.log('[UnifiedAuthHandler] Valid token exists, user authenticated')
               clearTimeout(timeoutId)
               setIsChecking(false)
               

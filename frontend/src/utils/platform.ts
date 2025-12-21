@@ -3,8 +3,9 @@
  * Detects the platform (Telegram, VK, or Web) and provides unified auth interface
  */
 
-import { isTelegramWebApp, waitForInitData } from './telegram'
+import { isTelegramWebApp, waitForInitData, initTelegramWebApp } from './telegram'
 import { isVKWebApp, getVKLaunchParams, getVKUserAsync, initVKWebApp } from './vk'
+import { logger } from './logger'
 
 export type Platform = 'telegram' | 'vk' | 'web'
 
@@ -35,7 +36,12 @@ export function detectPlatform(): Platform {
 export async function getPlatformAuthData(platform: Platform, maxWaitMs: number = 8000): Promise<string | null> {
   switch (platform) {
     case 'telegram': {
+      // Initialize Telegram Web App first
+      logger.log('[platform] Initializing Telegram Web App...')
+      await initTelegramWebApp()
+      
       // Wait for initData to be available
+      logger.log('[platform] Waiting for Telegram initData...')
       const initData = await waitForInitData(maxWaitMs)
       return initData && initData.length > 0 ? initData : null
     }
