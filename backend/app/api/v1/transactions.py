@@ -1065,10 +1065,19 @@ async def create_transaction(
         )
         
         # For transfer, we need to check balance in the source account's currency
-        # If transaction currency differs from source account currency, we need to convert
+        # Use the already converted amount if source account currency matches final account currency
+        # Otherwise, convert from transaction currency to source account currency
         source_account_currency = source_account.currency
-        if transaction_currency != source_account_currency:
-            # Convert transfer amount to source account currency
+        
+        # If source account currency matches final account currency, use already converted amount
+        if source_account_currency == account_currency:
+            # Use the amount that was already converted for final_account
+            transfer_amount_in_source_currency = Decimal(str(amount_in_account_currency))
+        elif transaction_currency == source_account_currency:
+            # Transaction currency matches source account currency, use original amount
+            transfer_amount_in_source_currency = original_amount
+        else:
+            # Need to convert from transaction currency to source account currency
             source_exchange_rate = await get_exchange_rate(transaction_currency, source_account_currency)
             if source_exchange_rate is None:
                 raise HTTPException(
@@ -1076,8 +1085,6 @@ async def create_transaction(
                     detail=f"Не удалось получить курс валют для проверки баланса. Пожалуйста, попробуйте позже."
                 )
             transfer_amount_in_source_currency = original_amount * source_exchange_rate
-        else:
-            transfer_amount_in_source_currency = original_amount
         
         # Check if balance is sufficient
         if source_balance < transfer_amount_in_source_currency:
