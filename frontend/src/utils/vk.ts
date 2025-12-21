@@ -355,6 +355,75 @@ export async function checkAlertSupport(): Promise<{
 }
 
 /**
+ * Get VK App ID from launch params
+ * Returns the app ID if available, or fallback value
+ */
+export function getVKAppId(): string | null {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  const urlParams = new URLSearchParams(window.location.search)
+  const appId = urlParams.get('vk_app_id')
+  
+  if (appId) {
+    return appId
+  }
+
+  // Fallback: check hash params
+  const hash = window.location.hash
+  if (hash) {
+    const hashParams = new URLSearchParams(hash.split('?')[1] || '')
+    const appIdFromHash = hashParams.get('vk_app_id')
+    if (appIdFromHash) {
+      return appIdFromHash
+    }
+  }
+
+  // Default fallback App ID (from bot.py)
+  return '54321962'
+}
+
+/**
+ * Generate VK Mini App link with optional parameters
+ * @param path - Path within the app (e.g., '/shared-budgets')
+ * @param params - Additional query parameters (e.g., { inviteCode: 'ABC123' })
+ * @returns Full URL to VK Mini App
+ */
+export function getVKMiniAppLink(path?: string, params?: Record<string, string>): string {
+  const appId = getVKAppId() || '54321962'
+  
+  // Base URL for VK Mini App
+  let url = `https://vk.com/app${appId}`
+  
+  // Add path and params if provided
+  if (path || params) {
+    const queryParams = new URLSearchParams()
+    
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value) {
+          queryParams.append(key, value)
+        }
+      })
+    }
+    
+    // Use hash for app-specific params to avoid conflicts with VK launch params
+    // Ensure path starts with / for React Router compatibility
+    const normalizedPath = path && !path.startsWith('/') ? `/${path}` : (path || '')
+    
+    if (normalizedPath || params) {
+      const hash = params && queryParams.toString() 
+        ? `${normalizedPath}?${queryParams.toString()}`
+        : normalizedPath || `?${queryParams.toString()}`
+      url += `#${hash}`
+    }
+  }
+  
+  return url
+}
+
+/**
  * Monitor for browser alerts (for debugging/testing purposes)
  * This function wraps window.alert to detect when alerts are triggered
  * 

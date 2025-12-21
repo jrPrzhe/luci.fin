@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { api } from '../services/api'
 import { getTelegramWebApp } from '../utils/telegram'
-import { isVKWebApp } from '../utils/vk'
+import { isVKWebApp, getVKMiniAppLink } from '../utils/vk'
 import bridge from '@vkontakte/vk-bridge'
 import { useToast } from '../contexts/ToastContext'
 import { useI18n } from '../contexts/I18nContext'
@@ -137,6 +137,30 @@ export function SharedBudgets() {
   useEffect(() => {
     loadData()
     loadCurrentUser()
+    
+    // Check for inviteCode in URL hash (from VK Mini App link)
+    // Format: #/shared-budgets?inviteCode=ABC123 or #?inviteCode=ABC123
+    const hash = window.location.hash
+    if (hash) {
+      // Extract query string from hash (everything after ?)
+      const hashParts = hash.split('?')
+      if (hashParts.length > 1) {
+        const hashParams = new URLSearchParams(hashParts[1])
+        const inviteCode = hashParams.get('inviteCode')
+        if (inviteCode) {
+          // Auto-fill join form and show it
+          setJoinCode(inviteCode.toUpperCase().trim())
+          setShowJoinForm(true)
+          // Clear inviteCode from hash to avoid re-triggering, but keep the path
+          const pathPart = hashParts[0] || '#'
+          hashParams.delete('inviteCode')
+          const newHash = hashParams.toString() 
+            ? `${pathPart}?${hashParams.toString()}`
+            : pathPart
+          window.history.replaceState(null, '', window.location.pathname + window.location.search + newHash)
+        }
+      }
+    }
   }, [])
 
   const loadCurrentUser = async () => {
@@ -344,17 +368,26 @@ export function SharedBudgets() {
     }
 
     try {
-      // Use VK Bridge share functionality
+      // Generate link to VK Mini App with invite code parameter
+      // This ensures users open the app in VK Mini App with proper authentication
+      const miniAppLink = getVKMiniAppLink('/shared-budgets', {
+        inviteCode: inviteCode
+      })
+      
+      // Use VK Bridge share functionality with Mini App link
       await bridge.send('VKWebAppShare', {
-        link: window.location.href
+        link: miniAppLink
       })
       
       // Also copy to clipboard as fallback with budget name
-      const message = `Приглашение в совместный бюджет "${budgetName}"\n\nКод: ${inviteCode}`
+      const message = `Приглашение в совместный бюджет "${budgetName}"\n\nКод: ${inviteCode}\n\nСсылка: ${miniAppLink}`
       copyToClipboard(message)
     } catch (err) {
-      // Fallback: copy to clipboard with budget name
-      const message = `Приглашение в совместный бюджет "${budgetName}"\n\nКод: ${inviteCode}`
+      // Fallback: copy to clipboard with budget name and Mini App link
+      const miniAppLink = getVKMiniAppLink('/shared-budgets', {
+        inviteCode: inviteCode
+      })
+      const message = `Приглашение в совместный бюджет "${budgetName}"\n\nКод: ${inviteCode}\n\nСсылка: ${miniAppLink}`
       copyToClipboard(message)
       showSuccess(`Код приглашения скопирован: ${inviteCode}\n\nОтправьте его пользователю во ВКонтакте.`)
     }

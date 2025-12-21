@@ -282,21 +282,38 @@ export function Dashboard() {
   })
 
   // Получаем доходы и расходы за текущий месяц через аналитику (быстрее чем загрузка всех транзакций)
-  const { data: monthlyStats, isLoading: monthlyStatsLoading } = useQuery({
+  const { data: monthlyStats, isLoading: monthlyStatsLoading, error: monthlyStatsError } = useQuery({
     queryKey: ['monthly-stats'],
     queryFn: async () => {
       try {
+        console.log('[Dashboard] Fetching monthly stats...')
         const analytics = await api.getAnalytics('month')
+        console.log('[Dashboard] Analytics response:', analytics)
+        
         // API возвращает данные в формате { totals: { income, expense, ... } }
-        const income = analytics?.totals?.income || analytics?.total_income || 0
-        const expense = analytics?.totals?.expense || analytics?.total_expense || 0
-        console.log('[Dashboard] Monthly stats loaded:', { income, expense, analytics })
+        const income = analytics?.totals?.income ?? analytics?.total_income ?? 0
+        const expense = analytics?.totals?.expense ?? analytics?.total_expense ?? 0
+        
+        console.log('[Dashboard] Extracted values:', { 
+          income, 
+          expense, 
+          incomeType: typeof income, 
+          expenseType: typeof expense,
+          totals: analytics?.totals 
+        })
+        
+        // Преобразуем в числа, если это строки или другие типы
+        const incomeNum = typeof income === 'number' ? income : (typeof income === 'string' ? parseFloat(income) : 0) || 0
+        const expenseNum = typeof expense === 'number' ? expense : (typeof expense === 'string' ? parseFloat(expense) : 0) || 0
+        
+        console.log('[Dashboard] Final monthly stats:', { income: incomeNum, expense: expenseNum })
+        
         return {
-          income: typeof income === 'number' ? income : parseFloat(income) || 0,
-          expense: typeof expense === 'number' ? expense : parseFloat(expense) || 0
+          income: incomeNum,
+          expense: expenseNum
         }
       } catch (error) {
-        console.error('Error fetching monthly stats:', error)
+        console.error('[Dashboard] Error fetching monthly stats:', error)
         return { income: 0, expense: 0 }
       }
     },
@@ -304,6 +321,13 @@ export function Dashboard() {
     staleTime: 10000, // Уменьшено с 30 до 10 секунд для более частого обновления
     refetchOnWindowFocus: true, // Включено для обновления при возврате на вкладку
   })
+  
+  // Логируем ошибки загрузки статистики
+  useEffect(() => {
+    if (monthlyStatsError) {
+      console.error('[Dashboard] Monthly stats query error:', monthlyStatsError)
+    }
+  }, [monthlyStatsError])
 
   // Получаем цели для выбора в форме дохода
   const { data: goals = [] } = useQuery({
@@ -546,27 +570,32 @@ export function Dashboard() {
       
       // Invalidate queries in background (don't wait for refetch)
       // This will trigger refetch on next useQuery call
-      queryClient.invalidateQueries({ queryKey: ['balance'] })
-      queryClient.invalidateQueries({ queryKey: ['recent-transactions'] })
-      queryClient.invalidateQueries({ queryKey: ['accounts'] })
-      queryClient.invalidateQueries({ queryKey: ['monthly-stats'] })
-      queryClient.invalidateQueries({ queryKey: ['goals'] })
-      queryClient.invalidateQueries({ queryKey: ['gamification-status'] })
-      queryClient.invalidateQueries({ queryKey: ['daily-quests'] })
-      // Invalidate all analytics queries (with any period parameter: week, month, year)
-      // Using exact: false to match all queries starting with ['analytics']
-      queryClient.invalidateQueries({ queryKey: ['analytics'], exact: false })
-      
-      // Optionally refetch critical data in background (non-blocking)
-      Promise.all([
-        queryClient.refetchQueries({ queryKey: ['balance'], type: 'active' }),
-        queryClient.refetchQueries({ queryKey: ['recent-transactions'], type: 'active' }),
-        queryClient.refetchQueries({ queryKey: ['monthly-stats'], type: 'active' }), // Добавлено принудительное обновление monthly-stats
-        queryClient.refetchQueries({ queryKey: ['goals'], type: 'active' }),
-        // Force refetch all analytics queries (week, month, year) - both active and inactive
-        // This ensures Reports page updates even if it's not currently open
-        queryClient.refetchQueries({ queryKey: ['analytics'], exact: false }),
-      ]).catch(console.error) // Don't block UI on refetch errors
+      // Добавляем небольшую задержку, чтобы убедиться, что транзакция сохранена в БД
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['balance'] })
+        queryClient.invalidateQueries({ queryKey: ['recent-transactions'] })
+        queryClient.invalidateQueries({ queryKey: ['accounts'] })
+        queryClient.invalidateQueries({ queryKey: ['monthly-stats'] })
+        queryClient.invalidateQueries({ queryKey: ['goals'] })
+        queryClient.invalidateQueries({ queryKey: ['gamification-status'] })
+        queryClient.invalidateQueries({ queryKey: ['daily-quests'] })
+        // Invalidate all analytics queries (with any period parameter: week, month, year)
+        // Using exact: false to match all queries starting with ['analytics']
+        queryClient.invalidateQueries({ queryKey: ['analytics'], exact: false })
+        
+        console.log('[Dashboard] Cache invalidated after successful transaction creation')
+        
+        // Optionally refetch critical data in background (non-blocking)
+        Promise.all([
+          queryClient.refetchQueries({ queryKey: ['balance'], type: 'active' }),
+          queryClient.refetchQueries({ queryKey: ['recent-transactions'], type: 'active' }),
+          queryClient.refetchQueries({ queryKey: ['monthly-stats'], type: 'active' }), // Добавлено принудительное обновление monthly-stats
+          queryClient.refetchQueries({ queryKey: ['goals'], type: 'active' }),
+          // Force refetch all analytics queries (week, month, year) - both active and inactive
+          // This ensures Reports page updates even if it's not currently open
+          queryClient.refetchQueries({ queryKey: ['analytics'], exact: false }),
+        ]).catch(console.error) // Don't block UI on refetch errors
+      }, 500)
       
       showSuccess(t.dashboard.form.transactionAdded.replace('{type}', t.dashboard.quickActions[quickFormType || 'expense']))
     } catch (err: any) {
@@ -620,14 +649,18 @@ export function Dashboard() {
               goal_id: '',
             })
             
-            queryClient.invalidateQueries({ queryKey: ['balance'] })
-            queryClient.invalidateQueries({ queryKey: ['recent-transactions'] })
-            queryClient.invalidateQueries({ queryKey: ['accounts'] })
-            queryClient.invalidateQueries({ queryKey: ['monthly-stats'] })
-            queryClient.invalidateQueries({ queryKey: ['goals'] })
-            queryClient.invalidateQueries({ queryKey: ['gamification-status'] })
-            queryClient.invalidateQueries({ queryKey: ['daily-quests'] })
-            queryClient.invalidateQueries({ queryKey: ['analytics'], exact: false })
+            // Обновляем кеш с небольшой задержкой, чтобы убедиться, что транзакция сохранена в БД
+            setTimeout(() => {
+              queryClient.invalidateQueries({ queryKey: ['balance'] })
+              queryClient.invalidateQueries({ queryKey: ['recent-transactions'] })
+              queryClient.invalidateQueries({ queryKey: ['accounts'] })
+              queryClient.invalidateQueries({ queryKey: ['monthly-stats'] })
+              queryClient.invalidateQueries({ queryKey: ['goals'] })
+              queryClient.invalidateQueries({ queryKey: ['gamification-status'] })
+              queryClient.invalidateQueries({ queryKey: ['daily-quests'] })
+              queryClient.invalidateQueries({ queryKey: ['analytics'], exact: false })
+              console.log('[Dashboard] Cache invalidated after transaction creation')
+            }, 500)
             
             showSuccess(t.dashboard.form.transactionAdded.replace('{type}', t.dashboard.quickActions[quickFormType || 'expense']))
             setSubmitting(false)
