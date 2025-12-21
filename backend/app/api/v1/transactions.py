@@ -1086,6 +1086,39 @@ async def create_transaction(
                 detail=f"Недостаточно средств на счете. Доступно: {source_balance:.2f} {source_account_currency}, требуется: {transfer_amount_in_source_currency:.2f} {source_account_currency}"
             )
     
+    # For expense transactions, check if account has sufficient balance
+    # This applies to both personal and shared accounts
+    # CRITICAL: For shared accounts, balance includes ALL transactions from ALL members
+    if transaction_data.transaction_type == "expense":
+        from sqlalchemy import text as sa_text
+        
+        # Lock account to prevent race conditions (same as for transfers)
+        db.execute(
+            sa_text("SELECT id FROM accounts WHERE id = :account_id FOR UPDATE"),
+            {"account_id": final_account_id}
+        ).first()
+        
+        # Calculate current balance (with lock)
+        # For shared accounts, _calculate_account_balance includes all transactions from all members
+        # For personal accounts, it includes only user's transactions
+        account_balance = _calculate_account_balance(
+            final_account_id,
+            current_user.id,
+            db,
+            account=final_account,
+            lock=False  # Account is already locked above
+        )
+        
+        # Expense amount is already in account currency (amount_in_account_currency)
+        expense_amount_in_account_currency = amount_in_account_currency
+        
+        # Check if balance is sufficient
+        if account_balance < expense_amount_in_account_currency:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Недостаточно средств на счете. Доступно: {account_balance:.2f} {account_currency}, требуется: {expense_amount_in_account_currency:.2f} {account_currency}"
+            )
+    
     # For transfers, use raw SQL to avoid enum issues completely
     if transaction_data.transaction_type == "transfer" and to_transaction:
         try:
