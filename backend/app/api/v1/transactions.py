@@ -15,6 +15,7 @@ from decimal import Decimal
 import logging
 import httpx
 import re
+import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -360,14 +361,55 @@ async def get_transactions(
     return result
 
 
-def _calculate_account_balance(account_id: int, user_id: int, db: Session, account: Account = None) -> Decimal:
-    """Calculate current account balance based on transactions"""
-    if not account:
-        account = db.query(Account).filter(Account.id == account_id).first()
-        if not account:
-            return Decimal("0")
+def _calculate_account_balance(account_id: int, user_id: int, db: Session, account: Account = None, lock: bool = False) -> Decimal:
+    """Calculate current account balance based on transactions
     
+    Args:
+        account_id: ID of the account
+        user_id: ID of the user
+        db: Database session
+        account: Optional account object (to avoid extra query)
+        lock: If True, use SELECT FOR UPDATE to lock the account row
+    """
     from sqlalchemy import text as sa_text
+    
+    # Lock account row if requested (for preventing race conditions)
+    if lock:
+        if not account:
+            # Lock account row using SELECT FOR UPDATE
+            account_result = db.execute(
+                sa_text("""
+                    SELECT id, initial_balance, currency, shared_budget_id, user_id
+                    FROM accounts 
+                    WHERE id = :account_id
+                    FOR UPDATE
+                """),
+                {"account_id": account_id}
+            ).first()
+            if not account_result:
+                return Decimal("0")
+            account = Account(
+                id=account_result[0],
+                initial_balance=account_result[1],
+                currency=account_result[2],
+                shared_budget_id=account_result[3],
+                user_id=account_result[4]
+            )
+        else:
+            # Lock account row even if we have the object
+            db.execute(
+                sa_text("""
+                    SELECT id FROM accounts 
+                    WHERE id = :account_id
+                    FOR UPDATE
+                """),
+                {"account_id": account_id}
+            ).first()
+    else:
+        if not account:
+            account = db.query(Account).filter(Account.id == account_id).first()
+            if not account:
+                return Decimal("0")
     
     # For shared accounts, count ALL transactions (from all members)
     # For personal accounts, count only user's transactions
@@ -693,8 +735,13 @@ async def create_transaction(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Create a new transaction"""
+    """Create a new transaction
+    
+    For transfer transactions, uses SELECT FOR UPDATE to lock accounts
+    and prevent race conditions when multiple transfers happen concurrently.
+    """
     import logging
+    import time
     logger = logging.getLogger(__name__)
     
     logger.info(f"Creating transaction for user_id={current_user.id}, account_id={transaction_data.account_id}, type={transaction_data.transaction_type}")
@@ -986,17 +1033,35 @@ async def create_transaction(
     
     # For transfers, check if source account has sufficient balance
     # This check happens after currency conversion to ensure we're comparing in the same currency
+    # CRITICAL: Use SELECT FOR UPDATE to lock accounts and prevent race conditions
     if transaction_data.transaction_type == "transfer" and to_transaction:
+        # Start a transaction with proper isolation level to prevent race conditions
+        # Lock both accounts in a consistent order (by ID) to prevent deadlocks
+        from sqlalchemy import text as sa_text
+        
+        # Determine account IDs in sorted order to prevent deadlocks
+        source_account_id = transaction_data.account_id
+        dest_account_id = transaction_data.to_account_id
+        account_ids_sorted = sorted([source_account_id, dest_account_id])
+        
+        # Lock both accounts in sorted order (prevents deadlocks)
+        for acc_id in account_ids_sorted:
+            db.execute(
+                sa_text("SELECT id FROM accounts WHERE id = :account_id FOR UPDATE"),
+                {"account_id": acc_id}
+            ).first()
+        
         # For transfers, always check the original source account (account_id), not final_account_id
         # because final_account_id might be changed if a goal is specified
         source_account = account  # Use the original account from the beginning of the function
         
-        # Calculate current balance of source account (in account currency)
+        # Calculate current balance of source account (in account currency) WITH LOCK
         source_balance = _calculate_account_balance(
             transaction_data.account_id, 
             current_user.id, 
             db, 
-            account=source_account
+            account=source_account,
+            lock=True  # Lock account to prevent concurrent modifications
         )
         
         # For transfer, we need to check balance in the source account's currency
