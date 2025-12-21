@@ -550,6 +550,16 @@ class ApiClient {
   }
 
   async loginTelegram(initData: string, currentToken?: string | null) {
+    // Log initData for debugging (without sensitive parts)
+    const { logger } = await import('../utils/logger')
+    logger.log('[API] loginTelegram called', {
+      initDataLength: initData?.length || 0,
+      initDataPreview: initData?.substring(0, 100) || 'empty',
+      hasUser: initData?.includes('user=') || false,
+      hasHash: initData?.includes('hash=') || false,
+      hasCurrentToken: !!currentToken
+    })
+    
     const response = await this.request<{ access_token: string; refresh_token: string; user: any }>(
       '/api/v1/auth/telegram',
       {

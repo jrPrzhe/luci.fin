@@ -445,22 +445,61 @@ export async function waitForInitData(maxWaitMs: number = 5000): Promise<string>
   // Telegram sometimes passes initData in URL hash as #tgWebAppData=...
   const getInitDataFromURL = (): string | null => {
     try {
+      const fullUrl = window.location.href
+      logger.log('[waitForInitData] Checking URL for initData', {
+        hash: window.location.hash.substring(0, 100),
+        search: window.location.search,
+        fullUrl: fullUrl.substring(0, 200)
+      })
+      
       // Check hash first (most common case)
       const hash = window.location.hash
       if (hash) {
-        // Try to parse as query string in hash: #tgWebAppData=...
-        // Format can be: #tgWebAppData=user%3D... or #?tgWebAppData=user%3D...
-        const hashMatch = hash.match(/[#&?]tgWebAppData=([^&]*)/)
+        // Try multiple patterns to extract tgWebAppData
+        // Pattern 1: #tgWebAppData=...
+        let hashMatch = hash.match(/[#&?]tgWebAppData=([^&]*)/)
+        if (!hashMatch) {
+          // Pattern 2: #?tgWebAppData=... (with question mark)
+          hashMatch = hash.match(/[#?]tgWebAppData=([^&]*)/)
+        }
+        if (!hashMatch) {
+          // Pattern 3: Just look for tgWebAppData anywhere in hash
+          hashMatch = hash.match(/tgWebAppData=([^&]*)/)
+        }
+        
         if (hashMatch && hashMatch[1]) {
           try {
-            const decoded = decodeURIComponent(hashMatch[1])
+            // Try decoding - might need multiple passes
+            let decoded = hashMatch[1]
+            try {
+              decoded = decodeURIComponent(decoded)
+            } catch (e) {
+              // If decode fails, try without decoding (might already be decoded)
+              logger.log('[waitForInitData] First decode failed, trying raw value')
+            }
+            
+            // If still looks encoded, try again
+            if (decoded.includes('%')) {
+              try {
+                decoded = decodeURIComponent(decoded)
+              } catch (e2) {
+                logger.warn('[waitForInitData] Second decode also failed')
+              }
+            }
+            
             if (isValidInitData(decoded)) {
-              logger.log('[waitForInitData] Found initData in URL hash (tgWebAppData), length:', decoded.length)
+              logger.log('[waitForInitData] Found valid initData in URL hash (tgWebAppData), length:', decoded.length, {
+                preview: decoded.substring(0, 100),
+                hasUser: decoded.includes('user='),
+                hasHash: decoded.includes('hash=')
+              })
               return decoded
             } else {
               logger.warn('[waitForInitData] Found tgWebAppData in URL but it\'s not valid initData', {
                 length: decoded.length,
-                preview: decoded.substring(0, 50)
+                preview: decoded.substring(0, 100),
+                hasUser: decoded.includes('user='),
+                hasHash: decoded.includes('hash=')
               })
             }
           } catch (decodeError) {
