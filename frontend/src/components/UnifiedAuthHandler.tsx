@@ -5,7 +5,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { detectPlatform, getPlatformAuthData, authWithPlatform, type Platform } from '../utils/platform'
+import { detectPlatform, getPlatformAuthData, authWithPlatform } from '../utils/platform'
 import { storageSync } from '../utils/storage'
 import { api } from '../services/api'
 import { logger } from '../utils/logger'
@@ -109,6 +109,10 @@ export function UnifiedAuthHandler() {
         
         try {
           const response = await authWithPlatform(platform, authData, existingToken)
+          
+          if (!response) {
+            throw new Error('Authentication failed: no response')
+          }
           
           logger.log('[UnifiedAuthHandler] Authentication successful:', {
             platform,

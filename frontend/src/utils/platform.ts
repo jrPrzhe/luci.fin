@@ -3,7 +3,7 @@
  * Detects the platform (Telegram, VK, or Web) and provides unified auth interface
  */
 
-import { isTelegramWebApp, getTelegramWebApp, waitForInitData, getTelegramUser } from './telegram'
+import { isTelegramWebApp, waitForInitData } from './telegram'
 import { isVKWebApp, getVKLaunchParams, getVKUserAsync, initVKWebApp } from './vk'
 
 export type Platform = 'telegram' | 'vk' | 'web'
@@ -78,13 +78,10 @@ export async function authWithPlatform(
   
   switch (platform) {
     case 'telegram': {
-      // Get user info from Telegram for name
-      const tgUser = getTelegramUser()
+      // loginTelegram only accepts initData and currentToken
       return await api.loginTelegram(
         authData,
-        currentToken,
-        tgUser?.first_name || null,
-        tgUser?.last_name || null
+        currentToken
       )
     }
     
