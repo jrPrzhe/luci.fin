@@ -790,6 +790,33 @@ async def delete_account(
         dest_transaction_ids = [t[0] for t in dest_transaction_ids]
         
         all_transaction_ids = list(set(source_transaction_ids + dest_transaction_ids))
+        
+        # Find all child transactions (recurring transactions that reference parent transactions)
+        # We need to recursively find all child transactions
+        child_transaction_ids = []
+        if all_transaction_ids:
+            # Find direct children
+            direct_children = db.query(Transaction.id).filter(
+                Transaction.parent_transaction_id.in_(all_transaction_ids)
+            ).all()
+            direct_children_ids = [t[0] for t in direct_children]
+            child_transaction_ids.extend(direct_children_ids)
+            
+            # Recursively find all descendants (children of children, etc.)
+            # This handles cases where there are multiple levels of recurring transactions
+            while direct_children_ids:
+                next_level_children = db.query(Transaction.id).filter(
+                    Transaction.parent_transaction_id.in_(direct_children_ids)
+                ).all()
+                next_level_ids = [t[0] for t in next_level_children]
+                if next_level_ids:
+                    child_transaction_ids.extend(next_level_ids)
+                    direct_children_ids = next_level_ids
+                else:
+                    break
+        
+        # Combine all transaction IDs (parent and child transactions)
+        all_transaction_ids = list(set(all_transaction_ids + child_transaction_ids))
         total_transaction_count = len(all_transaction_ids)
         
         if all_transaction_ids:
@@ -803,8 +830,14 @@ async def delete_account(
             )
             db.execute(delete_tags_stmt)
             
-            # Delete all transactions in bulk
-            db.query(Transaction).filter(Transaction.id.in_(all_transaction_ids)).delete(synchronize_session=False)
+            # Delete child transactions first (they reference parent transactions via parent_transaction_id)
+            if child_transaction_ids:
+                db.query(Transaction).filter(Transaction.id.in_(child_transaction_ids)).delete(synchronize_session=False)
+            
+            # Then delete parent transactions
+            parent_transaction_ids = [tid for tid in all_transaction_ids if tid not in child_transaction_ids]
+            if parent_transaction_ids:
+                db.query(Transaction).filter(Transaction.id.in_(parent_transaction_ids)).delete(synchronize_session=False)
         
         # Now delete the account
         db.delete(account)
@@ -821,9 +854,17 @@ async def delete_account(
         raise
     except Exception as e:
         db.rollback()
-        logger.error(f"Error deleting account {account_id}: {e}", exc_info=True)
+        error_msg = str(e)
+        error_type = type(e).__name__
+        logger.error(f"Error deleting account {account_id}: {error_type}: {error_msg}", exc_info=True)
+        
+        # Log more details for database errors
+        if "foreign key" in error_msg.lower() or "constraint" in error_msg.lower():
+            logger.error(f"Foreign key constraint violation detected. Account ID: {account_id}")
+            logger.error(f"This might be due to child transactions or other related records.")
+        
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Ошибка при удалении счета: {str(e)}"
+            detail="Ошибка базы данных. Пожалуйста, попробуйте позже или обратитесь в поддержку"
         )
 
