@@ -723,7 +723,7 @@ async def delete_goal(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Delete a goal and optionally archive its associated account"""
+    """Delete a goal and its associated account with all related transactions"""
     goal = db.query(Goal).filter(
         Goal.id == goal_id,
         Goal.user_id == current_user.id
@@ -735,25 +735,44 @@ async def delete_goal(
             detail="Цель не найдена"
         )
     
-    # If goal has an associated account, handle it
+    # If goal has an associated account, delete it and all related transactions
     account_id = goal.account_id
     if account_id:
         account = db.query(Account).filter(Account.id == account_id).first()
         if account:
-            # Check if account has transactions
-            transaction_count = db.query(Transaction).filter(
+            # Get all transaction IDs that need to be deleted
+            # Transactions where account is source
+            source_transaction_ids = db.query(Transaction.id).filter(
                 Transaction.account_id == account_id
-            ).count()
+            ).all()
+            source_transaction_ids = [t[0] for t in source_transaction_ids]
             
-            if transaction_count > 0:
-                # Archive account if it has transactions
-                account.is_archived = True
-                account.is_active = False
-            else:
-                # Delete account if no transactions
-                db.delete(account)
+            # Transactions where account is destination (transfers)
+            dest_transaction_ids = db.query(Transaction.id).filter(
+                Transaction.to_account_id == account_id
+            ).all()
+            dest_transaction_ids = [t[0] for t in dest_transaction_ids]
+            
+            all_transaction_ids = list(set(source_transaction_ids + dest_transaction_ids))
+            
+            if all_transaction_ids:
+                # Delete transaction_tags first (foreign key constraint)
+                from sqlalchemy import delete
+                from app.models.transaction import transaction_tags
+                
+                # Delete all transaction_tags for these transactions
+                delete_tags_stmt = delete(transaction_tags).where(
+                    transaction_tags.c.transaction_id.in_(all_transaction_ids)
+                )
+                db.execute(delete_tags_stmt)
+                
+                # Delete all transactions in bulk
+                db.query(Transaction).filter(Transaction.id.in_(all_transaction_ids)).delete(synchronize_session=False)
+            
+            # Delete the account
+            db.delete(account)
     
-    # Delete all transactions linked to this goal
+    # Delete all transactions linked to this goal (unlink goal_id)
     db.query(Transaction).filter(Transaction.goal_id == goal_id).update({Transaction.goal_id: None})
     
     # Delete the goal

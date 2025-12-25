@@ -20,6 +20,7 @@ interface Account {
   shared_budget_name?: string
   shared_budget_description?: string
   is_shared?: boolean
+  is_goal_account?: boolean
 }
 
 // accountTypeLabels will be replaced with translations
@@ -505,8 +506,8 @@ export function Accounts() {
                     >
                       ✏️
                     </button>
-                    {/* Показываем кнопку удаления только для личных счетов или если пользователь администратор совместного бюджета */}
-                    {(!account.shared_budget_id || isUserAdminOfBudget(account.shared_budget_id)) && (
+                    {/* Показываем кнопку удаления только для личных счетов или если пользователь администратор совместного бюджета, но НЕ для счетов целей */}
+                    {(!account.shared_budget_id || isUserAdminOfBudget(account.shared_budget_id)) && !account.is_goal_account && (
                     <button
                       onClick={async () => {
                         try {
