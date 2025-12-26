@@ -335,14 +335,44 @@ function AnalyticsTab() {
 function UsersStatsTab() {
   const queryClient = useQueryClient()
   const { t } = useI18n()
+  const { showError } = useToast()
   const [resetUserId, setResetUserId] = useState<number | null>(null)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
 
-  const { data: users, isLoading, error } = useQuery({
+  const { data: users, isLoading, error, refetch } = useQuery({
     queryKey: ['adminUsers'],
-    queryFn: () => api.getAdminUsers(),
+    queryFn: async () => {
+      try {
+        return await api.getAdminUsers()
+      } catch (err: any) {
+        const errorMessage = err.message || String(err)
+        
+        // Проверяем на HTML ответ (признак того, что backend не отвечает)
+        if (errorMessage.includes('<!DOCTYPE') || errorMessage.includes('<html')) {
+          throw new Error('Backend недоступен. Проверьте статус сервиса в Railway.')
+        }
+        
+        if (errorMessage.includes('403') || errorMessage.includes('Admin access required') || errorMessage.includes('Forbidden') || errorMessage.includes('Требуется доступ администратора')) {
+          throw new Error('Доступ запрещен. Требуются права администратора.')
+        }
+        if (errorMessage.includes('401') || errorMessage.includes('Not authenticated') || errorMessage.includes('Unauthorized')) {
+          throw new Error('Необходима авторизация. Пожалуйста, войдите снова.')
+        }
+        if (errorMessage.includes('timeout') || errorMessage.includes('Failed to fetch')) {
+          throw new Error('Не удалось подключиться к серверу. Проверьте подключение к интернету.')
+        }
+        
+        throw new Error(errorMessage || 'Ошибка загрузки данных')
+      }
+    },
     retry: false,
   })
+
+  useEffect(() => {
+    if (error) {
+      showError((error as Error).message)
+    }
+  }, [error, showError])
 
   const resetMutation = useMutation({
     mutationFn: (userId: number) => api.resetUserSettings(userId),
@@ -442,17 +472,27 @@ function UsersStatsTab() {
   }
 
   if (isLoading) {
-    return <LoadingSpinner fullScreen={false} size="md" />
+    return (
+      <div className="p-6">
+        <div className="text-center py-12">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+          <p className="text-gray-600 dark:text-telegram-dark-textSecondary">Загрузка данных...</p>
+        </div>
+      </div>
+    )
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-center">
-          <p className="text-red-500 mb-4">{t.goals.stats.errorLoadingData}</p>
-          <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary text-sm">
-            {t.errors.unauthorized}
-          </p>
+      <div className="p-6">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+          <p className="text-red-800 dark:text-red-400">{(error as Error).message}</p>
+          <button
+            onClick={() => refetch()}
+            className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+          >
+            Попробовать снова
+          </button>
         </div>
       </div>
     )
