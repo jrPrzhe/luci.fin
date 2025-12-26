@@ -342,7 +342,23 @@ function UsersStatsTab() {
     queryKey: ['adminUsers'],
     queryFn: async () => {
       try {
-        return await api.getAdminUsers()
+        return await api.request<Array<{
+          id: number
+          email: string
+          username: string | null
+          first_name: string | null
+          last_name: string | null
+          telegram_id: string | null
+          telegram_username: string | null
+          created_at: string
+          last_login: string | null
+          transaction_count: number
+          account_count: number
+          category_count: number
+          is_active: boolean
+          is_verified: boolean
+          is_premium: boolean
+        }>>('/api/v1/admin/users')
       } catch (err: any) {
         const errorMessage = err.message || String(err)
         
@@ -357,7 +373,7 @@ function UsersStatsTab() {
         if (errorMessage.includes('401') || errorMessage.includes('Not authenticated') || errorMessage.includes('Unauthorized')) {
           throw new Error('Необходима авторизация. Пожалуйста, войдите снова.')
         }
-        if (errorMessage.includes('timeout') || errorMessage.includes('Failed to fetch')) {
+        if (errorMessage.includes('timeout') || errorMessage.includes('Failed to fetch') || errorMessage.includes('Превышено время ожидания')) {
           throw new Error('Не удалось подключиться к серверу. Проверьте подключение к интернету.')
         }
         
