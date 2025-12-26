@@ -1,10 +1,15 @@
-import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { api } from '../services/api'
-import { LoadingSpinner } from '../components/LoadingSpinner'
-import { useI18n } from '../contexts/I18nContext'
+import { useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 export function Statistics() {
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    // Редирект на страницу аналитики с табом "Статистика пользователей"
+    navigate('/analytics?tab=users', { replace: true })
+  }, [navigate])
+
+  return null
   const queryClient = useQueryClient()
   const { t } = useI18n()
   const [resetUserId, setResetUserId] = useState<number | null>(null)

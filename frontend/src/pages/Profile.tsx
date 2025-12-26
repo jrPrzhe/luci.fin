@@ -206,7 +206,7 @@ export function Profile() {
           
           {user?.is_admin && (
             <button
-              onClick={() => navigate('/statistics')}
+              onClick={() => navigate('/analytics?tab=users')}
               className="w-full flex items-center justify-between p-4 rounded-telegram bg-telegram-primary/10 dark:bg-telegram-dark-primary/10 hover:bg-telegram-primary/20 dark:hover:bg-telegram-dark-primary/20 transition-colors text-left border border-telegram-primary/20 dark:border-telegram-dark-primary/20"
             >
               <div className="flex items-center gap-3">
