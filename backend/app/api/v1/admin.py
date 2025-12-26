@@ -46,29 +46,51 @@ async def get_all_users(
     """
     Get list of all users with statistics
     Only accessible by admins
+    Optimized to use single queries with GROUP BY instead of N+1 queries
     """
     try:
-        # Get all users with their statistics
+        # Get all users
         users = db.query(User).all()
         
+        if not users:
+            return []
+        
+        # Get all user IDs
+        user_ids = [user.id for user in users]
+        
+        # Get transaction counts for all users in one query
+        transaction_counts = db.query(
+            Transaction.user_id,
+            func.count(Transaction.id).label('count')
+        ).filter(
+            Transaction.user_id.in_(user_ids)
+        ).group_by(Transaction.user_id).all()
+        
+        # Get account counts for all users in one query
+        account_counts = db.query(
+            Account.user_id,
+            func.count(Account.id).label('count')
+        ).filter(
+            Account.user_id.in_(user_ids)
+        ).group_by(Account.user_id).all()
+        
+        # Get category counts for all users in one query
+        category_counts = db.query(
+            Category.user_id,
+            func.count(Category.id).label('count')
+        ).filter(
+            Category.user_id.in_(user_ids)
+        ).group_by(Category.user_id).all()
+        
+        # Create dictionaries for fast lookup
+        transaction_dict = {user_id: count for user_id, count in transaction_counts}
+        account_dict = {user_id: count for user_id, count in account_counts}
+        category_dict = {user_id: count for user_id, count in category_counts}
+        
+        # Build result list
         result = []
         for user in users:
             try:
-                # Count transactions
-                transaction_count = db.query(func.count(Transaction.id)).filter(
-                    Transaction.user_id == user.id
-                ).scalar() or 0
-                
-                # Count accounts
-                account_count = db.query(func.count(Account.id)).filter(
-                    Account.user_id == user.id
-                ).scalar() or 0
-                
-                # Count categories
-                category_count = db.query(func.count(Category.id)).filter(
-                    Category.user_id == user.id
-                ).scalar() or 0
-                
                 # Safely get is_premium field (in case migration hasn't been applied)
                 is_premium = getattr(user, 'is_premium', False)
                 
@@ -82,9 +104,9 @@ async def get_all_users(
                     telegram_username=user.telegram_username,
                     created_at=user.created_at,
                     last_login=user.last_login,
-                    transaction_count=transaction_count,
-                    account_count=account_count,
-                    category_count=category_count,
+                    transaction_count=transaction_dict.get(user.id, 0),
+                    account_count=account_dict.get(user.id, 0),
+                    category_count=category_dict.get(user.id, 0),
                     is_active=user.is_active,
                     is_verified=user.is_verified,
                     is_premium=is_premium
