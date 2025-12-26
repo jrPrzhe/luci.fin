@@ -716,7 +716,6 @@ async def login_telegram(
                 counter += 1
             
             # Check if user is admin
-            from app.core.config import settings
             is_admin = str(telegram_id) in settings.ADMIN_TELEGRAM_IDS
             logger.info("=" * 60)
             logger.info("ADMIN STATUS CHECK (New User)")
@@ -756,7 +755,6 @@ async def login_telegram(
                 updated = True
             
             # Update admin status based on config
-            from app.core.config import settings
             should_be_admin = str(telegram_id) in settings.ADMIN_TELEGRAM_IDS
             logger.info("=" * 60)
             logger.info("ADMIN STATUS CHECK (Existing User)")
