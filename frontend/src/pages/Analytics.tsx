@@ -3,7 +3,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import { useToast } from '../contexts/ToastContext'
 import { api } from '../services/api'
-import { LoadingSpinner } from '../components/LoadingSpinner'
 import { useI18n } from '../contexts/I18nContext'
 
 interface AnalyticsStats {
