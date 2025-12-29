@@ -276,9 +276,11 @@ class ApiClient {
     }
 
     // Add timeout to requests using Promise.race
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Превышено время ожидания ответа от сервера. Пожалуйста, попробуйте позже.')), 10000) // 10 seconds
-      })
+    // Admin endpoints may take longer due to data aggregation
+    const timeoutDuration = endpoint.includes('/admin/') ? 30000 : 10000 // 30 seconds for admin, 10 seconds for others
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Превышено время ожидания ответа от сервера. Пожалуйста, попробуйте позже.')), timeoutDuration)
+    })
 
     try {
       // Создаем Headers объект для правильной передачи заголовков

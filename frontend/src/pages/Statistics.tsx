@@ -9,8 +9,39 @@ export function Statistics() {
 
   const { data: users, isLoading, error } = useQuery({
     queryKey: ['adminUsers'],
-    queryFn: () => api.getAdminUsers(),
-    retry: false,
+    queryFn: async () => {
+      try {
+        return await api.getAdminUsers()
+      } catch (err: any) {
+        const errorMessage = err?.message || String(err)
+        
+        // Проверяем на таймаут
+        if (errorMessage.includes('Превышено время ожидания') || 
+            errorMessage.includes('timeout') ||
+            errorMessage.includes('Timeout')) {
+          throw new Error('Запрос выполняется слишком долго. Возможно, в системе много пользователей. Пожалуйста, попробуйте позже.')
+        }
+        
+        // Проверяем на ошибки авторизации
+        if (errorMessage.includes('401') || errorMessage.includes('Unauthorized') || errorMessage.includes('Not authenticated')) {
+          throw new Error('Необходима авторизация. Пожалуйста, войдите снова.')
+        }
+        
+        // Проверяем на ошибки доступа
+        if (errorMessage.includes('403') || errorMessage.includes('Forbidden') || errorMessage.includes('Admin access required')) {
+          throw new Error('У вас нет прав администратора для просмотра этой страницы.')
+        }
+        
+        // Проверяем на сетевые ошибки
+        if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError')) {
+          throw new Error('Ошибка сети. Проверьте подключение к интернету и попробуйте снова.')
+        }
+        
+        throw err
+      }
+    },
+    retry: 1,
+    retryDelay: 2000,
   })
 
   const resetMutation = useMutation({
@@ -74,13 +105,35 @@ export function Statistics() {
   }
 
   if (error) {
+    const errorMessage = (error as Error)?.message || 'Ошибка загрузки данных'
+    const isTimeoutError = errorMessage.includes('выполняется слишком долго')
+    const isAuthError = errorMessage.includes('авторизация') || errorMessage.includes('войдите')
+    const isAccessError = errorMessage.includes('прав администратора') || errorMessage.includes('доступа')
+    
     return (
       <div className="min-h-screen p-4 md:p-6 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-500 mb-4">Ошибка загрузки данных</p>
-          <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary text-sm">
-            У вас нет прав администратора
+        <div className="text-center max-w-md">
+          <div className="text-4xl mb-4">⚠️</div>
+          <p className="text-red-500 dark:text-red-400 mb-2 font-semibold">Ошибка загрузки данных</p>
+          <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary text-sm mb-4">
+            {errorMessage}
           </p>
+          {isTimeoutError && (
+            <button
+              onClick={() => window.location.reload()}
+              className="btn-primary text-sm py-2 px-4"
+            >
+              Обновить страницу
+            </button>
+          )}
+          {(isAuthError || isAccessError) && (
+            <button
+              onClick={() => window.location.href = '/login'}
+              className="btn-primary text-sm py-2 px-4"
+            >
+              Перейти на страницу входа
+            </button>
+          )}
         </div>
       </div>
     )
