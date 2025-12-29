@@ -1469,18 +1469,18 @@ async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         currency = balance_data.get("currency", "RUB")
         
         # Calculate stats
-        income_total = sum(t['amount'] for t in transactions if t['transaction_type'] == 'income')
-        expense_total = sum(t['amount'] for t in transactions if t['transaction_type'] == 'expense')
+        income_total = sum(transaction['amount'] for transaction in transactions if transaction['transaction_type'] == 'income')
+        expense_total = sum(transaction['amount'] for transaction in transactions if transaction['transaction_type'] == 'expense')
         transaction_count = len(transactions)
         
         # Group expenses by description (simple categorization)
         expense_by_desc = {}
-        for t in transactions:
-            if t['transaction_type'] == 'expense':
-                desc = get_transaction_description(t)
+        for transaction in transactions:
+            if transaction['transaction_type'] == 'expense':
+                desc = get_transaction_description(transaction)
                 if desc not in expense_by_desc:
                     expense_by_desc[desc] = 0
-                expense_by_desc[desc] += t['amount']
+                expense_by_desc[desc] += transaction['amount']
         
         top_expenses = sorted(expense_by_desc.items(), key=lambda x: x[1], reverse=True)[:5]
         

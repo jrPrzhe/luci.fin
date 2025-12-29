@@ -550,33 +550,12 @@ class ApiClient {
   }
 
   async loginTelegram(initData: string, currentToken?: string | null) {
-    // Log initData for debugging (without sensitive parts)
-    const { logger } = await import('../utils/logger')
-    
-    // Validate and normalize initData
-    if (!initData || typeof initData !== 'string' || initData.trim().length === 0) {
-      const error = new Error('Ошибка авторизации через Telegram. Убедитесь, что вы открыли приложение через Telegram Mini App.')
-      ;(error as any).response = { status: 400, data: { detail: 'init_data is required and cannot be empty' } }
-      throw error
-    }
-    
-    // Ensure initData is a valid string (not null/undefined)
-    const normalizedInitData = String(initData).trim()
-    
-    logger.log('[API] loginTelegram called', {
-      initDataLength: normalizedInitData.length,
-      initDataPreview: normalizedInitData.substring(0, 100),
-      hasUser: normalizedInitData.includes('user='),
-      hasHash: normalizedInitData.includes('hash='),
-      hasCurrentToken: !!currentToken
-    })
-    
     const response = await this.request<{ access_token: string; refresh_token: string; user: any }>(
       '/api/v1/auth/telegram',
       {
         method: 'POST',
         body: JSON.stringify({ 
-          init_data: normalizedInitData,
+          init_data: initData,
           current_token: currentToken || null
         }),
       }
@@ -1055,6 +1034,7 @@ class ApiClient {
     last_name: string | null
     telegram_id: string | null
     telegram_username: string | null
+    vk_id: string | null
     created_at: string
     last_login: string | null
     transaction_count: number
