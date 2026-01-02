@@ -115,6 +115,11 @@ async def get_random_greeting(user: User, profile: UserGamificationProfile, db: 
     # Объединяем базовые и дополнительные приветствия
     all_greetings = list(BASE_GREETINGS) + custom_greetings
     
+    # Проверяем, что есть хотя бы одно приветствие
+    if not all_greetings:
+        logger.error(f"No greetings available for user {user.id}, using fallback")
+        return f"Привет, {user_name}! Пора проверить финансы."
+    
     # Получаем доступные приветствия (те, что ещё не использовались)
     available_indices = [i for i in range(len(all_greetings)) if i not in used_indices]
     
@@ -303,7 +308,13 @@ async def send_daily_reminder_telegram(user: User, db: Session) -> bool:
         ).all()
         
         # Получаем рандомное приветствие
-        greeting = await get_random_greeting(user, profile, db)
+        try:
+            greeting = await get_random_greeting(user, profile, db)
+        except Exception as e:
+            logger.error(f"Error getting random greeting for user {user.id}: {e}", exc_info=True)
+            # Fallback приветствие
+            user_name = user.first_name or "друг"
+            greeting = f"Привет, {user_name}! Пора проверить финансы."
         
         # Формируем красивое HTML сообщение с форматированием
         user_name = user.first_name or "друг"
@@ -347,65 +358,39 @@ async def send_daily_reminder_telegram(user: User, db: Session) -> bool:
         # Проверяем, что URL валидный для web_app
         # Telegram требует HTTPS для web_app кнопок в продакшене
         # В dev режиме localhost разрешен, но в продакшене только HTTPS
+        use_web_app = False
         if frontend_url:
             # Убираем trailing slash если есть
             frontend_url = frontend_url.rstrip('/')
             
-            use_web_app = False
             if frontend_url.startswith("https://"):
                 # HTTPS URL - валиден для продакшена
                 use_web_app = True
             elif frontend_url.startswith("http://localhost") and settings.DEBUG:
                 # В dev режиме localhost разрешен только если DEBUG=True
                 use_web_app = True
-            
-            # Добавляем кнопку для открытия мини-апп
-            if use_web_app:
-                keyboard.append([{
-                    "text": "📱 Открыть приложение",
-                    "web_app": {"url": frontend_url}
-                }])
             else:
-                # Если web_app не поддерживается, используем обычную URL кнопку
-                keyboard.append([{
-                    "text": "📱 Открыть приложение",
-                    "url": frontend_url
-                }])
-                logger.info(f"Using URL button instead of web_app for: {frontend_url}")
+                # Не валидный URL для web_app - пропускаем кнопку
+                logger.warning(f"Frontend URL is not valid for web_app: {frontend_url} (must be HTTPS in production or localhost in DEBUG mode), skipping web_app button")
+        
+        # Добавляем кнопку для открытия мини-апп только если URL валидный
+        if use_web_app:
+            keyboard.append([{
+                "text": "📱 Открыть приложение",
+                "web_app": {"url": frontend_url}
+            }])
         
         reply_markup = {
             "inline_keyboard": keyboard
         } if keyboard else None
         
-        # Удаляем предыдущее ежедневное уведомление перед отправкой нового
+        # Сохраняем ID старого сообщения для удаления после успешной отправки нового
         old_message_id = profile.daily_reminder_message_id
         
         async with httpx.AsyncClient(timeout=10.0) as client:
             base_url = f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}"
             
-            # Удаляем предыдущее сообщение, если оно есть
-            if old_message_id:
-                try:
-                    delete_url = f"{base_url}/deleteMessage"
-                    delete_payload = {
-                        "chat_id": telegram_id,
-                        "message_id": old_message_id
-                    }
-                    delete_response = await client.post(delete_url, json=delete_payload)
-                    if delete_response.status_code == 200:
-                        result = delete_response.json()
-                        if result.get("ok"):
-                            logger.info(f"Deleted previous daily reminder message {old_message_id} for user {user.id}")
-                        else:
-                            # Сообщение уже удалено или не найдено - это нормально
-                            logger.debug(f"Could not delete message {old_message_id}: {result.get('description', 'Unknown')}")
-                    else:
-                        logger.debug(f"Failed to delete message {old_message_id}: HTTP {delete_response.status_code}")
-                except Exception as e:
-                    logger.warning(f"Error deleting previous message {old_message_id}: {e}")
-                    # Продолжаем отправку нового сообщения даже если не удалось удалить старое
-            
-            # Отправляем новое сообщение
+            # СНАЧАЛА отправляем новое сообщение
             send_url = f"{base_url}/sendMessage"
             send_payload = {
                 "chat_id": telegram_id,
@@ -426,6 +411,29 @@ async def send_daily_reminder_telegram(user: User, db: Session) -> bool:
                         profile.daily_reminder_message_id = new_message_id
                         db.commit()
                     logger.info(f"Daily reminder sent to Telegram user {user.id}, message_id: {new_message_id}")
+                    
+                    # ТОЛЬКО ПОСЛЕ успешной отправки удаляем старое сообщение
+                    if old_message_id and old_message_id != new_message_id:
+                        try:
+                            delete_url = f"{base_url}/deleteMessage"
+                            delete_payload = {
+                                "chat_id": telegram_id,
+                                "message_id": old_message_id
+                            }
+                            delete_response = await client.post(delete_url, json=delete_payload)
+                            if delete_response.status_code == 200:
+                                delete_result = delete_response.json()
+                                if delete_result.get("ok"):
+                                    logger.info(f"Deleted previous daily reminder message {old_message_id} for user {user.id}")
+                                else:
+                                    # Сообщение уже удалено или не найдено - это нормально
+                                    logger.debug(f"Could not delete message {old_message_id}: {delete_result.get('description', 'Unknown')}")
+                            else:
+                                logger.debug(f"Failed to delete message {old_message_id}: HTTP {delete_response.status_code}")
+                        except Exception as e:
+                            logger.warning(f"Error deleting previous message {old_message_id}: {e}")
+                            # Не критично, если не удалось удалить старое сообщение
+                    
                     return True
                 else:
                     error_description = result.get('description', 'Unknown error')
@@ -482,7 +490,13 @@ async def send_daily_reminder_vk(user: User, db: Session) -> bool:
         ).all()
         
         # Получаем рандомное приветствие
-        greeting = await get_random_greeting(user, profile, db)
+        try:
+            greeting = await get_random_greeting(user, profile, db)
+        except Exception as e:
+            logger.error(f"Error getting random greeting for user {user.id}: {e}", exc_info=True)
+            # Fallback приветствие
+            user_name = user.first_name or "друг"
+            greeting = f"Привет, {user_name}! Пора проверить финансы."
         
         # Формируем красивое сообщение для VK (без HTML, так как VK не поддерживает HTML)
         user_name = user.first_name or "друг"
