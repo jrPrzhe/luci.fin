@@ -347,27 +347,31 @@ async def send_daily_reminder_telegram(user: User, db: Session) -> bool:
         # Проверяем, что URL валидный для web_app
         # Telegram требует HTTPS для web_app кнопок в продакшене
         # В dev режиме localhost разрешен, но в продакшене только HTTPS
-        use_web_app = False
         if frontend_url:
             # Убираем trailing slash если есть
             frontend_url = frontend_url.rstrip('/')
             
+            use_web_app = False
             if frontend_url.startswith("https://"):
                 # HTTPS URL - валиден для продакшена
                 use_web_app = True
             elif frontend_url.startswith("http://localhost") and settings.DEBUG:
                 # В dev режиме localhost разрешен только если DEBUG=True
                 use_web_app = True
+            
+            # Добавляем кнопку для открытия мини-апп
+            if use_web_app:
+                keyboard.append([{
+                    "text": "📱 Открыть приложение",
+                    "web_app": {"url": frontend_url}
+                }])
             else:
-                # Не валидный URL для web_app - пропускаем кнопку
-                logger.warning(f"Frontend URL is not valid for web_app: {frontend_url} (must be HTTPS in production or localhost in DEBUG mode), skipping web_app button")
-        
-        # Добавляем кнопку для открытия мини-апп только если URL валидный
-        if use_web_app:
-            keyboard.append([{
-                "text": "📱 Открыть приложение",
-                "web_app": {"url": frontend_url}
-            }])
+                # Если web_app не поддерживается, используем обычную URL кнопку
+                keyboard.append([{
+                    "text": "📱 Открыть приложение",
+                    "url": frontend_url
+                }])
+                logger.info(f"Using URL button instead of web_app for: {frontend_url}")
         
         reply_markup = {
             "inline_keyboard": keyboard
