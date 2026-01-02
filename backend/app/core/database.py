@@ -30,14 +30,15 @@ try:
         )
     else:
         print(f"[DATABASE] Using PostgreSQL, URL preview: {settings.DATABASE_URL[:50]}...", file=sys.stderr, flush=True)
-        # Оптимизация для сервера с ограниченными ресурсами (0.5ГБ RAM)
-        # На сервере max_connections = 20, поэтому ограничиваем пул соединений
+        # Настройки пула соединений для продакшена
+        # Увеличено для обработки большего количества одновременных запросов
         engine = create_engine(
             settings.DATABASE_URL,
-            pool_pre_ping=True,
-            pool_size=5,  # Уменьшено с 10 для сервера с ограниченной памятью
-            max_overflow=5,  # Уменьшено с 20 для соответствия max_connections на сервере
-            pool_recycle=3600,  # Переиспользование соединений через час
+            pool_pre_ping=True,  # Проверка соединений перед использованием
+            pool_size=10,  # Базовый размер пула
+            max_overflow=10,  # Дополнительные соединения при перегрузке
+            pool_recycle=1800,  # Переиспользование соединений через 30 минут (быстрее освобождение)
+            pool_timeout=30,  # Таймаут ожидания соединения из пула
             connect_args={
                 "connect_timeout": 10,  # Таймаут подключения 10 секунд
                 "client_encoding": "utf8"  # Явно указываем UTF-8 кодировку
