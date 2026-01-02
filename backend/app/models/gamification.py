@@ -58,6 +58,12 @@ class UserGamificationProfile(Base):
     # ID последнего ежедневного сообщения в Telegram (для редактирования вместо создания нового)
     daily_reminder_message_id = Column(Integer, nullable=True)
     
+    # Использованные приветствия (JSON список индексов использованных приветствий)
+    used_greetings = Column(Text, nullable=True)  # JSON список индексов
+    
+    # Дополнительные приветствия, сгенерированные через ИИ (JSON список строк)
+    custom_greetings = Column(Text, nullable=True)  # JSON список приветствий с [Имя пользователя]
+    
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
