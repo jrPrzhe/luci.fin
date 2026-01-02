@@ -2,10 +2,17 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../services/api'
 
+type SortColumn = 'name' | 'created_at' | 'last_login'
+type SortDirection = 'asc' | 'desc'
+
 export function Statistics() {
   const queryClient = useQueryClient()
   const [resetUserId, setResetUserId] = useState<number | null>(null)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
+  const [sortColumn, setSortColumn] = useState<SortColumn>('created_at')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 20
 
   const { data: users, isLoading, error } = useQuery({
     queryKey: ['adminUsers'],
@@ -91,6 +98,58 @@ export function Statistics() {
     } else {
       return { level: 'Неактивен', color: 'text-gray-500' }
     }
+  }
+
+  // Функция сортировки
+  const sortedUsers = users ? [...users].sort((a, b) => {
+    let aValue: any
+    let bValue: any
+
+    if (sortColumn === 'name') {
+      const aName = a.first_name && a.last_name
+        ? `${a.first_name} ${a.last_name}`
+        : a.first_name || a.last_name || a.username || a.email.split('@')[0]
+      const bName = b.first_name && b.last_name
+        ? `${b.first_name} ${b.last_name}`
+        : b.first_name || b.last_name || b.username || b.email.split('@')[0]
+      aValue = aName.toLowerCase()
+      bValue = bName.toLowerCase()
+    } else if (sortColumn === 'created_at') {
+      aValue = a.created_at ? new Date(a.created_at).getTime() : 0
+      bValue = b.created_at ? new Date(b.created_at).getTime() : 0
+    } else if (sortColumn === 'last_login') {
+      aValue = a.last_login ? new Date(a.last_login).getTime() : 0
+      bValue = b.last_login ? new Date(b.last_login).getTime() : 0
+    }
+
+    if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1
+    if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1
+    return 0
+  }) : []
+
+  // Пагинация
+  const totalPages = Math.ceil(sortedUsers.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedUsers = sortedUsers.slice(startIndex, endIndex)
+
+  // Обработчик клика на заголовок колонки
+  const handleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortColumn(column)
+      setSortDirection('asc')
+    }
+    setCurrentPage(1) // Сбрасываем на первую страницу при изменении сортировки
+  }
+
+  // Иконка сортировки
+  const SortIcon = ({ column }: { column: SortColumn }) => {
+    if (sortColumn !== column) {
+      return <span className="ml-1 text-gray-400">↕️</span>
+    }
+    return <span className="ml-1">{sortDirection === 'asc' ? '↑' : '↓'}</span>
   }
 
   if (isLoading) {
@@ -224,14 +283,23 @@ export function Statistics() {
                   <th className="text-left py-3 px-2 text-xs md:text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
                     ФИО
                   </th>
-                  <th className="text-left py-3 px-2 text-xs md:text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
-                    Имя
+                  <th 
+                    className="text-left py-3 px-2 text-xs md:text-sm font-semibold text-telegram-text dark:text-telegram-dark-text cursor-pointer hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors select-none"
+                    onClick={() => handleSort('name')}
+                  >
+                    Имя <SortIcon column="name" />
                   </th>
-                  <th className="text-left py-3 px-2 text-xs md:text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
-                    Дата регистрации
+                  <th 
+                    className="text-left py-3 px-2 text-xs md:text-sm font-semibold text-telegram-text dark:text-telegram-dark-text cursor-pointer hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors select-none"
+                    onClick={() => handleSort('created_at')}
+                  >
+                    Дата регистрации <SortIcon column="created_at" />
                   </th>
-                  <th className="text-left py-3 px-2 text-xs md:text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
-                    Последний вход
+                  <th 
+                    className="text-left py-3 px-2 text-xs md:text-sm font-semibold text-telegram-text dark:text-telegram-dark-text cursor-pointer hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors select-none"
+                    onClick={() => handleSort('last_login')}
+                  >
+                    Последний вход <SortIcon column="last_login" />
                   </th>
                   <th className="text-left py-3 px-2 text-xs md:text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
                     Активность
@@ -245,7 +313,7 @@ export function Statistics() {
                 </tr>
               </thead>
               <tbody>
-                {users?.map((user) => {
+                {paginatedUsers.map((user) => {
                   const activity = getActivityLevel(user.last_login)
                   const fullName = user.first_name && user.last_name
                     ? `${user.last_name} ${user.first_name}`
@@ -308,6 +376,58 @@ export function Statistics() {
                 })}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Пагинация */}
+        {users && users.length > itemsPerPage && (
+          <div className="mt-4 flex items-center justify-between flex-wrap gap-2">
+            <div className="text-xs md:text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+              Показано {startIndex + 1}-{Math.min(endIndex, sortedUsers.length)} из {sortedUsers.length}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 text-xs md:text-sm btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                ← Предыдущая
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum: number
+                  if (totalPages <= 5) {
+                    pageNum = i + 1
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i
+                  } else {
+                    pageNum = currentPage - 2 + i
+                  }
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`px-2 py-1 text-xs md:text-sm rounded ${
+                        currentPage === pageNum
+                          ? 'bg-telegram-primary text-white'
+                          : 'btn-secondary'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  )
+                })}
+              </div>
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 text-xs md:text-sm btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Следующая →
+              </button>
+            </div>
           </div>
         )}
       </div>
