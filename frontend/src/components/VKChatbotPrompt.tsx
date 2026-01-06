@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
-import { isVKWebApp, openVKBot, hasInteractedWithBot } from '../utils/vk'
+import { isVKWebApp, openVKBot, hasInteractedWithBot, markBotInteraction } from '../utils/vk'
 import { storageSync } from '../utils/storage'
+import { api } from '../services/api'
 
 const DISMISS_STORAGE_KEY = 'vk_chatbot_prompt_dismissed'
 
@@ -23,7 +24,7 @@ export function VKChatbotPrompt() {
       return
     }
 
-    // Не показываем, если пользователь уже общался с ботом
+    // Не показываем, если пользователь уже общался с ботом (проверка через localStorage)
     if (hasInteractedWithBot()) {
       setIsDismissed(true)
       return
@@ -44,14 +45,53 @@ export function VKChatbotPrompt() {
     return () => clearTimeout(timer)
   }, [isVK, location.pathname])
 
+  // Проверяем при возврате в приложение (focus event) - возможно пользователь общался с ботом
+  useEffect(() => {
+    if (!isVK || isDismissed) {
+      return
+    }
+
+    const handleFocus = () => {
+      // При возврате в приложение проверяем, не общался ли пользователь с ботом
+      // Если пользователь открыл бота напрямую через VK, флаг может не установиться
+      // Поэтому проверяем при возврате
+      if (hasInteractedWithBot()) {
+        setIsDismissed(true)
+        setIsVisible(false)
+      }
+    }
+
+    // Также проверяем при видимости страницы (когда пользователь возвращается в приложение)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && hasInteractedWithBot()) {
+        setIsDismissed(true)
+        setIsVisible(false)
+      }
+    }
+
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [isVK, isDismissed])
+
   const handleOpenBot = async () => {
     try {
+      // Сразу скрываем промпт при нажатии на кнопку
+      setIsVisible(false)
+      setIsDismissed(true)
+      
+      // Отмечаем взаимодействие с ботом
+      markBotInteraction()
+      
       // Используем утилиту для открытия бота
       await openVKBot('232802016')
       
       // Отслеживаем событие
       try {
-        const { api } = await import('../services/api')
         await api.trackEvent('miniapp_action', 'vk_chatbot_prompt_clicked', {
           action: 'open_bot'
         })
