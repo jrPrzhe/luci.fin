@@ -426,6 +426,43 @@ export function getVKMiniAppLink(path?: string, params?: Record<string, string>)
 }
 
 /**
+ * Open VK bot dialogue
+ * @param groupId - VK group ID (without minus sign, e.g., '144352158')
+ * @returns Promise that resolves when the bot dialogue is opened
+ */
+export async function openVKBot(groupId: string = '144352158'): Promise<void> {
+  if (!isVKWebApp()) {
+    logger.warn('[openVKBot] Not in VK environment, cannot open bot')
+    return
+  }
+
+  const botLink = `https://vk.com/im?sel=-${groupId}`
+  const mobileBotLink = `vk://im?sel=-${groupId}`
+
+  try {
+    // Try to open via VK Bridge (for mobile app)
+    if ((window as any).vkBridge) {
+      try {
+        // Use VKWebAppOpenURL for opening external links
+        await bridge.send('VKWebAppOpenURL', {
+          url: botLink
+        })
+        return
+      } catch (error) {
+        logger.warn('[openVKBot] Failed to open via VK Bridge, trying fallback:', error)
+      }
+    }
+
+    // Fallback: open in new tab/window
+    window.open(botLink, '_blank')
+  } catch (error) {
+    logger.error('[openVKBot] Failed to open VK bot:', error)
+    // Last resort: try to open directly
+    window.open(botLink, '_blank')
+  }
+}
+
+/**
  * Monitor for browser alerts (for debugging/testing purposes)
  * This function wraps window.alert to detect when alerts are triggered
  * 
