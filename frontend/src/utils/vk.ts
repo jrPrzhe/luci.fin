@@ -437,16 +437,15 @@ export async function openVKBot(groupId: string = '144352158'): Promise<void> {
   }
 
   const botLink = `https://vk.com/im?sel=-${groupId}`
-  const mobileBotLink = `vk://im?sel=-${groupId}`
 
   try {
     // Try to open via VK Bridge (for mobile app)
     if ((window as any).vkBridge) {
       try {
-        // Use VKWebAppOpenURL for opening external links
-        await bridge.send('VKWebAppOpenURL', {
+        // Use VKWebAppOpenURL for opening external links (with type assertion)
+        await bridge.send('VKWebAppOpenURL' as any, {
           url: botLink
-        })
+        } as any)
         return
       } catch (error) {
         logger.warn('[openVKBot] Failed to open via VK Bridge, trying fallback:', error)

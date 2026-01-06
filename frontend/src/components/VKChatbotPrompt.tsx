@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { isVKWebApp, openVKBot } from '../utils/vk'
-import { useI18n } from '../contexts/I18nContext'
 import { storageSync } from '../utils/storage'
 
 const DISMISS_STORAGE_KEY = 'vk_chatbot_prompt_dismissed'
@@ -9,7 +8,6 @@ const DISMISS_STORAGE_KEY = 'vk_chatbot_prompt_dismissed'
 export function VKChatbotPrompt() {
   const [isVisible, setIsVisible] = useState(false)
   const [isDismissed, setIsDismissed] = useState(false)
-  const { t } = useI18n()
   const location = useLocation()
   const isVK = isVKWebApp()
 
