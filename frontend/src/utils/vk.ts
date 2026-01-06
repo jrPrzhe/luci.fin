@@ -5,6 +5,7 @@
 
 import bridge from '@vkontakte/vk-bridge'
 import { logger } from './logger'
+import { storageSync } from './storage'
 
 // Type definitions for VK Bridge
 interface VKUser {
@@ -426,6 +427,37 @@ export function getVKMiniAppLink(path?: string, params?: Record<string, string>)
 }
 
 /**
+ * Check if user has interacted with VK bot
+ * @returns true if user has started dialogue with bot
+ */
+export function hasInteractedWithBot(): boolean {
+  if (typeof window === 'undefined') {
+    return false
+  }
+  
+  try {
+    // Check localStorage flag
+    const hasInteracted = storageSync.getItem('vk_bot_interacted') === 'true'
+    return hasInteracted
+  } catch (error) {
+    logger.warn('[hasInteractedWithBot] Failed to check interaction status:', error)
+    return false
+  }
+}
+
+/**
+ * Mark that user has interacted with VK bot
+ */
+export function markBotInteraction(): void {
+  try {
+    storageSync.setItem('vk_bot_interacted', 'true')
+    logger.log('[markBotInteraction] Marked bot interaction')
+  } catch (error) {
+    logger.warn('[markBotInteraction] Failed to mark interaction:', error)
+  }
+}
+
+/**
  * Open VK bot dialogue
  * @param groupId - VK group ID (without minus sign, e.g., '232802016')
  * @returns Promise that resolves when the bot dialogue is opened
@@ -439,25 +471,47 @@ export async function openVKBot(groupId: string = '232802016'): Promise<void> {
   const botLink = `https://vk.com/im/convo/-${groupId}`
 
   try {
-    // Try to open via VK Bridge (for mobile app)
-    if ((window as any).vkBridge) {
+    // Mark that user is trying to interact with bot
+    markBotInteraction()
+    // For mobile VK app, try to use location.href first (most reliable)
+    // Check if we're in mobile VK app
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    
+    if (isMobile && (window as any).vkBridge) {
       try {
-        // Use VKWebAppOpenURL for opening external links (with type assertion)
+        // Try using location.href for mobile (works better than VK Bridge methods)
+        window.location.href = botLink
+        return
+      } catch (error) {
+        logger.warn('[openVKBot] Failed to open via location.href, trying VK Bridge:', error)
+      }
+      
+      // Fallback: try VK Bridge
+      try {
         await bridge.send('VKWebAppOpenURL' as any, {
           url: botLink
         } as any)
         return
       } catch (error) {
-        logger.warn('[openVKBot] Failed to open via VK Bridge, trying fallback:', error)
+        logger.warn('[openVKBot] Failed to open via VK Bridge, trying direct link:', error)
       }
     }
 
-    // Fallback: open in new tab/window
-    window.open(botLink, '_blank')
+    // For desktop or if mobile methods failed, use location.href (works in VK webview)
+    if (window.location) {
+      window.location.href = botLink
+    } else {
+      // Last resort: open in new tab/window
+      window.open(botLink, '_blank')
+    }
   } catch (error) {
     logger.error('[openVKBot] Failed to open VK bot:', error)
     // Last resort: try to open directly
-    window.open(botLink, '_blank')
+    try {
+      window.location.href = botLink
+    } catch (e) {
+      window.open(botLink, '_blank')
+    }
   }
 }
 

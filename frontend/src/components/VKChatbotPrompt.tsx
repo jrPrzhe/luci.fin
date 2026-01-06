@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
-import { isVKWebApp, openVKBot } from '../utils/vk'
+import { isVKWebApp, openVKBot, hasInteractedWithBot } from '../utils/vk'
 import { storageSync } from '../utils/storage'
 
 const DISMISS_STORAGE_KEY = 'vk_chatbot_prompt_dismissed'
@@ -20,6 +20,12 @@ export function VKChatbotPrompt() {
     // Не показываем на страницах логина/регистрации/онбординга
     const hidePages = ['/login', '/register', '/onboarding']
     if (hidePages.includes(location.pathname)) {
+      return
+    }
+
+    // Не показываем, если пользователь уже общался с ботом
+    if (hasInteractedWithBot()) {
+      setIsDismissed(true)
       return
     }
 

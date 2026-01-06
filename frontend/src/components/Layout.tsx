@@ -14,6 +14,7 @@ import { useTheme } from '../hooks/useTheme'
 import { useI18n } from '../contexts/I18nContext'
 import { QuestNotifications } from './QuestNotifications'
 import { VKChatbotPrompt } from './VKChatbotPrompt'
+import { hasInteractedWithBot, openVKBot } from '../utils/vk'
 
 export function Layout() {
   const navigate = useNavigate()
@@ -539,6 +540,33 @@ export function Layout() {
                 </nav>
 
         <div className="p-3 border-t border-telegram-border dark:border-telegram-dark-border space-y-2 overflow-hidden">
+          {/* VK Bot Button - только для VK пользователей, которые еще не общались с ботом */}
+          {isVK && !hasInteractedWithBot() && isAuthorized && (
+            <button
+              onClick={async () => {
+                try {
+                  await openVKBot('232802016')
+                  // Отслеживаем событие
+                  try {
+                    await api.trackEvent('miniapp_action', 'vk_bot_button_clicked', {
+                      action: 'open_bot_from_sidebar'
+                    })
+                  } catch (error) {
+                    // Игнорируем ошибки аналитики
+                  }
+                } catch (error) {
+                  console.error('Failed to open VK bot:', error)
+                }
+              }}
+              className="w-full p-3 rounded-telegram bg-blue-500 hover:bg-blue-600 text-white font-medium text-sm transition-colors flex items-center justify-center gap-2 mb-2"
+              title="Написать боту"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              <span>Написать боту</span>
+            </button>
+          )}
           {/* Language Toggle */}
           <div className="w-full p-2 rounded-telegram hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors overflow-hidden">
             {/* Первая строка: смайлик планеты, флаги RU и EN */}
@@ -625,6 +653,32 @@ export function Layout() {
           </h1>
           </div>
           <div className="flex items-center gap-2">
+            {/* VK Bot Button - только для VK пользователей, которые еще не общались с ботом */}
+            {isVK && !hasInteractedWithBot() && isAuthorized && (
+              <button
+                onClick={async () => {
+                  try {
+                    await openVKBot('232802016')
+                    // Отслеживаем событие
+                    try {
+                      await api.trackEvent('miniapp_action', 'vk_bot_button_clicked', {
+                        action: 'open_bot_from_header'
+                      })
+                    } catch (error) {
+                      // Игнорируем ошибки аналитики
+                    }
+                  } catch (error) {
+                    console.error('Failed to open VK bot:', error)
+                  }
+                }}
+                className="btn-icon w-10 h-10 flex items-center justify-center bg-blue-500 hover:bg-blue-600 text-white rounded-full transition-colors"
+                title="Написать боту"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+              </button>
+            )}
             {/* Quest Notifications */}
             <QuestNotifications variant="header" />
             {/* Theme Toggle */}
