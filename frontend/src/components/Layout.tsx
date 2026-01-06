@@ -13,7 +13,6 @@ import { useNewYearTheme } from '../contexts/NewYearContext'
 import { useTheme } from '../hooks/useTheme'
 import { useI18n } from '../contexts/I18nContext'
 import { QuestNotifications } from './QuestNotifications'
-import { VKChatbotPrompt } from './VKChatbotPrompt'
 import { hasInteractedWithBot, openVKBot } from '../utils/vk'
 
 export function Layout() {
@@ -893,9 +892,6 @@ export function Layout() {
 
       {/* Stories Modal */}
       <Stories isOpen={showStories} onClose={() => setShowStories(false)} />
-
-      {/* VK Chatbot Prompt - показывается только для VK пользователей */}
-      <VKChatbotPrompt />
     </div>
   )
 }
