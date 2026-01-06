@@ -468,74 +468,92 @@ export async function openVKBot(groupId: string = '232802016'): Promise<void> {
     return
   }
 
-  const botLink = `https://vk.com/im/convo/-${groupId}`
+  // Use correct format: im?sel=-GROUP_ID (not convo) for direct conversation
+  const desktopBotLink = `https://vk.com/im?sel=-${groupId}`
   const mobileBotLink = `vk://im?sel=-${groupId}`
+  
+  // Check if we're in mobile VK app
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
 
   try {
     // Mark that user is trying to interact with bot
     markBotInteraction()
     
-    // Check if we're in mobile VK app
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-    
-    // Try to use VK Bridge to open URL externally (outside of mini-app webview)
-    if ((window as any).vkBridge) {
+    // For mobile: use vk:// deep link to open in native VK app
+    if (isMobile && (window as any).vkBridge) {
       try {
-        // VKWebAppOpenURL opens the link in the external browser/app, not inside webview
-        // This is the correct way to open VK links from mini-app
-        await bridge.send('VKWebAppOpenURL' as any, {
-          url: botLink
-        } as any)
-        logger.log('[openVKBot] Opened via VKWebAppOpenURL')
+        // First, try to use vk:// protocol directly (opens in native VK app)
+        // This should open the conversation directly, not the chat list
+        window.location.href = mobileBotLink
+        logger.log('[openVKBot] Opened via vk:// protocol (mobile)')
+        
+        // Give it a moment, then try VK Bridge as backup
+        setTimeout(async () => {
+          try {
+            await bridge.send('VKWebAppOpenURL' as any, {
+              url: mobileBotLink
+            } as any)
+          } catch (e) {
+            // Ignore - already tried direct link
+          }
+        }, 100)
         return
       } catch (error) {
-        logger.warn('[openVKBot] Failed to open via VKWebAppOpenURL:', error)
-        
-        // For mobile, try vk:// protocol as fallback
-        if (isMobile) {
-          try {
-            // Try to open via vk:// protocol (for mobile VK app)
-            window.location.href = mobileBotLink
-            logger.log('[openVKBot] Opened via vk:// protocol')
-            return
-          } catch (e) {
-            logger.warn('[openVKBot] Failed to open via vk:// protocol:', e)
-          }
+        logger.warn('[openVKBot] Failed to open via vk:// protocol:', error)
+      }
+      
+      // Fallback: try VKWebAppOpenURL with vk:// link
+      try {
+        await bridge.send('VKWebAppOpenURL' as any, {
+          url: mobileBotLink
+        } as any)
+        logger.log('[openVKBot] Opened via VKWebAppOpenURL with vk:// (mobile)')
+        return
+      } catch (error) {
+        logger.warn('[openVKBot] Failed to open via VKWebAppOpenURL with vk://:', error)
+      }
+    }
+    
+    // For desktop or if mobile methods failed
+    if ((window as any).vkBridge) {
+      try {
+        // Try to open in parent window (exit from iframe) for desktop
+        // This should open in the main VK app, not in webview
+        if (window.top && window.top !== window) {
+          window.top.location.href = desktopBotLink
+          logger.log('[openVKBot] Opened in parent window (desktop)')
+          return
         }
+        
+        // If can't access parent, try VKWebAppOpenURL
+        await bridge.send('VKWebAppOpenURL' as any, {
+          url: desktopBotLink
+        } as any)
+        logger.log('[openVKBot] Opened via VKWebAppOpenURL (desktop)')
+        return
+      } catch (error) {
+        logger.warn('[openVKBot] Failed to open via VK Bridge:', error)
       }
     }
 
-    // Fallback: For web version of VK, we can try to open in parent window
-    // But this might still open inside webview, so we log a warning
-    logger.warn('[openVKBot] VK Bridge not available, using fallback (may open inside webview)')
-    
-    // Try to open in parent window if we're in iframe
+    // Fallback: try to open in current window
+    logger.warn('[openVKBot] VK Bridge not available, using fallback')
     try {
-      if (window.parent && window.parent !== window) {
-        window.parent.location.href = botLink
-        return
+      if (window.top && window.top !== window) {
+        window.top.location.href = desktopBotLink
+      } else {
+        window.location.href = desktopBotLink
       }
     } catch (e) {
-      logger.warn('[openVKBot] Cannot access parent window:', e)
-    }
-    
-    // Last resort: try window.open (might still open in webview)
-    try {
-      const newWindow = window.open(botLink, '_blank')
-      if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-        // If popup was blocked, try location.href
-        throw new Error('Popup blocked')
-      }
-    } catch (error) {
-      logger.warn('[openVKBot] window.open failed, trying location.href:', error)
-      // This will likely open inside webview, but it's the last option
-      window.location.href = botLink
+      logger.warn('[openVKBot] Cannot access window, trying window.open:', e)
+      window.open(desktopBotLink, '_blank')
     }
   } catch (error) {
     logger.error('[openVKBot] Failed to open VK bot:', error)
-    // Last resort: try to open directly (will likely open in webview)
+    // Last resort: try to open directly
     try {
-      window.location.href = botLink
+      const link = isMobile ? mobileBotLink : desktopBotLink
+      window.location.href = link
     } catch (e) {
       logger.error('[openVKBot] All methods failed:', e)
     }
