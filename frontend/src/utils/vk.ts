@@ -427,16 +427,16 @@ export function getVKMiniAppLink(path?: string, params?: Record<string, string>)
 
 /**
  * Open VK bot dialogue
- * @param groupId - VK group ID (without minus sign, e.g., '144352158')
+ * @param groupId - VK group ID (without minus sign, e.g., '232802016')
  * @returns Promise that resolves when the bot dialogue is opened
  */
-export async function openVKBot(groupId: string = '144352158'): Promise<void> {
+export async function openVKBot(groupId: string = '232802016'): Promise<void> {
   if (!isVKWebApp()) {
     logger.warn('[openVKBot] Not in VK environment, cannot open bot')
     return
   }
 
-  const botLink = `https://vk.com/im?sel=-${groupId}`
+  const botLink = `https://vk.com/im/convo/-${groupId}`
 
   try {
     // Try to open via VK Bridge (for mobile app)

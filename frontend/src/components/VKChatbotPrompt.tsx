@@ -41,7 +41,7 @@ export function VKChatbotPrompt() {
   const handleOpenBot = async () => {
     try {
       // Используем утилиту для открытия бота
-      await openVKBot('144352158')
+      await openVKBot('232802016')
       
       // Отслеживаем событие
       try {
