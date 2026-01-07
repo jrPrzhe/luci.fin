@@ -127,6 +127,11 @@ async def reset_user_settings(
         ).delete(synchronize_session=False)
         logger.info(f"Deleted {transactions_count} transactions")
         
+        # Commit transaction deletion to ensure it's applied before deleting categories
+        # This prevents foreign key constraint violations
+        db.commit()
+        logger.info("Transaction deletions committed")
+        
         # Delete all goals BEFORE accounts (goals have foreign key to accounts)
         from app.models.goal import Goal
         goals_count = db.query(Goal).filter(Goal.user_id == target_user.id).count()
@@ -138,7 +143,21 @@ async def reset_user_settings(
             db.query(Account).filter(Account.id.in_(account_ids)).delete(synchronize_session=False)
         logger.info(f"Deleted {accounts_count} accounts")
         
-        # Delete all categories
+        # Before deleting categories, ensure no transactions reference them
+        # Update any remaining transactions to set category_id to NULL
+        # (This is a safety measure in case some transactions weren't deleted)
+        remaining_transactions = db.query(Transaction).filter(
+            Transaction.category_id.in_(
+                db.query(Category.id).filter(Category.user_id == target_user.id)
+            )
+        ).all()
+        if remaining_transactions:
+            logger.warning(f"Found {len(remaining_transactions)} transactions still referencing categories, setting category_id to NULL")
+            for trans in remaining_transactions:
+                trans.category_id = None
+            db.flush()
+        
+        # Delete all categories (now safe since transactions are deleted or have NULL category_id)
         categories_count = db.query(Category).filter(Category.user_id == target_user.id).count()
         db.query(Category).filter(Category.user_id == target_user.id).delete(synchronize_session=False)
         logger.info(f"Deleted {categories_count} categories")

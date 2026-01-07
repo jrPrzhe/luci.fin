@@ -1601,6 +1601,11 @@ async def reset_account(
         ).delete(synchronize_session=False)
         logger.info(f"Deleted {transactions_count} transactions")
         
+        # Commit transaction deletion to ensure it's applied before deleting categories
+        # This prevents foreign key constraint violations
+        db.commit()
+        logger.info("Transaction deletions committed")
+        
         # Delete all goals BEFORE accounts (goals have foreign key to accounts)
         from app.models.goal import Goal
         goals_count = db.query(Goal).filter(Goal.user_id == current_user.id).count()
@@ -1612,7 +1617,21 @@ async def reset_account(
             db.query(Account).filter(Account.id.in_(account_ids)).delete(synchronize_session=False)
         logger.info(f"Deleted {accounts_count} accounts")
         
-        # Delete all categories
+        # Before deleting categories, ensure no transactions reference them
+        # Update any remaining transactions to set category_id to NULL
+        # (This is a safety measure in case some transactions weren't deleted)
+        remaining_transactions = db.query(Transaction).filter(
+            Transaction.category_id.in_(
+                db.query(Category.id).filter(Category.user_id == current_user.id)
+            )
+        ).all()
+        if remaining_transactions:
+            logger.warning(f"Found {len(remaining_transactions)} transactions still referencing categories, setting category_id to NULL")
+            for trans in remaining_transactions:
+                trans.category_id = None
+            db.flush()
+        
+        # Delete all categories (now safe since transactions are deleted or have NULL category_id)
         categories_count = db.query(Category).filter(Category.user_id == current_user.id).count()
         db.query(Category).filter(Category.user_id == current_user.id).delete(synchronize_session=False)
         logger.info(f"Deleted {categories_count} categories")
@@ -1717,10 +1736,17 @@ async def reset_account(
         
         categories = []
         for cat_data in DEFAULT_EXPENSE_CATEGORIES + DEFAULT_INCOME_CATEGORIES:
+            # Convert enum to string value explicitly to avoid type mismatch in bulk operations
+            transaction_type_value = cat_data["transaction_type"]
+            if isinstance(transaction_type_value, TransactionType):
+                transaction_type_value = transaction_type_value.value  # Get "income", "expense", or "both"
+            elif isinstance(transaction_type_value, str):
+                transaction_type_value = transaction_type_value.lower()
+            
             categories.append(Category(
                 user_id=current_user.id,
                 name=cat_data["name"],
-                transaction_type=cat_data["transaction_type"],
+                transaction_type=transaction_type_value,  # Use string value instead of enum
                 icon=cat_data["icon"],
                 color=cat_data["color"],
                 is_system=True,
@@ -1728,7 +1754,8 @@ async def reset_account(
                 is_favorite=cat_data.get("is_favorite", False)
             ))
         
-        db.bulk_save_objects(categories)
+        # Use add_all instead of bulk_save_objects to ensure TypeDecorator is applied
+        db.add_all(categories)
         db.flush()
         logger.info(f"Created {len(categories)} default categories")
         
