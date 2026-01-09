@@ -194,26 +194,7 @@ body.theme-stranger-things {
   padding: 1.5rem !important;
 }
 
-.theme-stranger-things .card::before {
-  content: 'ЭКСПЕРИМЕНТ №' attr(data-experiment-number);
-  position: absolute;
-  top: -12px;
-  left: 12px;
-  background: var(--st-bg-primary);
-  padding: 2px 8px;
-  font-size: 0.7rem;
-  font-family: var(--font-mono);
-  color: var(--st-accent-cyan);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  border: 1px solid var(--st-border);
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-
-.theme-stranger-things .card:hover::before {
-  opacity: 1;
-}
+/* Убрано: "ЭКСПЕРИМЕНТ №" при наведении */
 
 /* Кнопки */
 .theme-stranger-things .btn-primary {

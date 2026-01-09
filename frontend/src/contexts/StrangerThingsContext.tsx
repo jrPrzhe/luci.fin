@@ -17,7 +17,16 @@ const StrangerThingsContext = createContext<StrangerThingsContextType | undefine
 const STRANGER_THINGS_THEME_KEY = 'strangerThingsTheme'
 
 export function StrangerThingsProvider({ children }: { children: ReactNode }) {
+  // Загружаем начальное значение из localStorage для быстрого применения темы
   const [isEnabled, setIsEnabled] = useState<boolean>(() => {
+    try {
+      const saved = storageSync.getItem(STRANGER_THINGS_THEME_KEY)
+      if (saved !== null) {
+        return saved === 'true'
+      }
+    } catch (error) {
+      console.log('Could not load strangerThingsTheme from storage on init:', error)
+    }
     return false
   })
   
@@ -94,17 +103,32 @@ export function StrangerThingsProvider({ children }: { children: ReactNode }) {
     loadThemeFromProfile()
   }, [])
 
-  // Применяем класс темы к body и html
+  // Применяем класс темы к body и html при первой загрузке и при изменении
+  useEffect(() => {
+    // Применяем тему сразу при монтировании (для восстановления после перезагрузки)
+    if (isEnabled) {
+      document.documentElement.classList.add('theme-stranger-things')
+      document.body.classList.add('theme-stranger-things')
+    } else {
+      document.documentElement.classList.remove('theme-stranger-things', 'upside-down', 'eleven-mode')
+      document.body.classList.remove('theme-stranger-things', 'upside-down', 'eleven-mode', 'vhs-intro')
+    }
+  }, []) // Применяем при монтировании
+
+  // Применяем класс темы при изменении isEnabled
   useEffect(() => {
     if (isEnabled) {
       document.documentElement.classList.add('theme-stranger-things')
       document.body.classList.add('theme-stranger-things')
       
-      // Добавляем VHS эффект при включении
-      document.body.classList.add('vhs-intro')
-      setTimeout(() => {
-        document.body.classList.remove('vhs-intro')
-      }, 1500)
+      // Добавляем VHS эффект при включении (только при изменении, не при первой загрузке)
+      const isInitialLoad = !document.documentElement.classList.contains('theme-stranger-things')
+      if (!isInitialLoad) {
+        document.body.classList.add('vhs-intro')
+        setTimeout(() => {
+          document.body.classList.remove('vhs-intro')
+        }, 1500)
+      }
     } else {
       document.documentElement.classList.remove('theme-stranger-things', 'upside-down', 'eleven-mode')
       document.body.classList.remove('theme-stranger-things', 'upside-down', 'eleven-mode', 'vhs-intro')
