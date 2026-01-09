@@ -33,28 +33,50 @@ export function Layout() {
   const { theme, toggleTheme } = useTheme()
   const { t, language, setLanguage } = useI18n()
   
-  // Пасхалка: 11 быстрых кликов на логотип активирует режим Одиннадцать
-  const [logoClickCount, setLogoClickCount] = useState(0)
-  const [logoClickTimeout, setLogoClickTimeout] = useState<ReturnType<typeof setTimeout> | null>(null)
+  // Пасхалка: 11 быстрых кликов на название "Люся.Бюджет" активирует режим Одиннадцать
+  const [titleClickCount, setTitleClickCount] = useState(0)
+  const [titleClickTimeout, setTitleClickTimeout] = useState<ReturnType<typeof setTimeout> | null>(null)
+  
+  // Цвета для изменения названия при каждом клике (11 цветов для 11 кликов)
+  const titleColors = [
+    '#ffffff', // 0 - белый (начальный)
+    '#ff0055', // 1 - розовый
+    '#00f0ff', // 2 - циан
+    '#ff0055', // 3 - розовый
+    '#00f0ff', // 4 - циан
+    '#ff0055', // 5 - розовый
+    '#00f0ff', // 6 - циан
+    '#ff0055', // 7 - розовый
+    '#00f0ff', // 8 - циан
+    '#ff0055', // 9 - розовый
+    '#39ff14', // 10 - зелёный (Upside Down)
+    '#ff0055', // 11 - финальный розовый (режим Одиннадцать)
+  ]
+  
+  const getTitleColor = () => {
+    if (!strangerThingsEnabled) return undefined
+    if (titleClickCount === 0) return undefined
+    return titleColors[Math.min(titleClickCount, 11)]
+  }
 
-  const handleLogoClick = () => {
+  const handleTitleClick = () => {
     if (!strangerThingsEnabled) return
     
-    if (logoClickTimeout) {
-      clearTimeout(logoClickTimeout)
+    if (titleClickTimeout) {
+      clearTimeout(titleClickTimeout)
     }
     
-    const newCount = logoClickCount + 1
-    setLogoClickCount(newCount)
+    const newCount = titleClickCount + 1
+    setTitleClickCount(newCount)
     
     if (newCount >= 11) {
       setIsElevenMode(true)
-      setLogoClickCount(0)
+      setTitleClickCount(0)
     } else {
       const timeout = setTimeout(() => {
-        setLogoClickCount(0)
+        setTitleClickCount(0)
       }, 2000) // Сбрасываем счетчик через 2 секунды бездействия
-      setLogoClickTimeout(timeout)
+      setTitleClickTimeout(timeout)
     }
   }
 
@@ -530,10 +552,7 @@ export function Layout() {
         <div className="p-4 border-b border-telegram-border dark:border-telegram-dark-border">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => {
-                handleLogoClick()
-                setShowStories(true)
-              }}
+              onClick={() => setShowStories(true)}
               className="relative group cursor-pointer"
             >
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-telegram-primary dark:from-telegram-dark-primary to-telegram-primaryLight dark:to-telegram-dark-primaryLight flex items-center justify-center overflow-hidden relative z-30 transform transition-transform duration-300 group-hover:scale-110 shadow-lg">
@@ -544,8 +563,16 @@ export function Layout() {
               <div className="absolute -inset-1 rounded-full border-2 border-telegram-primary dark:border-telegram-dark-primary opacity-40 animate-pulse" style={{ animationDuration: '1.5s' }}></div>
             </button>
             <div className="flex-1 min-w-0">
-              <h1 className="text-base font-extrabold tracking-tight">
-                <span className="bg-gradient-to-r from-telegram-primary dark:from-telegram-dark-primary via-purple-500 to-telegram-primaryLight dark:to-telegram-dark-primaryLight bg-clip-text text-transparent">
+              <h1 
+                className="text-base font-extrabold tracking-tight cursor-pointer select-none"
+                onClick={handleTitleClick}
+                style={getTitleColor() ? { 
+                  color: getTitleColor(),
+                  textShadow: `0 0 10px ${getTitleColor()}, 0 0 20px ${getTitleColor()}`,
+                  transition: 'color 0.3s ease, text-shadow 0.3s ease'
+                } : {}}
+              >
+                <span className={!getTitleColor() ? "bg-gradient-to-r from-telegram-primary dark:from-telegram-dark-primary via-purple-500 to-telegram-primaryLight dark:to-telegram-dark-primaryLight bg-clip-text text-transparent" : ""}>
                   {strangerThingsEnabled ? '' : newYearEnabled ? '🎄 ' : ''}Люся.Бюджет{strangerThingsEnabled ? '' : newYearEnabled ? ' ❄️' : ''}
                 </span>
               </h1>
@@ -673,10 +700,7 @@ export function Layout() {
       <header className="xl:hidden bg-telegram-surface dark:bg-telegram-dark-surface border-b border-telegram-border dark:border-telegram-dark-border px-4 py-3 flex items-center justify-between sticky top-0 z-50 relative gap-2 backdrop-blur-sm">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <button
-            onClick={() => {
-              handleLogoClick()
-              setShowStories(true)
-            }}
+            onClick={() => setShowStories(true)}
             className="relative group flex-shrink-0"
           >
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-telegram-primary dark:from-telegram-dark-primary to-telegram-primaryLight dark:to-telegram-dark-primaryLight flex items-center justify-center overflow-hidden relative z-10 transform transition-transform duration-300 group-active:scale-110 shadow-lg">
@@ -686,8 +710,16 @@ export function Layout() {
             <div className="absolute inset-0 rounded-full bg-gradient-to-br from-telegram-primary dark:from-telegram-dark-primary to-telegram-primaryLight dark:to-telegram-dark-primaryLight opacity-60 animate-ping" style={{ animationDuration: '2s' }}></div>
             <div className="absolute -inset-1 rounded-full border-2 border-telegram-primary dark:border-telegram-dark-primary opacity-40 animate-pulse" style={{ animationDuration: '1.5s' }}></div>
           </button>
-          <h1 className="text-sm sm:text-base font-extrabold tracking-tight min-w-0 truncate">
-            <span className="bg-gradient-to-r from-telegram-primary dark:from-telegram-dark-primary via-purple-500 to-telegram-primaryLight dark:to-telegram-dark-primaryLight bg-clip-text text-transparent">
+          <h1 
+            className="text-sm sm:text-base font-extrabold tracking-tight min-w-0 truncate cursor-pointer select-none"
+            onClick={handleTitleClick}
+            style={getTitleColor() ? { 
+              color: getTitleColor(),
+              textShadow: `0 0 10px ${getTitleColor()}, 0 0 20px ${getTitleColor()}`,
+              transition: 'color 0.3s ease, text-shadow 0.3s ease'
+            } : {}}
+          >
+            <span className={!getTitleColor() ? "bg-gradient-to-r from-telegram-primary dark:from-telegram-dark-primary via-purple-500 to-telegram-primaryLight dark:to-telegram-dark-primaryLight bg-clip-text text-transparent" : ""}>
               {strangerThingsEnabled ? '' : newYearEnabled ? '🎄 ' : ''}Люся.Бюджет{strangerThingsEnabled ? '' : newYearEnabled ? ' ❄️' : ''}
             </span>
           </h1>
