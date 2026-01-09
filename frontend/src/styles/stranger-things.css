@@ -407,10 +407,9 @@ html.theme-stranger-things.upside-down-flip {
   transform-origin: center center !important;
 }
 
+/* body не поворачиваем отдельно, так как он внутри html */
 body.theme-stranger-things.upside-down-flip {
-  transform: rotate(180deg) !important;
-  transition: transform 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55) !important;
-  transform-origin: center center !important;
+  transform: none !important;
 }
 
 /* Адаптация для мобильных устройств */
