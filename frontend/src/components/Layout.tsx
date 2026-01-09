@@ -72,6 +72,15 @@ export function Layout() {
     if (newCount >= 11) {
       setIsElevenMode(true)
       setTitleClickCount(0)
+      
+      // Эффект "Изнанки" - переворот на 180 градусов на 5 секунд
+      document.documentElement.classList.add('upside-down-flip')
+      document.body.classList.add('upside-down-flip')
+      
+      setTimeout(() => {
+        document.documentElement.classList.remove('upside-down-flip')
+        document.body.classList.remove('upside-down-flip')
+      }, 5000) // Убираем поворот через 5 секунд
     } else {
       const timeout = setTimeout(() => {
         setTitleClickCount(0)
