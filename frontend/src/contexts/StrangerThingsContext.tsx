@@ -103,7 +103,15 @@ export function StrangerThingsProvider({ children }: { children: ReactNode }) {
     loadThemeFromProfile()
   }, [])
 
-  // Применяем класс темы к body и html
+  // Применяем тему сразу при монтировании (для быстрого восстановления после перезагрузки)
+  useEffect(() => {
+    if (isEnabled) {
+      document.documentElement.classList.add('theme-stranger-things')
+      document.body.classList.add('theme-stranger-things')
+    }
+  }, []) // Выполняется один раз при монтировании
+
+  // Применяем класс темы к body и html при изменении isEnabled
   useEffect(() => {
     if (isEnabled) {
       const wasAlreadyApplied = document.documentElement.classList.contains('theme-stranger-things')
