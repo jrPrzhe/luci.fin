@@ -25,6 +25,7 @@ class User(Base):
     language = Column(String(5), default="en")
     theme = Column(String(10), default="dark")  # "light" or "dark"
     new_year_theme = Column(Boolean, default=True)  # Новогодний режим
+    stranger_things_theme = Column(Boolean, default=False)  # Тема Stranger Things (ОСД)
     
     # 2FA
     is_2fa_enabled = Column(Boolean, default=False)

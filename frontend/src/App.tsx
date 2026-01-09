@@ -23,6 +23,7 @@ import { Analytics } from './pages/Analytics'
 import { detectPlatform } from './utils/platform'
 import { UnifiedAuthHandler } from './components/UnifiedAuthHandler'
 import { NewYearProvider } from './contexts/NewYearContext'
+import { StrangerThingsProvider } from './contexts/StrangerThingsContext'
 import { I18nProvider } from './contexts/I18nContext'
 import { ToastProvider } from './contexts/ToastContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -71,7 +72,9 @@ function App() {
             <ErrorBoundary>
               <NewYearProvider>
                 <ErrorBoundary>
-                  <ToastProvider>
+                  <StrangerThingsProvider>
+                    <ErrorBoundary>
+                      <ToastProvider>
                     <ErrorBoundary>
                       <Router>
                         <ErrorBoundary>
@@ -106,7 +109,9 @@ function App() {
                         </ErrorBoundary>
                       </Router>
                     </ErrorBoundary>
-                  </ToastProvider>
+                      </ToastProvider>
+                    </ErrorBoundary>
+                  </StrangerThingsProvider>
                 </ErrorBoundary>
               </NewYearProvider>
             </ErrorBoundary>

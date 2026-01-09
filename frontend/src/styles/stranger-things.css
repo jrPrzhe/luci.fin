@@ -1,0 +1,431 @@
+/* ============================================
+   STRANGER THINGS THEME (ОСД)
+   ============================================ */
+
+/* Импорт шрифтов */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Fira+Code:wght@400;500;600&display=swap');
+
+/* Импорт шрифтов через CSS переменные */
+:root {
+  --font-heading: 'Cinzel', 'Barlow Condensed', serif;
+  --font-mono: 'IBM Plex Mono', 'Fira Code', 'Courier New', monospace;
+}
+
+/* Цветовая палитра Stranger Things */
+.theme-stranger-things {
+  /* Основные цвета */
+  --st-bg-primary: #0b0b1a;
+  --st-bg-secondary: #1a1a2e;
+  --st-text-primary: #ffffff;
+  --st-text-secondary: #e0e0e0;
+  --st-accent-pink: #ff0055;
+  --st-accent-cyan: #00f0ff;
+  --st-accent-burgundy: #8a0303;
+  --st-border: rgba(255, 255, 255, 0.15);
+  
+  /* Upside Down режим */
+  --st-upside-down-bg: #1a0b0b;
+  --st-upside-down-accent: #39ff14;
+}
+
+/* Основные стили темы */
+.theme-stranger-things,
+body.theme-stranger-things {
+  position: relative;
+  background-color: var(--st-bg-primary) !important;
+  color: var(--st-text-primary) !important;
+  font-family: var(--font-mono) !important;
+  overflow-x: hidden;
+}
+
+.theme-stranger-things * {
+  font-family: var(--font-mono) !important;
+}
+
+/* Фоновые эффекты - ночное небо */
+.theme-stranger-things::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(ellipse at bottom, #1a1a2e 0%, #0b0b1a 100%),
+    url("data:image/svg+xml,%3Csvg width='100' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='stars' x='0' y='0' width='100' height='100' patternUnits='userSpaceOnUse'%3E%3Ccircle cx='20' cy='30' r='1' fill='%23ffffff' opacity='0.3'/%3E%3Ccircle cx='60' cy='10' r='0.5' fill='%23ffffff' opacity='0.4'/%3E%3Ccircle cx='80' cy='50' r='1.5' fill='%23ffffff' opacity='0.2'/%3E%3Ccircle cx='40' cy='70' r='1' fill='%23ffffff' opacity='0.35'/%3E%3Ccircle cx='10' cy='80' r='0.5' fill='%23ffffff' opacity='0.3'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='100' height='100' fill='url(%23stars)'/%3E%3C/svg%3E");
+  background-size: cover, 200px 200px;
+  opacity: 0.4;
+  pointer-events: none;
+  z-index: 0;
+  animation: st-flicker 20s infinite;
+}
+
+/* Геометрический узор 80-х (альтернативный фон) */
+.theme-stranger-things.alternative-bg::before {
+  background: 
+    repeating-linear-gradient(
+      45deg,
+      var(--st-bg-primary) 0px,
+      var(--st-bg-primary) 10px,
+      #1a0b0b 10px,
+      #1a0b0b 20px
+    ),
+    radial-gradient(ellipse at center, #2a1a1a 0%, #0b0b1a 100%);
+  background-size: auto, cover;
+  opacity: 0.6;
+}
+
+/* Силуэты деревьев (опционально) */
+.theme-stranger-things::after {
+  content: '';
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 30vh;
+  background-image: 
+    linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, transparent 100%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 200'%3E%3Cpath d='M0,200 L50,150 L30,180 L80,120 L60,160 L110,100 L90,140 L140,80 L120,130 L170,60 L150,110 L200,40 L180,100 L230,30 L210,90 L260,20 L240,80 L290,10 L270,70 L320,0 L300,60 L350,0 L330,50 L400,0 L400,200 Z' fill='%23000000' opacity='0.3'/%3E%3C/svg%3E");
+  background-size: cover, 300px auto;
+  background-repeat: no-repeat;
+  background-position: center bottom;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Анимация мерцания */
+@keyframes st-flicker {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  25% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.35;
+  }
+  75% {
+    opacity: 0.42;
+  }
+}
+
+/* CRT помехи */
+.theme-stranger-things .crt-noise {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0.02;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  animation: st-crt-flicker 0.1s infinite;
+  mix-blend-mode: overlay;
+}
+
+@keyframes st-crt-flicker {
+  0%, 100% {
+    opacity: 0.02;
+  }
+  50% {
+    opacity: 0.05;
+  }
+}
+
+/* VHS заставка при переключении */
+@keyframes st-vhs-intro {
+  0% {
+    opacity: 0;
+    filter: brightness(0) contrast(200%) saturate(0%);
+  }
+  10% {
+    opacity: 1;
+    filter: brightness(0.5) contrast(150%) saturate(50%);
+  }
+  20% {
+    filter: brightness(0.8) contrast(120%) saturate(80%);
+  }
+  50% {
+    filter: brightness(0.9) contrast(110%) saturate(90%);
+  }
+  70% {
+    filter: brightness(0.95) contrast(105%) saturate(95%);
+  }
+  100% {
+    filter: brightness(1) contrast(100%) saturate(100%);
+  }
+}
+
+.theme-stranger-things.vhs-intro {
+  animation: st-vhs-intro 1.5s ease-out;
+}
+
+/* Заголовки */
+.theme-stranger-things h1,
+.theme-stranger-things h2,
+.theme-stranger-things h3,
+.theme-stranger-things h4,
+.theme-stranger-things h5,
+.theme-stranger-things h6 {
+  font-family: var(--font-heading) !important;
+  font-weight: 700;
+  color: var(--st-text-primary) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.theme-stranger-things h1 {
+  text-shadow: 
+    0 0 10px var(--st-accent-pink),
+    0 0 20px var(--st-accent-pink),
+    0 0 30px var(--st-accent-pink);
+}
+
+/* Карточки в стиле лабораторного отчёта */
+.theme-stranger-things .card {
+  background: rgba(26, 26, 46, 0.8) !important;
+  border: 2px solid var(--st-border) !important;
+  border-radius: 4px !important;
+  box-shadow: 
+    0 0 10px rgba(255, 0, 85, 0.1),
+    inset 0 0 20px rgba(0, 240, 255, 0.05);
+  position: relative;
+  padding: 1.5rem !important;
+}
+
+.theme-stranger-things .card::before {
+  content: 'ЭКСПЕРИМЕНТ №' attr(data-experiment-number);
+  position: absolute;
+  top: -12px;
+  left: 12px;
+  background: var(--st-bg-primary);
+  padding: 2px 8px;
+  font-size: 0.7rem;
+  font-family: var(--font-mono);
+  color: var(--st-accent-cyan);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  border: 1px solid var(--st-border);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.theme-stranger-things .card:hover::before {
+  opacity: 1;
+}
+
+/* Кнопки */
+.theme-stranger-things .btn-primary {
+  background: #000000 !important;
+  color: var(--st-text-primary) !important;
+  border: 2px solid var(--st-border) !important;
+  font-family: var(--font-mono) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 0.75rem 1.5rem !important;
+  transition: all 0.3s ease !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.theme-stranger-things .btn-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 0, 85, 0.3),
+    transparent
+  );
+  transition: left 0.5s;
+}
+
+.theme-stranger-things .btn-primary:hover {
+  border-color: var(--st-accent-pink) !important;
+  text-shadow: 
+    0 0 8px var(--st-accent-pink),
+    0 0 16px var(--st-accent-pink);
+  box-shadow: 
+    0 0 10px rgba(255, 0, 85, 0.3),
+    inset 0 0 10px rgba(255, 0, 85, 0.1) !important;
+}
+
+.theme-stranger-things .btn-primary:hover::before {
+  left: 100%;
+}
+
+.theme-stranger-things .btn-secondary {
+  background: transparent !important;
+  color: var(--st-text-secondary) !important;
+  border: 1px solid var(--st-border) !important;
+  font-family: var(--font-mono) !important;
+}
+
+.theme-stranger-things .btn-secondary:hover {
+  border-color: var(--st-accent-cyan) !important;
+  color: var(--st-accent-cyan) !important;
+  text-shadow: 0 0 8px var(--st-accent-cyan);
+}
+
+/* Навигация */
+.theme-stranger-things .nav-item {
+  border-left: 3px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.theme-stranger-things .nav-item:hover {
+  border-left-color: var(--st-accent-pink);
+  background: rgba(255, 0, 85, 0.1) !important;
+}
+
+.theme-stranger-things .nav-item.active {
+  border-left-color: var(--st-accent-pink);
+  background: rgba(255, 0, 85, 0.2) !important;
+  color: var(--st-accent-pink) !important;
+  text-shadow: 0 0 8px var(--st-accent-pink);
+}
+
+/* Панели и боковая панель */
+.theme-stranger-things aside,
+.theme-stranger-things header {
+  background: rgba(26, 26, 46, 0.95) !important;
+  border-color: var(--st-border) !important;
+  backdrop-filter: blur(10px);
+}
+
+/* Инпуты */
+.theme-stranger-things .input {
+  background: rgba(11, 11, 26, 0.8) !important;
+  border: 1px solid var(--st-border) !important;
+  color: var(--st-text-primary) !important;
+  font-family: var(--font-mono) !important;
+}
+
+.theme-stranger-things .input:focus {
+  border-color: var(--st-accent-cyan) !important;
+  box-shadow: 
+    0 0 10px rgba(0, 240, 255, 0.3),
+    inset 0 0 10px rgba(0, 240, 255, 0.1) !important;
+}
+
+/* Спиннер - коммуникационные лампочки */
+.theme-stranger-things .loading-spinner {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+  align-items: center;
+}
+
+.theme-stranger-things .loading-bulb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--st-accent-cyan);
+  box-shadow: 
+    0 0 10px var(--st-accent-cyan),
+    0 0 20px var(--st-accent-cyan);
+  animation: st-bulb-pulse 1.5s ease-in-out infinite;
+}
+
+.theme-stranger-things .loading-bulb:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.theme-stranger-things .loading-bulb:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+.theme-stranger-things .loading-bulb:nth-child(4) {
+  animation-delay: 0.6s;
+}
+
+@keyframes st-bulb-pulse {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+/* Upside Down режим (время 00:00-03:00) */
+.theme-stranger-things.upside-down {
+  background-color: var(--st-upside-down-bg) !important;
+}
+
+.theme-stranger-things.upside-down::before {
+  filter: hue-rotate(180deg) saturate(1.5);
+}
+
+.theme-stranger-things.upside-down .card,
+.theme-stranger-things.upside-down .nav-item.active {
+  border-color: var(--st-upside-down-accent);
+  box-shadow: 0 0 10px rgba(57, 255, 20, 0.3);
+}
+
+/* Режим Одиннадцать (пасхалка - 11 кликов) */
+.theme-stranger-things.eleven-mode .card [data-number],
+.theme-stranger-things.eleven-mode [data-amount],
+.theme-stranger-things.eleven-mode .number {
+  color: var(--st-accent-pink) !important;
+  text-shadow: 
+    0 0 10px var(--st-accent-pink),
+    0 0 20px var(--st-accent-pink);
+  animation: st-eleven-glow 2s ease-in-out infinite;
+}
+
+@keyframes st-eleven-glow {
+  0%, 100% {
+    text-shadow: 
+      0 0 10px var(--st-accent-pink),
+      0 0 20px var(--st-accent-pink);
+  }
+  50% {
+    text-shadow: 
+      0 0 20px var(--st-accent-pink),
+      0 0 30px var(--st-accent-pink),
+      0 0 40px var(--st-accent-pink);
+  }
+}
+
+/* Переопределение для всех элементов внутри темы */
+.theme-stranger-things * {
+  scrollbar-width: thin;
+  scrollbar-color: var(--st-accent-pink) var(--st-bg-secondary);
+}
+
+.theme-stranger-things *::-webkit-scrollbar {
+  width: 8px;
+}
+
+.theme-stranger-things *::-webkit-scrollbar-track {
+  background: var(--st-bg-secondary);
+}
+
+.theme-stranger-things *::-webkit-scrollbar-thumb {
+  background: var(--st-accent-pink);
+  border-radius: 4px;
+}
+
+.theme-stranger-things *::-webkit-scrollbar-thumb:hover {
+  background: var(--st-accent-cyan);
+  box-shadow: 0 0 10px var(--st-accent-cyan);
+}
+
+/* Адаптация для мобильных устройств */
+@media (max-width: 768px) {
+  .theme-stranger-things::after {
+    height: 20vh;
+  }
+  
+  .theme-stranger-things .card {
+    padding: 1rem !important;
+  }
+}

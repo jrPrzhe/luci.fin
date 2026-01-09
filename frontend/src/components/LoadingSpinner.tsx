@@ -1,4 +1,6 @@
 import { useI18n } from '../contexts/I18nContext'
+import { useStrangerThingsTheme } from '../contexts/StrangerThingsContext'
+import { CommunicationBulbs } from './CommunicationBulbs'
 
 interface LoadingSpinnerProps {
   message?: string
@@ -8,6 +10,7 @@ interface LoadingSpinnerProps {
 
 export function LoadingSpinner({ message, size = 'md', fullScreen = false }: LoadingSpinnerProps) {
   const { t } = useI18n()
+  const { isEnabled: strangerThingsEnabled } = useStrangerThingsTheme()
   
   const sizeClasses = {
     sm: 'h-8 w-8',
@@ -17,7 +20,13 @@ export function LoadingSpinner({ message, size = 'md', fullScreen = false }: Loa
 
   const spinner = (
     <div className="text-center">
-      <div className={`inline-block animate-spin rounded-full ${sizeClasses[size]} border-b-2 border-telegram-primary dark:border-telegram-dark-primary mb-4`}></div>
+      {strangerThingsEnabled ? (
+        <div className="mb-4 flex justify-center">
+          <CommunicationBulbs />
+        </div>
+      ) : (
+        <div className={`inline-block animate-spin rounded-full ${sizeClasses[size]} border-b-2 border-telegram-primary dark:border-telegram-dark-primary mb-4`}></div>
+      )}
       <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
         {message || t.common.loading}
       </p>

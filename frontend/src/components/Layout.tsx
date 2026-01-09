@@ -9,7 +9,9 @@ import { Welcome } from './Welcome'
 import { Stories } from './Stories'
 import { SnowEffect } from './SnowEffect'
 import { Garland } from './Garland'
+import { CRTNoise } from './CRTNoise'
 import { useNewYearTheme } from '../contexts/NewYearContext'
+import { useStrangerThingsTheme } from '../contexts/StrangerThingsContext'
 import { useTheme } from '../hooks/useTheme'
 import { useI18n } from '../contexts/I18nContext'
 import { QuestNotifications } from './QuestNotifications'
@@ -27,8 +29,34 @@ export function Layout() {
   const isMiniApp = isTelegramWebApp()
   const isVK = isVKWebApp()
   const { isEnabled: newYearEnabled } = useNewYearTheme()
+  const { isEnabled: strangerThingsEnabled, setIsElevenMode } = useStrangerThingsTheme()
   const { theme, toggleTheme } = useTheme()
   const { t, language, setLanguage } = useI18n()
+  
+  // Пасхалка: 11 быстрых кликов на логотип активирует режим Одиннадцать
+  const [logoClickCount, setLogoClickCount] = useState(0)
+  const [logoClickTimeout, setLogoClickTimeout] = useState<ReturnType<typeof setTimeout> | null>(null)
+
+  const handleLogoClick = () => {
+    if (!strangerThingsEnabled) return
+    
+    if (logoClickTimeout) {
+      clearTimeout(logoClickTimeout)
+    }
+    
+    const newCount = logoClickCount + 1
+    setLogoClickCount(newCount)
+    
+    if (newCount >= 11) {
+      setIsElevenMode(true)
+      setLogoClickCount(0)
+    } else {
+      const timeout = setTimeout(() => {
+        setLogoClickCount(0)
+      }, 2000) // Сбрасываем счетчик через 2 секунды бездействия
+      setLogoClickTimeout(timeout)
+    }
+  }
 
   // Получаем данные пользователя для проверки админ-статуса
   const { data: user } = useQuery({
@@ -487,19 +515,25 @@ export function Layout() {
   ]
 
   return (
-    <div className={`min-h-screen flex flex-col xl:flex-row bg-telegram-bg dark:bg-telegram-dark-bg ${newYearEnabled ? 'new-year-mode' : ''}`}>
+    <div className={`min-h-screen flex flex-col xl:flex-row bg-telegram-bg dark:bg-telegram-dark-bg ${newYearEnabled ? 'new-year-mode' : ''} ${strangerThingsEnabled ? 'theme-stranger-things' : ''}`}>
       {/* Новогодний снег */}
-      {newYearEnabled && <SnowEffect />}
+      {newYearEnabled && !strangerThingsEnabled && <SnowEffect />}
       
       {/* Гирлянда в верхнем меню */}
-      {newYearEnabled && <Garland />}
+      {newYearEnabled && !strangerThingsEnabled && <Garland />}
+      
+      {/* CRT помехи для темы Stranger Things */}
+      {strangerThingsEnabled && <CRTNoise />}
       
       {/* Desktop Sidebar - скрыт на мобильных и планшетах, показывается только на больших экранах (xl: 1280px+) */}
       <aside className="hidden xl:flex w-64 flex-col bg-telegram-surface dark:bg-telegram-dark-surface border-r border-telegram-border dark:border-telegram-dark-border flex-shrink-0 relative z-20">
         <div className="p-4 border-b border-telegram-border dark:border-telegram-dark-border">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setShowStories(true)}
+              onClick={() => {
+                handleLogoClick()
+                setShowStories(true)
+              }}
               className="relative group cursor-pointer"
             >
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-telegram-primary dark:from-telegram-dark-primary to-telegram-primaryLight dark:to-telegram-dark-primaryLight flex items-center justify-center overflow-hidden relative z-30 transform transition-transform duration-300 group-hover:scale-110 shadow-lg">
@@ -512,11 +546,15 @@ export function Layout() {
             <div className="flex-1 min-w-0">
               <h1 className="text-base font-extrabold tracking-tight">
                 <span className="bg-gradient-to-r from-telegram-primary dark:from-telegram-dark-primary via-purple-500 to-telegram-primaryLight dark:to-telegram-dark-primaryLight bg-clip-text text-transparent">
-                  {newYearEnabled ? '🎄 ' : ''}Люся.Бюджет{newYearEnabled ? ' ❄️' : ''}
+                  {strangerThingsEnabled ? '' : newYearEnabled ? '🎄 ' : ''}Люся.Бюджет{strangerThingsEnabled ? '' : newYearEnabled ? ' ❄️' : ''}
                 </span>
               </h1>
               <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary font-medium tracking-wide">
-                {newYearEnabled ? 'С Новым годом! 🎉' : 'Все посчитала'}
+                {strangerThingsEnabled 
+                  ? 'Добро пожаловать в Хокинс' 
+                  : newYearEnabled 
+                    ? 'С Новым годом! 🎉' 
+                    : 'Все посчитала'}
               </p>
             </div>
           </div>
@@ -635,7 +673,10 @@ export function Layout() {
       <header className="xl:hidden bg-telegram-surface dark:bg-telegram-dark-surface border-b border-telegram-border dark:border-telegram-dark-border px-4 py-3 flex items-center justify-between sticky top-0 z-50 relative gap-2 backdrop-blur-sm">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <button
-            onClick={() => setShowStories(true)}
+            onClick={() => {
+              handleLogoClick()
+              setShowStories(true)
+            }}
             className="relative group flex-shrink-0"
           >
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-telegram-primary dark:from-telegram-dark-primary to-telegram-primaryLight dark:to-telegram-dark-primaryLight flex items-center justify-center overflow-hidden relative z-10 transform transition-transform duration-300 group-active:scale-110 shadow-lg">
@@ -647,7 +688,7 @@ export function Layout() {
           </button>
           <h1 className="text-sm sm:text-base font-extrabold tracking-tight min-w-0 truncate">
             <span className="bg-gradient-to-r from-telegram-primary dark:from-telegram-dark-primary via-purple-500 to-telegram-primaryLight dark:to-telegram-dark-primaryLight bg-clip-text text-transparent">
-              {newYearEnabled ? '🎄 ' : ''}Люся.Бюджет{newYearEnabled ? ' ❄️' : ''}
+              {strangerThingsEnabled ? '' : newYearEnabled ? '🎄 ' : ''}Люся.Бюджет{strangerThingsEnabled ? '' : newYearEnabled ? ' ❄️' : ''}
             </span>
           </h1>
           </div>

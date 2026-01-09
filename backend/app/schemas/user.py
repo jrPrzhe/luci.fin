@@ -14,6 +14,7 @@ class UserBase(BaseModel):
     language: str = "en"
     theme: str = "dark"  # "light" or "dark"
     new_year_theme: bool = True  # Новогодний режим
+    stranger_things_theme: bool = False  # Тема Stranger Things (ОСД)
     
     @field_validator('email')
     @classmethod
@@ -44,6 +45,7 @@ class UserUpdate(BaseModel):
     language: Optional[str] = None
     theme: Optional[str] = None  # "light" or "dark"
     new_year_theme: Optional[bool] = None  # Новогодний режим
+    stranger_things_theme: Optional[bool] = None  # Тема Stranger Things (ОСД)
 
 
 class UserResponse(UserBase):

@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import './styles/index.css'
+import './styles/stranger-things.css'
 import { initTelegramWebApp, isTelegramWebApp } from './utils/telegram'
 import { initVKWebApp, isVKWebApp } from './utils/vk'
 

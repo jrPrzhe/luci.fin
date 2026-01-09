@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
 import { useTheme } from '../hooks/useTheme'
 import { useNewYearTheme } from '../contexts/NewYearContext'
+import { useStrangerThingsTheme } from '../contexts/StrangerThingsContext'
 import { useI18n } from '../contexts/I18nContext'
 import { useToast } from '../contexts/ToastContext'
 import { LoadingSpinner } from '../components/LoadingSpinner'
@@ -18,6 +19,7 @@ export function Profile() {
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const { theme, toggleTheme } = useTheme()
   const { isEnabled: newYearEnabled, toggle: toggleNewYear } = useNewYearTheme()
+  const { isEnabled: strangerThingsEnabled, toggle: toggleStrangerThings } = useStrangerThingsTheme()
   const { language, setLanguage, t } = useI18n()
 
   const { data: user, isLoading } = useQuery({
@@ -264,6 +266,29 @@ export function Profile() {
             }`}>
               <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-200 ${
                 newYearEnabled ? 'translate-x-6' : 'translate-x-0'
+              }`}></div>
+            </div>
+          </button>
+          <button
+            onClick={toggleStrangerThings}
+            className="w-full flex items-center justify-between p-3 rounded-telegram hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors text-left"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🔮</span>
+              <div>
+                <p className="font-medium text-telegram-text dark:text-telegram-dark-text">{t.profile.strangerThingsMode || 'Тема Stranger Things'}</p>
+                <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+                  {strangerThingsEnabled ? (t.profile.strangerThingsModeEnabled || 'Включена') : (t.profile.strangerThingsModeDisabled || 'Выключена')}
+                </p>
+              </div>
+            </div>
+            <div className={`relative w-12 h-6 rounded-full transition-colors ${
+              strangerThingsEnabled 
+                ? 'bg-telegram-primary dark:bg-telegram-dark-primary' 
+                : 'bg-telegram-border dark:bg-telegram-dark-border'
+            }`}>
+              <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-200 ${
+                strangerThingsEnabled ? 'translate-x-6' : 'translate-x-0'
               }`}></div>
             </div>
           </button>
