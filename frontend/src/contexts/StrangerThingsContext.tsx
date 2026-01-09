@@ -103,27 +103,15 @@ export function StrangerThingsProvider({ children }: { children: ReactNode }) {
     loadThemeFromProfile()
   }, [])
 
-  // Применяем класс темы к body и html при первой загрузке и при изменении
-  useEffect(() => {
-    // Применяем тему сразу при монтировании (для восстановления после перезагрузки)
-    if (isEnabled) {
-      document.documentElement.classList.add('theme-stranger-things')
-      document.body.classList.add('theme-stranger-things')
-    } else {
-      document.documentElement.classList.remove('theme-stranger-things', 'upside-down', 'eleven-mode')
-      document.body.classList.remove('theme-stranger-things', 'upside-down', 'eleven-mode', 'vhs-intro')
-    }
-  }, []) // Применяем при монтировании
-
-  // Применяем класс темы при изменении isEnabled
+  // Применяем класс темы к body и html
   useEffect(() => {
     if (isEnabled) {
+      const wasAlreadyApplied = document.documentElement.classList.contains('theme-stranger-things')
       document.documentElement.classList.add('theme-stranger-things')
       document.body.classList.add('theme-stranger-things')
       
-      // Добавляем VHS эффект при включении (только при изменении, не при первой загрузке)
-      const isInitialLoad = !document.documentElement.classList.contains('theme-stranger-things')
-      if (!isInitialLoad) {
+      // Добавляем VHS эффект только при включении (не при первой загрузке)
+      if (!wasAlreadyApplied && isInitialized.current) {
         document.body.classList.add('vhs-intro')
         setTimeout(() => {
           document.body.classList.remove('vhs-intro')
