@@ -301,6 +301,26 @@ except Exception as e:
     print(f"[STARTUP] Schema check warning (non-fatal): {e}", file=sys.stderr, flush=True)
     pass
 
+# Ensure stranger_things_theme column exists in users table (migration helper)
+print("[STARTUP] Checking users.stranger_things_theme...", file=sys.stderr, flush=True)
+try:
+    if inspector.has_table('users'):
+        columns = [col['name'] for col in inspector.get_columns('users')]
+        if 'stranger_things_theme' not in columns:
+            print("[STARTUP] Adding stranger_things_theme to users...", file=sys.stderr, flush=True)
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE users ADD COLUMN stranger_things_theme BOOLEAN DEFAULT false"))
+                conn.execute(text("UPDATE users SET stranger_things_theme = false WHERE stranger_things_theme IS NULL"))
+                conn.execute(text("ALTER TABLE users ALTER COLUMN stranger_things_theme SET NOT NULL"))
+                conn.execute(text("ALTER TABLE users ALTER COLUMN stranger_things_theme SET DEFAULT false"))
+                migration_logger.info("Added stranger_things_theme column to users table")
+            print("[STARTUP] stranger_things_theme column added", file=sys.stderr, flush=True)
+        else:
+            print("[STARTUP] stranger_things_theme column already exists", file=sys.stderr, flush=True)
+except Exception as e:
+    print(f"[STARTUP] Schema check warning (non-fatal): {e}", file=sys.stderr, flush=True)
+    pass
+
 print("[STARTUP] Schema checks completed", file=sys.stderr, flush=True)
 
 # Log admin configuration on startup (using print for guaranteed output)

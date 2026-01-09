@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = 'stranger_things_001'
-down_revision = '13207bd6f14e'
+down_revision = '12934df81cc2'  # После миграции gamification greetings
 branch_labels = None
 depends_on = None
 
