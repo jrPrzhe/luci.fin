@@ -1435,15 +1435,18 @@ async def create_transaction(
                     db.commit()
                     logger.info(f"Quest {user_quest.id} marked as completed, total quests completed: {profile.total_quests_completed}")
                 else:
-                    logger.warning(f"No pending quest found for user {current_user.id}, type {quest_type}, dates checked: {today_utc}, {transaction_date_only}")
-                    # Попробуем найти любой квест этого типа на сегодня (на случай если статус не PENDING)
-                    any_quest = db.query(UserDailyQuest).filter(
+                    # Проверяем, есть ли уже выполненный квест (это нормально при повторных транзакциях)
+                    completed_quest = db.query(UserDailyQuest).filter(
                         UserDailyQuest.profile_id == profile.id,
                         UserDailyQuest.quest_type == quest_type,
-                        UserDailyQuest.quest_date.in_([today_utc, transaction_date_only])
+                        UserDailyQuest.quest_date.in_([today_utc, transaction_date_only]),
+                        UserDailyQuest.status == QuestStatus.COMPLETED
                     ).first()
-                    if any_quest:
-                        logger.warning(f"Found quest {any_quest.id} but status is {any_quest.status}, not PENDING")
+                    
+                    if not completed_quest:
+                        # Квест не найден вообще - это может быть проблемой
+                        logger.warning(f"No quest found for user {current_user.id}, type {quest_type}, dates checked: {today_utc}, {transaction_date_only}")
+                    # Если квест уже COMPLETED, это нормально - не логируем предупреждение
             
             # Подготавливаем информацию о геймификации для ответа
             gamification_info = {
