@@ -993,27 +993,27 @@ export function Dashboard() {
                     <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-3">
                       {t.dashboard.form.selectCategory} ({categories.length} {t.dashboard.form.available})
                     </p>
-                    <div className="grid grid-cols-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 gap-3 max-h-[60vh] overflow-y-auto modal-content-scrollable">
+                    <div className="grid grid-cols-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 gap-2 sm:gap-3 max-h-[60vh] overflow-y-auto modal-content-scrollable">
                       {categories
                         .sort((a, b) => (b.is_favorite ? 1 : 0) - (a.is_favorite ? 1 : 0))
                         .map((category) => (
                           <button
                             key={category.id}
                             onClick={() => handleCategorySelect(category.id)}
-                            className="card p-4 text-left hover:shadow-lg transition-all active:scale-[0.98] min-w-0 overflow-hidden"
+                            className="card p-2 sm:p-4 text-left hover:shadow-lg transition-all active:scale-[0.98] min-w-0 overflow-hidden"
                             style={{
                               borderLeft: `4px solid ${category.color || '#4CAF50'}`,
                             }}
                           >
-                            <div className="flex flex-col items-center gap-2 min-w-0 w-full">
+                            <div className="flex flex-col items-center gap-1.5 sm:gap-2 min-w-0 w-full">
                               <div
-                                className="w-12 h-12 rounded-full flex items-center justify-center text-2xl flex-shrink-0"
+                                className="w-8 h-8 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-lg sm:text-2xl flex-shrink-0"
                                 style={{ backgroundColor: `${category.color || '#4CAF50'}20` }}
                               >
                                 {category.icon || '📦'}
                               </div>
                               <span 
-                                className="font-medium text-sm text-telegram-text dark:text-telegram-dark-text text-center break-words overflow-wrap-anywhere w-full"
+                                className="font-medium text-xs sm:text-sm text-telegram-text dark:text-telegram-dark-text text-center break-words overflow-wrap-anywhere w-full leading-tight"
                                 style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
                               >
                                 {translateCategoryName(category.name)}
