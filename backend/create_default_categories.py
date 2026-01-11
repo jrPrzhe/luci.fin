@@ -62,10 +62,17 @@ def create_default_categories_for_user(user_id: int, db: Session):
     
     # Add expense categories
     for cat_data in DEFAULT_EXPENSE_CATEGORIES:
+        # Convert enum to string value to avoid type mismatch in bulk operations
+        transaction_type_value = cat_data["transaction_type"]
+        if isinstance(transaction_type_value, TransactionType):
+            transaction_type_value = transaction_type_value.value  # Get "income", "expense", or "both"
+        elif isinstance(transaction_type_value, str):
+            transaction_type_value = transaction_type_value.lower()
+        
         categories_to_create.append(Category(
             user_id=user_id,
             name=cat_data["name"],
-            transaction_type=cat_data["transaction_type"],
+            transaction_type=transaction_type_value,  # Use string value instead of enum
             icon=cat_data["icon"],
             color=cat_data["color"],
             is_system=True,
@@ -75,10 +82,17 @@ def create_default_categories_for_user(user_id: int, db: Session):
     
     # Add income categories
     for cat_data in DEFAULT_INCOME_CATEGORIES:
+        # Convert enum to string value to avoid type mismatch in bulk operations
+        transaction_type_value = cat_data["transaction_type"]
+        if isinstance(transaction_type_value, TransactionType):
+            transaction_type_value = transaction_type_value.value  # Get "income", "expense", or "both"
+        elif isinstance(transaction_type_value, str):
+            transaction_type_value = transaction_type_value.lower()
+        
         categories_to_create.append(Category(
             user_id=user_id,
             name=cat_data["name"],
-            transaction_type=cat_data["transaction_type"],
+            transaction_type=transaction_type_value,  # Use string value instead of enum
             icon=cat_data["icon"],
             color=cat_data["color"],
             is_system=True,

@@ -238,24 +238,28 @@ async def reset_user_settings(
         ]
         
         for cat_data in DEFAULT_EXPENSE_CATEGORIES:
+            # Convert enum to string value to avoid type mismatch
             category = Category(
                 user_id=target_user.id,
                 name=cat_data["name"],
-                transaction_type=TransactionType.EXPENSE,
+                transaction_type=TransactionType.EXPENSE.value,  # Use string value instead of enum
                 icon=cat_data["icon"],
                 color=cat_data["color"],
-                is_default=True
+                is_system=True,
+                is_active=True
             )
             db.add(category)
         
         for cat_data in DEFAULT_INCOME_CATEGORIES:
+            # Convert enum to string value to avoid type mismatch
             category = Category(
                 user_id=target_user.id,
                 name=cat_data["name"],
-                transaction_type=TransactionType.INCOME,
+                transaction_type=TransactionType.INCOME.value,  # Use string value instead of enum
                 icon=cat_data["icon"],
                 color=cat_data["color"],
-                is_default=True
+                is_system=True,
+                is_active=True
             )
             db.add(category)
         

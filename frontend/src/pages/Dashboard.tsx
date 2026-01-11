@@ -395,9 +395,29 @@ export function Dashboard() {
     // Filter active accounts only (use accounts directly from query)
     const accountsList = (accounts as Account[] || [])
     const activeAccounts = accountsList.filter(acc => acc.is_active !== false)
+    
+    // Load last selected account from localStorage
+    let lastAccountId = ''
+    try {
+      const savedAccountId = localStorage.getItem('lastSelectedAccountId')
+      if (savedAccountId) {
+        // Verify that the saved account still exists and is active
+        const savedAccount = activeAccounts.find(acc => acc.id.toString() === savedAccountId)
+        if (savedAccount) {
+          lastAccountId = savedAccountId
+        }
+      }
+    } catch (e) {
+      // Ignore localStorage errors (incognito mode, etc.)
+      console.warn('Error loading last selected account:', e)
+    }
+    
+    // Use last selected account if available, otherwise use first account
+    const defaultAccountId = lastAccountId || (activeAccounts && activeAccounts.length > 0 ? activeAccounts[0].id.toString() : '')
+    
     setQuickFormData({
       category_id: '',
-      account_id: activeAccounts && activeAccounts.length > 0 ? activeAccounts[0].id.toString() : '',
+      account_id: defaultAccountId,
       to_account_id: '',
       amount: '',
       description: '',
@@ -538,6 +558,14 @@ export function Dashboard() {
       
       // Create transaction
       const response = await api.createTransaction(submitData)
+      
+      // Save last selected account to localStorage
+      try {
+        localStorage.setItem('lastSelectedAccountId', quickFormData.account_id)
+      } catch (e) {
+        // Ignore localStorage errors (incognito mode, etc.)
+        console.warn('Error saving last selected account:', e)
+      }
       
       // Проверяем события геймификации
       if (response.gamification) {
@@ -965,7 +993,7 @@ export function Dashboard() {
                     <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-3">
                       {t.dashboard.form.selectCategory} ({categories.length} {t.dashboard.form.available})
                     </p>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 gap-3 max-h-[60vh] overflow-y-auto modal-content-scrollable">
+                    <div className="grid grid-cols-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 gap-3 max-h-[60vh] overflow-y-auto modal-content-scrollable">
                       {categories
                         .sort((a, b) => (b.is_favorite ? 1 : 0) - (a.is_favorite ? 1 : 0))
                         .map((category) => (

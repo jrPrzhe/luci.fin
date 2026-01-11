@@ -375,10 +375,17 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
             name = str(cat_data["name"]).encode('utf-8').decode('utf-8')
             icon = str(cat_data["icon"]).encode('utf-8').decode('utf-8')
             
+            # Convert enum to string value to avoid type mismatch in bulk operations
+            transaction_type_value = cat_data["transaction_type"]
+            if isinstance(transaction_type_value, TransactionType):
+                transaction_type_value = transaction_type_value.value  # Get "income", "expense", or "both"
+            elif isinstance(transaction_type_value, str):
+                transaction_type_value = transaction_type_value.lower()
+            
             categories.append(Category(
                 user_id=db_user.id,
                 name=name,
-                transaction_type=cat_data["transaction_type"],
+                transaction_type=transaction_type_value,  # Use string value instead of enum
                 icon=icon,
                 color=cat_data["color"],
                 is_system=True,
@@ -840,10 +847,17 @@ async def login_telegram(
                     name = str(cat_data["name"]).encode('utf-8').decode('utf-8')
                     icon = str(cat_data["icon"]).encode('utf-8').decode('utf-8')
                     
+                    # Convert enum to string value to avoid type mismatch in bulk operations
+                    transaction_type_value = cat_data["transaction_type"]
+                    if isinstance(transaction_type_value, TransactionType):
+                        transaction_type_value = transaction_type_value.value  # Get "income", "expense", or "both"
+                    elif isinstance(transaction_type_value, str):
+                        transaction_type_value = transaction_type_value.lower()
+                    
                     categories.append(Category(
                         user_id=user.id,
                         name=name,
-                        transaction_type=cat_data["transaction_type"],
+                        transaction_type=transaction_type_value,  # Use string value instead of enum
                         icon=icon,
                         color=cat_data["color"],
                         is_system=True,  # Базовые категории помечаются как системные
@@ -1199,10 +1213,17 @@ async def login_vk(
                     name = str(cat_data["name"]).encode('utf-8').decode('utf-8')
                     icon = str(cat_data["icon"]).encode('utf-8').decode('utf-8')
                     
+                    # Convert enum to string value to avoid type mismatch in bulk operations
+                    transaction_type_value = cat_data["transaction_type"]
+                    if isinstance(transaction_type_value, TransactionType):
+                        transaction_type_value = transaction_type_value.value  # Get "income", "expense", or "both"
+                    elif isinstance(transaction_type_value, str):
+                        transaction_type_value = transaction_type_value.lower()
+                    
                     categories.append(Category(
                         user_id=user.id,
                         name=name,
-                        transaction_type=cat_data["transaction_type"],
+                        transaction_type=transaction_type_value,  # Use string value instead of enum
                         icon=icon,
                         color=cat_data["color"],
                         is_system=True,
@@ -1228,10 +1249,17 @@ async def login_vk(
                                 name = str(cat_data["name"]).encode('utf-8').decode('utf-8')
                                 icon = str(cat_data["icon"]).encode('utf-8').decode('utf-8')
                                 
+                                # Convert enum to string value to avoid type mismatch in bulk operations
+                                transaction_type_value = cat_data["transaction_type"]
+                                if isinstance(transaction_type_value, TransactionType):
+                                    transaction_type_value = transaction_type_value.value  # Get "income", "expense", or "both"
+                                elif isinstance(transaction_type_value, str):
+                                    transaction_type_value = transaction_type_value.lower()
+                                
                                 categories_retry.append(Category(
                                     user_id=user.id,
                                     name=name,
-                                    transaction_type=cat_data["transaction_type"],
+                                    transaction_type=transaction_type_value,  # Use string value instead of enum
                                     icon=icon,
                                     color=cat_data["color"],
                                     is_system=True,

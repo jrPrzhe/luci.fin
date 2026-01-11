@@ -70,10 +70,17 @@ def add_categories_to_user(user_id: int, db: Session):
         name = str(cat_data["name"]).encode('utf-8').decode('utf-8')
         icon = str(cat_data["icon"]).encode('utf-8').decode('utf-8')
         
+        # Convert enum to string value to avoid type mismatch in bulk operations
+        transaction_type_value = cat_data["transaction_type"]
+        if isinstance(transaction_type_value, TransactionType):
+            transaction_type_value = transaction_type_value.value  # Get "income", "expense", or "both"
+        elif isinstance(transaction_type_value, str):
+            transaction_type_value = transaction_type_value.lower()
+        
         categories.append(Category(
             user_id=user_id,
             name=name,
-            transaction_type=cat_data["transaction_type"],
+            transaction_type=transaction_type_value,  # Use string value instead of enum
             icon=icon,
             color=cat_data["color"],
             is_system=True,

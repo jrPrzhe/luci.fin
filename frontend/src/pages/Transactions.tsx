@@ -31,6 +31,7 @@ interface Account {
   type: string
   currency: string
   balance: number
+  is_active?: boolean
   is_shared?: boolean
   shared_budget_id?: number | null
 }
@@ -203,6 +204,29 @@ export function Transactions() {
       }))
     }
   }, [currentUser?.default_currency, editingTransaction])
+
+  // Load last selected account when accounts are loaded (but not when editing existing transaction)
+  useEffect(() => {
+    if (accounts.length > 0 && !editingTransaction && !formData.account_id) {
+      try {
+        const savedAccountId = localStorage.getItem('lastSelectedAccountId')
+        if (savedAccountId) {
+          // Verify that the saved account still exists and is active
+          const savedAccount = accounts.find(acc => acc.id.toString() === savedAccountId && acc.is_active !== false)
+          if (savedAccount) {
+            setFormData(prev => ({
+              ...prev,
+              account_id: savedAccountId
+            }))
+          }
+        }
+      } catch (e) {
+        // Ignore localStorage errors (incognito mode, etc.)
+        console.warn('Error loading last selected account:', e)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accounts, editingTransaction])
 
   const getDateRange = () => {
     const now = new Date()
@@ -470,6 +494,14 @@ export function Transactions() {
         await api.createTransaction(submitData)
       }
 
+      // Save last selected account to localStorage
+      try {
+        localStorage.setItem('lastSelectedAccountId', formData.account_id)
+      } catch (e) {
+        // Ignore localStorage errors (incognito mode, etc.)
+        console.warn('Error saving last selected account:', e)
+      }
+
       // Reset form and reload
       resetForm()
       await loadData()
@@ -612,8 +644,21 @@ export function Transactions() {
   const resetForm = () => {
     setEditingTransaction(null)
     const userCurrency = currentUser?.default_currency || 'RUB'
+    
+    // Load last selected account from localStorage
+    let lastAccountId = ''
+    try {
+      const savedAccountId = localStorage.getItem('lastSelectedAccountId')
+      if (savedAccountId) {
+        lastAccountId = savedAccountId
+      }
+    } catch (e) {
+      // Ignore localStorage errors (incognito mode, etc.)
+      console.warn('Error loading last selected account:', e)
+    }
+    
     setFormData({
-      account_id: '',
+      account_id: lastAccountId,
       transaction_type: 'expense',
       amount: '',
       currency: userCurrency,

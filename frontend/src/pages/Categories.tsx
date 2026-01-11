@@ -680,7 +680,7 @@ export function Categories() {
                 )}
               </h3>
               {(showFavoritesSection || showFavoritesOnly) && (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
+                <div className="grid grid-cols-4 md:grid-cols-3 gap-2 md:gap-3">
                   {favoriteCategories.map((category) => (
                     <div key={`category-wrapper-${category.id}`}>
                       <div
@@ -784,7 +784,7 @@ export function Categories() {
               )}
               {showAllCategoriesSection && (
                 regularCategories.length > 0 ? (
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
+                  <div className="grid grid-cols-4 md:grid-cols-3 gap-2 md:gap-3">
                     {regularCategories.map((category) => (
                       <div key={`category-wrapper-${category.id}`}>
                         <div
