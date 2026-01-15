@@ -31,8 +31,13 @@ class UserStatsResponse(BaseModel):
     category_count: int
     is_active: bool
     is_verified: bool
+    is_premium: bool = False
     
     model_config = {"from_attributes": True}
+
+
+class PremiumUpdateRequest(BaseModel):
+    is_premium: bool
 
 
 @router.get("/users", response_model=List[UserStatsResponse])
@@ -79,7 +84,8 @@ async def get_all_users(
             account_count=account_count,
             category_count=category_count,
             is_active=user.is_active,
-            is_verified=user.is_verified
+            is_verified=user.is_verified,
+            is_premium=user.is_premium if hasattr(user, 'is_premium') else False
         ))
     
     return result
@@ -275,6 +281,60 @@ async def reset_user_settings(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error resetting user settings: {str(e)}"
+        )
+
+
+@router.patch("/users/{user_id}/premium", response_model=UserResponse)
+async def update_user_premium(
+    user_id: int,
+    request: PremiumUpdateRequest,
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    Update premium status for a user
+    Only accessible by admins
+    Sends notification to user when premium is activated
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    # Get target user
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    try:
+        # Get previous premium status
+        previous_premium_status = getattr(target_user, 'is_premium', False) or False
+        
+        # Update premium status
+        target_user.is_premium = request.is_premium
+        db.commit()
+        db.refresh(target_user)
+        
+        logger.info(f"Admin {current_admin.id} updated premium status for user {user_id}: {previous_premium_status} -> {request.is_premium}")
+        
+        # Send notification if premium was just activated (was False, now True)
+        if not previous_premium_status and request.is_premium:
+            from app.services.premium import send_premium_notification
+            notification_sent = send_premium_notification(target_user)
+            if notification_sent:
+                logger.info(f"Premium activation notification sent to user {user_id}")
+            else:
+                logger.warning(f"Failed to send premium activation notification to user {user_id}")
+        
+        return UserResponse.model_validate(target_user)
+        
+    except Exception as e:
+        logger.error(f"Error updating premium status: {str(e)}", exc_info=True)
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating premium status: {str(e)}"
         )
 
 
