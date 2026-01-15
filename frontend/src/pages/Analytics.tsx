@@ -337,7 +337,7 @@ type SortDirection = 'asc' | 'desc'
 function UsersStatsTab() {
   const queryClient = useQueryClient()
   const { t } = useI18n()
-  const { showError } = useToast()
+  const { showError, showSuccess } = useToast()
   const [resetUserId, setResetUserId] = useState<number | null>(null)
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const [sortColumn, setSortColumn] = useState<SortColumn>('created_at')
@@ -421,14 +421,17 @@ function UsersStatsTab() {
       })
       return { previousUsers }
     },
-    onSuccess: (updatedUser, variables) => {
+    onSuccess: async (updatedUser, variables) => {
       console.log('[Statistics] Premium update successful:', { updatedUser, variables })
+      // Обновляем локальный кэш
       queryClient.setQueryData(['adminUsers'], (old: any) => {
         if (!old) return old
         return old.map((user: any) => 
           user.id === variables.userId ? { ...user, is_premium: updatedUser.is_premium } : user
         )
       })
+      
+      // Обновляем данные текущего пользователя, если это он
       const currentUser = queryClient.getQueryData(['currentUser']) as any
       if (currentUser && currentUser.id === variables.userId) {
         queryClient.setQueryData(['currentUser'], { ...currentUser, is_premium: updatedUser.is_premium })
@@ -436,12 +439,27 @@ function UsersStatsTab() {
       } else {
         queryClient.invalidateQueries({ queryKey: ['currentUser'] })
       }
+      
+      // Инвалидируем и обновляем список пользователей для синхронизации
+      await queryClient.invalidateQueries({ queryKey: ['adminUsers'] })
+      await queryClient.refetchQueries({ queryKey: ['adminUsers'] })
+      
+      // Показываем сообщение об успехе
+      showSuccess(
+        variables.isPremium 
+          ? `Премиум статус активирован для пользователя` 
+          : `Премиум статус отключен для пользователя`
+      )
     },
-    onError: (error, variables, context) => {
+    onError: (error: any, variables, context) => {
       console.error('[Statistics] Premium update failed:', error, variables)
+      // Откатываем оптимистичное обновление
       if (context?.previousUsers) {
         queryClient.setQueryData(['adminUsers'], context.previousUsers)
       }
+      // Показываем ошибку пользователю
+      const errorMessage = error?.message || error?.response?.data?.detail || String(error) || 'Не удалось обновить премиум статус'
+      showError(errorMessage)
     },
   })
 
