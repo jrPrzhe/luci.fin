@@ -274,7 +274,7 @@ export function Transactions() {
     }
   }
 
-  const loadData = async (reset: boolean = true, accountIdOverride?: number | null) => {
+  const loadData = async (reset: boolean = true, accountIdOverride?: number | null, categoryIdOverride?: number | null) => {
     try {
       if (reset) {
         setLoading(true)
@@ -302,7 +302,10 @@ export function Transactions() {
         ? (accountIdOverride === null ? undefined : accountIdOverride)
         : (selectedAccountId || undefined)
       
-      const categoryIdParam = selectedCategoryId || undefined
+      // Use categoryIdOverride if provided, otherwise use selectedCategoryId
+      const categoryIdParam = categoryIdOverride !== undefined
+        ? (categoryIdOverride === null ? undefined : categoryIdOverride)
+        : (selectedCategoryId || undefined)
       
       const batch = await api.getTransactions(
         limit, 
@@ -409,8 +412,8 @@ export function Transactions() {
         // Set category filter in form data
         setFormData(prev => ({ ...prev, category_id: categoryId.toString() }))
         
-        // Load data with category filter
-        loadData(true).then(() => {
+        // Load data with category filter - pass categoryId directly to avoid async state issues
+        loadData(true, undefined, categoryId).then(() => {
           // Clear state after data is loaded
           window.history.replaceState({}, document.title)
         })
@@ -419,11 +422,11 @@ export function Transactions() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state])
 
-  // Load data only on initial mount (if no accountId in location.state)
+  // Load data only on initial mount (if no accountId or categoryId in location.state)
   useEffect(() => {
-    // Only load if we didn't come from Accounts page (which will trigger loadData in the effect above)
-    const state = location.state as { accountId?: number } | null
-    if (!state?.accountId && selectedAccountId === null && !accountIdFromNavigation.current) {
+    // Only load if we didn't come from Accounts or Reports page (which will trigger loadData in the effect above)
+    const state = location.state as { accountId?: number; categoryId?: number } | null
+    if (!state?.accountId && !state?.categoryId && selectedAccountId === null && !accountIdFromNavigation.current && !categoryIdFromNavigation.current) {
       loadData()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
