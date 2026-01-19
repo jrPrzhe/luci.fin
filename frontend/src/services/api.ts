@@ -950,8 +950,16 @@ class ApiClient {
   }
 
   // Reports/Analytics API
-  async getAnalytics(period: 'week' | 'month' | 'year' = 'month'): Promise<any> {
-    return this.request(`/api/v1/reports/analytics?period=${period}`)
+  async getAnalytics(
+    period: 'week' | 'month' | 'year' | 'custom' = 'month',
+    startDate?: string,
+    endDate?: string
+  ): Promise<any> {
+    let url = `/api/v1/reports/analytics?period=${period}`
+    if (startDate && endDate) {
+      url += `&start_date=${startDate}&end_date=${endDate}`
+    }
+    return this.request(url)
   }
 
   async downloadPremiumReport(

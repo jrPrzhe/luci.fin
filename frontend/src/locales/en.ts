@@ -341,6 +341,15 @@ export const en = {
   
   // Reports
   reports: {
+    custom: 'Custom Period',
+    selectDateRange: 'Select Date Range',
+    startDate: 'Start Date',
+    endDate: 'End Date',
+    selectBothDates: 'Please select both start and end dates',
+    allCategories: 'All Expense Categories',
+    category: 'Category',
+    amount: 'Amount',
+    percentage: 'Percentage',
     title: 'Financial Analytics',
     download: 'Download',
     downloading: 'Downloading...',

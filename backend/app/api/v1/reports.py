@@ -43,30 +43,66 @@ def format_month_russian(date: datetime, short: bool = False) -> str:
 
 @router.get("/analytics", response_model=Dict[str, Any])
 async def get_analytics(
-    period: Optional[str] = "month",  # "week", "month", "year"
+    period: Optional[str] = "month",  # "week", "month", "year", "custom"
+    start_date: Optional[str] = None,  # ISO format date string (YYYY-MM-DD)
+    end_date: Optional[str] = None,  # ISO format date string (YYYY-MM-DD)
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Get financial analytics for the user"""
     from app.models.shared_budget import SharedBudgetMember
     
-    # Calculate date range - use proper calendar periods
-    end_date = datetime.utcnow()
-    # Set end_date to end of current day (23:59:59) to include all transactions from today
-    end_date = end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+    # Calculate date range - use proper calendar periods or custom dates
+    if start_date and end_date:
+        # Custom date range
+        try:
+            # Parse ISO format dates (YYYY-MM-DD)
+            if 'T' in start_date or '+' in start_date or 'Z' in start_date:
+                start_date_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
+            else:
+                start_date_dt = datetime.strptime(start_date, '%Y-%m-%d')
+            
+            if 'T' in end_date or '+' in end_date or 'Z' in end_date:
+                end_date_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
+            else:
+                end_date_dt = datetime.strptime(end_date, '%Y-%m-%d')
+            
+            # Set start_date to beginning of day
+            start_date_dt = start_date_dt.replace(hour=0, minute=0, second=0, microsecond=0)
+            # Set end_date to end of day
+            end_date_dt = end_date_dt.replace(hour=23, minute=59, second=59, microsecond=999999)
+            
+            # Validate date range
+            if start_date_dt > end_date_dt:
+                raise ValueError("start_date must be before end_date")
+            
+            start_date = start_date_dt
+            end_date = end_date_dt
+        except (ValueError, TypeError) as e:
+            logger.warning(f"Invalid custom date range: {e}, using default period")
+            # Fall back to period-based calculation
+            period = period or "month"
+            start_date = None
+            end_date = None
     
-    if period == "week":
-        # Last 7 days (including today)
-        start_date = (end_date - timedelta(days=6)).replace(hour=0, minute=0, second=0, microsecond=0)
-    elif period == "month":
-        # Current month from the 1st to today (end of day)
-        start_date = datetime(end_date.year, end_date.month, 1, 0, 0, 0)
-    elif period == "year":
-        # Current year from January 1st to today (end of day)
-        start_date = datetime(end_date.year, 1, 1, 0, 0, 0)
-    else:
-        # Default to current month
-        start_date = datetime(end_date.year, end_date.month, 1, 0, 0, 0)
+    # If custom dates not provided, use period-based calculation
+    if not start_date or not end_date:
+        end_date = datetime.utcnow()
+        # Set end_date to end of current day (23:59:59) to include all transactions from today
+        end_date = end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+        
+        if period == "week":
+            # Last 7 days (including today)
+            start_date = (end_date - timedelta(days=6)).replace(hour=0, minute=0, second=0, microsecond=0)
+        elif period == "month":
+            # Current month from the 1st to today (end of day)
+            start_date = datetime(end_date.year, end_date.month, 1, 0, 0, 0)
+        elif period == "year":
+            # Current year from January 1st to today (end of day)
+            start_date = datetime(end_date.year, 1, 1, 0, 0, 0)
+        else:
+            # Default to current month
+            start_date = datetime(end_date.year, end_date.month, 1, 0, 0, 0)
     
     # Get user's accounts (matching get_transactions logic)
     user_accounts = db.query(Account).filter(
@@ -697,6 +733,18 @@ async def get_analytics(
                     "type": "trend"
                 })
     
+    # Get all expense categories (not just top 5) for detailed analytics
+    all_expense_categories = []
+    for cat_name, cat_data in expenses_by_category.items():
+        all_expense_categories.append({
+            "name": cat_data["name"],
+            "icon": cat_data["icon"],
+            "amount": cat_data["amount"],
+            "color": cat_data["color"]
+        })
+    # Sort by amount descending
+    all_expense_categories.sort(key=lambda x: x["amount"], reverse=True)
+    
     result = {
         "period": period,
         "start_date": start_date.isoformat(),
@@ -708,6 +756,7 @@ async def get_analytics(
             "currency": current_user.default_currency
         },
         "top_expense_categories": top_expense_categories,
+        "all_expense_categories": all_expense_categories,  # All categories for detailed view
         "top_income_categories": top_income_categories,
         "daily_flow": daily_flow_list,
         "monthly_comparison": monthly_data,

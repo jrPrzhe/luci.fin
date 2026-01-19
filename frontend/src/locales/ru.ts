@@ -341,6 +341,15 @@ export const ru = {
   
   // Reports
   reports: {
+    custom: 'Произвольный период',
+    selectDateRange: 'Выберите диапазон дат',
+    startDate: 'Начальная дата',
+    endDate: 'Конечная дата',
+    selectBothDates: 'Пожалуйста, выберите обе даты',
+    allCategories: 'Все категории расходов',
+    category: 'Категория',
+    amount: 'Сумма',
+    percentage: 'Процент',
     title: 'Финансовая аналитика',
     download: 'Скачать',
     downloading: 'Загрузка...',

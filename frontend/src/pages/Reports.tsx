@@ -239,20 +239,29 @@ const localizeMonth = (monthStr: string, language: 'ru' | 'en', currentLocale: s
 export function Reports() {
   const { t, language, translateCategoryName } = useI18n()
   const queryClient = useQueryClient()
-  const [period, setPeriod] = useState<'week' | 'month' | 'year'>('month')
+  const [period, setPeriod] = useState<'week' | 'month' | 'year' | 'custom'>('month')
   const [showPremiumModal, setShowPremiumModal] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
+  const [showDatePicker, setShowDatePicker] = useState(false)
+  const [startDate, setStartDate] = useState<string>('')
+  const [endDate, setEndDate] = useState<string>('')
   const locale = language === 'ru' ? 'ru-RU' : 'en-US'
   
-  // Prefetch data when period changes (but don't invalidate - use cache if available)
+  // Prefetch data when period or dates change (but don't invalidate - use cache if available)
   useEffect(() => {
     console.log(`[Reports] Period changed to: ${period}, prefetching if needed`)
+    const queryKey = period === 'custom' && startDate && endDate
+      ? ['analytics', period, startDate, endDate]
+      : ['analytics', period]
+    
     queryClient.prefetchQuery({
-      queryKey: ['analytics', period],
-      queryFn: () => api.getAnalytics(period),
+      queryKey,
+      queryFn: () => period === 'custom' && startDate && endDate
+        ? api.getAnalytics('custom', startDate, endDate)
+        : api.getAnalytics(period),
       staleTime: 60000,
     })
-  }, [period, queryClient])
+  }, [period, startDate, endDate, queryClient])
   
   // Function to translate Interesting Facts texts
   const translateFactText = (text: string): string => {
@@ -290,12 +299,19 @@ export function Reports() {
     return translatedText
   }
   
+  const queryKey = period === 'custom' && startDate && endDate
+    ? ['analytics', period, startDate, endDate]
+    : ['analytics', period]
+
   const { data: analytics, isLoading, error } = useQuery<AnalyticsData>({
-    queryKey: ['analytics', period],
+    queryKey,
+    enabled: period !== 'custom' || (period === 'custom' && startDate && endDate), // Don't fetch if custom period without dates
     queryFn: async () => {
       try {
-        console.log(`[Reports] Fetching analytics for period: ${period}`)
-        const data = await api.getAnalytics(period)
+        console.log(`[Reports] Fetching analytics for period: ${period}`, period === 'custom' ? { startDate, endDate } : '')
+        const data = period === 'custom' && startDate && endDate
+          ? await api.getAnalytics('custom', startDate, endDate)
+          : await api.getAnalytics(period)
         console.log(`[Reports] Analytics data received:`, {
           income: data?.totals?.income,
           expense: data?.totals?.expense,
@@ -661,9 +677,86 @@ export function Reports() {
           >
             {t.reports.year}
           </button>
+          <button
+            onClick={() => {
+              setPeriod('custom')
+              setShowDatePicker(true)
+            }}
+            className={`px-4 py-2 rounded-telegram text-sm font-medium transition-all ${
+              period === 'custom'
+                ? 'bg-telegram-primary text-white'
+                : 'bg-telegram-surface text-telegram-text hover:bg-telegram-hover'
+            }`}
+          >
+            📅 {t.reports.custom || 'Custom'}
+          </button>
           </div>
         </div>
       </div>
+
+      {/* Custom Date Range Picker */}
+      {showDatePicker && (
+        <div className="card p-5 mb-6">
+          <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
+            {t.reports.selectDateRange || 'Select Date Range'}
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
+                {t.reports.startDate || 'Start Date'}
+              </label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="input w-full"
+                max={endDate || undefined}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
+                {t.reports.endDate || 'End Date'}
+              </label>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="input w-full"
+                min={startDate || undefined}
+                max={new Date().toISOString().split('T')[0]}
+              />
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={() => {
+                if (startDate && endDate) {
+                  setShowDatePicker(false)
+                  queryClient.invalidateQueries({ queryKey: ['analytics'] })
+                } else {
+                  alert(t.reports.selectBothDates || 'Please select both start and end dates')
+                }
+              }}
+              className="btn-primary"
+            >
+              {t.common.apply || 'Apply'}
+            </button>
+            <button
+              onClick={() => {
+                setShowDatePicker(false)
+                if (period === 'custom') {
+                  setPeriod('month')
+                  setStartDate('')
+                  setEndDate('')
+                }
+              }}
+              className="btn-secondary"
+            >
+              {t.common.cancel}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -1091,6 +1184,75 @@ export function Reports() {
           )
         })()}
       </div>
+
+      {/* Detailed Category Analytics */}
+      {analytics.all_expense_categories && Array.isArray(analytics.all_expense_categories) && analytics.all_expense_categories.length > 0 && (
+        <div className="card p-5 mb-6">
+          <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
+            {t.reports.allCategories || 'All Expense Categories'}
+          </h2>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-telegram-border dark:border-telegram-dark-border">
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
+                    {t.reports.category || 'Category'}
+                  </th>
+                  <th className="text-right py-3 px-4 text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
+                    {t.reports.amount || 'Amount'}
+                  </th>
+                  <th className="text-right py-3 px-4 text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
+                    {t.reports.percentage || '%'}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {analytics.all_expense_categories.map((cat, index) => {
+                  const percentage = analytics.totals?.expense > 0
+                    ? (cat.amount / analytics.totals.expense * 100)
+                    : 0
+                  return (
+                    <tr
+                      key={index}
+                      className="border-b border-telegram-border dark:border-telegram-dark-border hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors"
+                    >
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">{cat.icon}</span>
+                          <span className="text-sm text-telegram-text dark:text-telegram-dark-text">
+                            {translateCategoryName(cat.name)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="text-right py-3 px-4">
+                        <span className="text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
+                          {formatCurrency(cat.amount)}
+                        </span>
+                      </td>
+                      <td className="text-right py-3 px-4">
+                        <div className="flex items-center justify-end gap-2">
+                          <div className="w-24 h-2 bg-telegram-border dark:bg-telegram-dark-border rounded-full overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all"
+                              style={{
+                                width: `${Math.min(percentage, 100)}%`,
+                                backgroundColor: cat.color || '#607D8B'
+                              }}
+                            />
+                          </div>
+                          <span className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary w-12 text-right">
+                            {percentage.toFixed(1)}%
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
