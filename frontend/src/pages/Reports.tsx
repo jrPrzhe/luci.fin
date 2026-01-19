@@ -270,21 +270,31 @@ export function Reports() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
   
-  // Prefetch data when period or dates change (but don't invalidate - use cache if available)
+  // Prefetch data when period changes (but don't invalidate - use cache if available)
+  // Only prefetch for non-custom periods or custom with dates
   useEffect(() => {
     console.log(`[Reports] Period changed to: ${period}, prefetching if needed`)
-    const queryKey = period === 'custom' && startDate && endDate
-      ? ['analytics', period, startDate, endDate]
-      : ['analytics', period]
     
-    queryClient.prefetchQuery({
-      queryKey,
-      queryFn: () => period === 'custom' && startDate && endDate
-        ? api.getAnalytics('custom', startDate, endDate)
-        : api.getAnalytics(period),
-      staleTime: 60000,
-    })
-  }, [period, startDate, endDate, queryClient])
+    if (period !== 'custom') {
+      queryClient.prefetchQuery({
+        queryKey: ['analytics', period],
+        queryFn: () => api.getAnalytics(period),
+        staleTime: 60000,
+      })
+      // Clear custom dates when switching to non-custom period
+      if (startDate || endDate) {
+        setStartDate('')
+        setEndDate('')
+      }
+    } else if (period === 'custom' && startDate && endDate) {
+      // Only prefetch custom period if dates are selected
+      queryClient.prefetchQuery({
+        queryKey: ['analytics', period, startDate, endDate],
+        queryFn: () => api.getAnalytics('custom', startDate, endDate),
+        staleTime: 60000,
+      })
+    }
+  }, [period, queryClient, startDate, endDate])
   
   // Function to translate Interesting Facts texts
   const translateFactText = (text: string): string => {
@@ -714,7 +724,6 @@ export function Reports() {
           </button>
           <button
             onClick={() => {
-              setPeriod('custom')
               setShowDatePicker(true)
             }}
             className={`px-2.5 py-1.5 rounded-telegram text-xs font-medium transition-all whitespace-nowrap ${
@@ -766,6 +775,7 @@ export function Reports() {
             <button
               onClick={() => {
                 if (startDate && endDate) {
+                  setPeriod('custom')
                   setShowDatePicker(false)
                   queryClient.invalidateQueries({ queryKey: ['analytics'] })
                 } else {
