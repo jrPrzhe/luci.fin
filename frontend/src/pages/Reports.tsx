@@ -305,7 +305,7 @@ export function Reports() {
 
   const { data: analytics, isLoading, error } = useQuery<AnalyticsData>({
     queryKey,
-    enabled: period !== 'custom' || (period === 'custom' && startDate && endDate), // Don't fetch if custom period without dates
+    enabled: period !== 'custom' || (period === 'custom' && !!startDate && !!endDate), // Don't fetch if custom period without dates
     queryFn: async () => {
       try {
         console.log(`[Reports] Fetching analytics for period: ${period}`, period === 'custom' ? { startDate, endDate } : '')
