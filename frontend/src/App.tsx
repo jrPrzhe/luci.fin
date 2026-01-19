@@ -20,6 +20,7 @@ import { Statistics } from './pages/Statistics'
 import { Achievements } from './pages/Achievements'
 import { Quests } from './pages/Quests'
 import { Analytics } from './pages/Analytics'
+import { Biography } from './pages/Biography'
 import { detectPlatform } from './utils/platform'
 import { UnifiedAuthHandler } from './components/UnifiedAuthHandler'
 import { ValentineProvider } from './contexts/ValentineContext'
@@ -104,6 +105,7 @@ function App() {
                               <Route path="about" element={<About />} />
                               <Route path="achievements" element={<Achievements />} />
                               <Route path="quests" element={<Quests />} />
+                              <Route path="biography" element={<Biography />} />
                             </Route>
                           </Routes>
                         </ErrorBoundary>

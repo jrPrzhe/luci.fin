@@ -46,6 +46,7 @@ export const en = {
     quests: 'Quests',
     achievements: 'Achievements',
     analytics: 'Analytics',
+    biography: 'Biography',
     menu: 'Menu',
   },
   

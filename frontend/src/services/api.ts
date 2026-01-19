@@ -1206,6 +1206,43 @@ class ApiClient {
     })
   }
 
+  // Biography API
+  async getNewUserStatus(): Promise<{
+    new_user: boolean
+    has_biography: boolean
+  }> {
+    return this.request('/api/v1/biography/new-user-status')
+  }
+
+  async markUserNotNew(): Promise<{ success: boolean; new_user: boolean }> {
+    return this.request('/api/v1/biography/mark-not-new', {
+      method: 'POST',
+      body: JSON.stringify({ skip_wizard: true }),
+    })
+  }
+
+  async submitQuestionnaire(data: {
+    category_limits: Record<string, number>
+    monthly_income: number
+    problems_text?: string
+    problems_options?: string[]
+    goal_text?: string
+    goal_options?: string[]
+  }): Promise<any> {
+    return this.request('/api/v1/biography/questionnaire', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async getBiography(): Promise<any | null> {
+    return this.request('/api/v1/biography')
+  }
+
+  async getBiographyHistory(): Promise<any[]> {
+    return this.request('/api/v1/biography/history')
+  }
+
   // Analytics tracking
   async trackEvent(
     eventType: string,

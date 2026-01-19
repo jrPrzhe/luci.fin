@@ -590,7 +590,7 @@ async def check_migrations():
 # Import and include routers
 print("[STARTUP] Importing routers...", file=sys.stderr, flush=True)
 try:
-    from app.api.v1 import auth, transactions, accounts, shared_budgets, ai, categories, reports, goals, admin, gamification, analytics
+    from app.api.v1 import auth, transactions, accounts, shared_budgets, ai, categories, reports, goals, admin, gamification, analytics, biography
     from app.api.v1 import import_data as import_router
     print("[STARTUP] Routers imported", file=sys.stderr, flush=True)
 except Exception as e:
@@ -615,6 +615,7 @@ try:
     app.include_router(import_router.router, prefix="/api/v1/import", tags=["Import"])
     app.include_router(gamification.router, prefix="/api/v1/gamification", tags=["Gamification"])
     app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["Analytics"])
+    app.include_router(biography.router, prefix="/api/v1/biography", tags=["Biography"])
     # Admin router should be last to avoid conflicts with other routes
     print("[STARTUP] Registering admin router...", file=sys.stderr, flush=True)
     app.include_router(admin.router, prefix="/api/v1", tags=["Admin"])

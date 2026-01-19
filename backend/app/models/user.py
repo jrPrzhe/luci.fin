@@ -37,6 +37,7 @@ class User(Base):
     is_verified = Column(Boolean, default=False)
     is_admin = Column(Boolean, default=False)
     is_premium = Column(Boolean, default=False)  # Premium subscription status
+    new_user = Column(Boolean, default=True)  # Flag for new users (first-time onboarding)
     verification_token = Column(String(255), nullable=True)
     
     # Timestamps
@@ -53,6 +54,7 @@ class User(Base):
     goals = relationship("Goal", back_populates="user", cascade="all, delete-orphan")
     reports = relationship("Report", back_populates="user", cascade="all, delete-orphan")
     gamification_profile = relationship("UserGamificationProfile", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    biographies = relationship("Biography", back_populates="user", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<User(id={self.id}, email={self.email})>"

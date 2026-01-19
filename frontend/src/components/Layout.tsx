@@ -16,6 +16,7 @@ import { useTheme } from '../hooks/useTheme'
 import { useI18n } from '../contexts/I18nContext'
 import { QuestNotifications } from './QuestNotifications'
 import { hasInteractedWithBot, openVKBot } from '../utils/vk'
+import { OnboardingWizard } from './OnboardingWizard'
 
 export function Layout() {
   const navigate = useNavigate()
@@ -218,6 +219,17 @@ export function Layout() {
       try {
         const user = await api.getCurrentUser()
         if (user) {
+          // Проверяем статус new_user для показа визарда биографии
+          try {
+            const newUserStatus = await api.getNewUserStatus()
+            if (newUserStatus?.new_user && !newUserStatus?.has_biography) {
+              // Показываем визард анкетирования для новых пользователей
+              setShowOnboardingWizard(true)
+            }
+          } catch (error) {
+            console.error('Error checking new user status:', error)
+          }
+          
           // Сразу проверяем флаг justLoggedIn после успешной авторизации (до установки isAuthorized)
           const justLoggedIn = sessionStorage.getItem('justLoggedIn') === 'true'
           if (justLoggedIn) {
@@ -534,6 +546,7 @@ export function Layout() {
     { path: '/', label: t.nav.dashboard, icon: '📊' },
     { path: '/transactions', label: t.nav.transactions, icon: '💸' },
     { path: '/accounts', label: t.nav.accounts, icon: '💳' },
+    { path: '/biography', label: t.nav.biography, icon: '📝' },
     { path: '/quests', label: t.nav.quests, icon: '🎯' },
     { path: '/achievements', label: t.nav.achievements, icon: '🏆' },
     { path: '/categories', label: t.nav.categories, icon: '📦' },
@@ -974,6 +987,20 @@ export function Layout() {
 
       {/* Stories Modal */}
       <Stories isOpen={showStories} onClose={() => setShowStories(false)} />
+
+      {/* Onboarding Wizard */}
+      {showOnboardingWizard && (
+        <OnboardingWizard
+          onComplete={() => {
+            setShowOnboardingWizard(false)
+            // Обновляем данные пользователя после завершения анкетирования
+            window.location.reload()
+          }}
+          onSkip={() => {
+            setShowOnboardingWizard(false)
+          }}
+        />
+      )}
     </div>
   )
 }
