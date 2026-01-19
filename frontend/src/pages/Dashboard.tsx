@@ -616,27 +616,22 @@ export function Dashboard() {
         console.log('[Dashboard] Cache invalidated after successful transaction creation')
         
         // Immediately refetch critical data to update UI
-        // Use cancelRefetch: false to ensure refetch happens even if queries are in progress
         await Promise.all([
           queryClient.refetchQueries({ 
             queryKey: ['balance'], 
-            type: 'active',
-            cancelRefetch: false 
+            type: 'active'
           }),
           queryClient.refetchQueries({ 
             queryKey: ['recent-transactions'], 
-            type: 'active',
-            cancelRefetch: false 
+            type: 'active'
           }),
           queryClient.refetchQueries({ 
             queryKey: ['monthly-stats'], 
-            type: 'active',
-            cancelRefetch: false 
+            type: 'active'
           }),
           queryClient.refetchQueries({ 
             queryKey: ['goals'], 
-            type: 'active',
-            cancelRefetch: false 
+            type: 'active'
           }),
         ])
         
@@ -714,10 +709,10 @@ export function Dashboard() {
               
               // Refetch critical data immediately
               await Promise.all([
-                queryClient.refetchQueries({ queryKey: ['balance'], type: 'active', cancelRefetch: false }),
-                queryClient.refetchQueries({ queryKey: ['recent-transactions'], type: 'active', cancelRefetch: false }),
-                queryClient.refetchQueries({ queryKey: ['monthly-stats'], type: 'active', cancelRefetch: false }),
-                queryClient.refetchQueries({ queryKey: ['goals'], type: 'active', cancelRefetch: false }),
+                queryClient.refetchQueries({ queryKey: ['balance'], type: 'active' }),
+                queryClient.refetchQueries({ queryKey: ['recent-transactions'], type: 'active' }),
+                queryClient.refetchQueries({ queryKey: ['monthly-stats'], type: 'active' }),
+                queryClient.refetchQueries({ queryKey: ['goals'], type: 'active' }),
               ])
               
               console.log('[Dashboard] Cache invalidated and refetched after duplicate transaction check')
