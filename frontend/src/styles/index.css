@@ -284,11 +284,54 @@
   animation: slide-down 0.3s ease-out;
 }
 
-/* Режим Дня святого Валентина - легкие акценты */
+/* Режим Дня святого Валентина - яркие праздничные акценты */
 .valentine-mode {
   position: relative;
 }
 
+/* Розовые акценты для девочек */
+.valentine-mode.valentine-pink .card {
+  position: relative;
+  overflow: visible;
+}
+
+.valentine-mode.valentine-pink .card::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  right: -3px;
+  bottom: -3px;
+  background: linear-gradient(45deg, #ff9ec8, #ff6b9d, #ffb3d9, #ff9ec8, #ff6b9d);
+  border-radius: inherit;
+  z-index: -1;
+  opacity: 0.2;
+  animation: gradient-shift 4s ease infinite;
+  background-size: 200% 200%;
+}
+
+/* Синие акценты для мальчиков */
+.valentine-mode.valentine-blue .card {
+  position: relative;
+  overflow: visible;
+}
+
+.valentine-mode.valentine-blue .card::before {
+  content: '';
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  right: -3px;
+  bottom: -3px;
+  background: linear-gradient(45deg, #6bb6ff, #4a9eff, #87ceeb, #6bb6ff, #4a9eff);
+  border-radius: inherit;
+  z-index: -1;
+  opacity: 0.2;
+  animation: gradient-shift 4s ease infinite;
+  background-size: 200% 200%;
+}
+
+/* Общие стили для карточек */
 .valentine-mode .card {
   position: relative;
   overflow: visible;
@@ -301,30 +344,130 @@
   left: -3px;
   right: -3px;
   bottom: -3px;
-  background: linear-gradient(45deg, #ff6b9d, #c44569, #f8b500, #ff6b9d, #c44569);
+  background: linear-gradient(45deg, #ff9ec8, #ff6b9d, #6bb6ff, #4a9eff, #ff9ec8);
   border-radius: inherit;
   z-index: -1;
-  opacity: 0.15;
+  opacity: 0.2;
   animation: gradient-shift 4s ease infinite;
   background-size: 200% 200%;
 }
 
+/* Розовые кнопки */
 .valentine-mode .btn-primary {
-  background: linear-gradient(135deg, #ff6b9d 0%, #c44569 100%) !important;
-  box-shadow: 0 4px 15px rgba(255, 107, 157, 0.4);
+  background: linear-gradient(135deg, #ff6b9d 0%, #ff9ec8 100%) !important;
+  box-shadow: 0 4px 20px rgba(255, 107, 157, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .valentine-mode .btn-primary:hover {
-  background: linear-gradient(135deg, #c44569 0%, #ff6b9d 100%) !important;
-  box-shadow: 0 6px 20px rgba(255, 107, 157, 0.5);
+  background: linear-gradient(135deg, #ff9ec8 0%, #ff6b9d 100%) !important;
+  box-shadow: 0 6px 25px rgba(255, 107, 157, 0.6);
+  transform: translateY(-1px);
 }
 
 .dark .valentine-mode .btn-primary {
   background: linear-gradient(135deg, #ff6b9d 0%, #ff8fab 100%) !important;
-  box-shadow: 0 4px 15px rgba(255, 107, 157, 0.4);
+  box-shadow: 0 4px 20px rgba(255, 107, 157, 0.5);
 }
 
 .dark .valentine-mode .btn-primary:hover {
   background: linear-gradient(135deg, #ff8fab 0%, #ff6b9d 100%) !important;
-  box-shadow: 0 6px 20px rgba(255, 107, 157, 0.5);
+  box-shadow: 0 6px 25px rgba(255, 107, 157, 0.6);
+}
+
+/* Розовый градиент для названия */
+.valentine-mode .valentine-title {
+  background: linear-gradient(135deg, #ff6b9d 0%, #ff9ec8 50%, #ffb3d9 100%) !important;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: none;
+  filter: drop-shadow(0 2px 4px rgba(255, 107, 157, 0.3));
+}
+
+/* Розовый градиент для Balance Card */
+.valentine-mode .valentine-balance-card {
+  background: linear-gradient(135deg, #ff6b9d 0%, #ff9ec8 50%, #ffb3d9 100%) !important;
+  box-shadow: 0 8px 32px rgba(255, 107, 157, 0.4);
+}
+
+.dark .valentine-mode .valentine-balance-card {
+  background: linear-gradient(135deg, #ff6b9d 0%, #ff8fab 50%, #ffb3d9 100%) !important;
+  box-shadow: 0 8px 32px rgba(255, 107, 157, 0.5);
+}
+
+/* Синий градиент для мальчиков */
+.valentine-mode.valentine-blue .valentine-balance-card {
+  background: linear-gradient(135deg, #4a9eff 0%, #6bb6ff 50%, #87ceeb 100%) !important;
+  box-shadow: 0 8px 32px rgba(74, 158, 255, 0.4);
+}
+
+.dark .valentine-mode.valentine-blue .valentine-balance-card {
+  background: linear-gradient(135deg, #4a9eff 0%, #5ba5ff 50%, #6bb6ff 100%) !important;
+  box-shadow: 0 8px 32px rgba(74, 158, 255, 0.5);
+}
+
+.valentine-mode.valentine-blue .valentine-title {
+  background: linear-gradient(135deg, #4a9eff 0%, #6bb6ff 50%, #87ceeb 100%) !important;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 4px rgba(74, 158, 255, 0.3));
+}
+
+/* Акценты на ссылках */
+.valentine-mode a {
+  color: #ff6b9d;
+}
+
+.valentine-mode a:hover {
+  color: #ff9ec8;
+}
+
+.valentine-mode.valentine-blue a {
+  color: #4a9eff;
+}
+
+.valentine-mode.valentine-blue a:hover {
+  color: #6bb6ff;
+}
+
+/* Дополнительные визуальные эффекты */
+.valentine-mode .card {
+  border-color: rgba(255, 107, 157, 0.2);
+}
+
+.valentine-mode .card:hover {
+  border-color: rgba(255, 107, 157, 0.4);
+  box-shadow: 0 4px 20px rgba(255, 107, 157, 0.15);
+}
+
+/* Акценты на иконках и эмодзи */
+.valentine-mode .text-telegram-primary {
+  color: #ff6b9d !important;
+}
+
+.valentine-mode .text-telegram-primary:hover {
+  color: #ff9ec8 !important;
+}
+
+/* Пульсирующая анимация для важных элементов */
+@keyframes valentine-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.02);
+  }
+}
+
+.valentine-mode .valentine-balance-card {
+  animation: valentine-pulse 3s ease-in-out infinite;
+}
+
+/* Более заметные тени */
+.valentine-mode .shadow-telegram-lg {
+  box-shadow: 0 10px 40px rgba(255, 107, 157, 0.25) !important;
 }

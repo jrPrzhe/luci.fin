@@ -8,6 +8,7 @@ import { LevelUpModal } from '../components/LevelUpModal'
 import { UserStatsCard } from '../components/UserStatsCard'
 import { useToast } from '../contexts/ToastContext'
 import { LoadingSpinner } from '../components/LoadingSpinner'
+import { useValentineTheme } from '../contexts/ValentineContext'
 
 interface Account {
   id: number
@@ -33,6 +34,7 @@ export function Dashboard() {
   const navigate = useNavigate()
   const location = useLocation()
   const { showError, showSuccess } = useToast()
+  const { isEnabled: valentineEnabled } = useValentineTheme()
   const [showQuickForm, setShowQuickForm] = useState(false)
   const [quickFormStep, setQuickFormStep] = useState<'category' | 'form'>('category')
   const [quickFormType, setQuickFormType] = useState<'income' | 'expense' | 'transfer' | null>(null)
@@ -596,36 +598,56 @@ export function Dashboard() {
         goal_id: '',
       })
       
-      // Invalidate queries in background (don't wait for refetch)
-      // This will trigger refetch on next useQuery call
-      // Добавляем небольшую задержку, чтобы убедиться, что транзакция сохранена в БД
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['balance'] })
-        queryClient.invalidateQueries({ queryKey: ['recent-transactions'] })
-        queryClient.invalidateQueries({ queryKey: ['accounts'] })
-        queryClient.invalidateQueries({ queryKey: ['monthly-stats'] })
-        queryClient.invalidateQueries({ queryKey: ['goals'] })
-        queryClient.invalidateQueries({ queryKey: ['gamification-status'] })
-        queryClient.invalidateQueries({ queryKey: ['daily-quests'] })
-        // Invalidate all analytics queries (with any period parameter: week, month, year)
-        // Using exact: false to match all queries starting with ['analytics']
-        queryClient.invalidateQueries({ queryKey: ['analytics'], exact: false })
+      // Invalidate and immediately refetch critical data to ensure UI updates
+      // Do this immediately without setTimeout to avoid delays
+      try {
+        // Invalidate all related queries first
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: ['balance'] }),
+          queryClient.invalidateQueries({ queryKey: ['recent-transactions'] }),
+          queryClient.invalidateQueries({ queryKey: ['accounts'] }),
+          queryClient.invalidateQueries({ queryKey: ['monthly-stats'] }),
+          queryClient.invalidateQueries({ queryKey: ['goals'] }),
+          queryClient.invalidateQueries({ queryKey: ['gamification-status'] }),
+          queryClient.invalidateQueries({ queryKey: ['daily-quests'] }),
+          queryClient.invalidateQueries({ queryKey: ['analytics'], exact: false }),
+        ])
         
         console.log('[Dashboard] Cache invalidated after successful transaction creation')
         
-        // Optionally refetch critical data in background (non-blocking)
-        Promise.all([
-          queryClient.refetchQueries({ queryKey: ['balance'], type: 'active' }),
-          queryClient.refetchQueries({ queryKey: ['recent-transactions'], type: 'active' }),
-          queryClient.refetchQueries({ queryKey: ['monthly-stats'], type: 'active' }), // Добавлено принудительное обновление monthly-stats
-          queryClient.refetchQueries({ queryKey: ['goals'], type: 'active' }),
-          // Force refetch all analytics queries (week, month, year) - both active and inactive
-          // This ensures Reports page updates even if it's not currently open
-          queryClient.refetchQueries({ queryKey: ['analytics'], exact: false }),
-        ]).catch(console.error) // Don't block UI on refetch errors
-      }, 500)
+        // Immediately refetch critical data to update UI
+        // Use cancelRefetch: false to ensure refetch happens even if queries are in progress
+        await Promise.all([
+          queryClient.refetchQueries({ 
+            queryKey: ['balance'], 
+            type: 'active',
+            cancelRefetch: false 
+          }),
+          queryClient.refetchQueries({ 
+            queryKey: ['recent-transactions'], 
+            type: 'active',
+            cancelRefetch: false 
+          }),
+          queryClient.refetchQueries({ 
+            queryKey: ['monthly-stats'], 
+            type: 'active',
+            cancelRefetch: false 
+          }),
+          queryClient.refetchQueries({ 
+            queryKey: ['goals'], 
+            type: 'active',
+            cancelRefetch: false 
+          }),
+        ])
+        
+        console.log('[Dashboard] Critical data refetched after transaction creation')
+      } catch (refetchError) {
+        console.error('[Dashboard] Error refetching data after transaction creation:', refetchError)
+        // Don't block UI on refetch errors, but log them
+      }
       
       showSuccess(t.dashboard.form.transactionAdded.replace('{type}', t.dashboard.quickActions[quickFormType || 'expense']))
+      setSubmitting(false)
     } catch (err: any) {
       console.error('[Dashboard] Error creating transaction:', err)
       if (submitData) {
@@ -677,18 +699,31 @@ export function Dashboard() {
               goal_id: '',
             })
             
-            // Обновляем кеш с небольшой задержкой, чтобы убедиться, что транзакция сохранена в БД
-            setTimeout(() => {
-              queryClient.invalidateQueries({ queryKey: ['balance'] })
-              queryClient.invalidateQueries({ queryKey: ['recent-transactions'] })
-              queryClient.invalidateQueries({ queryKey: ['accounts'] })
-              queryClient.invalidateQueries({ queryKey: ['monthly-stats'] })
-              queryClient.invalidateQueries({ queryKey: ['goals'] })
-              queryClient.invalidateQueries({ queryKey: ['gamification-status'] })
-              queryClient.invalidateQueries({ queryKey: ['daily-quests'] })
-              queryClient.invalidateQueries({ queryKey: ['analytics'], exact: false })
-              console.log('[Dashboard] Cache invalidated after transaction creation')
-            }, 500)
+            // Immediately invalidate and refetch data after duplicate transaction check
+            try {
+              await Promise.all([
+                queryClient.invalidateQueries({ queryKey: ['balance'] }),
+                queryClient.invalidateQueries({ queryKey: ['recent-transactions'] }),
+                queryClient.invalidateQueries({ queryKey: ['accounts'] }),
+                queryClient.invalidateQueries({ queryKey: ['monthly-stats'] }),
+                queryClient.invalidateQueries({ queryKey: ['goals'] }),
+                queryClient.invalidateQueries({ queryKey: ['gamification-status'] }),
+                queryClient.invalidateQueries({ queryKey: ['daily-quests'] }),
+                queryClient.invalidateQueries({ queryKey: ['analytics'], exact: false }),
+              ])
+              
+              // Refetch critical data immediately
+              await Promise.all([
+                queryClient.refetchQueries({ queryKey: ['balance'], type: 'active', cancelRefetch: false }),
+                queryClient.refetchQueries({ queryKey: ['recent-transactions'], type: 'active', cancelRefetch: false }),
+                queryClient.refetchQueries({ queryKey: ['monthly-stats'], type: 'active', cancelRefetch: false }),
+                queryClient.refetchQueries({ queryKey: ['goals'], type: 'active', cancelRefetch: false }),
+              ])
+              
+              console.log('[Dashboard] Cache invalidated and refetched after duplicate transaction check')
+            } catch (refetchError) {
+              console.error('[Dashboard] Error refetching data after duplicate check:', refetchError)
+            }
             
             showSuccess(t.dashboard.form.transactionAdded.replace('{type}', t.dashboard.quickActions[quickFormType || 'expense']))
             setSubmitting(false)
@@ -705,9 +740,6 @@ export function Dashboard() {
       console.error('[Dashboard] Translated error:', translatedErrorMessage)
       showError(translatedErrorMessage)
       setSubmitting(false)
-    } finally {
-      // Reset submitting after a short delay to allow form to close
-      setTimeout(() => setSubmitting(false), 100)
     }
   }
 
@@ -790,7 +822,7 @@ export function Dashboard() {
       </div>
 
       {/* Balance Card - Hero */}
-      <div className="card mb-4 md:mb-6 bg-gradient-to-br from-telegram-primary dark:from-telegram-dark-primary to-telegram-primaryLight dark:to-telegram-dark-primaryLight text-white border-0 shadow-telegram-lg p-4 md:p-5 relative overflow-hidden">
+      <div className={`card mb-4 md:mb-6 ${valentineEnabled ? 'valentine-balance-card' : 'bg-gradient-to-br from-telegram-primary dark:from-telegram-dark-primary to-telegram-primaryLight dark:to-telegram-dark-primaryLight'} text-white border-0 shadow-telegram-lg p-4 md:p-5 relative overflow-hidden`}>
         <div className="flex items-center justify-between mb-3 md:mb-4">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">

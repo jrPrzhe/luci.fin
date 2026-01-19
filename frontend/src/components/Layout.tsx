@@ -581,7 +581,7 @@ export function Layout() {
                   transition: 'color 0.3s ease, text-shadow 0.3s ease'
                 } : {}}
               >
-                <span className={!getTitleColor() ? "bg-gradient-to-r from-telegram-primary dark:from-telegram-dark-primary via-purple-500 to-telegram-primaryLight dark:to-telegram-dark-primaryLight bg-clip-text text-transparent" : ""}>
+                <span className={!getTitleColor() ? (valentineEnabled ? "valentine-title" : "bg-gradient-to-r from-telegram-primary dark:from-telegram-dark-primary via-purple-500 to-telegram-primaryLight dark:to-telegram-dark-primaryLight bg-clip-text text-transparent") : ""}>
                   {strangerThingsEnabled ? '' : valentineEnabled ? '💝 ' : ''}Люся.Бюджет{strangerThingsEnabled ? '' : valentineEnabled ? ' ❤️' : ''}
                 </span>
               </h1>
@@ -728,7 +728,7 @@ export function Layout() {
               transition: 'color 0.3s ease, text-shadow 0.3s ease'
             } : {}}
           >
-            <span className={!getTitleColor() ? "bg-gradient-to-r from-telegram-primary dark:from-telegram-dark-primary via-purple-500 to-telegram-primaryLight dark:to-telegram-dark-primaryLight bg-clip-text text-transparent" : ""}>
+            <span className={!getTitleColor() ? (valentineEnabled ? "valentine-title" : "bg-gradient-to-r from-telegram-primary dark:from-telegram-dark-primary via-purple-500 to-telegram-primaryLight dark:to-telegram-dark-primaryLight bg-clip-text text-transparent") : ""}>
               {strangerThingsEnabled ? '' : valentineEnabled ? '💝 ' : ''}Люся.Бюджет{strangerThingsEnabled ? '' : valentineEnabled ? ' ❤️' : ''}
             </span>
           </h1>
