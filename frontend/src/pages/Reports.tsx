@@ -254,7 +254,21 @@ export function Reports() {
   const [startDate, setStartDate] = useState<string>('')
   const [endDate, setEndDate] = useState<string>('')
   const [expandedCategoryType, setExpandedCategoryType] = useState<'income' | 'expense' | 'total' | null>(null)
+  const [showScrollTop, setShowScrollTop] = useState(false)
   const locale = language === 'ru' ? 'ru-RU' : 'en-US'
+
+  // Handle scroll to show/hide scroll to top button
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 300)
+    }
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
   
   // Prefetch data when period or dates change (but don't invalidate - use cache if available)
   useEffect(() => {
@@ -781,201 +795,384 @@ export function Reports() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="card p-5 cursor-pointer hover:shadow-lg transition-all" onClick={() => setExpandedCategoryType(expandedCategoryType === 'income' ? null : 'income')}>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-              <span className="text-xl">💰</span>
-            </div>
-            <div className="min-w-0 flex-1 overflow-hidden">
-              <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{t.reports.income}</p>
-              <p className="text-base md:text-lg lg:text-xl font-bold text-green-600 dark:text-green-400 break-words" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-                {formatCurrency(analytics.totals?.income || 0)}
-              </p>
-            </div>
-            <div className="flex-shrink-0 flex items-center justify-center h-full">
-              <svg 
-                className={`w-5 h-5 text-telegram-textSecondary dark:text-telegram-dark-textSecondary transition-transform ${expandedCategoryType === 'income' ? 'rotate-180' : ''}`}
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
+        {/* Income Card */}
+        <div>
+          <div className="card p-5 cursor-pointer hover:shadow-lg transition-all" onClick={() => setExpandedCategoryType(expandedCategoryType === 'income' ? null : 'income')}>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                <span className="text-xl">💰</span>
+              </div>
+              <div className="min-w-0 flex-1 overflow-hidden">
+                <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{t.reports.income}</p>
+                <p className="text-base md:text-lg lg:text-xl font-bold text-green-600 dark:text-green-400 break-words" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                  {formatCurrency(analytics.totals?.income || 0)}
+                </p>
+              </div>
+              <div className="flex-shrink-0 flex items-center justify-center h-full">
+                <svg 
+                  className={`w-5 h-5 text-telegram-textSecondary dark:text-telegram-dark-textSecondary transition-transform ${expandedCategoryType === 'income' ? 'rotate-180' : ''}`}
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
             </div>
           </div>
+          {/* Income Categories Table */}
+          {expandedCategoryType === 'income' && (
+            <div className="card p-5 mt-4">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text">
+                  {t.reports.income}
+                </h2>
+                <button
+                  onClick={() => setExpandedCategoryType(null)}
+                  className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-telegram-border dark:border-telegram-dark-border">
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
+                        {t.reports.category || 'Category'}
+                      </th>
+                      <th className="text-right py-3 px-4 text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
+                        {t.reports.amount || 'Amount'}
+                      </th>
+                      <th className="text-right py-3 px-4 text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
+                        {t.reports.percentage || '%'}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(() => {
+                      const categoriesToShow = analytics.top_income_categories || []
+                      const totalAmount = analytics.totals?.income || 0
+                      
+                      return categoriesToShow.map((cat: any, index: number) => {
+                        const percentage = totalAmount > 0 ? (cat.amount / totalAmount * 100) : 0
+                        return (
+                          <tr
+                            key={index}
+                            className="border-b border-telegram-border dark:border-telegram-dark-border hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors cursor-pointer"
+                            onClick={async () => {
+                              try {
+                                const categories = await api.getCategories('income')
+                                const foundCategory = categories.find((c: any) => c.name === cat.name)
+                                if (foundCategory) {
+                                  navigate('/transactions', { 
+                                    state: { 
+                                      categoryId: foundCategory.id,
+                                      transactionType: 'income'
+                                    } 
+                                  })
+                                } else {
+                                  console.warn(`Category "${cat.name}" not found`)
+                                }
+                              } catch (error) {
+                                console.error('Error loading categories:', error)
+                              }
+                            }}
+                          >
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg">{cat.icon}</span>
+                                <span className="text-sm text-telegram-text dark:text-telegram-dark-text">
+                                  {translateCategoryName(cat.name)}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="text-right py-3 px-4">
+                              <span className="text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
+                                {formatCurrency(cat.amount)}
+                              </span>
+                            </td>
+                            <td className="text-right py-3 px-4">
+                              <div className="flex items-center justify-end gap-2">
+                                <div className="w-24 h-2 bg-telegram-border dark:bg-telegram-dark-border rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full rounded-full transition-all"
+                                    style={{
+                                      width: `${Math.min(percentage, 100)}%`,
+                                      backgroundColor: cat.color || '#607D8B'
+                                    }}
+                                  />
+                                </div>
+                                <span className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary w-12 text-right">
+                                  {percentage.toFixed(1)}%
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="card p-5 cursor-pointer hover:shadow-lg transition-all" onClick={() => setExpandedCategoryType(expandedCategoryType === 'expense' ? null : 'expense')}>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-              <span className="text-xl">💸</span>
-            </div>
-            <div className="min-w-0 flex-1 overflow-hidden">
-              <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{t.reports.expenses}</p>
-              <p className="text-base md:text-lg lg:text-xl font-bold text-red-600 dark:text-red-400 break-words" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-                {formatCurrency(analytics.totals?.expense || 0)}
-              </p>
-            </div>
-            <div className="flex-shrink-0 flex items-center justify-center h-full">
-              <svg 
-                className={`w-5 h-5 text-telegram-textSecondary dark:text-telegram-dark-textSecondary transition-transform ${expandedCategoryType === 'expense' ? 'rotate-180' : ''}`}
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
+        {/* Expense Card */}
+        <div>
+          <div className="card p-5 cursor-pointer hover:shadow-lg transition-all" onClick={() => setExpandedCategoryType(expandedCategoryType === 'expense' ? null : 'expense')}>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                <span className="text-xl">💸</span>
+              </div>
+              <div className="min-w-0 flex-1 overflow-hidden">
+                <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{t.reports.expenses}</p>
+                <p className="text-base md:text-lg lg:text-xl font-bold text-red-600 dark:text-red-400 break-words" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                  {formatCurrency(analytics.totals?.expense || 0)}
+                </p>
+              </div>
+              <div className="flex-shrink-0 flex items-center justify-center h-full">
+                <svg 
+                  className={`w-5 h-5 text-telegram-textSecondary dark:text-telegram-dark-textSecondary transition-transform ${expandedCategoryType === 'expense' ? 'rotate-180' : ''}`}
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
             </div>
           </div>
+          {/* Expense Categories Table */}
+          {expandedCategoryType === 'expense' && (
+            <div className="card p-5 mt-4">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text">
+                  {t.reports.expenses}
+                </h2>
+                <button
+                  onClick={() => setExpandedCategoryType(null)}
+                  className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-telegram-border dark:border-telegram-dark-border">
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
+                        {t.reports.category || 'Category'}
+                      </th>
+                      <th className="text-right py-3 px-4 text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
+                        {t.reports.amount || 'Amount'}
+                      </th>
+                      <th className="text-right py-3 px-4 text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
+                        {t.reports.percentage || '%'}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(() => {
+                      const categoriesToShow = analytics.all_expense_categories || analytics.top_expense_categories || []
+                      const totalAmount = analytics.totals?.expense || 0
+                      
+                      return categoriesToShow.map((cat: any, index: number) => {
+                        const percentage = totalAmount > 0 ? (cat.amount / totalAmount * 100) : 0
+                        return (
+                          <tr
+                            key={index}
+                            className="border-b border-telegram-border dark:border-telegram-dark-border hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors cursor-pointer"
+                            onClick={async () => {
+                              try {
+                                const categories = await api.getCategories('expense')
+                                const foundCategory = categories.find((c: any) => c.name === cat.name)
+                                if (foundCategory) {
+                                  navigate('/transactions', { 
+                                    state: { 
+                                      categoryId: foundCategory.id,
+                                      transactionType: 'expense'
+                                    } 
+                                  })
+                                } else {
+                                  console.warn(`Category "${cat.name}" not found`)
+                                }
+                              } catch (error) {
+                                console.error('Error loading categories:', error)
+                              }
+                            }}
+                          >
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg">{cat.icon}</span>
+                                <span className="text-sm text-telegram-text dark:text-telegram-dark-text">
+                                  {translateCategoryName(cat.name)}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="text-right py-3 px-4">
+                              <span className="text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
+                                {formatCurrency(cat.amount)}
+                              </span>
+                            </td>
+                            <td className="text-right py-3 px-4">
+                              <div className="flex items-center justify-end gap-2">
+                                <div className="w-24 h-2 bg-telegram-border dark:bg-telegram-dark-border rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full rounded-full transition-all"
+                                    style={{
+                                      width: `${Math.min(percentage, 100)}%`,
+                                      backgroundColor: cat.color || '#607D8B'
+                                    }}
+                                  />
+                                </div>
+                                <span className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary w-12 text-right">
+                                  {percentage.toFixed(1)}%
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="card p-5 cursor-pointer hover:shadow-lg transition-all" onClick={() => setExpandedCategoryType(expandedCategoryType === 'total' ? null : 'total')}>
-          <div className="flex items-center gap-3 mb-2">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-              (analytics.totals?.net || 0) >= 0 ? 'bg-blue-100' : 'bg-orange-100'
-            }`}>
-              <span className="text-xl">📊</span>
-            </div>
-            <div className="min-w-0 flex-1 overflow-hidden">
-              <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{t.reports.total}</p>
-              <p className={`text-base md:text-lg lg:text-xl font-bold break-words ${
-                (analytics.totals?.net || 0) >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'
-              }`} style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-                {formatCurrency(analytics.totals?.net || 0)}
-              </p>
-            </div>
-            <div className="flex-shrink-0 flex items-center justify-center h-full">
-              <svg 
-                className={`w-5 h-5 text-telegram-textSecondary dark:text-telegram-dark-textSecondary transition-transform ${expandedCategoryType === 'total' ? 'rotate-180' : ''}`}
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
+        {/* Total Card */}
+        <div>
+          <div className="card p-5 cursor-pointer hover:shadow-lg transition-all" onClick={() => setExpandedCategoryType(expandedCategoryType === 'total' ? null : 'total')}>
+            <div className="flex items-center gap-3 mb-2">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                (analytics.totals?.net || 0) >= 0 ? 'bg-blue-100' : 'bg-orange-100'
+              }`}>
+                <span className="text-xl">📊</span>
+              </div>
+              <div className="min-w-0 flex-1 overflow-hidden">
+                <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{t.reports.total}</p>
+                <p className={`text-base md:text-lg lg:text-xl font-bold break-words ${
+                  (analytics.totals?.net || 0) >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'
+                }`} style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                  {formatCurrency(analytics.totals?.net || 0)}
+                </p>
+              </div>
+              <div className="flex-shrink-0 flex items-center justify-center h-full">
+                <svg 
+                  className={`w-5 h-5 text-telegram-textSecondary dark:text-telegram-dark-textSecondary transition-transform ${expandedCategoryType === 'total' ? 'rotate-180' : ''}`}
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
             </div>
           </div>
+          {/* Total Categories Table */}
+          {expandedCategoryType === 'total' && (
+            <div className="card p-5 mt-4">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text">
+                  {t.reports.allCategories || 'All Categories'}
+                </h2>
+                <button
+                  onClick={() => setExpandedCategoryType(null)}
+                  className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-telegram-border dark:border-telegram-dark-border">
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
+                        {t.reports.category || 'Category'}
+                      </th>
+                      <th className="text-right py-3 px-4 text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
+                        {t.reports.amount || 'Amount'}
+                      </th>
+                      <th className="text-right py-3 px-4 text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
+                        {t.reports.percentage || '%'}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(() => {
+                      const incomeCats = (analytics.top_income_categories || []).map(cat => ({ ...cat, type: 'income' as const }))
+                      const expenseCats = (analytics.all_expense_categories || analytics.top_expense_categories || []).map(cat => ({ ...cat, type: 'expense' as const }))
+                      const categoriesToShow = [...incomeCats, ...expenseCats].sort((a, b) => b.amount - a.amount)
+                      const totalAmount = (analytics.totals?.income || 0) + (analytics.totals?.expense || 0)
+                      
+                      return categoriesToShow.map((cat: any, index: number) => {
+                        const percentage = totalAmount > 0 ? (cat.amount / totalAmount * 100) : 0
+                        return (
+                          <tr
+                            key={index}
+                            className="border-b border-telegram-border dark:border-telegram-dark-border hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors cursor-pointer"
+                            onClick={async () => {
+                              try {
+                                const categories = await api.getCategories(cat.type)
+                                const foundCategory = categories.find((c: any) => c.name === cat.name)
+                                if (foundCategory) {
+                                  navigate('/transactions', { 
+                                    state: { 
+                                      categoryId: foundCategory.id,
+                                      transactionType: cat.type
+                                    } 
+                                  })
+                                } else {
+                                  console.warn(`Category "${cat.name}" not found`)
+                                }
+                              } catch (error) {
+                                console.error('Error loading categories:', error)
+                              }
+                            }}
+                          >
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg">{cat.icon}</span>
+                                <span className="text-sm text-telegram-text dark:text-telegram-dark-text">
+                                  {translateCategoryName(cat.name)}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="text-right py-3 px-4">
+                              <span className="text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
+                                {formatCurrency(cat.amount)}
+                              </span>
+                            </td>
+                            <td className="text-right py-3 px-4">
+                              <div className="flex items-center justify-end gap-2">
+                                <div className="w-24 h-2 bg-telegram-border dark:bg-telegram-dark-border rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full rounded-full transition-all"
+                                    style={{
+                                      width: `${Math.min(percentage, 100)}%`,
+                                      backgroundColor: cat.color || '#607D8B'
+                                    }}
+                                  />
+                                </div>
+                                <span className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary w-12 text-right">
+                                  {percentage.toFixed(1)}%
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      })
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Expanded Category Tables */}
-      {expandedCategoryType && (
-        <div className="card p-5 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text">
-              {expandedCategoryType === 'income' && t.reports.income}
-              {expandedCategoryType === 'expense' && t.reports.expenses}
-              {expandedCategoryType === 'total' && (t.reports.allCategories || 'All Categories')}
-            </h2>
-            <button
-              onClick={() => setExpandedCategoryType(null)}
-              className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text"
-            >
-              ✕
-            </button>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-telegram-border dark:border-telegram-dark-border">
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
-                    {t.reports.category || 'Category'}
-                  </th>
-                  <th className="text-right py-3 px-4 text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
-                    {t.reports.amount || 'Amount'}
-                  </th>
-                  <th className="text-right py-3 px-4 text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
-                    {t.reports.percentage || '%'}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {(() => {
-                  let categoriesToShow: Array<{ name: string; icon: string; amount: number; color: string }> = []
-                  
-                  if (expandedCategoryType === 'income') {
-                    categoriesToShow = analytics.top_income_categories || []
-                  } else if (expandedCategoryType === 'expense') {
-                    categoriesToShow = analytics.all_expense_categories || analytics.top_expense_categories || []
-                  } else if (expandedCategoryType === 'total') {
-                    // Combine income and expense categories
-                    const incomeCats = (analytics.top_income_categories || []).map(cat => ({ ...cat, type: 'income' as const }))
-                    const expenseCats = (analytics.all_expense_categories || analytics.top_expense_categories || []).map(cat => ({ ...cat, type: 'expense' as const }))
-                    categoriesToShow = [...incomeCats, ...expenseCats].sort((a, b) => b.amount - a.amount)
-                  }
-                  
-                  const totalAmount = expandedCategoryType === 'income' 
-                    ? (analytics.totals?.income || 0)
-                    : expandedCategoryType === 'expense'
-                    ? (analytics.totals?.expense || 0)
-                    : (analytics.totals?.income || 0) + (analytics.totals?.expense || 0)
-                  
-                  return categoriesToShow.map((cat: any, index: number) => {
-                    const percentage = totalAmount > 0 ? (cat.amount / totalAmount * 100) : 0
-                    return (
-                      <tr
-                        key={index}
-                        className="border-b border-telegram-border dark:border-telegram-dark-border hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors cursor-pointer"
-                        onClick={async () => {
-                          // Get category ID by name
-                          try {
-                            const categories = await api.getCategories(
-                              expandedCategoryType === 'income' ? 'income' : expandedCategoryType === 'expense' ? 'expense' : undefined
-                            )
-                            const foundCategory = categories.find((c: any) => c.name === cat.name)
-                            if (foundCategory) {
-                              navigate('/transactions', { 
-                                state: { 
-                                  categoryId: foundCategory.id,
-                                  transactionType: expandedCategoryType === 'income' ? 'income' : expandedCategoryType === 'expense' ? 'expense' : undefined
-                                } 
-                              })
-                            } else {
-                              console.warn(`Category "${cat.name}" not found`)
-                            }
-                          } catch (error) {
-                            console.error('Error loading categories:', error)
-                          }
-                        }}
-                      >
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg">{cat.icon}</span>
-                            <span className="text-sm text-telegram-text dark:text-telegram-dark-text">
-                              {translateCategoryName(cat.name)}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="text-right py-3 px-4">
-                          <span className="text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
-                            {formatCurrency(cat.amount)}
-                          </span>
-                        </td>
-                        <td className="text-right py-3 px-4">
-                          <div className="flex items-center justify-end gap-2">
-                            <div className="w-24 h-2 bg-telegram-border dark:bg-telegram-dark-border rounded-full overflow-hidden">
-                              <div
-                                className="h-full rounded-full transition-all"
-                                style={{
-                                  width: `${Math.min(percentage, 100)}%`,
-                                  backgroundColor: cat.color || '#607D8B'
-                                }}
-                              />
-                            </div>
-                            <span className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary w-12 text-right">
-                              {percentage.toFixed(1)}%
-                            </span>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })
-                })()}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
 
       {/* Goals Section */}
       {analytics.goals && Array.isArray(analytics.goals) && analytics.goals.length > 0 && (
@@ -1355,6 +1552,23 @@ export function Reports() {
         })()}
       </div>
 
+      {/* Scroll to Top Button */}
+      {showScrollTop && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-6 right-6 z-50 w-12 h-12 bg-telegram-primary dark:bg-telegram-dark-primary text-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center hover:scale-110"
+          aria-label="Scroll to top"
+        >
+          <svg 
+            className="w-6 h-6" 
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+          </svg>
+        </button>
+      )}
     </div>
   )
 }
