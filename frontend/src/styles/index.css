@@ -378,11 +378,13 @@
 /* Розовый градиент для названия */
 .valentine-mode .valentine-title {
   background: linear-gradient(135deg, #ff6b9d 0%, #ff9ec8 50%, #ffb3d9 100%) !important;
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  text-shadow: none;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+  text-shadow: none !important;
   filter: drop-shadow(0 2px 4px rgba(255, 107, 157, 0.3));
+  display: inline-block;
 }
 
 /* Розовый градиент для Balance Card */

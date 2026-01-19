@@ -564,12 +564,12 @@ export function Layout() {
               onClick={() => setShowStories(true)}
               className="relative group cursor-pointer"
             >
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-telegram-primary dark:from-telegram-dark-primary to-telegram-primaryLight dark:to-telegram-dark-primaryLight flex items-center justify-center overflow-hidden relative z-30 transform transition-transform duration-300 group-hover:scale-110 shadow-lg">
+              <div className={`w-10 h-10 rounded-full ${valentineEnabled ? 'bg-gradient-to-br from-pink-400 to-pink-600 dark:from-pink-500 dark:to-pink-700' : 'bg-gradient-to-br from-telegram-primary dark:from-telegram-dark-primary to-telegram-primaryLight dark:to-telegram-dark-primaryLight'} flex items-center justify-center overflow-hidden relative z-30 transform transition-transform duration-300 group-hover:scale-110 shadow-lg`}>
                 <img src="/1.png" alt="Люся.Бюджет" className="w-full h-full object-cover" />
               </div>
               {/* Пульсирующее кольцо - анимация как в Instagram Stories */}
-              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-telegram-primary dark:from-telegram-dark-primary to-telegram-primaryLight dark:to-telegram-dark-primaryLight opacity-60 animate-ping" style={{ animationDuration: '2s' }}></div>
-              <div className="absolute -inset-1 rounded-full border-2 border-telegram-primary dark:border-telegram-dark-primary opacity-40 animate-pulse" style={{ animationDuration: '1.5s' }}></div>
+              <div className={`absolute inset-0 rounded-full ${valentineEnabled ? 'bg-gradient-to-br from-pink-400 to-pink-600 dark:from-pink-500 dark:to-pink-700' : 'bg-gradient-to-br from-telegram-primary dark:from-telegram-dark-primary to-telegram-primaryLight dark:to-telegram-dark-primaryLight'} opacity-60 animate-ping`} style={{ animationDuration: '2s' }}></div>
+              <div className={`absolute -inset-1 rounded-full border-2 ${valentineEnabled ? 'border-pink-400 dark:border-pink-500' : 'border-telegram-primary dark:border-telegram-dark-primary'} opacity-40 animate-pulse`} style={{ animationDuration: '1.5s' }}></div>
             </button>
             <div className="flex-1 min-w-0">
               <h1 
@@ -712,12 +712,12 @@ export function Layout() {
             onClick={() => setShowStories(true)}
             className="relative group flex-shrink-0"
           >
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-telegram-primary dark:from-telegram-dark-primary to-telegram-primaryLight dark:to-telegram-dark-primaryLight flex items-center justify-center overflow-hidden relative z-10 transform transition-transform duration-300 group-active:scale-110 shadow-lg">
+            <div className={`w-8 h-8 rounded-full ${valentineEnabled ? 'bg-gradient-to-br from-pink-400 to-pink-600 dark:from-pink-500 dark:to-pink-700' : 'bg-gradient-to-br from-telegram-primary dark:from-telegram-dark-primary to-telegram-primaryLight dark:to-telegram-dark-primaryLight'} flex items-center justify-center overflow-hidden relative z-10 transform transition-transform duration-300 group-active:scale-110 shadow-lg`}>
               <img src="/1.png" alt="Люся.Бюджет" className="w-full h-full object-cover" />
             </div>
             {/* Пульсирующее кольцо - анимация как в Instagram Stories */}
-            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-telegram-primary dark:from-telegram-dark-primary to-telegram-primaryLight dark:to-telegram-dark-primaryLight opacity-60 animate-ping" style={{ animationDuration: '2s' }}></div>
-            <div className="absolute -inset-1 rounded-full border-2 border-telegram-primary dark:border-telegram-dark-primary opacity-40 animate-pulse" style={{ animationDuration: '1.5s' }}></div>
+            <div className={`absolute inset-0 rounded-full ${valentineEnabled ? 'bg-gradient-to-br from-pink-400 to-pink-600 dark:from-pink-500 dark:to-pink-700' : 'bg-gradient-to-br from-telegram-primary dark:from-telegram-dark-primary to-telegram-primaryLight dark:to-telegram-dark-primaryLight'} opacity-60 animate-ping`} style={{ animationDuration: '2s' }}></div>
+            <div className={`absolute -inset-1 rounded-full border-2 ${valentineEnabled ? 'border-pink-400 dark:border-pink-500' : 'border-telegram-primary dark:border-telegram-dark-primary'} opacity-40 animate-pulse`} style={{ animationDuration: '1.5s' }}></div>
           </button>
           <h1 
             className="text-sm sm:text-base font-extrabold tracking-tight min-w-0 truncate cursor-pointer select-none"
@@ -786,7 +786,7 @@ export function Layout() {
             <div className="p-4 border-b border-telegram-border dark:border-telegram-dark-border">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-telegram-primary dark:from-telegram-dark-primary to-telegram-primaryLight dark:to-telegram-dark-primaryLight flex items-center justify-center overflow-hidden">
+                  <div className={`w-8 h-8 rounded-full ${valentineEnabled ? 'bg-gradient-to-br from-pink-400 to-pink-600 dark:from-pink-500 dark:to-pink-700' : 'bg-gradient-to-br from-telegram-primary dark:from-telegram-dark-primary to-telegram-primaryLight dark:to-telegram-dark-primaryLight'} flex items-center justify-center overflow-hidden`}>
                     <img src="/1.png" alt="Люся.Бюджет" className="w-full h-full object-cover" />
                   </div>
                   <div className="flex items-center gap-2">
