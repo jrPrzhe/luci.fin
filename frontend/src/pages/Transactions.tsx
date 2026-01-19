@@ -546,6 +546,7 @@ export function Transactions() {
       queryClient.invalidateQueries({ queryKey: ['analytics'] })
       queryClient.invalidateQueries({ queryKey: ['balance'] })
       queryClient.invalidateQueries({ queryKey: ['recent-transactions'] })
+      queryClient.invalidateQueries({ queryKey: ['biography'] })
       
       showSuccess(editingTransaction ? t.transactions.updated : t.transactions.added)
     } catch (err: any) {

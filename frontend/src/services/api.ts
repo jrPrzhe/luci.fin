@@ -1243,6 +1243,20 @@ class ApiClient {
     return this.request('/api/v1/biography/history')
   }
 
+  async updateBiographyIncome(monthlyIncome: number): Promise<any> {
+    return this.request('/api/v1/biography/income', {
+      method: 'PUT',
+      body: JSON.stringify({ monthly_income: monthlyIncome }),
+    })
+  }
+
+  async updateCategoryLimits(): Promise<any> {
+    return this.request('/api/v1/biography/update-category-limits', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    })
+  }
+
   // Analytics tracking
   async trackEvent(
     eventType: string,

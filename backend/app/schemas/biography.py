@@ -113,3 +113,15 @@ class CreateGoalFromBiographyRequest(BaseModel):
     goal_name: str
     target_amount: Optional[Decimal] = None
     description: Optional[str] = None
+
+
+# Schema для обновления ЗП
+class UpdateIncomeRequest(BaseModel):
+    """Запрос на обновление ЗП"""
+    monthly_income: Decimal = Field(..., gt=0, description="Месячный доход")
+
+
+# Schema для обновления лимитов категорий
+class UpdateCategoryLimitsRequest(BaseModel):
+    """Запрос на обновление лимитов категорий через ИИ"""
+    pass  # Не требует параметров, использует текущие данные биографии

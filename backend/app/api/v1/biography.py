@@ -19,9 +19,12 @@ from app.schemas.biography import (
     BiographyCategoryLimitResponse,
     NewUserStatusResponse,
     MarkUserNotNewRequest,
-    CreateGoalFromBiographyRequest
+    CreateGoalFromBiographyRequest,
+    UpdateIncomeRequest,
+    UpdateCategoryLimitsRequest
 )
 from app.ai.assistant import AIAssistant
+from app.api.v1.gamification import get_or_create_profile
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -382,3 +385,137 @@ async def get_biography_history(
     ).order_by(Biography.created_at.desc()).all()
     
     return biographies
+
+
+@router.put("/income", response_model=BiographyResponse)
+async def update_income(
+    request: UpdateIncomeRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Обновить доход в биографии"""
+    biography = db.query(Biography).filter(
+        Biography.user_id == current_user.id,
+        Biography.is_current == True
+    ).first()
+    
+    if not biography:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Биография не найдена"
+        )
+    
+    biography.monthly_income = request.monthly_income
+    
+    # Обновляем также в questionnaire_response если есть
+    if biography.questionnaire_response:
+        biography.questionnaire_response.monthly_income = request.monthly_income
+    
+    db.commit()
+    db.refresh(biography)
+    
+    # Обновляем фактические траты
+    update_actual_spending(biography, current_user, db)
+    
+    return biography
+
+
+@router.post("/update-category-limits", response_model=BiographyResponse)
+async def update_category_limits(
+    request: UpdateCategoryLimitsRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Обновить лимиты категорий через ИИ (стоимость: 30 сердец Люси)"""
+    HEARTS_COST = 30
+    
+    # Проверяем баланс сердец
+    profile = get_or_create_profile(current_user.id, db)
+    
+    if profile.heart_level < HEARTS_COST:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Недостаточно сердец Люси. Требуется {HEARTS_COST}, доступно {profile.heart_level}. Заработайте больше сердец или приобретите премиум."
+        )
+    
+    biography = db.query(Biography).filter(
+        Biography.user_id == current_user.id,
+        Biography.is_current == True
+    ).first()
+    
+    if not biography:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Биография не найдена"
+        )
+    
+    if not biography.monthly_income:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Сначала укажите ваш доход"
+        )
+    
+    # Списываем сердца
+    profile.heart_level -= HEARTS_COST
+    db.commit()
+    
+    # Получаем данные анкетирования
+    questionnaire_response = biography.questionnaire_response
+    if not questionnaire_response:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Данные анкетирования не найдены"
+        )
+    
+    # Подготавливаем данные для ИИ
+    category_limits = {}
+    if questionnaire_response.category_limits:
+        category_limits = {
+            k: Decimal(str(v)) 
+            for k, v in questionnaire_response.category_limits.items()
+        }
+    
+    # Создаем временный QuestionnaireRequest для анализа
+    from app.schemas.biography import QuestionnaireRequest
+    temp_questionnaire = QuestionnaireRequest(
+        category_limits=category_limits,
+        monthly_income=biography.monthly_income or questionnaire_response.monthly_income or Decimal(0),
+        problems_text=questionnaire_response.problems_text,
+        problems_options=json.loads(questionnaire_response.problems_options) if questionnaire_response.problems_options else None,
+        goal_text=questionnaire_response.goal_text,
+        goal_options=json.loads(questionnaire_response.goal_options) if questionnaire_response.goal_options else None
+    )
+    
+    # Анализируем через ИИ
+    try:
+        ai_analysis = await analyze_questionnaire_with_ai(
+            questionnaire=temp_questionnaire,
+            currency=current_user.default_currency,
+            db=db,
+            current_user=current_user
+        )
+        
+        # Обновляем плановые лимиты от ИИ
+        if ai_analysis.get("recommended_limits"):
+            for limit in biography.category_limits:
+                category_name = limit.category_name
+                if category_name in ai_analysis["recommended_limits"]:
+                    limit.ai_recommended_limit = Decimal(str(ai_analysis["recommended_limits"][category_name]))
+        
+        # Обновляем фактические траты
+        update_actual_spending(biography, current_user, db)
+        
+        db.commit()
+        db.refresh(biography)
+        
+        return biography
+        
+    except Exception as e:
+        logger.error(f"Error updating category limits with AI: {e}")
+        # Возвращаем сердца при ошибке
+        profile.heart_level += HEARTS_COST
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Ошибка при обновлении лимитов: {str(e)}"
+        )

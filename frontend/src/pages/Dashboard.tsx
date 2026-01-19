@@ -611,6 +611,7 @@ export function Dashboard() {
           queryClient.invalidateQueries({ queryKey: ['gamification-status'] }),
           queryClient.invalidateQueries({ queryKey: ['daily-quests'] }),
           queryClient.invalidateQueries({ queryKey: ['analytics'], exact: false }),
+          queryClient.invalidateQueries({ queryKey: ['biography'] }),
         ])
         
         console.log('[Dashboard] Cache invalidated after successful transaction creation')

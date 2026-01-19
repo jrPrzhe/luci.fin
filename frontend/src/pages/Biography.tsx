@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../services/api'
 import { OnboardingWizard } from '../components/OnboardingWizard'
+import { useToast } from '../contexts/ToastContext'
 
 interface CategoryLimit {
   id: number
@@ -31,7 +32,13 @@ interface Biography {
 }
 
 export function Biography() {
+  const { showError, showSuccess } = useToast()
+  const queryClient = useQueryClient()
   const [showWizard, setShowWizard] = useState(false)
+  const [isEditingIncome, setIsEditingIncome] = useState(false)
+  const [editedIncome, setEditedIncome] = useState<number>(0)
+  const [isUpdatingLimits, setIsUpdatingLimits] = useState(false)
+  const [showUpdateButton, setShowUpdateButton] = useState(false)
 
   const { data: biography, isLoading, refetch } = useQuery({
     queryKey: ['biography'],
@@ -58,6 +65,13 @@ export function Biography() {
     },
   })
 
+  // Получаем статус геймификации для проверки сердец
+  const { data: gamificationStatus } = useQuery({
+    queryKey: ['gamification-status'],
+    queryFn: () => api.getGamificationStatus(),
+    staleTime: 30000,
+  })
+
   // Показываем визард если пользователь новый и нет биографии
   useEffect(() => {
     if (newUserStatus?.new_user && !newUserStatus?.has_biography && !biography) {
@@ -77,6 +91,80 @@ export function Biography() {
 
   const handleStartQuestionnaire = () => {
     setShowWizard(true)
+  }
+
+  const handleEditIncome = () => {
+    if (biography?.monthly_income) {
+      setEditedIncome(Number(biography.monthly_income))
+      setIsEditingIncome(true)
+    }
+  }
+
+  const handleSaveIncome = async () => {
+    if (!biography) return
+    
+    if (editedIncome <= 0) {
+      showError('Доход должен быть больше 0')
+      return
+    }
+
+    const incomeChanged = Number(biography.monthly_income) !== editedIncome
+
+    try {
+      await api.updateBiographyIncome(editedIncome)
+      setIsEditingIncome(false)
+      if (incomeChanged) {
+        setShowUpdateButton(true)
+      }
+      await refetch()
+      showSuccess('Доход обновлен')
+    } catch (error: any) {
+      console.error('Error updating income:', error)
+      showError(error.message || 'Ошибка при обновлении дохода')
+    }
+  }
+
+  const handleCancelEditIncome = () => {
+    setIsEditingIncome(false)
+    setShowUpdateButton(false)
+  }
+
+  const handleUpdateCategoryLimits = async () => {
+    if (!gamificationStatus?.profile) {
+      showError('Не удалось загрузить баланс сердец')
+      return
+    }
+
+    const heartLevel = gamificationStatus.profile.heart_level
+    const HEARTS_COST = 30
+
+    if (heartLevel < HEARTS_COST) {
+      showError(
+        `Недостаточно сердец Люси. Требуется ${HEARTS_COST}, доступно ${heartLevel}. Заработайте больше сердец или приобретите премиум.`,
+        8000
+      )
+      return
+    }
+
+    setIsUpdatingLimits(true)
+    try {
+      await api.updateCategoryLimits()
+      setShowUpdateButton(false)
+      await refetch()
+      // Обновляем статус геймификации чтобы отобразить новое количество сердец
+      await queryClient.invalidateQueries({ queryKey: ['gamification-status'] })
+      showSuccess('Лимиты категорий обновлены успешно')
+    } catch (error: any) {
+      console.error('Error updating category limits:', error)
+      const errorMessage = error.message || 'Ошибка при обновлении лимитов'
+      if (errorMessage.includes('Недостаточно сердец')) {
+        showError(errorMessage, 8000)
+      } else {
+        showError(errorMessage)
+      }
+    } finally {
+      setIsUpdatingLimits(false)
+    }
   }
 
   if (isLoading) {
@@ -143,15 +231,83 @@ export function Biography() {
         {/* Доходы */}
         {biography.monthly_income && (
           <div className="card p-6">
-            <h2 className="text-xl font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
-              💰 Ваш доход
-            </h2>
-            <p className="text-2xl font-bold text-telegram-primary dark:text-telegram-dark-primary">
-              {biography.monthly_income.toLocaleString('ru-RU')} {biography.category_limits[0]?.currency || 'RUB'}
-            </p>
-            <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-2">
-              в месяц
-            </p>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-telegram-text dark:text-telegram-dark-text">
+                💰 Ваш доход
+              </h2>
+              {!isEditingIncome && (
+                <button
+                  onClick={handleEditIncome}
+                  className="text-sm text-telegram-primary dark:text-telegram-dark-primary hover:underline"
+                >
+                  Изменить
+                </button>
+              )}
+            </div>
+            {isEditingIncome ? (
+              <div className="space-y-3">
+                <input
+                  type="number"
+                  value={editedIncome || ''}
+                  onChange={(e) => setEditedIncome(parseFloat(e.target.value) || 0)}
+                  className="w-full px-4 py-3 border border-telegram-border dark:border-telegram-dark-border rounded-telegram bg-telegram-bg dark:bg-telegram-dark-bg text-telegram-text dark:text-telegram-dark-text text-lg"
+                  placeholder="Введите сумму"
+                  min="0"
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSaveIncome}
+                    className="btn-primary flex-1"
+                  >
+                    Сохранить
+                  </button>
+                  <button
+                    onClick={handleCancelEditIncome}
+                    className="btn-secondary flex-1"
+                  >
+                    Отмена
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <p className="text-2xl font-bold text-telegram-primary dark:text-telegram-dark-primary">
+                  {biography.monthly_income.toLocaleString('ru-RU')} {biography.category_limits[0]?.currency || 'RUB'}
+                </p>
+                <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-2">
+                  в месяц
+                </p>
+                {showUpdateButton && (
+                  <div className="mt-4 pt-4 border-t border-telegram-border dark:border-telegram-dark-border">
+                    <button
+                      onClick={handleUpdateCategoryLimits}
+                      disabled={isUpdatingLimits}
+                      className="w-full btn-primary flex items-center justify-center gap-2"
+                    >
+                      {isUpdatingLimits ? (
+                        <>
+                          <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          Обновление...
+                        </>
+                      ) : (
+                        <>
+                          🔄 Обновить лимиты категорий
+                        </>
+                      )}
+                    </button>
+                    <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-2 text-center">
+                      Стоимость: 30 ❤️ сердец Люси
+                    </p>
+                    {gamificationStatus?.profile && (
+                      <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1 text-center">
+                        У вас: {gamificationStatus.profile.heart_level} ❤️
+                      </p>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
 
