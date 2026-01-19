@@ -152,7 +152,9 @@ export function Transactions() {
   const [showDateFilter, setShowDateFilter] = useState(savedFilters.showDateFilter)
   const [filtersExpanded, setFiltersExpanded] = useState(false)
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null)
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null)
   const accountIdFromNavigation = useRef<number | null>(null)
+  const categoryIdFromNavigation = useRef<number | null>(null)
 
   const [goals, setGoals] = useState<any[]>([])
   const [hasMore, setHasMore] = useState(true)
@@ -300,6 +302,8 @@ export function Transactions() {
         ? (accountIdOverride === null ? undefined : accountIdOverride)
         : (selectedAccountId || undefined)
       
+      const categoryIdParam = selectedCategoryId || undefined
+      
       const batch = await api.getTransactions(
         limit, 
         offset, 
@@ -307,7 +311,8 @@ export function Transactions() {
         filterParam, 
         transactionTypeParam, 
         startDate, 
-        endDate
+        endDate,
+        categoryIdParam
       )
       
       // Если получили меньше чем limit, значит это последняя страница
@@ -367,9 +372,9 @@ export function Transactions() {
     }
   }, [filterType, transactionTypeFilter, dateFilter, customStartDate, customEndDate, showDateFilter])
 
-  // Check if we came from Accounts page with accountId
+  // Check if we came from Accounts page with accountId or Reports page with categoryId
   useEffect(() => {
-    const state = location.state as { accountId?: number } | null
+    const state = location.state as { accountId?: number; categoryId?: number; transactionType?: 'income' | 'expense' } | null
     if (state?.accountId) {
       // Save accountId from navigation
       const accountId = state.accountId
@@ -381,6 +386,32 @@ export function Transactions() {
         // Load data with the account filter immediately (pass accountId directly to avoid state timing issues)
         loadData(true, accountId).then(() => {
           // Clear state after data is loaded to avoid re-applying on re-render
+          window.history.replaceState({}, document.title)
+        })
+      }
+    } else if (state?.categoryId) {
+      // Handle category filter from Reports page
+      const categoryId = state.categoryId
+      const transactionType = state.transactionType
+      
+      // Only process if we haven't already processed this categoryId
+      if (categoryIdFromNavigation.current !== categoryId) {
+        categoryIdFromNavigation.current = categoryId
+        
+        // Set transaction type filter
+        if (transactionType) {
+          setTransactionTypeFilter(transactionType)
+        }
+        
+        // Set selected category
+        setSelectedCategoryId(categoryId)
+        
+        // Set category filter in form data
+        setFormData(prev => ({ ...prev, category_id: categoryId.toString() }))
+        
+        // Load data with category filter
+        loadData(true).then(() => {
+          // Clear state after data is loaded
           window.history.replaceState({}, document.title)
         })
       }

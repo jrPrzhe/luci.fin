@@ -183,6 +183,7 @@ async def get_transactions(
     transaction_type: Optional[str] = None,  # "income", "expense", "transfer"
     start_date: Optional[str] = None,  # ISO format date string
     end_date: Optional[str] = None,  # ISO format date string
+    category_id: Optional[int] = None,  # Filter by category ID
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -290,6 +291,11 @@ async def get_transactions(
     if transaction_type:
         sql_query += " AND LOWER(t.transaction_type::text) = :transaction_type"
         params["transaction_type"] = transaction_type.lower()
+    
+    # Add category filter if provided
+    if category_id:
+        sql_query += " AND t.category_id = :category_id"
+        params["category_id"] = category_id
     
     if start_date:
         try:

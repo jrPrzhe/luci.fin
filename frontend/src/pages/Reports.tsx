@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { api } from '../services/api'
 import { PremiumSubscriptionModal } from '../components/PremiumSubscriptionModal'
@@ -245,12 +246,14 @@ const localizeMonth = (monthStr: string, language: 'ru' | 'en', currentLocale: s
 export function Reports() {
   const { t, language, translateCategoryName } = useI18n()
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const [period, setPeriod] = useState<'week' | 'month' | 'year' | 'custom'>('month')
   const [showPremiumModal, setShowPremiumModal] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [startDate, setStartDate] = useState<string>('')
   const [endDate, setEndDate] = useState<string>('')
+  const [expandedCategoryType, setExpandedCategoryType] = useState<'income' | 'expense' | 'total' | null>(null)
   const locale = language === 'ru' ? 'ru-RU' : 'en-US'
   
   // Prefetch data when period or dates change (but don't invalidate - use cache if available)
@@ -654,34 +657,43 @@ export function Reports() {
             </div>
           )}
           
-          {/* Period Selector */}
-          <div className="flex gap-2">
+          {/* Period Selector - компактный */}
+          <div className="flex flex-wrap gap-1.5">
           <button
-            onClick={() => setPeriod('week')}
-            className={`px-4 py-2 rounded-telegram text-sm font-medium transition-all ${
+            onClick={() => {
+              setPeriod('week')
+              setShowDatePicker(false)
+            }}
+            className={`px-2.5 py-1.5 rounded-telegram text-xs font-medium transition-all whitespace-nowrap ${
               period === 'week'
                 ? 'bg-telegram-primary text-white'
-                : 'bg-telegram-surface text-telegram-text hover:bg-telegram-hover'
+                : 'bg-telegram-surface text-telegram-text hover:bg-telegram-hover dark:bg-telegram-dark-surface dark:text-telegram-dark-text dark:hover:bg-telegram-dark-hover'
             }`}
           >
             {t.reports.week}
           </button>
           <button
-            onClick={() => setPeriod('month')}
-            className={`px-4 py-2 rounded-telegram text-sm font-medium transition-all ${
+            onClick={() => {
+              setPeriod('month')
+              setShowDatePicker(false)
+            }}
+            className={`px-2.5 py-1.5 rounded-telegram text-xs font-medium transition-all whitespace-nowrap ${
               period === 'month'
                 ? 'bg-telegram-primary text-white'
-                : 'bg-telegram-surface text-telegram-text hover:bg-telegram-hover'
+                : 'bg-telegram-surface text-telegram-text hover:bg-telegram-hover dark:bg-telegram-dark-surface dark:text-telegram-dark-text dark:hover:bg-telegram-dark-hover'
             }`}
           >
             {t.reports.month}
           </button>
           <button
-            onClick={() => setPeriod('year')}
-            className={`px-4 py-2 rounded-telegram text-sm font-medium transition-all ${
+            onClick={() => {
+              setPeriod('year')
+              setShowDatePicker(false)
+            }}
+            className={`px-2.5 py-1.5 rounded-telegram text-xs font-medium transition-all whitespace-nowrap ${
               period === 'year'
                 ? 'bg-telegram-primary text-white'
-                : 'bg-telegram-surface text-telegram-text hover:bg-telegram-hover'
+                : 'bg-telegram-surface text-telegram-text hover:bg-telegram-hover dark:bg-telegram-dark-surface dark:text-telegram-dark-text dark:hover:bg-telegram-dark-hover'
             }`}
           >
             {t.reports.year}
@@ -691,10 +703,10 @@ export function Reports() {
               setPeriod('custom')
               setShowDatePicker(true)
             }}
-            className={`px-4 py-2 rounded-telegram text-sm font-medium transition-all ${
+            className={`px-2.5 py-1.5 rounded-telegram text-xs font-medium transition-all whitespace-nowrap ${
               period === 'custom'
                 ? 'bg-telegram-primary text-white'
-                : 'bg-telegram-surface text-telegram-text hover:bg-telegram-hover'
+                : 'bg-telegram-surface text-telegram-text hover:bg-telegram-hover dark:bg-telegram-dark-surface dark:text-telegram-dark-text dark:hover:bg-telegram-dark-hover'
             }`}
           >
             📅 {t.reports.custom || 'Custom'}
@@ -769,7 +781,7 @@ export function Reports() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="card p-5">
+        <div className="card p-5 cursor-pointer hover:shadow-lg transition-all" onClick={() => setExpandedCategoryType(expandedCategoryType === 'income' ? null : 'income')}>
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
               <span className="text-xl">💰</span>
@@ -780,10 +792,20 @@ export function Reports() {
                 {formatCurrency(analytics.totals?.income || 0)}
               </p>
             </div>
+            <div className="flex-shrink-0 flex items-center justify-center h-full">
+              <svg 
+                className={`w-5 h-5 text-telegram-textSecondary dark:text-telegram-dark-textSecondary transition-transform ${expandedCategoryType === 'income' ? 'rotate-180' : ''}`}
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
           </div>
         </div>
 
-        <div className="card p-5">
+        <div className="card p-5 cursor-pointer hover:shadow-lg transition-all" onClick={() => setExpandedCategoryType(expandedCategoryType === 'expense' ? null : 'expense')}>
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
               <span className="text-xl">💸</span>
@@ -794,10 +816,20 @@ export function Reports() {
                 {formatCurrency(analytics.totals?.expense || 0)}
               </p>
             </div>
+            <div className="flex-shrink-0 flex items-center justify-center h-full">
+              <svg 
+                className={`w-5 h-5 text-telegram-textSecondary dark:text-telegram-dark-textSecondary transition-transform ${expandedCategoryType === 'expense' ? 'rotate-180' : ''}`}
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
           </div>
         </div>
 
-        <div className="card p-5">
+        <div className="card p-5 cursor-pointer hover:shadow-lg transition-all" onClick={() => setExpandedCategoryType(expandedCategoryType === 'total' ? null : 'total')}>
           <div className="flex items-center gap-3 mb-2">
             <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
               (analytics.totals?.net || 0) >= 0 ? 'bg-blue-100' : 'bg-orange-100'
@@ -812,9 +844,138 @@ export function Reports() {
                 {formatCurrency(analytics.totals?.net || 0)}
               </p>
             </div>
+            <div className="flex-shrink-0 flex items-center justify-center h-full">
+              <svg 
+                className={`w-5 h-5 text-telegram-textSecondary dark:text-telegram-dark-textSecondary transition-transform ${expandedCategoryType === 'total' ? 'rotate-180' : ''}`}
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Expanded Category Tables */}
+      {expandedCategoryType && (
+        <div className="card p-5 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text">
+              {expandedCategoryType === 'income' && t.reports.income}
+              {expandedCategoryType === 'expense' && t.reports.expenses}
+              {expandedCategoryType === 'total' && (t.reports.allCategories || 'All Categories')}
+            </h2>
+            <button
+              onClick={() => setExpandedCategoryType(null)}
+              className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-telegram-border dark:border-telegram-dark-border">
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
+                    {t.reports.category || 'Category'}
+                  </th>
+                  <th className="text-right py-3 px-4 text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
+                    {t.reports.amount || 'Amount'}
+                  </th>
+                  <th className="text-right py-3 px-4 text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
+                    {t.reports.percentage || '%'}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {(() => {
+                  let categoriesToShow: Array<{ name: string; icon: string; amount: number; color: string }> = []
+                  
+                  if (expandedCategoryType === 'income') {
+                    categoriesToShow = analytics.top_income_categories || []
+                  } else if (expandedCategoryType === 'expense') {
+                    categoriesToShow = analytics.all_expense_categories || analytics.top_expense_categories || []
+                  } else if (expandedCategoryType === 'total') {
+                    // Combine income and expense categories
+                    const incomeCats = (analytics.top_income_categories || []).map(cat => ({ ...cat, type: 'income' as const }))
+                    const expenseCats = (analytics.all_expense_categories || analytics.top_expense_categories || []).map(cat => ({ ...cat, type: 'expense' as const }))
+                    categoriesToShow = [...incomeCats, ...expenseCats].sort((a, b) => b.amount - a.amount)
+                  }
+                  
+                  const totalAmount = expandedCategoryType === 'income' 
+                    ? (analytics.totals?.income || 0)
+                    : expandedCategoryType === 'expense'
+                    ? (analytics.totals?.expense || 0)
+                    : (analytics.totals?.income || 0) + (analytics.totals?.expense || 0)
+                  
+                  return categoriesToShow.map((cat: any, index: number) => {
+                    const percentage = totalAmount > 0 ? (cat.amount / totalAmount * 100) : 0
+                    return (
+                      <tr
+                        key={index}
+                        className="border-b border-telegram-border dark:border-telegram-dark-border hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors cursor-pointer"
+                        onClick={async () => {
+                          // Get category ID by name
+                          try {
+                            const categories = await api.getCategories(
+                              expandedCategoryType === 'income' ? 'income' : expandedCategoryType === 'expense' ? 'expense' : undefined
+                            )
+                            const foundCategory = categories.find((c: any) => c.name === cat.name)
+                            if (foundCategory) {
+                              navigate('/transactions', { 
+                                state: { 
+                                  categoryId: foundCategory.id,
+                                  transactionType: expandedCategoryType === 'income' ? 'income' : expandedCategoryType === 'expense' ? 'expense' : undefined
+                                } 
+                              })
+                            } else {
+                              console.warn(`Category "${cat.name}" not found`)
+                            }
+                          } catch (error) {
+                            console.error('Error loading categories:', error)
+                          }
+                        }}
+                      >
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">{cat.icon}</span>
+                            <span className="text-sm text-telegram-text dark:text-telegram-dark-text">
+                              {translateCategoryName(cat.name)}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="text-right py-3 px-4">
+                          <span className="text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
+                            {formatCurrency(cat.amount)}
+                          </span>
+                        </td>
+                        <td className="text-right py-3 px-4">
+                          <div className="flex items-center justify-end gap-2">
+                            <div className="w-24 h-2 bg-telegram-border dark:bg-telegram-dark-border rounded-full overflow-hidden">
+                              <div
+                                className="h-full rounded-full transition-all"
+                                style={{
+                                  width: `${Math.min(percentage, 100)}%`,
+                                  backgroundColor: cat.color || '#607D8B'
+                                }}
+                              />
+                            </div>
+                            <span className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary w-12 text-right">
+                              {percentage.toFixed(1)}%
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })
+                })()}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Goals Section */}
       {analytics.goals && Array.isArray(analytics.goals) && analytics.goals.length > 0 && (
@@ -1194,74 +1355,6 @@ export function Reports() {
         })()}
       </div>
 
-      {/* Detailed Category Analytics */}
-      {analytics.all_expense_categories && Array.isArray(analytics.all_expense_categories) && analytics.all_expense_categories.length > 0 && (
-        <div className="card p-5 mb-6">
-          <h2 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
-            {t.reports.allCategories || 'All Expense Categories'}
-          </h2>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-telegram-border dark:border-telegram-dark-border">
-                  <th className="text-left py-3 px-4 text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
-                    {t.reports.category || 'Category'}
-                  </th>
-                  <th className="text-right py-3 px-4 text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
-                    {t.reports.amount || 'Amount'}
-                  </th>
-                  <th className="text-right py-3 px-4 text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
-                    {t.reports.percentage || '%'}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {analytics.all_expense_categories.map((cat: { name: string; icon: string; amount: number; color: string }, index: number) => {
-                  const percentage = analytics.totals?.expense > 0
-                    ? (cat.amount / analytics.totals.expense * 100)
-                    : 0
-                  return (
-                    <tr
-                      key={index}
-                      className="border-b border-telegram-border dark:border-telegram-dark-border hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors"
-                    >
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg">{cat.icon}</span>
-                          <span className="text-sm text-telegram-text dark:text-telegram-dark-text">
-                            {translateCategoryName(cat.name)}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="text-right py-3 px-4">
-                        <span className="text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
-                          {formatCurrency(cat.amount)}
-                        </span>
-                      </td>
-                      <td className="text-right py-3 px-4">
-                        <div className="flex items-center justify-end gap-2">
-                          <div className="w-24 h-2 bg-telegram-border dark:bg-telegram-dark-border rounded-full overflow-hidden">
-                            <div
-                              className="h-full rounded-full transition-all"
-                              style={{
-                                width: `${Math.min(percentage, 100)}%`,
-                                backgroundColor: cat.color || '#607D8B'
-                              }}
-                            />
-                          </div>
-                          <span className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary w-12 text-right">
-                            {percentage.toFixed(1)}%
-                          </span>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

@@ -673,7 +673,8 @@ class ApiClient {
     filterType?: string,
     transactionType?: string,
     startDate?: string,
-    endDate?: string
+    endDate?: string,
+    categoryId?: number
   ) {
     const params = new URLSearchParams()
     params.append('limit', limit.toString())
@@ -683,6 +684,7 @@ class ApiClient {
     if (transactionType) params.append('transaction_type', transactionType)
     if (startDate) params.append('start_date', startDate)
     if (endDate) params.append('end_date', endDate)
+    if (categoryId) params.append('category_id', categoryId.toString())
     
     return this.request<any[]>(`/api/v1/transactions/?${params.toString()}`)
   }
