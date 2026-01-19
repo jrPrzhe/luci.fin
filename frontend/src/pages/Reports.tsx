@@ -20,6 +20,12 @@ interface AnalyticsData {
     amount: number
     color: string
   }>
+  all_expense_categories?: Array<{
+    name: string
+    icon: string
+    amount: number
+    color: string
+  }>
   top_income_categories: Array<{
     name: string
     icon: string
@@ -344,8 +350,10 @@ export function Reports() {
   })
 
   const sendReportMutation = useMutation({
-    mutationFn: (format: 'pdf' | 'excel') => 
-      api.sendReportViaBot(format, period),
+    mutationFn: (format: 'pdf' | 'excel') => {
+      const reportPeriod = period === 'custom' ? undefined : period
+      return api.sendReportViaBot(format, reportPeriod, startDate || undefined, endDate || undefined)
+    },
     onSuccess: (data) => {
       setIsDownloading(false)
       alert(`✅ ${data.message}`)
@@ -377,7 +385,8 @@ export function Reports() {
       } else {
         // Скачиваем напрямую
         // Полагаемся на проверку премиум статуса на бэкенде
-        const blob = await api.downloadPremiumReport(format, period)
+        const reportPeriod = period === 'custom' ? undefined : period
+        const blob = await api.downloadPremiumReport(format, reportPeriod, startDate || undefined, endDate || undefined)
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
@@ -739,7 +748,7 @@ export function Reports() {
               }}
               className="btn-primary"
             >
-              {t.common.apply || 'Apply'}
+              {t.transactions?.filters?.apply || t.common.save || 'Apply'}
             </button>
             <button
               onClick={() => {
@@ -1207,7 +1216,7 @@ export function Reports() {
                 </tr>
               </thead>
               <tbody>
-                {analytics.all_expense_categories.map((cat, index) => {
+                {analytics.all_expense_categories.map((cat: { name: string; icon: string; amount: number; color: string }, index: number) => {
                   const percentage = analytics.totals?.expense > 0
                     ? (cat.amount / analytics.totals.expense * 100)
                     : 0

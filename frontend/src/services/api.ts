@@ -964,7 +964,7 @@ class ApiClient {
 
   async downloadPremiumReport(
     format: 'pdf' | 'excel' = 'pdf',
-    period?: 'week' | 'month' | 'year',
+    period?: 'week' | 'month' | 'year' | 'custom',
     startDate?: string,
     endDate?: string
   ): Promise<Blob> {
@@ -1002,7 +1002,7 @@ class ApiClient {
 
   async sendReportViaBot(
     format: 'pdf' | 'excel' = 'pdf',
-    period?: 'week' | 'month' | 'year',
+    period?: 'week' | 'month' | 'year' | 'custom',
     startDate?: string,
     endDate?: string
   ): Promise<{ status: string; message: string; platform: string }> {
