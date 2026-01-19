@@ -235,8 +235,8 @@
   }
 }
 
-/* Новогодние эффекты */
-@keyframes snowfall {
+/* Эффекты Дня святого Валентина */
+@keyframes heartfall {
   0% {
     transform: translateY(-100vh) rotate(0deg);
     opacity: 1;
@@ -284,24 +284,24 @@
   animation: slide-down 0.3s ease-out;
 }
 
-/* Новогодний режим - легкие акценты */
-.new-year-mode {
+/* Режим Дня святого Валентина - легкие акценты */
+.valentine-mode {
   position: relative;
 }
 
-.new-year-mode .card {
+.valentine-mode .card {
   position: relative;
   overflow: visible;
 }
 
-.new-year-mode .card::before {
+.valentine-mode .card::before {
   content: '';
   position: absolute;
   top: -3px;
   left: -3px;
   right: -3px;
   bottom: -3px;
-  background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #ffa07a, #ff6b6b);
+  background: linear-gradient(45deg, #ff6b9d, #c44569, #f8b500, #ff6b9d, #c44569);
   border-radius: inherit;
   z-index: -1;
   opacity: 0.15;
@@ -309,22 +309,22 @@
   background-size: 200% 200%;
 }
 
-.new-year-mode .btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+.valentine-mode .btn-primary {
+  background: linear-gradient(135deg, #ff6b9d 0%, #c44569 100%) !important;
+  box-shadow: 0 4px 15px rgba(255, 107, 157, 0.4);
 }
 
-.new-year-mode .btn-primary:hover {
-  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%) !important;
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+.valentine-mode .btn-primary:hover {
+  background: linear-gradient(135deg, #c44569 0%, #ff6b9d 100%) !important;
+  box-shadow: 0 6px 20px rgba(255, 107, 157, 0.5);
 }
 
-.dark .new-year-mode .btn-primary {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
-  box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
+.dark .valentine-mode .btn-primary {
+  background: linear-gradient(135deg, #ff6b9d 0%, #ff8fab 100%) !important;
+  box-shadow: 0 4px 15px rgba(255, 107, 157, 0.4);
 }
 
-.dark .new-year-mode .btn-primary:hover {
-  background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%) !important;
-  box-shadow: 0 6px 20px rgba(245, 87, 108, 0.5);
+.dark .valentine-mode .btn-primary:hover {
+  background: linear-gradient(135deg, #ff8fab 0%, #ff6b9d 100%) !important;
+  box-shadow: 0 6px 20px rgba(255, 107, 157, 0.5);
 }

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
 import { useTheme } from '../hooks/useTheme'
-import { useNewYearTheme } from '../contexts/NewYearContext'
+import { useValentineTheme } from '../contexts/ValentineContext'
 import { useStrangerThingsTheme } from '../contexts/StrangerThingsContext'
 import { useI18n } from '../contexts/I18nContext'
 import { useToast } from '../contexts/ToastContext'
@@ -18,7 +18,7 @@ export function Profile() {
   const [initialCurrency, setInitialCurrency] = useState('RUB')
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const { theme, toggleTheme } = useTheme()
-  const { isEnabled: newYearEnabled, toggle: toggleNewYear } = useNewYearTheme()
+  const { isEnabled: valentineEnabled, toggle: toggleValentine } = useValentineTheme()
   const { isEnabled: strangerThingsEnabled, toggle: toggleStrangerThings } = useStrangerThingsTheme()
   const { language, setLanguage, t } = useI18n()
 
@@ -247,25 +247,25 @@ export function Profile() {
             </div>
           </button>
           <button
-            onClick={toggleNewYear}
+            onClick={toggleValentine}
             className="w-full flex items-center justify-between p-3 rounded-telegram hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors text-left"
           >
             <div className="flex items-center gap-3">
-              <span className="text-2xl">🎄</span>
+              <span className="text-2xl">💝</span>
               <div>
-                <p className="font-medium text-telegram-text dark:text-telegram-dark-text">{t.profile.newYearMode}</p>
+                <p className="font-medium text-telegram-text dark:text-telegram-dark-text">{t.profile.valentineMode}</p>
                 <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-                  {newYearEnabled ? t.profile.newYearModeEnabled : t.profile.newYearModeDisabled}
+                  {valentineEnabled ? t.profile.valentineModeEnabled : t.profile.valentineModeDisabled}
                 </p>
               </div>
             </div>
             <div className={`relative w-12 h-6 rounded-full transition-colors ${
-              newYearEnabled 
+              valentineEnabled 
                 ? 'bg-telegram-primary dark:bg-telegram-dark-primary' 
                 : 'bg-telegram-border dark:bg-telegram-dark-border'
             }`}>
               <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-200 ${
-                newYearEnabled ? 'translate-x-6' : 'translate-x-0'
+                valentineEnabled ? 'translate-x-6' : 'translate-x-0'
               }`}></div>
             </div>
           </button>

@@ -22,7 +22,7 @@ import { Quests } from './pages/Quests'
 import { Analytics } from './pages/Analytics'
 import { detectPlatform } from './utils/platform'
 import { UnifiedAuthHandler } from './components/UnifiedAuthHandler'
-import { NewYearProvider } from './contexts/NewYearContext'
+import { ValentineProvider } from './contexts/ValentineContext'
 import { StrangerThingsProvider } from './contexts/StrangerThingsContext'
 import { I18nProvider } from './contexts/I18nContext'
 import { ToastProvider } from './contexts/ToastContext'
@@ -70,7 +70,7 @@ function App() {
         <ErrorBoundary>
           <I18nProvider>
             <ErrorBoundary>
-              <NewYearProvider>
+              <ValentineProvider>
                 <ErrorBoundary>
                   <StrangerThingsProvider>
                     <ErrorBoundary>
@@ -113,7 +113,7 @@ function App() {
                     </ErrorBoundary>
                   </StrangerThingsProvider>
                 </ErrorBoundary>
-              </NewYearProvider>
+              </ValentineProvider>
             </ErrorBoundary>
           </I18nProvider>
         </ErrorBoundary>

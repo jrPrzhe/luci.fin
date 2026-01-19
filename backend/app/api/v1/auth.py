@@ -1582,6 +1582,12 @@ async def update_current_user(
         current_user.default_currency = user_update.default_currency
     if user_update.language is not None:
         current_user.language = user_update.language
+    if user_update.theme is not None:
+        current_user.theme = user_update.theme
+    if user_update.valentine_theme is not None:
+        current_user.valentine_theme = user_update.valentine_theme
+    if user_update.stranger_things_theme is not None:
+        current_user.stranger_things_theme = user_update.stranger_things_theme
     
     # Note: username and telegram_username cannot be changed via API
     # telegram_username is updated automatically via Telegram login

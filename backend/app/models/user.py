@@ -24,7 +24,7 @@ class User(Base):
     default_currency = Column(String(3), default="USD")
     language = Column(String(5), default="en")
     theme = Column(String(10), default="dark")  # "light" or "dark"
-    new_year_theme = Column(Boolean, default=True)  # Новогодний режим
+    valentine_theme = Column(Boolean, default=True)  # Режим Дня святого Валентина
     stranger_things_theme = Column(Boolean, default=False)  # Тема Stranger Things (ОСД)
     
     # 2FA

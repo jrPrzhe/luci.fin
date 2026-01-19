@@ -537,7 +537,7 @@ class ApiClient {
     default_currency?: string
     language?: string
     theme?: string
-    new_year_theme?: boolean
+    valentine_theme?: boolean
     stranger_things_theme?: boolean
   }) => {
     return this.request<any>('/api/v1/auth/me', {
@@ -1021,7 +1021,7 @@ class ApiClient {
     default_currency: string
     language: string
     theme: string
-    new_year_theme: boolean
+    valentine_theme: boolean
     stranger_things_theme: boolean
     is_premium: boolean
     is_admin: boolean

@@ -7,10 +7,10 @@ import { api } from '../services/api'
 import { storageSync } from '../utils/storage'
 import { Welcome } from './Welcome'
 import { Stories } from './Stories'
-import { SnowEffect } from './SnowEffect'
+import { HeartEffect } from './HeartEffect'
 import { Garland } from './Garland'
 import { CRTNoise } from './CRTNoise'
-import { useNewYearTheme } from '../contexts/NewYearContext'
+import { useValentineTheme } from '../contexts/ValentineContext'
 import { useStrangerThingsTheme } from '../contexts/StrangerThingsContext'
 import { useTheme } from '../hooks/useTheme'
 import { useI18n } from '../contexts/I18nContext'
@@ -28,7 +28,7 @@ export function Layout() {
   const [showStories, setShowStories] = useState(false)
   const isMiniApp = isTelegramWebApp()
   const isVK = isVKWebApp()
-  const { isEnabled: newYearEnabled } = useNewYearTheme()
+  const { isEnabled: valentineEnabled } = useValentineTheme()
   const { isEnabled: strangerThingsEnabled, setIsElevenMode } = useStrangerThingsTheme()
   const { theme, toggleTheme } = useTheme()
   const { t, language, setLanguage } = useI18n()
@@ -546,12 +546,12 @@ export function Layout() {
   ]
 
   return (
-    <div className={`min-h-screen flex flex-col xl:flex-row bg-telegram-bg dark:bg-telegram-dark-bg ${newYearEnabled ? 'new-year-mode' : ''} ${strangerThingsEnabled ? 'theme-stranger-things' : ''}`}>
-      {/* Новогодний снег */}
-      {newYearEnabled && !strangerThingsEnabled && <SnowEffect />}
+    <div className={`min-h-screen flex flex-col xl:flex-row bg-telegram-bg dark:bg-telegram-dark-bg ${valentineEnabled ? 'valentine-mode' : ''} ${strangerThingsEnabled ? 'theme-stranger-things' : ''}`}>
+      {/* Сердца для Дня святого Валентина */}
+      {valentineEnabled && !strangerThingsEnabled && <HeartEffect />}
       
       {/* Гирлянда в верхнем меню */}
-      {newYearEnabled && !strangerThingsEnabled && <Garland />}
+      {valentineEnabled && !strangerThingsEnabled && <Garland />}
       
       {/* CRT помехи для темы Stranger Things */}
       {strangerThingsEnabled && <CRTNoise />}
@@ -582,14 +582,14 @@ export function Layout() {
                 } : {}}
               >
                 <span className={!getTitleColor() ? "bg-gradient-to-r from-telegram-primary dark:from-telegram-dark-primary via-purple-500 to-telegram-primaryLight dark:to-telegram-dark-primaryLight bg-clip-text text-transparent" : ""}>
-                  {strangerThingsEnabled ? '' : newYearEnabled ? '🎄 ' : ''}Люся.Бюджет{strangerThingsEnabled ? '' : newYearEnabled ? ' ❄️' : ''}
+                  {strangerThingsEnabled ? '' : valentineEnabled ? '💝 ' : ''}Люся.Бюджет{strangerThingsEnabled ? '' : valentineEnabled ? ' ❤️' : ''}
                 </span>
               </h1>
               <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary font-medium tracking-wide">
                 {strangerThingsEnabled 
                   ? 'Добро пожаловать в Хокинс' 
-                  : newYearEnabled 
-                    ? 'С Новым годом! 🎉' 
+                  : valentineEnabled 
+                    ? 'С Днём святого Валентина! 💕' 
                     : 'Все посчитала'}
               </p>
             </div>
@@ -729,7 +729,7 @@ export function Layout() {
             } : {}}
           >
             <span className={!getTitleColor() ? "bg-gradient-to-r from-telegram-primary dark:from-telegram-dark-primary via-purple-500 to-telegram-primaryLight dark:to-telegram-dark-primaryLight bg-clip-text text-transparent" : ""}>
-              {strangerThingsEnabled ? '' : newYearEnabled ? '🎄 ' : ''}Люся.Бюджет{strangerThingsEnabled ? '' : newYearEnabled ? ' ❄️' : ''}
+              {strangerThingsEnabled ? '' : valentineEnabled ? '💝 ' : ''}Люся.Бюджет{strangerThingsEnabled ? '' : valentineEnabled ? ' ❤️' : ''}
             </span>
           </h1>
           </div>
@@ -791,7 +791,7 @@ export function Layout() {
                   </div>
                   <div className="flex items-center gap-2">
                     <h2 className="text-base font-semibold text-telegram-text dark:text-telegram-dark-text">
-                      {newYearEnabled ? `🎄 ${t.nav.menu}` : t.nav.menu}
+                      {valentineEnabled ? `💝 ${t.nav.menu}` : t.nav.menu}
                     </h2>
                     {/* Premium Badge в мобильном меню-оверлее */}
                     {user?.is_premium && (
