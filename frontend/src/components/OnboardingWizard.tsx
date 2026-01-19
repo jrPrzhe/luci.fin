@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { api } from '../services/api'
-import { useI18n } from '../contexts/I18nContext'
 
 interface OnboardingWizardProps {
   onComplete?: () => void
@@ -40,7 +39,6 @@ const GOAL_OPTIONS = [
 ]
 
 export function OnboardingWizard({ onComplete, onSkip }: OnboardingWizardProps) {
-  const { t } = useI18n()
   const [currentSlide, setCurrentSlide] = useState(0)
   const [loading, setLoading] = useState(false)
   

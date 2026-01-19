@@ -27,6 +27,7 @@ export function Layout() {
   const [userName, setUserName] = useState<string>()
   const [isCheckingAuth, setIsCheckingAuth] = useState(false)
   const [showStories, setShowStories] = useState(false)
+  const [showOnboardingWizard, setShowOnboardingWizard] = useState(false)
   const isMiniApp = isTelegramWebApp()
   const isVK = isVKWebApp()
   const { isEnabled: valentineEnabled } = useValentineTheme()

@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../services/api'
-import { useI18n } from '../contexts/I18nContext'
 import { OnboardingWizard } from '../components/OnboardingWizard'
-import { useNavigate } from 'react-router-dom'
 
 interface CategoryLimit {
   id: number
@@ -33,8 +31,6 @@ interface Biography {
 }
 
 export function Biography() {
-  const { t } = useI18n()
-  const navigate = useNavigate()
   const [showWizard, setShowWizard] = useState(false)
 
   const { data: biography, isLoading, refetch } = useQuery({
@@ -197,7 +193,7 @@ export function Biography() {
             </p>
 
             <div className="space-y-4">
-              {biography.category_limits.map((limit) => {
+              {biography.category_limits.map((limit: CategoryLimit) => {
                 const currency = limit.currency || 'RUB'
                 const userLimit = Number(limit.user_limit)
                 const aiLimit = limit.ai_recommended_limit ? Number(limit.ai_recommended_limit) : null
