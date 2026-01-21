@@ -654,6 +654,21 @@ export function Layout() {
   // Плоский список для мобильной навигации (старый формат)
   const navItems = useMemo(() => navGroups.flatMap(group => group.items), [navGroups])
 
+  // Защита от рендеринга меню до инициализации данных
+  // Проверяем, что location инициализирован, navGroups создан, и переводы готовы
+  if (!location || !location.pathname || !navGroups || navGroups.length === 0 || !t?.nav) {
+    return (
+      <div className={`min-h-screen flex flex-col xl:flex-row bg-telegram-bg dark:bg-telegram-dark-bg ${valentineEnabled ? 'valentine-mode' : ''} ${strangerThingsEnabled ? 'theme-stranger-things' : ''}`}>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-4xl mb-4">⏳</div>
+            <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">Загрузка...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className={`min-h-screen flex flex-col xl:flex-row bg-telegram-bg dark:bg-telegram-dark-bg ${valentineEnabled ? 'valentine-mode' : ''} ${strangerThingsEnabled ? 'theme-stranger-things' : ''}`}>
       {/* Сердца для Дня святого Валентина */}
