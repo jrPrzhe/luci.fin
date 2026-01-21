@@ -17,6 +17,7 @@ import { useI18n } from '../contexts/I18nContext'
 import { QuestNotifications } from './QuestNotifications'
 import { hasInteractedWithBot, openVKBot } from '../utils/vk'
 import { OnboardingWizard } from './OnboardingWizard'
+import { AppLoadingScreen } from './AppLoadingScreen'
 
 export function Layout() {
   const navigate = useNavigate()
@@ -29,6 +30,7 @@ export function Layout() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(false)
   const [showStories, setShowStories] = useState(false)
   const [showOnboardingWizard, setShowOnboardingWizard] = useState(false)
+  const [isAppReady, setIsAppReady] = useState(false)
   const isMiniApp = isTelegramWebApp()
   const isVK = isVKWebApp()
   const { isEnabled: valentineEnabled } = useValentineTheme()
@@ -490,14 +492,14 @@ export function Layout() {
   
   // Показываем загрузку во время проверки авторизации
   if (showAuthLoading && (isCheckingAuth && isAuthorized !== true) && 
-      location.pathname !== '/onboarding' && 
-      location.pathname !== '/login' && 
-      location.pathname !== '/register') {
+      location?.pathname !== '/onboarding' && 
+      location?.pathname !== '/login' && 
+      location?.pathname !== '/register') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-telegram-bg dark:bg-telegram-dark-bg">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-telegram-primary dark:border-telegram-dark-primary mb-4"></div>
-          <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{t.common.loading}</p>
+          <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{t?.common?.loading || 'Загрузка...'}</p>
         </div>
       </div>
     )
@@ -507,7 +509,7 @@ export function Layout() {
   // Это важно для Telegram Mini App, где авторизация происходит асинхронно через auth handlers
 
   // Если на странице онбординга и не авторизован, показываем онбординг
-  if (location.pathname === '/onboarding' && !isAuthorized) {
+  if (location?.pathname === '/onboarding' && !isAuthorized) {
     return null // Онбординг сам обработает навигацию
   }
 
@@ -528,7 +530,7 @@ export function Layout() {
   if (isAuthorized === false) {
     // Только если точно знаем, что не авторизованы (не null!)
     // И только если не на странице логина/регистрации
-    if (location.pathname !== '/login' && location.pathname !== '/register') {
+    if (location?.pathname && location.pathname !== '/login' && location.pathname !== '/register') {
       console.log('[Layout] User not authorized, redirecting to login')
       // Редирект уже должен был произойти в useEffect выше
       // Но на всякий случай возвращаем null здесь
@@ -690,9 +692,93 @@ export function Layout() {
   // Плоский список для мобильной навигации (старый формат)
   const navItems = useMemo(() => navGroups.flatMap(group => group.items), [navGroups])
 
+  // Определяем критические шаги загрузки
+  const loadingSteps = useMemo(() => {
+    const steps = [
+      {
+        key: 'translations',
+        label: 'Загрузка переводов...',
+        checkReady: () => translationsReady && !!t,
+      },
+      {
+        key: 'location',
+        label: 'Инициализация роутинга...',
+        checkReady: () => !!location?.pathname,
+      },
+    ]
+
+    // Для страниц логина/регистрации/онбординга не нужна авторизация
+    const isPublicPage = location?.pathname === '/login' || 
+                        location?.pathname === '/register' || 
+                        location?.pathname === '/onboarding'
+
+    if (!isPublicPage) {
+      steps.push({
+        key: 'auth',
+        label: 'Проверка авторизации...',
+        checkReady: () => isAuthorized !== null,
+      })
+
+      // Если авторизован, добавляем шаг загрузки данных пользователя
+      if (isAuthorized === true) {
+        steps.push({
+          key: 'user',
+          label: 'Загрузка данных пользователя...',
+          checkReady: () => {
+            // Проверяем через query state
+            const queryState = queryClient.getQueryState(['currentUser'])
+            return queryState?.status === 'success' || !!user
+          },
+        })
+      }
+    }
+
+    return steps
+  }, [location?.pathname, isAuthorized, translationsReady, t, user, queryClient])
+
+  // Проверяем готовность всех шагов загрузки
+  const allStepsReady = useMemo(() => {
+    return loadingSteps.every(step => {
+      if ('checkReady' in step && typeof step.checkReady === 'function') {
+        return step.checkReady()
+      }
+      if ('isReady' in step && step.isReady !== undefined) {
+        return step.isReady
+      }
+      if ('queryKey' in step && step.queryKey && Array.isArray(step.queryKey)) {
+        const queryState = queryClient.getQueryState(step.queryKey)
+        return queryState?.status === 'success' || queryState?.data !== undefined
+      }
+      return false
+    })
+  }, [loadingSteps, queryClient])
+
+  // Автоматически устанавливаем готовность, когда все шаги готовы
+  useEffect(() => {
+    if (allStepsReady && !isAppReady && loadingSteps.length > 0) {
+      // Небольшая задержка для плавного перехода
+      const timer = setTimeout(() => {
+        setIsAppReady(true)
+      }, 300)
+      return () => clearTimeout(timer)
+    }
+  }, [allStepsReady, isAppReady, loadingSteps.length])
+
+  // Показываем загрузочный экран до готовности приложения
+  // Показываем для всех страниц, включая публичные (логин/регистрация/онбординг)
+  if (!isAppReady || !allStepsReady) {
+    return (
+      <AppLoadingScreen
+        steps={loadingSteps}
+        onComplete={() => setIsAppReady(true)}
+      />
+    )
+  }
+
   // Защита от рендеринга меню до инициализации данных
   // Проверяем, что location инициализирован, navGroups создан, и переводы готовы
-  if (!location || !location.pathname || !translationsReady || !navGroups || navGroups.length === 0) {
+  // Также проверяем, что t (translations) готов
+  if (!location || !location.pathname || !translationsReady || !navGroups || navGroups.length === 0 || !t) {
     return (
       <div className={`min-h-screen flex flex-col xl:flex-row bg-telegram-bg dark:bg-telegram-dark-bg ${valentineEnabled ? 'valentine-mode' : ''} ${strangerThingsEnabled ? 'theme-stranger-things' : ''}`}>
         <div className="flex-1 flex items-center justify-center">
@@ -912,9 +998,9 @@ export function Layout() {
             <div className="flex items-center gap-3">
               <span className="text-2xl">{theme === 'dark' ? '🌙' : '☀️'}</span>
               <div>
-                <p className="font-medium text-sm text-telegram-text dark:text-telegram-dark-text">{t.profile.darkTheme}</p>
+                <p className="font-medium text-sm text-telegram-text dark:text-telegram-dark-text">{t?.profile?.darkTheme || 'Темная тема'}</p>
                 <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-                  {theme === 'dark' ? t.profile.darkThemeEnabled : t.profile.darkThemeDisabled}
+                  {theme === 'dark' ? (t?.profile?.darkThemeEnabled || 'Включена') : (t?.profile?.darkThemeDisabled || 'Выключена')}
                 </p>
               </div>
             </div>
@@ -930,7 +1016,7 @@ export function Layout() {
               onClick={handleLogout}
               className="w-full btn-secondary text-telegram-danger dark:text-telegram-dark-danger hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-telegram-danger dark:hover:text-red-300 text-sm py-2"
             >
-              {t.common.logout}
+              {t?.common?.logout || 'Выйти'}
             </button>
           )}
         </div>
@@ -997,7 +1083,7 @@ export function Layout() {
             <button
               onClick={toggleTheme}
               className="btn-icon w-10 h-10 flex items-center justify-center bg-telegram-hover dark:bg-telegram-dark-hover hover:bg-telegram-border dark:hover:bg-telegram-dark-border"
-              title={theme === 'dark' ? t.profile.darkThemeDisabled : t.profile.darkThemeEnabled}
+              title={theme === 'dark' ? (t?.profile?.darkThemeDisabled || 'Выключить темную тему') : (t?.profile?.darkThemeEnabled || 'Включить темную тему')}
             >
               <span className="text-xl">{theme === 'dark' ? '🌙' : '☀️'}</span>
             </button>
@@ -1022,7 +1108,7 @@ export function Layout() {
                   </div>
                   <div className="flex items-center gap-2">
                     <h2 className="text-base font-semibold text-telegram-text dark:text-telegram-dark-text">
-                      {valentineEnabled ? `💝 ${t.nav.menu}` : t.nav.menu}
+                      {valentineEnabled ? `💝 ${t?.nav?.menu || 'Меню'}` : (t?.nav?.menu || 'Меню')}
                     </h2>
                     {/* Premium Badge в мобильном меню-оверлее */}
                     {user?.is_premium && (
@@ -1136,7 +1222,7 @@ export function Layout() {
                 <div className="flex items-center gap-3">
                   <span className="text-xl">🌍</span>
                   <div>
-                    <p className="font-medium text-sm text-telegram-text dark:text-telegram-dark-text">{t.profile.language}</p>
+                    <p className="font-medium text-sm text-telegram-text dark:text-telegram-dark-text">{t?.profile?.language || 'Язык'}</p>
                     <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
                       {language === 'ru' ? 'Русский' : 'English'}
                     </p>
@@ -1171,7 +1257,7 @@ export function Layout() {
                   onClick={handleLogout}
                   className="w-full btn-secondary text-telegram-danger dark:text-telegram-dark-danger hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-telegram-danger dark:hover:text-red-300 text-sm py-2"
                 >
-                  {t.common.logout}
+                  {t?.common?.logout || 'Выйти'}
                 </button>
               )}
             </div>
@@ -1221,10 +1307,10 @@ export function Layout() {
                   ? 'text-telegram-primary dark:text-telegram-dark-primary bg-telegram-primary/10 dark:bg-telegram-dark-primary/10' 
                   : 'text-telegram-textSecondary dark:text-telegram-dark-textSecondary'
               }`}
-              aria-label={t.nav.menu}
+              aria-label={t?.nav?.menu || 'Меню'}
             >
               <span className="text-xl">{mobileMenuOpen ? '✕' : '☰'}</span>
-              <span className="text-[10px] font-medium">{t.nav.menu}</span>
+              <span className="text-[10px] font-medium">{t?.nav?.menu || 'Меню'}</span>
             </button>
           </div>
         </nav>
@@ -1265,10 +1351,10 @@ export function Layout() {
                   ? 'text-telegram-primary dark:text-telegram-dark-primary bg-telegram-primary/10 dark:bg-telegram-dark-primary/10' 
                   : 'text-telegram-textSecondary dark:text-telegram-dark-textSecondary'
               }`}
-              aria-label={t.nav.menu}
+              aria-label={t?.nav?.menu || 'Меню'}
             >
               <span className="text-xl">{mobileMenuOpen ? '✕' : '☰'}</span>
-              <span className="text-[10px] font-medium">{t.nav.menu}</span>
+              <span className="text-[10px] font-medium">{t?.nav?.menu || 'Меню'}</span>
             </button>
           </div>
         </nav>
