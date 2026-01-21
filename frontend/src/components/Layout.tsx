@@ -864,35 +864,6 @@ export function Layout() {
   }
 
 
-  // Показываем загрузку во время проверки авторизации
-  // НЕ показываем загрузку на странице онбординга и логина/регистрации
-  // НО только если проверка активно идет (isCheckingAuth), а не просто isAuthorized === null
-  // Это предотвращает бесконечную загрузку, если что-то пошло не так
-  // Также добавляем таймаут - не показываем загрузку дольше 2 секунд
-  const [showAuthLoading, setShowAuthLoading] = useState(true)
-  
-  useEffect(() => {
-    if (isCheckingAuth && isAuthorized !== true) {
-      // Показываем загрузку максимум 2 секунды
-      const timer = setTimeout(() => {
-        setShowAuthLoading(false)
-      }, 2000)
-      
-      return () => clearTimeout(timer)
-    } else {
-      setShowAuthLoading(false)
-    }
-  }, [isCheckingAuth, isAuthorized])
-  
-  // Показываем загрузку во время проверки авторизации
-  const shouldShowAuthLoading = showAuthLoading && (isCheckingAuth && isAuthorized !== true) && 
-    location?.pathname !== '/onboarding' && 
-    location?.pathname !== '/login' && 
-    location?.pathname !== '/register'
-  
-  // Если авторизация неизвестна, но проверка не идет - не блокируем, пусть Layout рендерится
-  // Это важно для Telegram Mini App, где авторизация происходит асинхронно через auth handlers
-
   // Если на странице онбординга и не авторизован, показываем онбординг
   const shouldShowOnboarding = location?.pathname === '/onboarding' && !isAuthorized
 
