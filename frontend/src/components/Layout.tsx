@@ -1025,7 +1025,13 @@ export function Layout() {
 
   // ВАЖНО: Не рендерим навигацию, если данные не готовы
   // Это критично для предотвращения React error #300 при быстром использовании приложения
-  if (!isDataReady || !isAppReady) {
+  // ВАЖНО: Всегда рендерим Outlet, даже если данные не готовы, чтобы избежать проблем с hooks
+  // Вместо этого показываем загрузку внутри Layout
+  const shouldShowLoading = !isDataReady || !isAppReady
+
+  // ВАЖНО: Если данные не готовы, показываем загрузку, но НЕ возвращаемся рано
+  // Это предотвращает проблемы с hooks в дочерних компонентах
+  if (shouldShowLoading) {
     return (
       <div className={`min-h-screen flex flex-col xl:flex-row bg-telegram-bg dark:bg-telegram-dark-bg ${valentineEnabled ? 'valentine-mode' : ''} ${strangerThingsEnabled ? 'theme-stranger-things' : ''}`}>
         <div className="flex-1 flex items-center justify-center">

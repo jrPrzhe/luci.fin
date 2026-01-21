@@ -102,10 +102,10 @@ export function UserStatsCard() {
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <span className="text-xl md:text-2xl font-bold text-telegram-text dark:text-telegram-dark-text">
                 {profile.level}
-              </span>
+                  </span>
               <span className="text-[10px] md:text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary font-medium">
                 {t.goals.stats.level || 'Уровень'}
-              </span>
+                </span>
             </div>
           </div>
 

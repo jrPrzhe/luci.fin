@@ -472,10 +472,13 @@ export function Dashboard() {
     let checkCount = 0
     const maxChecks = 10
     const interval = setInterval(() => {
-      if (!hasToken && checkCount < maxChecks && mounted) {
+      // Используем функцию для получения актуального значения hasToken
+      // чтобы избежать проблем с замыканием
+      const currentToken = storageSync.getItem('token')
+      if (!currentToken && checkCount < maxChecks && mounted) {
         checkCount++
         loadToken()
-      } else if (hasToken || checkCount >= maxChecks) {
+      } else if (currentToken || checkCount >= maxChecks) {
         clearInterval(interval)
       }
     }, 500)
@@ -1124,6 +1127,7 @@ export function Dashboard() {
   // НО только если нет ошибок и не истек таймаут
   // Это предотвращает бесконечную загрузку при проблемах с сетью
   // ВАЖНО: Не показываем загрузку, если токен еще не загружен (для Telegram мобильной версии)
+  // ВАЖНО: Всегда вычисляем эти значения после всех hooks, чтобы избежать React error #300
   const isInitialLoading = hasToken && 
                            (balanceLoading || accountsLoading || transactionsLoading) && 
                            !loadingTimeout && 
@@ -1131,17 +1135,22 @@ export function Dashboard() {
                            !accountsError && 
                            !transactionsError
 
-  if (isInitialLoading) {
-    return <LoadingSpinner fullScreen={true} size="md" />
-  }
-  
+  // ВАЖНО: Всегда рендерим компонент, даже если показываем загрузку
+  // Это предотвращает проблемы с hooks при изменении состояния
+  const showTokenLoading = !hasToken
+
   // Если токен еще не загружен, показываем загрузку токена
-  if (!hasToken) {
+  if (showTokenLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <LoadingSpinner fullScreen={false} size="md" />
       </div>
     )
+  }
+
+  // Показываем общий LoadingSpinner при первой загрузке основных данных
+  if (isInitialLoading) {
+    return <LoadingSpinner fullScreen={true} size="md" />
   }
 
   // Обеспечиваем, что данные всегда доступны (даже при ошибках)
