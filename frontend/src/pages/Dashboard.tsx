@@ -1250,9 +1250,10 @@ export function Dashboard() {
                     </p>
                     <button
                       onClick={() => setShowAddCategoryForm(true)}
-                      className="btn-primary"
+                      className="btn-primary flex items-center gap-2"
                     >
-                      ➕ {t.dashboard.form.createCategory}
+                      <span className="text-lg font-bold">➕</span>
+                      <span>{t.dashboard.form.createCategory}</span>
                     </button>
                     <button
                       onClick={() => {
@@ -1274,10 +1275,10 @@ export function Dashboard() {
                       </p>
                       <button
                         onClick={() => setShowAddCategoryForm(true)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-telegram-primary dark:text-telegram-dark-primary hover:bg-telegram-primary/10 dark:hover:bg-telegram-dark-primary/10 rounded-telegram transition-colors"
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-telegram-primary/15 dark:bg-telegram-dark-primary/20 text-telegram-primary dark:text-telegram-dark-primary hover:bg-telegram-primary/25 dark:hover:bg-telegram-dark-primary/30 border border-telegram-primary/30 dark:border-telegram-dark-primary/40 rounded-telegram transition-all shadow-sm hover:shadow-md active:scale-[0.98]"
                         title={t.dashboard.form.createCategory}
                       >
-                        <span className="text-lg">➕</span>
+                        <span className="text-lg font-bold">➕</span>
                         <span className="hidden sm:inline">{t.dashboard.form.createCategory}</span>
                       </button>
                     </div>
