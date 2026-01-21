@@ -682,8 +682,9 @@ export function Layout() {
         
         <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
           {navGroups.map((group) => {
-            const isExpanded = expandedGroups[group.key]
-            const hasActiveItem = group.items.some(item => location.pathname === item.path)
+            const isExpanded = expandedGroups[group.key] ?? false
+            const currentPath = location?.pathname || '/'
+            const hasActiveItem = group.items.some(item => currentPath === item.path)
             
             return (
               <div key={group.key} className="space-y-1">
@@ -709,7 +710,7 @@ export function Layout() {
                 {isExpanded && (
                   <div className="ml-4 space-y-0.5">
                     {group.items.map((item) => {
-                      const isActive = location.pathname === item.path
+                      const isActive = currentPath === item.path
                       return (
                         <Link
                           key={item.path}
@@ -929,8 +930,9 @@ export function Layout() {
             
             <nav className="p-2 space-y-1">
               {navGroups.map((group) => {
-                const isExpanded = expandedGroups[group.key]
-                const hasActiveItem = group.items.some(item => location.pathname === item.path)
+                const isExpanded = expandedGroups[group.key] ?? false
+                const currentPath = location?.pathname || '/'
+                const hasActiveItem = group.items.some(item => currentPath === item.path)
                 
                 return (
                   <div key={group.key} className="space-y-1">
@@ -956,7 +958,7 @@ export function Layout() {
                     {isExpanded && (
                       <div className="ml-4 space-y-0.5">
                         {group.items.map((item) => {
-                          const isActive = location.pathname === item.path
+                          const isActive = currentPath === item.path
                           return (
                             <Link
                               key={item.path}
