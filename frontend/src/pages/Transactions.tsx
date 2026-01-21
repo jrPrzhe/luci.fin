@@ -156,6 +156,42 @@ export function Transactions() {
   const accountIdFromNavigation = useRef<number | null>(null)
   const categoryIdFromNavigation = useRef<number | null>(null)
   
+  const TRANSACTIONS_CACHE_KEY = 'transactionsBaseCacheV1'
+  const TRANSACTIONS_CACHE_TTL_MS = 5 * 60 * 1000
+
+  const isBaseView = () =>
+    filterType === 'all' &&
+    transactionTypeFilter === 'all' &&
+    dateFilter === 'all' &&
+    !customStartDate &&
+    !customEndDate &&
+    selectedAccountId === null &&
+    selectedCategoryId === null
+
+  const readBaseCache = () => {
+    try {
+      const raw = sessionStorage.getItem(TRANSACTIONS_CACHE_KEY)
+      if (!raw) return null
+      const parsed = JSON.parse(raw) as { ts: number; transactions: Transaction[]; hasMore: boolean }
+      if (!parsed?.ts || !Array.isArray(parsed.transactions)) return null
+      if (Date.now() - parsed.ts > TRANSACTIONS_CACHE_TTL_MS) return null
+      return parsed
+    } catch (e) {
+      return null
+    }
+  }
+
+  const writeBaseCache = (data: { transactions: Transaction[]; hasMore: boolean }) => {
+    try {
+      sessionStorage.setItem(
+        TRANSACTIONS_CACHE_KEY,
+        JSON.stringify({ ts: Date.now(), transactions: data.transactions, hasMore: data.hasMore })
+      )
+    } catch (e) {
+      // Ignore sessionStorage errors
+    }
+  }
+
   // Проверяем, были ли данные загружены в этой сессии (для кэширования)
   const getDataLoadedFlag = (): boolean => {
     try {
@@ -291,11 +327,18 @@ export function Transactions() {
     }
   }
 
-  const loadData = async (reset: boolean = true, accountIdOverride?: number | null, categoryIdOverride?: number | null) => {
+  const loadData = async (
+    reset: boolean = true,
+    accountIdOverride?: number | null,
+    categoryIdOverride?: number | null,
+    options: { silent?: boolean } = {}
+  ) => {
     try {
       if (reset) {
-        setLoading(true)
-        setTransactions([])
+        if (!options.silent) {
+          setLoading(true)
+          setTransactions([])
+        }
         // ВАЖНО: Помечаем, что данные загружаются (для кэширования)
         // Флаг будет установлен в true после успешной загрузки
       } else {
@@ -337,17 +380,26 @@ export function Transactions() {
         categoryIdParam
       )
       
+      const hasMoreValue = batch.length === limit
       // Если получили меньше чем limit, значит это последняя страница
-      setHasMore(batch.length === limit)
+      setHasMore(hasMoreValue)
       
+      const nextTransactions = reset ? batch : [...transactions, ...batch]
       if (reset) {
-        setTransactions(batch)
-        // ВАЖНО: Помечаем, что данные успешно загружены (только если нет фильтров)
-        if (!accountIdOverride && !categoryIdOverride && !selectedAccountId && !selectedCategoryId) {
-          setDataLoadedFlag(true)
-        }
+        setTransactions(nextTransactions)
+        // ВАЖНО: Помечаем, что данные успешно загружены
+        setDataLoadedFlag(true)
       } else {
-        setTransactions([...transactions, ...batch])
+        setTransactions(nextTransactions)
+      }
+
+      if (
+        reset &&
+        !accountIdOverride &&
+        !categoryIdOverride &&
+        isBaseView()
+      ) {
+        writeBaseCache({ transactions: nextTransactions, hasMore: hasMoreValue })
       }
       
       // Accounts are now loaded via React Query, no need to load here
@@ -369,7 +421,9 @@ export function Transactions() {
         setTransactions([])
       }
     } finally {
-      setLoading(false)
+      if (!options.silent) {
+        setLoading(false)
+      }
       setLoadingMore(false)
     }
   }
@@ -450,9 +504,18 @@ export function Transactions() {
   useEffect(() => {
     // Only load if we didn't come from Accounts or Reports page (which will trigger loadData in the effect above)
     const state = location.state as { accountId?: number; categoryId?: number } | null
-    // Проверяем, были ли данные уже загружены в этой сессии (только для базового списка без фильтров)
-    const hasCachedData = getDataLoadedFlag()
-    if (!state?.accountId && !state?.categoryId && selectedAccountId === null && !accountIdFromNavigation.current && !categoryIdFromNavigation.current && !hasCachedData) {
+    if (!state?.accountId && !state?.categoryId && selectedAccountId === null && !accountIdFromNavigation.current && !categoryIdFromNavigation.current) {
+      if (isBaseView()) {
+        const cache = readBaseCache()
+        if (cache) {
+          setTransactions(cache.transactions)
+          setHasMore(cache.hasMore)
+          setLoading(false)
+          setDataLoadedFlag(true)
+          loadData(true, undefined, undefined, { silent: true })
+          return
+        }
+      }
       loadData()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

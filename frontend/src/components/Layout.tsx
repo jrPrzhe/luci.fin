@@ -1016,16 +1016,8 @@ export function Layout() {
   }, [isDataReady, isAppReady, isMiniApp, telegramLoadingComplete])
 
 
-  if (shouldShowAuthLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-telegram-bg dark:bg-telegram-dark-bg">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-telegram-primary dark:border-telegram-dark-primary mb-4"></div>
-          <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{t?.common?.loading || 'Загрузка...'}</p>
-        </div>
-      </div>
-    )
-  }
+  // Убрали промежуточный экран "Загрузка..." — после TelegramLoadingScreen
+  // переходим сразу к рендеру Layout/дашборда при готовности данных.
 
   if (shouldShowOnboarding) {
     return null
