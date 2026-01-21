@@ -501,7 +501,7 @@ export function Dashboard() {
     retry: 1,
     staleTime: 30000, // 30 seconds
     refetchOnWindowFocus: false,
-    refetchOnMount: false, // Используем кэш при монтировании
+    refetchOnMount: true, // ВАЖНО: для Telegram мобильной версии нужно загружать данные при монтировании
     gcTime: 300000, // 5 minutes - кэшируем для быстрого доступа
   })
 
@@ -519,7 +519,7 @@ export function Dashboard() {
     retry: 1,
     staleTime: 60000, // 1 minute
     refetchOnWindowFocus: false,
-    refetchOnMount: false, // Используем кэш при монтировании
+    refetchOnMount: true, // ВАЖНО: для Telegram мобильной версии нужно загружать данные при монтировании
     gcTime: 600000, // 10 minutes - кэшируем для быстрого доступа
   })
 
@@ -537,7 +537,7 @@ export function Dashboard() {
     retry: 1,
     staleTime: 30000, // 30 seconds
     refetchOnWindowFocus: false,
-    refetchOnMount: false, // Используем кэш при монтировании
+    refetchOnMount: true, // ВАЖНО: для Telegram мобильной версии нужно загружать данные при монтировании
     gcTime: 300000, // 5 minutes - кэшируем для быстрого доступа
   })
 
@@ -548,7 +548,7 @@ export function Dashboard() {
     enabled: hasToken, // Запрос только если есть токен
     staleTime: 300000, // 5 minutes
     refetchOnWindowFocus: false,
-    refetchOnMount: false, // Используем кэш при монтировании
+    refetchOnMount: true, // ВАЖНО: для Telegram мобильной версии нужно загружать данные при монтировании
     gcTime: 600000, // 10 minutes - кэшируем для быстрого доступа
   })
 
@@ -1123,7 +1123,9 @@ export function Dashboard() {
   // Показываем общий LoadingSpinner при первой загрузке основных данных
   // НО только если нет ошибок и не истек таймаут
   // Это предотвращает бесконечную загрузку при проблемах с сетью
-  const isInitialLoading = (balanceLoading || accountsLoading || transactionsLoading) && 
+  // ВАЖНО: Не показываем загрузку, если токен еще не загружен (для Telegram мобильной версии)
+  const isInitialLoading = hasToken && 
+                           (balanceLoading || accountsLoading || transactionsLoading) && 
                            !loadingTimeout && 
                            !balanceError && 
                            !accountsError && 
@@ -1132,10 +1134,23 @@ export function Dashboard() {
   if (isInitialLoading) {
     return <LoadingSpinner fullScreen={true} size="md" />
   }
+  
+  // Если токен еще не загружен, показываем загрузку токена
+  if (!hasToken) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner fullScreen={false} size="md" />
+      </div>
+    )
+  }
 
   // Обеспечиваем, что данные всегда доступны (даже при ошибках)
-  const balanceData = balance || { total: 0, currency: 'RUB', accounts: [] }
-  const accountsData = accounts || []
+  // ВАЖНО: Проверяем, что balance - это объект, а не undefined/null
+  const balanceData = (balance && typeof balance === 'object' && 'total' in balance) 
+    ? balance 
+    : { total: 0, currency: 'RUB', accounts: [] }
+  // ВАЖНО: Проверяем, что accounts - это массив
+  const accountsData = (Array.isArray(accounts)) ? accounts : []
 
   return (
     <div className="min-h-screen animate-fade-in w-full">
@@ -1174,15 +1189,30 @@ export function Dashboard() {
             )}
           </div>
           <button
-            onClick={() => gamificationStatus && setShowStatsModal(true)}
+            onClick={() => {
+              if (gamificationStatus && gamificationStatus.profile) {
+                setShowStatsModal(true)
+              }
+            }}
             className="w-12 h-12 md:w-16 md:h-16 ml-2 flex-shrink-0 relative cursor-pointer hover:scale-105 transition-transform active:scale-95 overflow-hidden"
-            disabled={!gamificationStatus}
+            disabled={!gamificationStatus || !gamificationStatus.profile}
           >
-            {gamificationStatus?.profile ? (
+            {gamificationStatus && gamificationStatus.profile ? (
               (() => {
                 const profile = gamificationStatus.profile
-                const xpPercentage = profile.xp_to_next_level > 0 
-                  ? (profile.xp / (profile.xp + profile.xp_to_next_level)) * 100 
+                // ВАЖНО: Проверяем, что profile - это объект с нужными свойствами
+                if (!profile || typeof profile !== 'object') {
+                  return (
+                    <div className="w-full h-full rounded-full bg-white/20 flex items-center justify-center text-xl md:text-2xl">
+                      💰
+                    </div>
+                  )
+                }
+                const xp = typeof profile.xp === 'number' ? profile.xp : 0
+                const xpToNextLevel = typeof profile.xp_to_next_level === 'number' ? profile.xp_to_next_level : 0
+                const level = typeof profile.level === 'number' ? profile.level : 1
+                const xpPercentage = xpToNextLevel > 0 
+                  ? (xp / (xp + xpToNextLevel)) * 100 
                   : 100
                 // Используем размер контейнера вместо фиксированного
                 const size = 100 // 100% для адаптивности
@@ -1230,7 +1260,7 @@ export function Dashboard() {
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                       <span className="text-sm md:text-base font-bold text-white">
-                        {profile.level}
+                        {level}
                       </span>
                       <span className="text-[8px] md:text-[10px] text-white/90 font-medium">
                         LVL
@@ -1269,10 +1299,17 @@ export function Dashboard() {
             ) : (
               <p className="text-base md:text-lg font-semibold">
                 {(() => {
-                  const expense = Math.round(monthlyStats?.expense || 0)
+                  // ВАЖНО: Проверяем, что monthlyStats - это объект
+                  const monthlyStatsData = (monthlyStats && typeof monthlyStats === 'object' && 'expense' in monthlyStats) 
+                    ? monthlyStats 
+                    : { income: 0, expense: 0 }
+                  const expense = Math.round(typeof monthlyStatsData.expense === 'number' ? monthlyStatsData.expense : 0)
+                  const currency = (balanceData && typeof balanceData === 'object' && 'currency' in balanceData) 
+                    ? balanceData.currency || '₽' 
+                    : '₽'
                   return expense === 0 
-                    ? `${expense.toLocaleString('ru-RU')} ${balanceData.currency || '₽'}`
-                    : `-${expense.toLocaleString('ru-RU')} ${balanceData.currency || '₽'}`
+                    ? `${expense.toLocaleString('ru-RU')} ${currency}`
+                    : `-${expense.toLocaleString('ru-RU')} ${currency}`
                 })()}
               </p>
             )}
@@ -1779,10 +1816,14 @@ export function Dashboard() {
               </div>
             ))}
           </div>
-        ) : recentTransactions && recentTransactions.length > 0 ? (
+        ) : (Array.isArray(recentTransactions) && recentTransactions.length > 0) ? (
           <div className="space-y-1 md:space-y-2">
             {recentTransactions
               .filter((transaction: any) => {
+                // ВАЖНО: Проверяем, что transaction - это объект
+                if (!transaction || typeof transaction !== 'object') {
+                  return false
+                }
                 // Hide income transactions that are part of a transfer (they have parent_transaction_id)
                 if (transaction.transaction_type === 'income' && transaction.parent_transaction_id) {
                   return false
@@ -1794,50 +1835,64 @@ export function Dashboard() {
                     return false
                   }
                 }
+                // ВАЖНО: Проверяем, что transaction имеет id
+                if (!transaction.id) {
+                  return false
+                }
                 return true
               })
-              .map((transaction: any) => (
-              <div 
-                key={transaction.id} 
-                className="flex items-center gap-3 md:gap-4 p-2 md:p-3 rounded-telegram hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover active:bg-telegram-hover dark:active:bg-telegram-dark-hover transition-colors group"
-              >
-                <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-base md:text-lg flex-shrink-0 ${
-                  transaction.transaction_type === 'income' 
-                    ? 'bg-telegram-success/10' 
-                    : transaction.transaction_type === 'expense'
-                    ? 'bg-telegram-danger/10'
-                    : 'bg-telegram-primaryLight/20'
-                }`}>
-                  {transaction.transaction_type === 'income' ? '➕' : transaction.transaction_type === 'expense' ? '➖' : '🔄'}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    {transaction.category_icon && (
-                      <span className="text-base">{transaction.category_icon}</span>
-                    )}
-                    <p className="font-medium text-sm md:text-base text-telegram-text dark:text-telegram-dark-text truncate">
-                      {transaction.category_name || transaction.description || t.dashboard.form.category}
+              .map((transaction: any) => {
+                const transactionType = transaction.transaction_type || 'expense'
+                const categoryIcon = transaction.category_icon || ''
+                const categoryName = transaction.category_name || ''
+                const description = transaction.description || ''
+                const transactionDate = transaction.transaction_date ? new Date(transaction.transaction_date) : new Date()
+                const amount = typeof transaction.amount === 'number' ? transaction.amount : 0
+                const currency = transaction.currency || '₽'
+                
+                return (
+                  <div 
+                    key={transaction.id} 
+                    className="flex items-center gap-3 md:gap-4 p-2 md:p-3 rounded-telegram hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover active:bg-telegram-hover dark:active:bg-telegram-dark-hover transition-colors group"
+                  >
+                    <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-base md:text-lg flex-shrink-0 ${
+                      transactionType === 'income' 
+                        ? 'bg-telegram-success/10' 
+                        : transactionType === 'expense'
+                        ? 'bg-telegram-danger/10'
+                        : 'bg-telegram-primaryLight/20'
+                    }`}>
+                      {transactionType === 'income' ? '➕' : transactionType === 'expense' ? '➖' : '🔄'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        {categoryIcon && (
+                          <span className="text-base">{categoryIcon}</span>
+                        )}
+                        <p className="font-medium text-sm md:text-base text-telegram-text dark:text-telegram-dark-text truncate">
+                          {categoryName || description || t.dashboard.form.category}
+                        </p>
+                      </div>
+                      <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary truncate">
+                        {transactionDate.toLocaleDateString('ru-RU')}
+                        {description && categoryName && (
+                          <span className="ml-2">• <span className="truncate">{description}</span></span>
+                        )}
+                      </p>
+                    </div>
+                    <p className={`font-semibold text-sm md:text-base whitespace-nowrap flex-shrink-0 ${
+                      transactionType === 'income' 
+                        ? 'text-telegram-success' 
+                        : transactionType === 'expense'
+                        ? 'text-telegram-danger'
+                        : 'text-telegram-primary'
+                    }`}>
+                      {transactionType === 'income' ? '+' : transactionType === 'expense' ? '-' : '↔'}
+                      {Math.round(amount).toLocaleString('ru-RU')} {currency}
                     </p>
                   </div>
-                  <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary truncate">
-                    {new Date(transaction.transaction_date).toLocaleDateString('ru-RU')}
-                    {transaction.description && transaction.category_name && (
-                      <span className="ml-2">• <span className="truncate">{transaction.description}</span></span>
-                    )}
-                  </p>
-                </div>
-                <p className={`font-semibold text-sm md:text-base whitespace-nowrap flex-shrink-0 ${
-                  transaction.transaction_type === 'income' 
-                    ? 'text-telegram-success' 
-                    : transaction.transaction_type === 'expense'
-                    ? 'text-telegram-danger'
-                    : 'text-telegram-primary'
-                }`}>
-                  {transaction.transaction_type === 'income' ? '+' : transaction.transaction_type === 'expense' ? '-' : '↔'}
-                  {Math.round(transaction.amount).toLocaleString('ru-RU')} {transaction.currency}
-                </p>
-              </div>
-            ))}
+                )
+              })}
           </div>
         ) : (
           <div className="text-center py-8 md:py-12">
