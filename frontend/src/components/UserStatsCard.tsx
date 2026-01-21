@@ -109,10 +109,6 @@ export function UserStatsCard() {
             </div>
           </div>
 
-          {/* Arrow */}
-          <div className="flex-shrink-0 text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-            →
-          </div>
         </div>
       </button>
 

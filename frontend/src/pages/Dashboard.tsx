@@ -5,7 +5,7 @@ import { api } from '../services/api'
 import { useI18n } from '../contexts/I18nContext'
 import { AchievementModal } from '../components/AchievementModal'
 import { LevelUpModal } from '../components/LevelUpModal'
-import { UserStatsCard } from '../components/UserStatsCard'
+import { UserStatsModal } from '../components/UserStatsModal'
 import { useToast } from '../contexts/ToastContext'
 import { LoadingSpinner } from '../components/LoadingSpinner'
 import { useValentineTheme } from '../contexts/ValentineContext'
@@ -218,6 +218,7 @@ export function Dashboard() {
   const [creatingCategory, setCreatingCategory] = useState(false)
   const [newAchievement, setNewAchievement] = useState<any>(null)
   const [levelUp, setLevelUp] = useState<number | null>(null)
+  const [showStatsModal, setShowStatsModal] = useState(false)
   const descriptionInputRef = useRef<HTMLInputElement>(null)
   const formScrollContainerRef = useRef<HTMLDivElement>(null)
 
@@ -521,6 +522,14 @@ export function Dashboard() {
   const { data: goals = [] } = useQuery({
     queryKey: ['goals'],
     queryFn: () => api.getGoals('active'),
+    staleTime: 30000,
+    refetchOnWindowFocus: false,
+  })
+
+  // Получаем статус геймификации для прогресс-бара уровня
+  const { data: gamificationStatus } = useQuery({
+    queryKey: ['gamification-status'],
+    queryFn: () => api.getGamificationStatus(),
     staleTime: 30000,
     refetchOnWindowFocus: false,
   })
@@ -1079,9 +1088,68 @@ export function Dashboard() {
               </p>
             )}
           </div>
-          <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-white/20 flex items-center justify-center text-2xl md:text-3xl ml-2 flex-shrink-0">
-            💰
-          </div>
+          <button
+            onClick={() => gamificationStatus && setShowStatsModal(true)}
+            className="w-12 h-12 md:w-16 md:h-16 ml-2 flex-shrink-0 relative cursor-pointer hover:scale-105 transition-transform active:scale-95"
+            disabled={!gamificationStatus}
+          >
+            {gamificationStatus?.profile ? (
+              (() => {
+                const profile = gamificationStatus.profile
+                const xpPercentage = profile.xp_to_next_level > 0 
+                  ? (profile.xp / (profile.xp + profile.xp_to_next_level)) * 100 
+                  : 100
+                const size = 64
+                const strokeWidth = 5
+                const radius = (size - strokeWidth) / 2
+                const circumference = 2 * Math.PI * radius
+                const offset = circumference - (xpPercentage / 100) * circumference
+                return (
+                  <div className="relative w-full h-full">
+                    <svg
+                      width={size}
+                      height={size}
+                      className="transform -rotate-90 w-full h-full"
+                    >
+                      <circle
+                        cx={size / 2}
+                        cy={size / 2}
+                        r={radius}
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={strokeWidth}
+                        className="text-white/30"
+                      />
+                      <circle
+                        cx={size / 2}
+                        cy={size / 2}
+                        r={radius}
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={strokeWidth}
+                        strokeLinecap="round"
+                        strokeDasharray={circumference}
+                        strokeDashoffset={offset}
+                        className="text-white transition-all duration-500"
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-sm md:text-base font-bold text-white">
+                        {profile.level}
+                      </span>
+                      <span className="text-[8px] md:text-[10px] text-white/90 font-medium">
+                        LVL
+                      </span>
+                    </div>
+                  </div>
+                )
+              })()
+            ) : (
+              <div className="w-full h-full rounded-full bg-white/20 flex items-center justify-center text-xl md:text-2xl">
+                💰
+              </div>
+            )}
+          </button>
         </div>
         <div className="flex gap-2 md:gap-4 text-xs md:text-sm mb-3 md:mb-4">
           <div className="flex-1 bg-white/10 rounded-telegram p-2 md:p-3 backdrop-blur-sm">
@@ -1157,10 +1225,10 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* User Stats Card - Level, Streak, Hearts */}
-      <div className="mb-4 md:mb-6">
+      {/* User Stats Card - скрыт, функциональность перенесена в баланс карту */}
+      {/* <div className="mb-4 md:mb-6">
         <UserStatsCard />
-      </div>
+      </div> */}
 
       {/* Achievement Modal */}
       {newAchievement && (
@@ -1178,6 +1246,14 @@ export function Dashboard() {
         <LevelUpModal
           newLevel={levelUp}
           onClose={() => setLevelUp(null)}
+        />
+      )}
+
+      {/* User Stats Modal */}
+      {showStatsModal && gamificationStatus && (
+        <UserStatsModal
+          status={gamificationStatus}
+          onClose={() => setShowStatsModal(false)}
         />
       )}
 
