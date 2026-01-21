@@ -32,6 +32,7 @@ export function Layout() {
   const [showStories, setShowStories] = useState(false)
   const [showOnboardingWizard, setShowOnboardingWizard] = useState(false)
   const [isAppReady, setIsAppReady] = useState(false)
+  const [telegramLoadingComplete, setTelegramLoadingComplete] = useState(false)
   const isMiniApp = isTelegramWebApp()
   const isVK = isVKWebApp()
   const { isEnabled: valentineEnabled } = useValentineTheme()
@@ -975,19 +976,12 @@ export function Layout() {
   // ВАЖНО: Для Telegram Mini App используем специальный экран загрузки
   // который проверяет токен и предзагружает данные для основных вкладок
   // Это предотвращает проблемы с hooks, так как Layout монтируется только после завершения загрузки
-  const [telegramLoadingComplete, setTelegramLoadingComplete] = useState(false)
-  
   if (isAuthorized === null && !isPublicPage && isMiniApp && !telegramLoadingComplete) {
     return (
       <TelegramLoadingScreen
         onComplete={() => {
           console.log('[Layout] Telegram loading complete, updating authorization status')
-          // После завершения загрузки проверяем токен и обновляем состояние
-          const token = storageSync.getItem('token')
-          if (token) {
-            setIsAuthorized(true)
-            setIsCheckingAuth(false)
-          }
+          // После завершения загрузки разрешаем рендеринг Layout
           setTelegramLoadingComplete(true)
         }}
       />
