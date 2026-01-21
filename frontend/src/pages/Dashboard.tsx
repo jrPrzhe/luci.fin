@@ -1090,7 +1090,7 @@ export function Dashboard() {
           </div>
           <button
             onClick={() => gamificationStatus && setShowStatsModal(true)}
-            className="w-12 h-12 md:w-16 md:h-16 ml-2 flex-shrink-0 relative cursor-pointer hover:scale-105 transition-transform active:scale-95"
+            className="w-12 h-12 md:w-16 md:h-16 ml-2 flex-shrink-0 relative cursor-pointer hover:scale-105 transition-transform active:scale-95 overflow-hidden"
             disabled={!gamificationStatus}
           >
             {gamificationStatus?.profile ? (
@@ -1099,30 +1099,40 @@ export function Dashboard() {
                 const xpPercentage = profile.xp_to_next_level > 0 
                   ? (profile.xp / (profile.xp + profile.xp_to_next_level)) * 100 
                   : 100
-                const size = 64
-                const strokeWidth = 5
+                // Используем размер контейнера вместо фиксированного
+                const size = 100 // 100% для адаптивности
+                const strokeWidth = 8
                 const radius = (size - strokeWidth) / 2
                 const circumference = 2 * Math.PI * radius
                 const offset = circumference - (xpPercentage / 100) * circumference
                 return (
                   <div className="relative w-full h-full">
                     <svg
-                      width={size}
-                      height={size}
+                      viewBox="0 0 100 100"
                       className="transform -rotate-90 w-full h-full"
+                      preserveAspectRatio="xMidYMid meet"
                     >
+                      {/* Фон внутри круга */}
                       <circle
-                        cx={size / 2}
-                        cy={size / 2}
+                        cx="50"
+                        cy="50"
+                        r={radius - strokeWidth / 2}
+                        fill="rgba(255, 255, 255, 0.15)"
+                      />
+                      {/* Background circle */}
+                      <circle
+                        cx="50"
+                        cy="50"
                         r={radius}
                         fill="none"
                         stroke="currentColor"
                         strokeWidth={strokeWidth}
                         className="text-white/30"
                       />
+                      {/* Progress circle */}
                       <circle
-                        cx={size / 2}
-                        cy={size / 2}
+                        cx="50"
+                        cy="50"
                         r={radius}
                         fill="none"
                         stroke="currentColor"

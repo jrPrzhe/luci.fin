@@ -543,21 +543,87 @@ export function Layout() {
     // Продолжаем рендеринг - не блокируем UI
   }
 
-  const navItems = [
-    { path: '/', label: t.nav.dashboard, icon: '📊' },
-    { path: '/transactions', label: t.nav.transactions, icon: '💸' },
-    { path: '/accounts', label: t.nav.accounts, icon: '💳' },
-    { path: '/biography', label: t.nav.biography, icon: '📝' },
-    { path: '/quests', label: t.nav.quests, icon: '🎯' },
-    { path: '/achievements', label: t.nav.achievements, icon: '🏆' },
-    { path: '/categories', label: t.nav.categories, icon: '📦' },
-    { path: '/goals', label: t.nav.goals, icon: '🎯' },
-    { path: '/shared-budgets', label: t.nav.budgets, icon: '👥' },
-    { path: '/reports', label: t.nav.reports, icon: '📈' },
-    { path: '/profile', label: t.nav.profile, icon: '⚙️' },
-    { path: '/about', label: t.profile.about, icon: '📚' },
-    ...(user?.is_admin ? [{ path: '/analytics', label: t.nav.analytics, icon: '📊' }] : []),
+  // Группы меню - автоматически открываем группу с активным элементом
+  const getExpandedGroupsForPath = (path: string) => {
+    const groups: Record<string, boolean> = {
+      finance: false,
+      planning: false,
+      settings: false,
+    }
+    
+    // Определяем, какая группа должна быть открыта по текущему пути
+    if (path === '/' || path === '/transactions' || path === '/accounts' || 
+        path === '/categories' || path === '/reports') {
+      groups.finance = true
+    } else if (path === '/biography' || path === '/quests' || path === '/achievements' || 
+               path === '/goals' || path === '/shared-budgets') {
+      groups.planning = true
+    } else if (path === '/profile' || path === '/about' || path === '/analytics') {
+      groups.settings = true
+    } else {
+      // По умолчанию открыта первая группа
+      groups.finance = true
+    }
+    
+    return groups
+  }
+
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() => 
+    getExpandedGroupsForPath(location.pathname)
+  )
+
+  const toggleGroup = (groupKey: string) => {
+    setExpandedGroups(prev => ({
+      ...prev,
+      [groupKey]: !prev[groupKey]
+    }))
+  }
+
+  // Обновляем открытые группы при изменении пути
+  useEffect(() => {
+    const newExpanded = getExpandedGroupsForPath(location.pathname)
+    setExpandedGroups(newExpanded)
+  }, [location.pathname])
+
+  const navGroups = [
+    {
+      key: 'finance',
+      label: 'Финансы',
+      icon: '💰',
+      items: [
+        { path: '/', label: t.nav.dashboard, icon: '📊' },
+        { path: '/transactions', label: t.nav.transactions, icon: '💸' },
+        { path: '/accounts', label: t.nav.accounts, icon: '💳' },
+        { path: '/categories', label: t.nav.categories, icon: '📦' },
+        { path: '/reports', label: t.nav.reports, icon: '📈' },
+      ]
+    },
+    {
+      key: 'planning',
+      label: 'Планирование',
+      icon: '🎯',
+      items: [
+        { path: '/biography', label: t.nav.biography, icon: '📝' },
+        { path: '/quests', label: t.nav.quests, icon: '🎯' },
+        { path: '/achievements', label: t.nav.achievements, icon: '🏆' },
+        { path: '/goals', label: t.nav.goals, icon: '🎯' },
+        { path: '/shared-budgets', label: t.nav.budgets, icon: '👥' },
+      ]
+    },
+    {
+      key: 'settings',
+      label: 'Настройки',
+      icon: '⚙️',
+      items: [
+        { path: '/profile', label: t.nav.profile, icon: '⚙️' },
+        { path: '/about', label: t.profile.about, icon: '📚' },
+        ...(user?.is_admin ? [{ path: '/analytics', label: t.nav.analytics, icon: '📊' }] : []),
+      ]
+    }
   ]
+
+  // Плоский список для мобильной навигации (старый формат)
+  const navItems = navGroups.flatMap(group => group.items)
 
   return (
     <div className={`min-h-screen flex flex-col xl:flex-row bg-telegram-bg dark:bg-telegram-dark-bg ${valentineEnabled ? 'valentine-mode' : ''} ${strangerThingsEnabled ? 'theme-stranger-things' : ''}`}>
@@ -611,20 +677,52 @@ export function Layout() {
         </div>
         
         <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
-          {navItems.map((item) => {
-            const isActive = location.pathname === item.path
+          {navGroups.map((group) => {
+            const isExpanded = expandedGroups[group.key]
+            const hasActiveItem = group.items.some(item => location.pathname === item.path)
+            
             return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`nav-item ${isActive ? 'active' : ''}`}
-              >
-                <span className="text-lg">{item.icon}</span>
-                <span className="font-medium text-sm">{item.label}</span>
-              </Link>
+              <div key={group.key} className="space-y-1">
+                {/* Группа заголовок */}
+                <button
+                  onClick={() => toggleGroup(group.key)}
+                  className={`w-full flex items-center justify-between p-2 rounded-telegram hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors ${
+                    hasActiveItem ? 'bg-telegram-primary/10 dark:bg-telegram-dark-primary/10' : ''
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">{group.icon}</span>
+                    <span className="font-semibold text-sm text-telegram-text dark:text-telegram-dark-text">
+                      {group.label}
+                    </span>
+                  </div>
+                  <span className={`text-xs transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
+                    ▼
+                  </span>
+                </button>
+                
+                {/* Подменю группы */}
+                {isExpanded && (
+                  <div className="ml-4 space-y-0.5">
+                    {group.items.map((item) => {
+                      const isActive = location.pathname === item.path
+                      return (
+                        <Link
+                          key={item.path}
+                          to={item.path}
+                          className={`nav-item ${isActive ? 'active' : ''} pl-8`}
+                        >
+                          <span className="text-base">{item.icon}</span>
+                          <span className="font-medium text-sm">{item.label}</span>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
             )
           })}
-                </nav>
+        </nav>
 
         <div className="p-3 border-t border-telegram-border dark:border-telegram-dark-border space-y-2 overflow-hidden">
           {/* VK Bot Button - только для VK пользователей, которые еще не общались с ботом */}
@@ -826,18 +924,50 @@ export function Layout() {
             </div>
             
             <nav className="p-2 space-y-1">
-              {navItems.map((item) => {
-                const isActive = location.pathname === item.path
+              {navGroups.map((group) => {
+                const isExpanded = expandedGroups[group.key]
+                const hasActiveItem = group.items.some(item => location.pathname === item.path)
+                
                 return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`nav-item ${isActive ? 'active' : ''}`}
-                  >
-                    <span className="text-lg">{item.icon}</span>
-                    <span className="font-medium text-sm">{item.label}</span>
-                  </Link>
+                  <div key={group.key} className="space-y-1">
+                    {/* Группа заголовок */}
+                    <button
+                      onClick={() => toggleGroup(group.key)}
+                      className={`w-full flex items-center justify-between p-2 rounded-telegram hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors ${
+                        hasActiveItem ? 'bg-telegram-primary/10 dark:bg-telegram-dark-primary/10' : ''
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{group.icon}</span>
+                        <span className="font-semibold text-sm text-telegram-text dark:text-telegram-dark-text">
+                          {group.label}
+                        </span>
+                      </div>
+                      <span className={`text-xs transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
+                        ▼
+                      </span>
+                    </button>
+                    
+                    {/* Подменю группы */}
+                    {isExpanded && (
+                      <div className="ml-4 space-y-0.5">
+                        {group.items.map((item) => {
+                          const isActive = location.pathname === item.path
+                          return (
+                            <Link
+                              key={item.path}
+                              to={item.path}
+                              onClick={() => setMobileMenuOpen(false)}
+                              className={`nav-item ${isActive ? 'active' : ''} pl-8`}
+                            >
+                              <span className="text-base">{item.icon}</span>
+                              <span className="font-medium text-sm">{item.label}</span>
+                            </Link>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
                 )
               })}
             </nav>
