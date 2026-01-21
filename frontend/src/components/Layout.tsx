@@ -277,10 +277,16 @@ export function Layout() {
       steps.push({
         key: 'auth',
         label: 'Проверка авторизации...',
-        checkReady: () => isAuthorized !== null,
+        checkReady: () => {
+          // Разрешаем, если авторизация определена (не null) ИЛИ если идет проверка
+          // Не блокируем, если авторизация в процессе
+          // Для Telegram/VK авторизация может занять время, поэтому разрешаем рендеринг
+          return isAuthorized !== null || isCheckingAuth
+        },
       })
 
       // Если авторизован, добавляем шаг загрузки данных пользователя
+      // Но не блокируем, если данные еще загружаются - разрешаем рендеринг сразу
       if (isAuthorized === true) {
         steps.push({
           key: 'user',
@@ -288,7 +294,11 @@ export function Layout() {
           checkReady: () => {
             // Проверяем через query state
             const queryState = queryClient.getQueryState(['currentUser'])
-            return queryState?.status === 'success' || !!user
+            // Разрешаем, если данные загружены ИЛИ если запрос в процессе
+            // Не блокируем рендеринг, если данные еще загружаются
+            // Это позволяет приложению загружаться быстрее
+            // Если queryState существует (даже если pending), разрешаем рендеринг
+            return queryState?.status === 'success' || !!user || queryState !== undefined
           },
         })
       }
@@ -298,7 +308,25 @@ export function Layout() {
   }, [location?.pathname, isAuthorized, translationsReady, t, user, queryClient])
 
   // Проверяем готовность всех шагов загрузки
+  // Делаем проверку менее строгой - разрешаем рендеринг, если хотя бы базовые данные готовы
   const allStepsReady = useMemo(() => {
+    // Если нет шагов, считаем готовым
+    if (loadingSteps.length === 0) return true
+    
+    // Проверяем базовые шаги (переводы и location) - они должны быть готовы
+    const basicSteps = loadingSteps.filter(step => step.key === 'translations' || step.key === 'location')
+    const basicStepsReady = basicSteps.length === 0 || basicSteps.every(step => {
+      if ('checkReady' in step && typeof step.checkReady === 'function') {
+        return step.checkReady()
+      }
+      return false
+    })
+    
+    // Если базовые шаги готовы, разрешаем рендеринг
+    // Остальные шаги (авторизация, пользователь) могут загружаться в фоне
+    if (basicStepsReady) return true
+    
+    // Если базовые шаги не готовы, проверяем все шаги
     return loadingSteps.every(step => {
       if ('checkReady' in step && typeof step.checkReady === 'function') {
         return step.checkReady()
@@ -313,6 +341,18 @@ export function Layout() {
       return false
     })
   }, [loadingSteps, queryClient])
+
+  // Таймаут для загрузочного экрана - через 5 секунд разрешаем рендеринг
+  const [loadingTimeout, setLoadingTimeout] = useState(false)
+  
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setLoadingTimeout(true)
+      setIsAppReady(true) // Принудительно разрешаем рендеринг после таймаута
+    }, 5000) // 5 секунд максимум
+    
+    return () => clearTimeout(timer)
+  }, [])
 
   // Автоматически устанавливаем готовность, когда все шаги готовы
   useEffect(() => {
@@ -770,15 +810,40 @@ export function Layout() {
     // Продолжаем рендеринг - не блокируем UI
   }
 
-  // Показываем загрузочный экран до готовности приложения
-  // Показываем для всех страниц, включая публичные (логин/регистрация/онбординг)
-  if (!isAppReady || !allStepsReady) {
-    return (
-      <AppLoadingScreen
-        steps={loadingSteps}
-        onComplete={() => setIsAppReady(true)}
-      />
-    )
+  // Определяем публичные страницы - для них не нужна авторизация
+  const isPublicPage = location?.pathname === '/login' || 
+                      location?.pathname === '/register' || 
+                      location?.pathname === '/onboarding'
+
+  // Для публичных страниц НЕ показываем загрузочный экран
+  // Разрешаем рендеринг сразу, даже если данные еще не готовы
+  if (isPublicPage) {
+    // Для публичных страниц просто продолжаем рендеринг
+    // Не блокируем доступ - страницы логина/регистрации должны загружаться быстро
+  } else {
+    // Для защищенных страниц показываем загрузочный экран
+    // Но с таймаутом - если данные не загрузились за 5 секунд, разрешаем рендеринг
+    // Также разрешаем рендеринг, если хотя бы базовые данные (переводы, location) готовы
+    const basicDataReady = translationsReady && !!t && !!location?.pathname
+    
+    // Показываем загрузочный экран только если:
+    // 1. Базовые данные НЕ готовы
+    // 2. Таймаут еще не истек
+    // 3. Приложение еще не готово
+    if (!basicDataReady && !loadingTimeout && !isAppReady) {
+      return (
+        <AppLoadingScreen
+          steps={loadingSteps}
+          onComplete={() => setIsAppReady(true)}
+        />
+      )
+    }
+    
+    // Если базовые данные готовы ИЛИ таймаут истек, разрешаем рендеринг
+    // Это предотвращает бесконечную загрузку
+    if (basicDataReady || loadingTimeout) {
+      setIsAppReady(true)
+    }
   }
 
   // Защита от рендеринга меню до инициализации данных
