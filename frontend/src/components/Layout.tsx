@@ -129,7 +129,10 @@ export function Layout() {
     return groups
   }, [])
 
-  const currentPath = location?.pathname || '/'
+  // ВАЖНО: Безопасное получение currentPath для предотвращения React error #300
+  const currentPath = (location && typeof location === 'object' && location.pathname && typeof location.pathname === 'string') 
+    ? location.pathname 
+    : '/'
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() => 
     getExpandedGroupsForPath(currentPath)
   )
@@ -143,11 +146,12 @@ export function Layout() {
 
   // Обновляем открытые группы при изменении пути
   useEffect(() => {
-    if (location?.pathname) {
+    // ВАЖНО: Строгая проверка location перед доступом к pathname
+    if (location && typeof location === 'object' && location.pathname && typeof location.pathname === 'string') {
       const newExpanded = getExpandedGroupsForPath(location.pathname)
       setExpandedGroups(newExpanded)
     }
-  }, [location?.pathname, getExpandedGroupsForPath])
+  }, [location, getExpandedGroupsForPath])
 
   // Мемоизируем navGroups, чтобы избежать пересоздания при каждом рендере
   // Используем стабильные зависимости - только примитивные значения
@@ -249,11 +253,17 @@ export function Layout() {
 
   // Плоский список для мобильной навигации (старый формат)
   const navItems = useMemo(() => {
-    if (!navGroups || !Array.isArray(navGroups)) return []
+    if (!navGroups || !Array.isArray(navGroups) || navGroups.length === 0) return []
     return navGroups
-      .filter(group => group && group.items && Array.isArray(group.items))
-      .flatMap(group => group.items)
-      .filter(item => item && item.path)
+      .filter((group: any) => {
+        // ВАЖНО: Строгие проверки для предотвращения React error #300
+        return group && typeof group === 'object' && group.items && Array.isArray(group.items) && group.items.length > 0
+      })
+      .flatMap((group: any) => group.items)
+      .filter((item: any) => {
+        // ВАЖНО: Строгие проверки для каждого item
+        return item && typeof item === 'object' && item.path && typeof item.path === 'string'
+      })
   }, [navGroups])
 
   // Определяем критические шаги загрузки
@@ -953,26 +963,49 @@ export function Layout() {
         </div>
         
         <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
-          {navGroups && Array.isArray(navGroups) && navGroups.length > 0 && navGroups.map((group) => {
-            if (!group || !group.key || !group.items || !Array.isArray(group.items)) return null
-            const isExpanded = expandedGroups[group.key] ?? false
-            const currentPath = location?.pathname || '/'
-            const hasActiveItem = group.items.some(item => item && item.path && currentPath === item.path)
+          {navGroups && Array.isArray(navGroups) && navGroups.length > 0 ? navGroups.map((group) => {
+            // ВАЖНО: Строгие проверки для предотвращения React error #300
+            if (!group || typeof group !== 'object' || !group.key || typeof group.key !== 'string') return null
+            if (!group.items || !Array.isArray(group.items) || group.items.length === 0) return null
+            
+            // ВАЖНО: Проверяем, что expandedGroups существует и является объектом
+            const expandedGroupsSafe = expandedGroups && typeof expandedGroups === 'object' ? expandedGroups : {}
+            const isExpanded = expandedGroupsSafe[group.key] ?? false
+            
+            // ВАЖНО: Проверяем location перед доступом к pathname
+            const currentPath = (location && typeof location === 'object' && location.pathname) ? location.pathname : '/'
+            
+            // ВАЖНО: Безопасная проверка активного элемента
+            const hasActiveItem = group.items.some((item: any) => {
+              return item && typeof item === 'object' && item.path && typeof item.path === 'string' && currentPath === item.path
+            })
+            
+            // ВАЖНО: Проверяем наличие icon и label перед рендерингом
+            const groupIcon = (group.icon && typeof group.icon === 'string') ? group.icon : ''
+            const groupLabel = (group.label && typeof group.label === 'string') ? group.label : ''
+            
+            if (!groupIcon && !groupLabel) return null // Не рендерим группу без иконки и метки
             
             return (
               <div key={group.key} className="space-y-1">
                 {/* Группа заголовок */}
                 <button
-                  onClick={() => toggleGroup(group.key)}
+                  onClick={() => {
+                    if (group.key && typeof group.key === 'string') {
+                      toggleGroup(group.key)
+                    }
+                  }}
                   className={`w-full flex items-center justify-between p-2 rounded-telegram hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors ${
                     hasActiveItem ? 'bg-telegram-primary/10 dark:bg-telegram-dark-primary/10' : ''
                   }`}
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-lg">{group.icon}</span>
-                    <span className="font-semibold text-sm text-telegram-text dark:text-telegram-dark-text">
-                      {group.label}
-                    </span>
+                    {groupIcon && <span className="text-lg">{groupIcon}</span>}
+                    {groupLabel && (
+                      <span className="font-semibold text-sm text-telegram-text dark:text-telegram-dark-text">
+                        {groupLabel}
+                      </span>
+                    )}
                   </div>
                   <span className={`text-xs transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
                     ▼
@@ -982,9 +1015,13 @@ export function Layout() {
                 {/* Подменю группы */}
                 {isExpanded && group.items && Array.isArray(group.items) && group.items.length > 0 && (
                   <div className="ml-4 space-y-0.5">
-                    {group.items.map((item) => {
-                      if (!item || !item.path) return null
+                    {group.items.map((item: any) => {
+                      // ВАЖНО: Строгие проверки для каждого item
+                      if (!item || typeof item !== 'object' || !item.path || typeof item.path !== 'string') return null
+                      
                       const isActive = currentPath === item.path
+                      const itemIcon = (item.icon && typeof item.icon === 'string') ? item.icon : ''
+                      const itemLabel = (item.label && typeof item.label === 'string') ? item.label : ''
                       
                       // Предзагрузка данных при наведении
                       const handleMouseEnter = () => {
@@ -1027,8 +1064,8 @@ export function Layout() {
                           className={`nav-item ${isActive ? 'active' : ''} pl-8`}
                           onMouseEnter={handleMouseEnter}
                         >
-                          <span className="text-base">{item.icon || ''}</span>
-                          <span className="font-medium text-sm">{item.label || ''}</span>
+                          {itemIcon && <span className="text-base">{itemIcon}</span>}
+                          {itemLabel && <span className="font-medium text-sm">{itemLabel}</span>}
                         </Link>
                       )
                     })}
@@ -1036,7 +1073,14 @@ export function Layout() {
                 )}
               </div>
             )
-          })}
+          }) : (
+            // Показываем загрузку, если navGroups еще не готовы
+            <div className="flex items-center justify-center p-4">
+              <div className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+                Загрузка меню...
+              </div>
+            </div>
+          )}
         </nav>
 
         <div className="p-3 border-t border-telegram-border dark:border-telegram-dark-border space-y-2 overflow-hidden">
@@ -1239,26 +1283,49 @@ export function Layout() {
             </div>
             
             <nav className="p-2 space-y-1">
-              {navGroups && Array.isArray(navGroups) && navGroups.length > 0 && navGroups.map((group) => {
-                if (!group || !group.key || !group.items || !Array.isArray(group.items)) return null
-                const isExpanded = expandedGroups[group.key] ?? false
-                const currentPath = location?.pathname || '/'
-                const hasActiveItem = group.items.some(item => item && item.path && currentPath === item.path)
+              {navGroups && Array.isArray(navGroups) && navGroups.length > 0 ? navGroups.map((group) => {
+                // ВАЖНО: Строгие проверки для предотвращения React error #300
+                if (!group || typeof group !== 'object' || !group.key || typeof group.key !== 'string') return null
+                if (!group.items || !Array.isArray(group.items) || group.items.length === 0) return null
+                
+                // ВАЖНО: Проверяем, что expandedGroups существует и является объектом
+                const expandedGroupsSafe = expandedGroups && typeof expandedGroups === 'object' ? expandedGroups : {}
+                const isExpanded = expandedGroupsSafe[group.key] ?? false
+                
+                // ВАЖНО: Проверяем location перед доступом к pathname
+                const currentPath = (location && typeof location === 'object' && location.pathname) ? location.pathname : '/'
+                
+                // ВАЖНО: Безопасная проверка активного элемента
+                const hasActiveItem = group.items.some((item: any) => {
+                  return item && typeof item === 'object' && item.path && typeof item.path === 'string' && currentPath === item.path
+                })
+                
+                // ВАЖНО: Проверяем наличие icon и label перед рендерингом
+                const groupIcon = (group.icon && typeof group.icon === 'string') ? group.icon : ''
+                const groupLabel = (group.label && typeof group.label === 'string') ? group.label : ''
+                
+                if (!groupIcon && !groupLabel) return null // Не рендерим группу без иконки и метки
                 
                 return (
                   <div key={group.key} className="space-y-1">
                     {/* Группа заголовок */}
                     <button
-                      onClick={() => toggleGroup(group.key)}
+                      onClick={() => {
+                        if (group.key && typeof group.key === 'string') {
+                          toggleGroup(group.key)
+                        }
+                      }}
                       className={`w-full flex items-center justify-between p-2 rounded-telegram hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors ${
                         hasActiveItem ? 'bg-telegram-primary/10 dark:bg-telegram-dark-primary/10' : ''
                       }`}
                     >
                       <div className="flex items-center gap-2">
-                        <span className="text-lg">{group.icon}</span>
-                        <span className="font-semibold text-sm text-telegram-text dark:text-telegram-dark-text">
-                          {group.label}
-                        </span>
+                        {groupIcon && <span className="text-lg">{groupIcon}</span>}
+                        {groupLabel && (
+                          <span className="font-semibold text-sm text-telegram-text dark:text-telegram-dark-text">
+                            {groupLabel}
+                          </span>
+                        )}
                       </div>
                       <span className={`text-xs transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
                         ▼
@@ -1266,11 +1333,15 @@ export function Layout() {
                     </button>
                     
                     {/* Подменю группы */}
-                    {isExpanded && group.items && group.items.length > 0 && (
+                    {isExpanded && group.items && Array.isArray(group.items) && group.items.length > 0 && (
                       <div className="ml-4 space-y-0.5">
-                        {group.items.map((item) => {
-                          if (!item || !item.path) return null
+                        {group.items.map((item: any) => {
+                          // ВАЖНО: Строгие проверки для каждого item
+                          if (!item || typeof item !== 'object' || !item.path || typeof item.path !== 'string') return null
+                          
                           const isActive = currentPath === item.path
+                          const itemIcon = (item.icon && typeof item.icon === 'string') ? item.icon : ''
+                          const itemLabel = (item.label && typeof item.label === 'string') ? item.label : ''
                           
                           // Предзагрузка данных при наведении
                           const handleMouseEnter = () => {
@@ -1314,8 +1385,8 @@ export function Layout() {
                               className={`nav-item ${isActive ? 'active' : ''} pl-8`}
                               onMouseEnter={handleMouseEnter}
                             >
-                              <span className="text-base">{item.icon || ''}</span>
-                              <span className="font-medium text-sm">{item.label || ''}</span>
+                              {itemIcon && <span className="text-base">{itemIcon}</span>}
+                              {itemLabel && <span className="font-medium text-sm">{itemLabel}</span>}
                             </Link>
                           )
                         })}
@@ -1323,7 +1394,14 @@ export function Layout() {
                     )}
                   </div>
                 )
-              })}
+              }) : (
+                // Показываем загрузку, если navGroups еще не готовы
+                <div className="flex items-center justify-center p-4">
+                  <div className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+                    Загрузка меню...
+                  </div>
+                </div>
+              )}
             </nav>
             
             <div className="p-3 border-t border-telegram-border dark:border-telegram-dark-border mt-auto space-y-2">
@@ -1387,15 +1465,21 @@ export function Layout() {
         <nav className="xl:hidden fixed bottom-0 left-0 right-0 bg-telegram-surface dark:bg-telegram-dark-surface border-t border-telegram-border dark:border-telegram-dark-border px-2 py-2 safe-area-inset-bottom z-10">
           <div className="flex items-center justify-around">
             {/* Дашборд, Транзакции, Счета, Отчеты */}
-            {Array.isArray(navItems) && navItems.filter(item => 
-              item && item.path && (
+            {Array.isArray(navItems) && navItems.length > 0 ? navItems.filter((item: any) => {
+              // ВАЖНО: Строгие проверки для предотвращения React error #300
+              return item && typeof item === 'object' && item.path && typeof item.path === 'string' && (
                 item.path === '/' || 
                 item.path === '/transactions' || 
                 item.path === '/accounts' || 
                 item.path === '/reports'
               )
-            ).map((item) => {
-              const isActive = location.pathname === item.path
+            }).map((item: any) => {
+              // ВАЖНО: Проверяем location перед доступом к pathname
+              const currentPath = (location && typeof location === 'object' && location.pathname) ? location.pathname : '/'
+              const isActive = currentPath === item.path
+              const itemIcon = (item.icon && typeof item.icon === 'string') ? item.icon : ''
+              const itemLabel = (item.label && typeof item.label === 'string') ? item.label : ''
+              
               return (
                 <Link
                   key={item.path}
@@ -1406,11 +1490,11 @@ export function Layout() {
                       : 'text-telegram-textSecondary dark:text-telegram-dark-textSecondary'
                   }`}
                 >
-                  <span className="text-xl">{item.icon}</span>
-                  <span className="text-[10px] font-medium">{item.label}</span>
+                  {itemIcon && <span className="text-xl">{itemIcon}</span>}
+                  {itemLabel && <span className="text-[10px] font-medium">{itemLabel}</span>}
                 </Link>
               )
-            })}
+            }) : null}
             {/* Кнопка Меню - открывает боковое меню со всеми пунктами */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
