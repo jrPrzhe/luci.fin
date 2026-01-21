@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import datetime, timedelta
@@ -422,7 +422,7 @@ async def update_income(
 
 @router.post("/update-category-limits", response_model=BiographyResponse)
 async def update_category_limits(
-    request: UpdateCategoryLimitsRequest,
+    request: UpdateCategoryLimitsRequest = Body(default={}),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -477,13 +477,15 @@ async def update_category_limits(
     
     # Создаем временный QuestionnaireRequest для анализа
     from app.schemas.biography import QuestionnaireRequest
+    # problems_options и goal_options уже являются Python объектами (JSON колонка в SQLAlchemy)
+    # Не нужно использовать json.loads()
     temp_questionnaire = QuestionnaireRequest(
         category_limits=category_limits,
         monthly_income=biography.monthly_income or questionnaire_response.monthly_income or Decimal(0),
         problems_text=questionnaire_response.problems_text,
-        problems_options=json.loads(questionnaire_response.problems_options) if questionnaire_response.problems_options else None,
+        problems_options=questionnaire_response.problems_options if questionnaire_response.problems_options else None,
         goal_text=questionnaire_response.goal_text,
-        goal_options=json.loads(questionnaire_response.goal_options) if questionnaire_response.goal_options else None
+        goal_options=questionnaire_response.goal_options if questionnaire_response.goal_options else None
     )
     
     # Анализируем через ИИ

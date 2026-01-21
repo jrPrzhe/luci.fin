@@ -10,6 +10,179 @@ import { useToast } from '../contexts/ToastContext'
 import { LoadingSpinner } from '../components/LoadingSpinner'
 import { useValentineTheme } from '../contexts/ValentineContext'
 
+// Available colors and emojis for categories (same as Categories page)
+const AVAILABLE_COLORS = [
+  '#4CAF50', '#2196F3', '#FF9800', '#F44336', '#9C27B0', '#00BCD4',
+  '#FFEB3B', '#795548', '#607D8B', '#E91E63', '#3F51B5', '#009688',
+  '#FF5722', '#8BC34A', '#FFC107', '#673AB7',
+]
+
+const AVAILABLE_EMOJIS = [
+  '📦', '💰', '💸', '💵', '💳', '💴', '💶', '💷', '💎', '💍',
+  '🍔', '🍕', '🍟', '🌮', '🌯', '🥗', '🍱', '🍜', '🍝', '🍛',
+  '🚗', '🚕', '🚙', '🚌', '🚎', '🏎️', '🚓', '🚑', '🚒', '🚐',
+  '🛍️', '🛒', '🛏️', '🛋️', '🪑', '🚪', '🪟', '🪞', '🛁',
+  '🎮', '🎯', '🎲', '🃏', '🀄', '🎴', '🎭', '🎨', '🖼️',
+  '🏃', '🏃‍♂️', '🏃‍♀️', '🚶', '🚶‍♂️', '🚶‍♀️', '🧍', '🧍‍♂️', '🧍‍♀️', '🧎',
+  '📚', '📖', '📗', '📘', '📙', '📕', '📓', '📔', '📒', '📃',
+  '💻', '🖥️', '🖨️', '⌨️', '🖱️', '🖲️', '🕹️', '🗜️', '💾', '💿',
+  '🏠', '🏡', '🏘️', '🏚️', '💒', '🗼', '🗽', '⛲', '⛺', '🌁',
+  '🎁', '🎀', '🎃', '🎄', '🎅', '🎆', '🎇', '🎈',
+]
+
+// Add Category Form Component
+function AddCategoryForm({
+  transactionType,
+  onCancel,
+  onCreate,
+  creating,
+}: {
+  transactionType: 'income' | 'expense'
+  onCancel: () => void
+  onCreate: (data: {
+    name: string
+    transaction_type: 'income' | 'expense' | 'both'
+    icon: string
+    color: string
+    is_favorite: boolean
+  }) => void
+  creating: boolean
+}) {
+  const [formData, setFormData] = useState({
+    name: '',
+    transaction_type: transactionType as 'income' | 'expense' | 'both',
+    icon: '📦',
+    color: '#4CAF50',
+    is_favorite: false,
+  })
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    onCreate(formData)
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
+          Название категории <span className="text-red-500">*</span>
+        </label>
+        <input
+          type="text"
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          className="input w-full"
+          placeholder="Введите название"
+          maxLength={25}
+          required
+          disabled={creating}
+          autoFocus
+        />
+        <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
+          {formData.name.length}/25
+        </p>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
+          Иконка
+        </label>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+            className="w-12 h-12 rounded-full flex items-center justify-center text-2xl border-2 border-telegram-border dark:border-telegram-dark-border hover:border-telegram-primary dark:hover:border-telegram-dark-primary transition-colors"
+            style={{ backgroundColor: `${formData.color}20` }}
+            disabled={creating}
+          >
+            {formData.icon}
+          </button>
+          {showEmojiPicker && (
+            <div className="flex-1 max-h-32 overflow-y-auto border border-telegram-border dark:border-telegram-dark-border rounded-telegram p-2 grid grid-cols-8 gap-1">
+              {AVAILABLE_EMOJIS.map((emoji) => (
+                <button
+                  key={emoji}
+                  type="button"
+                  onClick={() => {
+                    setFormData({ ...formData, icon: emoji })
+                    setShowEmojiPicker(false)
+                  }}
+                  className="text-xl hover:scale-125 transition-transform p-1"
+                  disabled={creating}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
+          Цвет
+        </label>
+        <div className="grid grid-cols-8 gap-2">
+          {AVAILABLE_COLORS.map((color) => (
+            <button
+              key={color}
+              type="button"
+              onClick={() => setFormData({ ...formData, color })}
+              className={`w-8 h-8 rounded-full border-2 transition-all ${
+                formData.color === color
+                  ? 'border-telegram-text dark:border-telegram-dark-text scale-110'
+                  : 'border-telegram-border dark:border-telegram-dark-border hover:scale-110'
+              }`}
+              style={{ backgroundColor: color }}
+              disabled={creating}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          id="is_favorite"
+          checked={formData.is_favorite}
+          onChange={(e) => setFormData({ ...formData, is_favorite: e.target.checked })}
+          className="w-4 h-4"
+          disabled={creating}
+        />
+        <label htmlFor="is_favorite" className="text-sm text-telegram-text dark:text-telegram-dark-text">
+          Добавить в избранное
+        </label>
+      </div>
+
+      <div className="flex gap-3 pt-2">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="btn-secondary flex-1"
+          disabled={creating}
+        >
+          Отмена
+        </button>
+        <button
+          type="submit"
+          className="btn-primary flex-1 flex items-center justify-center gap-2"
+          disabled={creating || !formData.name.trim()}
+        >
+          {creating ? (
+            <>
+              <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              <span>Создание...</span>
+            </>
+          ) : (
+            'Создать'
+          )}
+        </button>
+      </div>
+    </form>
+  )
+}
+
 interface Account {
   id: number
   name: string
@@ -41,10 +214,22 @@ export function Dashboard() {
   const [categories, setCategories] = useState<Category[]>([])
   const [categoriesLoading, setCategoriesLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [showAddCategoryForm, setShowAddCategoryForm] = useState(false)
+  const [creatingCategory, setCreatingCategory] = useState(false)
   const [newAchievement, setNewAchievement] = useState<any>(null)
   const [levelUp, setLevelUp] = useState<number | null>(null)
   const descriptionInputRef = useRef<HTMLInputElement>(null)
   const formScrollContainerRef = useRef<HTMLDivElement>(null)
+
+  // Helper function to format local datetime for datetime-local input
+  const formatLocalDateTime = (date: Date): string => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const hours = String(date.getHours()).padStart(2, '0')
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    return `${year}-${month}-${day}T${hours}:${minutes}`
+  }
 
   // Quick form state
   const [quickFormData, setQuickFormData] = useState({
@@ -54,6 +239,7 @@ export function Dashboard() {
     amount: '',
     description: '',
     goal_id: '',
+    transaction_date: formatLocalDateTime(new Date()),
   })
 
   // Lock scroll when Quick Form Modal is open
@@ -424,6 +610,7 @@ export function Dashboard() {
       amount: '',
       description: '',
       goal_id: '',
+      transaction_date: formatLocalDateTime(new Date()),
     })
     
     // Load categories asynchronously (non-blocking) for income/expense
@@ -468,6 +655,52 @@ export function Dashboard() {
   const handleCategorySelect = (categoryId: number) => {
     setQuickFormData({ ...quickFormData, category_id: categoryId.toString() })
     setQuickFormStep('form')
+  }
+
+  const handleCreateCategory = async (categoryData: {
+    name: string
+    transaction_type: 'income' | 'expense' | 'both'
+    icon: string
+    color: string
+    is_favorite: boolean
+  }) => {
+    if (!categoryData.name.trim()) {
+      showError('Название категории обязательно')
+      return
+    }
+
+    const trimmedName = categoryData.name.trim()
+    if (trimmedName.length > 25) {
+      showError('Название категории не может превышать 25 символов')
+      return
+    }
+
+    setCreatingCategory(true)
+    try {
+      const newCategory = await api.createCategory({
+        ...categoryData,
+        name: trimmedName
+      })
+      showSuccess('Категория создана')
+      
+      // Reload categories
+      if (quickFormType === 'income' || quickFormType === 'expense') {
+        await loadCategories(quickFormType)
+      }
+      
+      // Close the add category form
+      setShowAddCategoryForm(false)
+      
+      // Auto-select the newly created category
+      if (newCategory && newCategory.id) {
+        handleCategorySelect(newCategory.id)
+      }
+    } catch (err: any) {
+      const { translateError } = await import('../utils/errorMessages')
+      showError(translateError(err))
+    } finally {
+      setCreatingCategory(false)
+    }
   }
 
   const handleQuickSubmit = async (e: React.FormEvent) => {
@@ -517,13 +750,18 @@ export function Dashboard() {
 
       // Replace comma with dot for decimal separator (Russian locale uses comma)
       const amountValue = quickFormData.amount.toString().replace(',', '.')
+      
+      // Parse transaction_date from local datetime format (YYYY-MM-DDTHH:mm)
+      const localDate = new Date(quickFormData.transaction_date)
+      const transactionDateISO = localDate.toISOString()
+      
       submitData = {
         account_id: parseInt(quickFormData.account_id),
         transaction_type: quickFormType,
         amount: parseFloat(amountValue),
         currency: account.currency,
         description: quickFormData.description || undefined,
-        transaction_date: new Date().toISOString(),
+        transaction_date: transactionDateISO,
       }
 
       // Add category_id for income/expense transactions (required)
@@ -950,9 +1188,14 @@ export function Dashboard() {
                 {quickFormStep === 'category' && (
                   <button
                     onClick={() => {
-                      setShowQuickForm(false)
-                      setQuickFormType(null)
-                      setQuickFormStep('category')
+                      if (showAddCategoryForm) {
+                        setShowAddCategoryForm(false)
+                      } else {
+                        setShowQuickForm(false)
+                        setQuickFormType(null)
+                        setQuickFormStep('category')
+                        setShowAddCategoryForm(false)
+                      }
                     }}
                     className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text text-lg mr-2"
                   >
@@ -976,6 +1219,7 @@ export function Dashboard() {
                   setShowQuickForm(false)
                   setQuickFormType(null)
                   setQuickFormStep('category')
+                  setShowAddCategoryForm(false)
                 }}
                 className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text text-xl"
               >
@@ -986,7 +1230,14 @@ export function Dashboard() {
             {/* Category Selection Step */}
             {quickFormStep === 'category' && quickFormType !== 'transfer' && (
               <div className="flex-1 overflow-y-auto min-h-0 modal-content-scrollable">
-                {categoriesLoading ? (
+                {showAddCategoryForm ? (
+                  <AddCategoryForm
+                    transactionType={quickFormType}
+                    onCancel={() => setShowAddCategoryForm(false)}
+                    onCreate={handleCreateCategory}
+                    creating={creatingCategory}
+                  />
+                ) : categoriesLoading ? (
                   <div className="text-center py-8">
                     <LoadingSpinner fullScreen={false} size="sm" />
                   </div>
@@ -996,13 +1247,10 @@ export function Dashboard() {
                       {t.dashboard.form.noCategories} {quickFormType === 'income' ? t.dashboard.incomeGenitive : t.dashboard.expensesGenitive}
                     </p>
                     <button
-                      onClick={() => {
-                        setShowQuickForm(false)
-                        navigate('/categories')
-                      }}
+                      onClick={() => setShowAddCategoryForm(true)}
                       className="btn-primary"
                     >
-                      {t.dashboard.form.createCategory}
+                      ➕ {t.dashboard.form.createCategory}
                     </button>
                     <button
                       onClick={() => {
@@ -1018,9 +1266,19 @@ export function Dashboard() {
                   </div>
                 ) : (
                   <div>
-                    <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-3">
-                      {t.dashboard.form.selectCategory} ({categories.length} {t.dashboard.form.available})
-                    </p>
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+                        {t.dashboard.form.selectCategory} ({categories.length} {t.dashboard.form.available})
+                      </p>
+                      <button
+                        onClick={() => setShowAddCategoryForm(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-telegram-primary dark:text-telegram-dark-primary hover:bg-telegram-primary/10 dark:hover:bg-telegram-dark-primary/10 rounded-telegram transition-colors"
+                        title={t.dashboard.form.createCategory}
+                      >
+                        <span className="text-lg">➕</span>
+                        <span className="hidden sm:inline">{t.dashboard.form.createCategory}</span>
+                      </button>
+                    </div>
                     <div className="grid grid-cols-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 gap-2 sm:gap-3 max-h-[60vh] overflow-y-auto modal-content-scrollable">
                       {categories
                         .sort((a, b) => (b.is_favorite ? 1 : 0) - (a.is_favorite ? 1 : 0))
@@ -1086,6 +1344,7 @@ export function Dashboard() {
                           onClick={() => {
                             setQuickFormStep('category')
                             setQuickFormData({ ...quickFormData, category_id: '' })
+                            // Don't reset transaction_date when changing category
                           }}
                           className="ml-auto text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text flex-shrink-0 whitespace-nowrap px-2 py-1"
                         >
@@ -1239,6 +1498,21 @@ export function Dashboard() {
                     disabled={submitting}
                   />
                 </div>
+
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
+                    {t.dashboard.form.dateTime || 'Дата и время'} <span className="text-red-500 dark:text-red-400">*</span>
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={quickFormData.transaction_date}
+                    onChange={(e) => setQuickFormData({ ...quickFormData, transaction_date: e.target.value })}
+                    className="input text-sm py-2"
+                    max={formatLocalDateTime(new Date())}
+                    required
+                    disabled={submitting}
+                  />
+                </div>
               </div>
 
               {quickFormType === 'income' && goals.length > 0 && (
@@ -1289,6 +1563,7 @@ export function Dashboard() {
                       setShowQuickForm(false)
                       setQuickFormType(null)
                       setQuickFormStep('category')
+                      setShowAddCategoryForm(false)
                       setSubmitting(false)
                     }}
                     className="btn-secondary"

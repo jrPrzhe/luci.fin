@@ -273,7 +273,7 @@ export function Biography() {
             ) : (
               <>
                 <p className="text-2xl font-bold text-telegram-primary dark:text-telegram-dark-primary">
-                  {biography.monthly_income.toLocaleString('ru-RU')} {biography.category_limits[0]?.currency || 'RUB'}
+                  {Math.round(Number(biography.monthly_income)).toLocaleString('ru-RU', { useGrouping: true, maximumFractionDigits: 0 })} {biography.category_limits[0]?.currency || 'RUB'}
                 </p>
                 <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-2">
                   в месяц
