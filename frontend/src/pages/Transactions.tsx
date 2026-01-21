@@ -155,6 +155,23 @@ export function Transactions() {
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null)
   const accountIdFromNavigation = useRef<number | null>(null)
   const categoryIdFromNavigation = useRef<number | null>(null)
+  
+  // Проверяем, были ли данные загружены в этой сессии (для кэширования)
+  const getDataLoadedFlag = (): boolean => {
+    try {
+      return sessionStorage.getItem('transactionsDataLoaded') === 'true'
+    } catch (e) {
+      return false
+    }
+  }
+  
+  const setDataLoadedFlag = (value: boolean): void => {
+    try {
+      sessionStorage.setItem('transactionsDataLoaded', value ? 'true' : 'false')
+    } catch (e) {
+      // Ignore sessionStorage errors
+    }
+  }
 
   const [goals, setGoals] = useState<any[]>([])
   const [hasMore, setHasMore] = useState(true)
@@ -279,6 +296,8 @@ export function Transactions() {
       if (reset) {
         setLoading(true)
         setTransactions([])
+        // ВАЖНО: Помечаем, что данные загружаются (для кэширования)
+        dataLoadedRef.current = false
       } else {
         setLoadingMore(true)
       }
@@ -323,6 +342,10 @@ export function Transactions() {
       
       if (reset) {
         setTransactions(batch)
+        // ВАЖНО: Помечаем, что данные успешно загружены (только если нет фильтров)
+        if (!accountIdOverride && !categoryIdOverride && !selectedAccountId && !selectedCategoryId) {
+          setDataLoadedFlag(true)
+        }
       } else {
         setTransactions([...transactions, ...batch])
       }
@@ -423,10 +446,13 @@ export function Transactions() {
   }, [location.state])
 
   // Load data only on initial mount (if no accountId or categoryId in location.state)
+  // ВАЖНО: Не загружаем данные, если они уже были загружены в этой сессии (кэширование)
   useEffect(() => {
     // Only load if we didn't come from Accounts or Reports page (which will trigger loadData in the effect above)
     const state = location.state as { accountId?: number; categoryId?: number } | null
-    if (!state?.accountId && !state?.categoryId && selectedAccountId === null && !accountIdFromNavigation.current && !categoryIdFromNavigation.current) {
+    // Проверяем, были ли данные уже загружены в этой сессии (только для базового списка без фильтров)
+    const hasCachedData = getDataLoadedFlag()
+    if (!state?.accountId && !state?.categoryId && selectedAccountId === null && !accountIdFromNavigation.current && !categoryIdFromNavigation.current && !hasCachedData) {
       loadData()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
