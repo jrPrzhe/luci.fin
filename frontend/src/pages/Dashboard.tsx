@@ -834,6 +834,7 @@ export function Dashboard() {
         amount: '',
         description: '',
         goal_id: '',
+        transaction_date: formatLocalDateTime(new Date()),
       })
       
       // Invalidate and immediately refetch critical data to ensure UI updates
@@ -931,6 +932,7 @@ export function Dashboard() {
               amount: '',
               description: '',
               goal_id: '',
+              transaction_date: formatLocalDateTime(new Date()),
             })
             
             // Immediately invalidate and refetch data after duplicate transaction check
@@ -1501,7 +1503,7 @@ export function Dashboard() {
 
                 <div className="col-span-2">
                   <label className="block text-xs font-medium text-telegram-text dark:text-telegram-dark-text mb-1">
-                    {t.dashboard.form.dateTime || 'Дата и время'} <span className="text-red-500 dark:text-red-400">*</span>
+                    {'Дата и время'} <span className="text-red-500 dark:text-red-400">*</span>
                   </label>
                   <input
                     type="datetime-local"
