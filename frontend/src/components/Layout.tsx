@@ -101,6 +101,230 @@ export function Layout() {
     enabled: isAuthorized === true,
   })
 
+  // Группы меню - автоматически открываем группу с активным элементом
+  const getExpandedGroupsForPath = useCallback((path: string) => {
+    const groups: Record<string, boolean> = {
+      finance: false,
+      planning: false,
+      settings: false,
+    }
+    
+    // Определяем, какая группа должна быть открыта по текущему пути
+    if (path === '/' || path === '/transactions' || path === '/accounts' || 
+        path === '/categories' || path === '/reports') {
+      groups.finance = true
+    } else if (path === '/biography' || path === '/quests' || path === '/achievements' || 
+               path === '/goals' || path === '/shared-budgets') {
+      groups.planning = true
+    } else if (path === '/profile' || path === '/about' || path === '/analytics') {
+      groups.settings = true
+    } else {
+      // По умолчанию открыта первая группа
+      groups.finance = true
+    }
+    
+    return groups
+  }, [])
+
+  const currentPath = location?.pathname || '/'
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() => 
+    getExpandedGroupsForPath(currentPath)
+  )
+
+  const toggleGroup = useCallback((groupKey: string) => {
+    setExpandedGroups(prev => ({
+      ...prev,
+      [groupKey]: !prev[groupKey]
+    }))
+  }, [])
+
+  // Обновляем открытые группы при изменении пути
+  useEffect(() => {
+    if (location?.pathname) {
+      const newExpanded = getExpandedGroupsForPath(location.pathname)
+      setExpandedGroups(newExpanded)
+    }
+  }, [location?.pathname, getExpandedGroupsForPath])
+
+  // Мемоизируем navGroups, чтобы избежать пересоздания при каждом рендере
+  // Используем стабильные зависимости - только примитивные значения
+  const isAdmin = user?.is_admin ?? false
+  
+  // Проверяем готовность всех необходимых переводов
+  const translationsReady = useMemo(() => {
+    try {
+      return !!(
+        t?.nav?.dashboard &&
+        t?.nav?.transactions &&
+        t?.nav?.accounts &&
+        t?.nav?.categories &&
+        t?.nav?.reports &&
+        t?.nav?.biography &&
+        t?.nav?.quests &&
+        t?.nav?.achievements &&
+        t?.nav?.goals &&
+        t?.nav?.budgets &&
+        t?.nav?.profile &&
+        t?.nav?.analytics &&
+        t?.profile?.about
+      )
+    } catch {
+      return false
+    }
+  }, [t])
+  
+  const navGroups = useMemo(() => {
+    // Защита от выполнения до готовности переводов
+    if (!translationsReady) {
+      return []
+    }
+    
+    try {
+      const settingsItems = [
+        { path: '/profile', label: t.nav.profile || 'Профиль', icon: '⚙️' },
+        { path: '/about', label: t.profile.about || 'О приложении', icon: '📚' },
+      ]
+      
+      // Добавляем analytics только если пользователь админ
+      if (isAdmin) {
+        settingsItems.push({ path: '/analytics', label: t.nav.analytics || 'Аналитика', icon: '📊' })
+      }
+      
+      return [
+        {
+          key: 'finance',
+          label: 'Финансы',
+          icon: '💰',
+          items: [
+            { path: '/', label: t.nav.dashboard || 'Дашборд', icon: '📊' },
+            { path: '/transactions', label: t.nav.transactions || 'Транзакции', icon: '💸' },
+            { path: '/accounts', label: t.nav.accounts || 'Счета', icon: '💳' },
+            { path: '/categories', label: t.nav.categories || 'Категории', icon: '📦' },
+            { path: '/reports', label: t.nav.reports || 'Отчеты', icon: '📈' },
+          ]
+        },
+        {
+          key: 'planning',
+          label: 'Планирование',
+          icon: '🎯',
+          items: [
+            { path: '/biography', label: t.nav.biography || 'Биография', icon: '📝' },
+            { path: '/quests', label: t.nav.quests || 'Задания', icon: '🎯' },
+            { path: '/achievements', label: t.nav.achievements || 'Достижения', icon: '🏆' },
+            { path: '/goals', label: t.nav.goals || 'Цели', icon: '🎯' },
+            { path: '/shared-budgets', label: t.nav.budgets || 'Бюджеты', icon: '👥' },
+          ]
+        },
+        {
+          key: 'settings',
+          label: 'Настройки',
+          icon: '⚙️',
+          items: settingsItems,
+        }
+      ]
+    } catch (error) {
+      console.error('Error creating navGroups:', error)
+      return []
+    }
+  }, [
+    translationsReady,
+    t?.nav?.dashboard,
+    t?.nav?.transactions,
+    t?.nav?.accounts,
+    t?.nav?.categories,
+    t?.nav?.reports,
+    t?.nav?.biography,
+    t?.nav?.quests,
+    t?.nav?.achievements,
+    t?.nav?.goals,
+    t?.nav?.budgets,
+    t?.nav?.profile,
+    t?.nav?.analytics,
+    t?.profile?.about,
+    isAdmin
+  ])
+
+  // Плоский список для мобильной навигации (старый формат)
+  const navItems = useMemo(() => {
+    if (!navGroups || !Array.isArray(navGroups)) return []
+    return navGroups
+      .filter(group => group && group.items && Array.isArray(group.items))
+      .flatMap(group => group.items)
+      .filter(item => item && item.path)
+  }, [navGroups])
+
+  // Определяем критические шаги загрузки
+  const loadingSteps = useMemo(() => {
+    const steps = [
+      {
+        key: 'translations',
+        label: 'Загрузка переводов...',
+        checkReady: () => translationsReady && !!t,
+      },
+      {
+        key: 'location',
+        label: 'Инициализация роутинга...',
+        checkReady: () => !!location?.pathname,
+      },
+    ]
+
+    // Для страниц логина/регистрации/онбординга не нужна авторизация
+    const isPublicPage = location?.pathname === '/login' || 
+                        location?.pathname === '/register' || 
+                        location?.pathname === '/onboarding'
+
+    if (!isPublicPage) {
+      steps.push({
+        key: 'auth',
+        label: 'Проверка авторизации...',
+        checkReady: () => isAuthorized !== null,
+      })
+
+      // Если авторизован, добавляем шаг загрузки данных пользователя
+      if (isAuthorized === true) {
+        steps.push({
+          key: 'user',
+          label: 'Загрузка данных пользователя...',
+          checkReady: () => {
+            // Проверяем через query state
+            const queryState = queryClient.getQueryState(['currentUser'])
+            return queryState?.status === 'success' || !!user
+          },
+        })
+      }
+    }
+
+    return steps
+  }, [location?.pathname, isAuthorized, translationsReady, t, user, queryClient])
+
+  // Проверяем готовность всех шагов загрузки
+  const allStepsReady = useMemo(() => {
+    return loadingSteps.every(step => {
+      if ('checkReady' in step && typeof step.checkReady === 'function') {
+        return step.checkReady()
+      }
+      if ('isReady' in step && step.isReady !== undefined) {
+        return step.isReady
+      }
+      if ('queryKey' in step && step.queryKey && Array.isArray(step.queryKey)) {
+        const queryState = queryClient.getQueryState(step.queryKey)
+        return queryState?.status === 'success' || queryState?.data !== undefined
+      }
+      return false
+    })
+  }, [loadingSteps, queryClient])
+
+  // Автоматически устанавливаем готовность, когда все шаги готовы
+  useEffect(() => {
+    if (allStepsReady && !isAppReady && loadingSteps.length > 0) {
+      // Небольшая задержка для плавного перехода
+      const timer = setTimeout(() => {
+        setIsAppReady(true)
+      }, 300)
+      return () => clearTimeout(timer)
+    }
+  }, [allStepsReady, isAppReady, loadingSteps.length])
+
   // Предзагрузка изображений для Stories при монтировании компонента
   useEffect(() => {
     const storyImages = ['/1.png', '/2.png', '/3.png', '/4.png', '/5.png']
@@ -546,224 +770,6 @@ export function Layout() {
     // Продолжаем рендеринг - не блокируем UI
   }
 
-  // Группы меню - автоматически открываем группу с активным элементом
-  const getExpandedGroupsForPath = useCallback((path: string) => {
-    const groups: Record<string, boolean> = {
-      finance: false,
-      planning: false,
-      settings: false,
-    }
-    
-    // Определяем, какая группа должна быть открыта по текущему пути
-    if (path === '/' || path === '/transactions' || path === '/accounts' || 
-        path === '/categories' || path === '/reports') {
-      groups.finance = true
-    } else if (path === '/biography' || path === '/quests' || path === '/achievements' || 
-               path === '/goals' || path === '/shared-budgets') {
-      groups.planning = true
-    } else if (path === '/profile' || path === '/about' || path === '/analytics') {
-      groups.settings = true
-    } else {
-      // По умолчанию открыта первая группа
-      groups.finance = true
-    }
-    
-    return groups
-  }, [])
-
-  const currentPath = location?.pathname || '/'
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() => 
-    getExpandedGroupsForPath(currentPath)
-  )
-
-  const toggleGroup = useCallback((groupKey: string) => {
-    setExpandedGroups(prev => ({
-      ...prev,
-      [groupKey]: !prev[groupKey]
-    }))
-  }, [])
-
-  // Обновляем открытые группы при изменении пути
-  useEffect(() => {
-    if (location?.pathname) {
-      const newExpanded = getExpandedGroupsForPath(location.pathname)
-      setExpandedGroups(newExpanded)
-    }
-  }, [location?.pathname, getExpandedGroupsForPath])
-
-  // Мемоизируем navGroups, чтобы избежать пересоздания при каждом рендере
-  // Используем стабильные зависимости - только примитивные значения
-  const isAdmin = user?.is_admin ?? false
-  
-  // Проверяем готовность всех необходимых переводов
-  const translationsReady = useMemo(() => {
-    try {
-      return !!(
-        t?.nav?.dashboard &&
-        t?.nav?.transactions &&
-        t?.nav?.accounts &&
-        t?.nav?.categories &&
-        t?.nav?.reports &&
-        t?.nav?.biography &&
-        t?.nav?.quests &&
-        t?.nav?.achievements &&
-        t?.nav?.goals &&
-        t?.nav?.budgets &&
-        t?.nav?.profile &&
-        t?.nav?.analytics &&
-        t?.profile?.about
-      )
-    } catch {
-      return false
-    }
-  }, [t])
-  
-  const navGroups = useMemo(() => {
-    // Защита от выполнения до готовности переводов
-    if (!translationsReady) {
-      return []
-    }
-    
-    try {
-      const settingsItems = [
-        { path: '/profile', label: t.nav.profile || 'Профиль', icon: '⚙️' },
-        { path: '/about', label: t.profile.about || 'О приложении', icon: '📚' },
-      ]
-      
-      // Добавляем analytics только если пользователь админ
-      if (isAdmin) {
-        settingsItems.push({ path: '/analytics', label: t.nav.analytics || 'Аналитика', icon: '📊' })
-      }
-      
-      return [
-        {
-          key: 'finance',
-          label: 'Финансы',
-          icon: '💰',
-          items: [
-            { path: '/', label: t.nav.dashboard || 'Дашборд', icon: '📊' },
-            { path: '/transactions', label: t.nav.transactions || 'Транзакции', icon: '💸' },
-            { path: '/accounts', label: t.nav.accounts || 'Счета', icon: '💳' },
-            { path: '/categories', label: t.nav.categories || 'Категории', icon: '📦' },
-            { path: '/reports', label: t.nav.reports || 'Отчеты', icon: '📈' },
-          ]
-        },
-        {
-          key: 'planning',
-          label: 'Планирование',
-          icon: '🎯',
-          items: [
-            { path: '/biography', label: t.nav.biography || 'Биография', icon: '📝' },
-            { path: '/quests', label: t.nav.quests || 'Задания', icon: '🎯' },
-            { path: '/achievements', label: t.nav.achievements || 'Достижения', icon: '🏆' },
-            { path: '/goals', label: t.nav.goals || 'Цели', icon: '🎯' },
-            { path: '/shared-budgets', label: t.nav.budgets || 'Бюджеты', icon: '👥' },
-          ]
-        },
-        {
-          key: 'settings',
-          label: 'Настройки',
-          icon: '⚙️',
-          items: settingsItems,
-        }
-      ]
-    } catch (error) {
-      console.error('Error creating navGroups:', error)
-      return []
-    }
-  }, [
-    translationsReady,
-    t?.nav?.dashboard,
-    t?.nav?.transactions,
-    t?.nav?.accounts,
-    t?.nav?.categories,
-    t?.nav?.reports,
-    t?.nav?.biography,
-    t?.nav?.quests,
-    t?.nav?.achievements,
-    t?.nav?.goals,
-    t?.nav?.budgets,
-    t?.nav?.profile,
-    t?.nav?.analytics,
-    t?.profile?.about,
-    isAdmin
-  ])
-
-  // Плоский список для мобильной навигации (старый формат)
-  const navItems = useMemo(() => navGroups.flatMap(group => group.items), [navGroups])
-
-  // Определяем критические шаги загрузки
-  const loadingSteps = useMemo(() => {
-    const steps = [
-      {
-        key: 'translations',
-        label: 'Загрузка переводов...',
-        checkReady: () => translationsReady && !!t,
-      },
-      {
-        key: 'location',
-        label: 'Инициализация роутинга...',
-        checkReady: () => !!location?.pathname,
-      },
-    ]
-
-    // Для страниц логина/регистрации/онбординга не нужна авторизация
-    const isPublicPage = location?.pathname === '/login' || 
-                        location?.pathname === '/register' || 
-                        location?.pathname === '/onboarding'
-
-    if (!isPublicPage) {
-      steps.push({
-        key: 'auth',
-        label: 'Проверка авторизации...',
-        checkReady: () => isAuthorized !== null,
-      })
-
-      // Если авторизован, добавляем шаг загрузки данных пользователя
-      if (isAuthorized === true) {
-        steps.push({
-          key: 'user',
-          label: 'Загрузка данных пользователя...',
-          checkReady: () => {
-            // Проверяем через query state
-            const queryState = queryClient.getQueryState(['currentUser'])
-            return queryState?.status === 'success' || !!user
-          },
-        })
-      }
-    }
-
-    return steps
-  }, [location?.pathname, isAuthorized, translationsReady, t, user, queryClient])
-
-  // Проверяем готовность всех шагов загрузки
-  const allStepsReady = useMemo(() => {
-    return loadingSteps.every(step => {
-      if ('checkReady' in step && typeof step.checkReady === 'function') {
-        return step.checkReady()
-      }
-      if ('isReady' in step && step.isReady !== undefined) {
-        return step.isReady
-      }
-      if ('queryKey' in step && step.queryKey && Array.isArray(step.queryKey)) {
-        const queryState = queryClient.getQueryState(step.queryKey)
-        return queryState?.status === 'success' || queryState?.data !== undefined
-      }
-      return false
-    })
-  }, [loadingSteps, queryClient])
-
-  // Автоматически устанавливаем готовность, когда все шаги готовы
-  useEffect(() => {
-    if (allStepsReady && !isAppReady && loadingSteps.length > 0) {
-      // Небольшая задержка для плавного перехода
-      const timer = setTimeout(() => {
-        setIsAppReady(true)
-      }, 300)
-      return () => clearTimeout(timer)
-    }
-  }, [allStepsReady, isAppReady, loadingSteps.length])
-
   // Показываем загрузочный экран до готовности приложения
   // Показываем для всех страниц, включая публичные (логин/регистрация/онбординг)
   if (!isAppReady || !allStepsReady) {
@@ -843,11 +849,11 @@ export function Layout() {
         </div>
         
         <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
-          {navGroups && navGroups.length > 0 && navGroups.map((group) => {
-            if (!group || !group.key || !group.items) return null
+          {navGroups && Array.isArray(navGroups) && navGroups.length > 0 && navGroups.map((group) => {
+            if (!group || !group.key || !group.items || !Array.isArray(group.items)) return null
             const isExpanded = expandedGroups[group.key] ?? false
             const currentPath = location?.pathname || '/'
-            const hasActiveItem = group.items.some(item => currentPath === item.path)
+            const hasActiveItem = group.items.some(item => item && item.path && currentPath === item.path)
             
             return (
               <div key={group.key} className="space-y-1">
@@ -870,7 +876,7 @@ export function Layout() {
                 </button>
                 
                 {/* Подменю группы */}
-                {isExpanded && group.items && group.items.length > 0 && (
+                {isExpanded && group.items && Array.isArray(group.items) && group.items.length > 0 && (
                   <div className="ml-4 space-y-0.5">
                     {group.items.map((item) => {
                       if (!item || !item.path) return null
@@ -1129,11 +1135,11 @@ export function Layout() {
             </div>
             
             <nav className="p-2 space-y-1">
-              {navGroups && navGroups.length > 0 && navGroups.map((group) => {
-                if (!group || !group.key || !group.items) return null
+              {navGroups && Array.isArray(navGroups) && navGroups.length > 0 && navGroups.map((group) => {
+                if (!group || !group.key || !group.items || !Array.isArray(group.items)) return null
                 const isExpanded = expandedGroups[group.key] ?? false
                 const currentPath = location?.pathname || '/'
-                const hasActiveItem = group.items.some(item => currentPath === item.path)
+                const hasActiveItem = group.items.some(item => item && item.path && currentPath === item.path)
                 
                 return (
                   <div key={group.key} className="space-y-1">
@@ -1277,11 +1283,13 @@ export function Layout() {
         <nav className="xl:hidden fixed bottom-0 left-0 right-0 bg-telegram-surface dark:bg-telegram-dark-surface border-t border-telegram-border dark:border-telegram-dark-border px-2 py-2 safe-area-inset-bottom z-10">
           <div className="flex items-center justify-around">
             {/* Дашборд, Транзакции, Счета, Отчеты */}
-            {navItems.filter(item => 
-              item.path === '/' || 
-              item.path === '/transactions' || 
-              item.path === '/accounts' || 
-              item.path === '/reports'
+            {Array.isArray(navItems) && navItems.filter(item => 
+              item && item.path && (
+                item.path === '/' || 
+                item.path === '/transactions' || 
+                item.path === '/accounts' || 
+                item.path === '/reports'
+              )
             ).map((item) => {
               const isActive = location.pathname === item.path
               return (
@@ -1321,11 +1329,13 @@ export function Layout() {
         <nav className="xl:hidden fixed bottom-0 left-0 right-0 bg-telegram-surface dark:bg-telegram-dark-surface border-t border-telegram-border dark:border-telegram-dark-border px-2 py-2 safe-area-inset-bottom z-10 shadow-lg">
           <div className="flex items-center justify-around">
             {/* Дашборд, Транзакции, Счета, Отчеты */}
-            {navItems.filter(item => 
-              item.path === '/' || 
-              item.path === '/transactions' || 
-              item.path === '/accounts' || 
-              item.path === '/reports'
+            {Array.isArray(navItems) && navItems.filter(item => 
+              item && item.path && (
+                item.path === '/' || 
+                item.path === '/transactions' || 
+                item.path === '/accounts' || 
+                item.path === '/reports'
+              )
             ).map((item) => {
               const isActive = location.pathname === item.path
               return (

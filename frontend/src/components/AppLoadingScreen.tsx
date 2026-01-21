@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 
 interface LoadingStep {
@@ -19,12 +19,24 @@ export function AppLoadingScreen({ steps, onComplete }: AppLoadingScreenProps) {
   const [progress, setProgress] = useState(0)
   const [currentStep, setCurrentStep] = useState<string>('')
 
+  // Защита от пустого массива steps - используем useMemo для стабильности
+  const safeSteps = useMemo(() => {
+    return Array.isArray(steps) && steps.length > 0 ? steps : []
+  }, [steps])
+
   useEffect(() => {
+    if (safeSteps.length === 0) {
+      // Если нет шагов, сразу вызываем onComplete
+      setTimeout(() => onComplete(), 100)
+      return
+    }
+
     const checkProgress = () => {
       let readyCount = 0
       let currentStepLabel = ''
 
-      steps.forEach((step) => {
+      safeSteps.forEach((step: LoadingStep) => {
+        if (!step || typeof step !== 'object') return
         let isReady = false
 
         // Проверяем готовность через кастомную функцию
@@ -48,12 +60,12 @@ export function AppLoadingScreen({ steps, onComplete }: AppLoadingScreenProps) {
         }
       })
 
-      const newProgress = steps.length > 0 ? (readyCount / steps.length) * 100 : 0
+      const newProgress = safeSteps.length > 0 ? (readyCount / safeSteps.length) * 100 : 0
       setProgress(Math.min(newProgress, 100))
-      setCurrentStep(currentStepLabel || steps[steps.length - 1]?.label || '')
+      setCurrentStep(currentStepLabel || safeSteps[safeSteps.length - 1]?.label || '')
 
       // Если все шаги готовы, вызываем onComplete
-      if (readyCount === steps.length && steps.length > 0) {
+      if (readyCount === safeSteps.length && safeSteps.length > 0) {
         // Небольшая задержка для плавного перехода
         setTimeout(() => {
           onComplete()
@@ -68,7 +80,7 @@ export function AppLoadingScreen({ steps, onComplete }: AppLoadingScreenProps) {
     const interval = setInterval(checkProgress, 100)
 
     return () => clearInterval(interval)
-  }, [steps, queryClient, onComplete])
+  }, [safeSteps, queryClient, onComplete])
 
   // Анимация прогресса для плавности
   const [animatedProgress, setAnimatedProgress] = useState(0)
@@ -120,9 +132,10 @@ export function AppLoadingScreen({ steps, onComplete }: AppLoadingScreenProps) {
         </div>
 
         {/* Список шагов загрузки (опционально, для отладки) */}
-        {import.meta.env.DEV && (
+        {import.meta.env.DEV && safeSteps.length > 0 && (
           <div className="mt-8 space-y-2 text-xs">
-            {steps.map((step) => {
+            {safeSteps.map((step: LoadingStep) => {
+              if (!step || typeof step !== 'object') return null
               let isReady = false
 
               if (step.checkReady) {

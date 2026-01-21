@@ -6,7 +6,10 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "test:react300": "node scripts/test-react-300-fix.js",
+    "test:types": "tsc --noEmit",
+    "test:all": "npm run test:types && npm run lint && npm run build"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.3",
