@@ -254,8 +254,15 @@ export function Layout() {
   }, [navGroups])
 
   // Определяем критические шаги загрузки
+  // Убеждаемся, что мы не передаем функции напрямую в JSX
   const loadingSteps = useMemo(() => {
-    const steps = [
+    const steps: Array<{
+      key: string
+      label: string
+      checkReady?: () => boolean
+      isReady?: boolean
+      queryKey?: string[]
+    }> = [
       {
         key: 'translations',
         label: 'Загрузка переводов...',
@@ -305,7 +312,7 @@ export function Layout() {
     }
 
     return steps
-  }, [location?.pathname, isAuthorized, translationsReady, t, user, queryClient])
+  }, [location?.pathname, isAuthorized, translationsReady, t, user, queryClient, isCheckingAuth])
 
   // Проверяем готовность всех шагов загрузки
   // Делаем проверку менее строгой - разрешаем рендеринг, если хотя бы базовые данные готовы
@@ -815,6 +822,18 @@ export function Layout() {
                       location?.pathname === '/register' || 
                       location?.pathname === '/onboarding'
 
+  // Для публичных страниц проверяем только базовые данные
+  const basicDataReady = translationsReady && !!t && !!location?.pathname
+
+  // Устанавливаем готовность приложения, когда базовые данные готовы или таймаут истек
+  useEffect(() => {
+    if (basicDataReady || loadingTimeout) {
+      if (!isAppReady) {
+        setIsAppReady(true)
+      }
+    }
+  }, [basicDataReady, loadingTimeout, isAppReady])
+
   // Для публичных страниц НЕ показываем загрузочный экран
   // Разрешаем рендеринг сразу, даже если данные еще не готовы
   if (isPublicPage) {
@@ -824,7 +843,6 @@ export function Layout() {
     // Для защищенных страниц показываем загрузочный экран
     // Но с таймаутом - если данные не загрузились за 5 секунд, разрешаем рендеринг
     // Также разрешаем рендеринг, если хотя бы базовые данные (переводы, location) готовы
-    const basicDataReady = translationsReady && !!t && !!location?.pathname
     
     // Показываем загрузочный экран только если:
     // 1. Базовые данные НЕ готовы
@@ -837,12 +855,6 @@ export function Layout() {
           onComplete={() => setIsAppReady(true)}
         />
       )
-    }
-    
-    // Если базовые данные готовы ИЛИ таймаут истек, разрешаем рендеринг
-    // Это предотвращает бесконечную загрузку
-    if (basicDataReady || loadingTimeout) {
-      setIsAppReady(true)
     }
   }
 

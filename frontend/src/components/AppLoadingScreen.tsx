@@ -70,21 +70,6 @@ export function AppLoadingScreen({ steps, onComplete }: AppLoadingScreenProps) {
         setTimeout(() => {
           onComplete()
         }, 300)
-        return // Прерываем проверку, если все готово
-      }
-      
-      // Если прошло достаточно времени (3 секунды) и загружено больше 50%, разрешаем рендеринг
-      // Это предотвращает бесконечную загрузку
-      const progressPercent = safeSteps.length > 0 ? (readyCount / safeSteps.length) * 100 : 0
-      if (progressPercent >= 50) {
-        // Даем еще 2 секунды на загрузку оставшихся данных
-        const waitTimer = setTimeout(() => {
-          if (readyCount < safeSteps.length) {
-            // Если за 2 секунды не загрузилось, разрешаем рендеринг
-            onComplete()
-          }
-        }, 2000)
-        return () => clearTimeout(waitTimer)
       }
     }
 
