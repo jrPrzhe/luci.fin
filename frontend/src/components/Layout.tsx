@@ -18,6 +18,7 @@ import { QuestNotifications } from './QuestNotifications'
 import { hasInteractedWithBot, openVKBot } from '../utils/vk'
 import { OnboardingWizard } from './OnboardingWizard'
 import { AppLoadingScreen } from './AppLoadingScreen'
+import { TelegramLoadingScreen } from './TelegramLoadingScreen'
 
 export function Layout() {
   const navigate = useNavigate()
@@ -971,29 +972,31 @@ export function Layout() {
     }
   }
 
-  // Если авторизация еще неизвестна (null), продолжаем рендеринг
-  // Auth handlers обработают авторизацию в фоне
-  // Это предотвращает пустой экран во время авторизации через Mini App
-  // ВАЖНО: Для Telegram Mini App не рендерим защищенные страницы до завершения авторизации
-  // чтобы избежать проблем с hooks в дочерних компонентах (особенно Dashboard)
-  // Dashboard может рендериться с hasToken=false, а затем ре-рендериться с hasToken=true,
-  // что может вызвать React error #300 из-за разного количества hooks
+  // ВАЖНО: Для Telegram Mini App используем специальный экран загрузки
+  // который проверяет токен и предзагружает данные для основных вкладок
+  // Это предотвращает проблемы с hooks, так как Layout монтируется только после завершения загрузки
+  const [telegramLoadingComplete, setTelegramLoadingComplete] = useState(false)
+  
+  if (isAuthorized === null && !isPublicPage && isMiniApp && !telegramLoadingComplete) {
+    return (
+      <TelegramLoadingScreen
+        onComplete={() => {
+          console.log('[Layout] Telegram loading complete, updating authorization status')
+          // После завершения загрузки проверяем токен и обновляем состояние
+          const token = storageSync.getItem('token')
+          if (token) {
+            setIsAuthorized(true)
+            setIsCheckingAuth(false)
+          }
+          setTelegramLoadingComplete(true)
+        }}
+      />
+    )
+  }
+  
   if (isAuthorized === null) {
-    if (!isPublicPage && isMiniApp) {
-      console.log('[Layout] Authorization status unknown in Telegram Mini App, showing loading to prevent hooks error...')
-      // Показываем загрузку вместо рендеринга Dashboard до завершения авторизации
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-telegram-bg dark:bg-telegram-dark-bg">
-          <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-telegram-primary dark:border-telegram-dark-primary mb-4"></div>
-            <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{t?.common?.loading || 'Загрузка...'}</p>
-          </div>
-        </div>
-      )
-    } else {
-      console.log('[Layout] Authorization status unknown, allowing render to continue (Mini App auth in progress)')
-      // Продолжаем рендеринг - не блокируем UI (для веб-версии)
-    }
+    console.log('[Layout] Authorization status unknown, allowing render to continue (Mini App auth in progress)')
+    // Продолжаем рендеринг - не блокируем UI (для веб-версии)
   }
 
   // Защита от рендеринга меню до инициализации данных
@@ -1102,16 +1105,16 @@ export function Layout() {
 
   // ВАЖНО: Не рендерим навигацию, если данные не готовы
   // Это критично для предотвращения React error #300 при быстром использовании приложения
-  // ВАЖНО: Для Telegram Mini App не рендерим защищенные страницы до завершения авторизации
-  // чтобы избежать проблем с hooks в дочерних компонентах (особенно Dashboard)
-  // ВАЖНО: Используем useMemo для стабильности проверки, чтобы избежать React error #310
+  // ВАЖНО: Для Telegram Mini App данные уже загружены через TelegramLoadingScreen
+  // Используем useMemo для стабильности проверки, чтобы избежать React error #310
   const shouldShowLoading = useMemo(() => {
-    return !isDataReady || !isAppReady || (isAuthorized === null && !isPublicPage && isMiniApp)
-  }, [isDataReady, isAppReady, isAuthorized, isPublicPage, isMiniApp])
+    // Для Telegram Mini App не показываем loading, если загрузка уже завершена
+    if (isMiniApp && telegramLoadingComplete) {
+      return false
+    }
+    return !isDataReady || !isAppReady
+  }, [isDataReady, isAppReady, isMiniApp, telegramLoadingComplete])
   
-  // КРИТИЧЕСКИ ВАЖНО: Для Telegram Mini App не рендерим Dashboard до завершения авторизации
-  // Это предотвращает React error #300, когда Dashboard рендерится с hasToken=false,
-  // а затем ре-рендерится с hasToken=true, что может вызвать разное количество hooks
   if (shouldShowLoading) {
     return (
       <div className={`min-h-screen flex flex-col xl:flex-row bg-telegram-bg dark:bg-telegram-dark-bg ${valentineEnabled ? 'valentine-mode' : ''} ${strangerThingsEnabled ? 'theme-stranger-things' : ''}`}>
