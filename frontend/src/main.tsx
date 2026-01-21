@@ -8,6 +8,22 @@ import { initVKWebApp, isVKWebApp } from './utils/vk'
 
 // Глобальный обработчик ошибок для логирования
 window.addEventListener('error', (event) => {
+  // Игнорируем ошибки от TelegramClient/MTProtoSender - это внешние библиотеки,
+  // которые пытаются подключиться к Telegram API напрямую, но не нужны в Web App
+  const errorMessage = event.message || ''
+  const errorSource = event.filename || ''
+  
+  if (
+    errorMessage.includes('TelegramClient') ||
+    errorMessage.includes('MTProtoSender') ||
+    errorMessage.includes('TIMEOUT') ||
+    errorSource.includes('TelegramClient') ||
+    errorSource.includes('MTProtoSender')
+  ) {
+    // Тихо игнорируем эти ошибки - они не критичны для работы приложения
+    return
+  }
+  
   console.error('[Global Error Handler]', {
     message: event.message,
     filename: event.filename,
@@ -23,7 +39,26 @@ window.addEventListener('error', (event) => {
 })
 
 // Обработчик необработанных промисов
+// Игнорируем ошибки от TelegramClient/MTProtoSender - это внешние библиотеки
 window.addEventListener('unhandledrejection', (event) => {
+  const reason = event.reason
+  const reasonString = reason?.toString() || ''
+  const reasonMessage = reason?.message || ''
+  
+  // Игнорируем ошибки от TelegramClient/MTProtoSender
+  if (
+    reasonString.includes('TelegramClient') ||
+    reasonString.includes('MTProtoSender') ||
+    reasonString.includes('TIMEOUT') ||
+    reasonMessage.includes('TelegramClient') ||
+    reasonMessage.includes('MTProtoSender') ||
+    reasonMessage.includes('Not connected')
+  ) {
+    // Тихо игнорируем эти ошибки - они не критичны для работы приложения
+    event.preventDefault() // Предотвращаем вывод в консоль
+    return
+  }
+  
   console.error('[Global Unhandled Rejection]', {
     reason: event.reason,
     promise: event.promise,
