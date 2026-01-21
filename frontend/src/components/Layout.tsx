@@ -267,7 +267,7 @@ export function Layout() {
   }, [navGroups])
 
   // Определяем критические шаги загрузки
-  // Убеждаемся, что мы не передаем функции напрямую в JSX
+  // ВАЖНО: Для Telegram мобильной версии нужно убедиться, что ВСЕ критические данные готовы
   const loadingSteps = useMemo(() => {
     const steps: Array<{
       key: string
@@ -284,7 +284,10 @@ export function Layout() {
       {
         key: 'location',
         label: 'Инициализация роутинга...',
-        checkReady: () => !!location?.pathname,
+        checkReady: () => {
+          // ВАЖНО: Строгая проверка location для Telegram мобильной версии
+          return !!(location && typeof location === 'object' && location.pathname && typeof location.pathname === 'string')
+        },
       },
     ]
 
@@ -298,34 +301,67 @@ export function Layout() {
         key: 'auth',
         label: 'Проверка авторизации...',
         checkReady: () => {
-          // Разрешаем, если авторизация определена (не null) ИЛИ если идет проверка
-          // Не блокируем, если авторизация в процессе
-          // Для Telegram/VK авторизация может занять время, поэтому разрешаем рендеринг
+          // Для Telegram мобильной версии требуем, чтобы авторизация была определена
+          if (isMiniApp) {
+            return isAuthorized !== null
+          }
+          // Для других платформ разрешаем, если авторизация определена или идет проверка
           return isAuthorized !== null || isCheckingAuth
         },
       })
 
       // Если авторизован, добавляем шаг загрузки данных пользователя
-      // Но не блокируем, если данные еще загружаются - разрешаем рендеринг сразу
       if (isAuthorized === true) {
         steps.push({
           key: 'user',
           label: 'Загрузка данных пользователя...',
           checkReady: () => {
-            // Проверяем через query state
+            // Для Telegram мобильной версии требуем успешную загрузку пользователя
+            if (isMiniApp) {
+              const queryState = queryClient.getQueryState(['currentUser'])
+              return queryState?.status === 'success' && !!user
+            }
+            // Для других платформ разрешаем, если данные загружены или запрос в процессе
             const queryState = queryClient.getQueryState(['currentUser'])
-            // Разрешаем, если данные загружены ИЛИ если запрос в процессе
-            // Не блокируем рендеринг, если данные еще загружаются
-            // Это позволяет приложению загружаться быстрее
-            // Если queryState существует (даже если pending), разрешаем рендеринг
             return queryState?.status === 'success' || !!user || queryState !== undefined
           },
         })
       }
     }
 
+    // ВАЖНО: Добавляем шаг загрузки навигации - это критично для предотвращения React error #300
+    // Навигация должна быть полностью готова перед рендерингом
+    steps.push({
+      key: 'navigation',
+      label: 'Инициализация навигации...',
+      checkReady: () => {
+        // ВАЖНО: Строгая проверка готовности navGroups
+        // navGroups должен быть не пустым массивом и содержать валидные группы
+        if (!navGroups || !Array.isArray(navGroups) || navGroups.length === 0) {
+          return false
+        }
+        
+        // ВАЖНО: Проверяем, что каждый group имеет все необходимые свойства
+        const allGroupsValid = navGroups.every((group: any) => {
+          return group && 
+                 typeof group === 'object' && 
+                 group.key && 
+                 typeof group.key === 'string' && 
+                 group.items && 
+                 Array.isArray(group.items) && 
+                 group.items.length > 0 &&
+                 group.label &&
+                 typeof group.label === 'string' &&
+                 group.icon &&
+                 typeof group.icon === 'string'
+        })
+        
+        return allGroupsValid
+      },
+    })
+
     return steps
-  }, [location?.pathname, isAuthorized, translationsReady, t, user, queryClient, isCheckingAuth])
+  }, [location, isAuthorized, translationsReady, t, user, queryClient, isCheckingAuth, navGroups, isMiniApp])
 
   // Проверяем готовность всех шагов загрузки
   // ВАЖНО: Для предотвращения React error #300 нужно убедиться, что ВСЕ критические данные готовы
@@ -371,17 +407,24 @@ export function Layout() {
     return allStepsReadyCheck && navGroupsReady
   }, [loadingSteps, queryClient, navGroups])
 
-  // Таймаут для загрузочного экрана - через 5 секунд разрешаем рендеринг
+  // Таймаут для загрузочного экрана
+  // ВАЖНО: Для Telegram мобильной версии увеличиваем таймаут, чтобы дать время всем данным загрузиться
   const [loadingTimeout, setLoadingTimeout] = useState(false)
   
   useEffect(() => {
+    // Для Telegram мобильной версии таймаут 10 секунд, для других - 5 секунд
+    const timeoutDuration = isMiniApp ? 10000 : 5000
     const timer = setTimeout(() => {
       setLoadingTimeout(true)
-      setIsAppReady(true) // Принудительно разрешаем рендеринг после таймаута
-    }, 5000) // 5 секунд максимум
+      // ВАЖНО: Для Telegram мобильной версии не принудительно разрешаем рендеринг
+      // Пусть все шаги загрузки завершатся естественным образом
+      if (!isMiniApp) {
+        setIsAppReady(true) // Для других платформ принудительно разрешаем рендеринг после таймаута
+      }
+    }, timeoutDuration)
     
     return () => clearTimeout(timer)
-  }, [])
+  }, [isMiniApp])
 
   // Автоматически устанавливаем готовность, когда все шаги готовы
   // ВАЖНО: Добавляем дополнительную задержку для Telegram мобильной версии
@@ -876,42 +919,6 @@ export function Layout() {
                       location?.pathname === '/register' || 
                       location?.pathname === '/onboarding'
 
-  // Для публичных страниц проверяем только базовые данные
-  const basicDataReady = translationsReady && !!t && !!location?.pathname
-
-  // Устанавливаем готовность приложения, когда базовые данные готовы или таймаут истек
-  useEffect(() => {
-    if (basicDataReady || loadingTimeout) {
-      if (!isAppReady) {
-        setIsAppReady(true)
-      }
-    }
-  }, [basicDataReady, loadingTimeout, isAppReady])
-
-  // Для публичных страниц НЕ показываем загрузочный экран
-  // Разрешаем рендеринг сразу, даже если данные еще не готовы
-  if (isPublicPage) {
-    // Для публичных страниц просто продолжаем рендеринг
-    // Не блокируем доступ - страницы логина/регистрации должны загружаться быстро
-  } else {
-    // Для защищенных страниц показываем загрузочный экран
-    // Но с таймаутом - если данные не загрузились за 5 секунд, разрешаем рендеринг
-    // Также разрешаем рендеринг, если хотя бы базовые данные (переводы, location) готовы
-    
-    // Показываем загрузочный экран только если:
-    // 1. Базовые данные НЕ готовы
-    // 2. Таймаут еще не истек
-    // 3. Приложение еще не готово
-    if (!basicDataReady && !loadingTimeout && !isAppReady) {
-      return (
-        <AppLoadingScreen
-          steps={loadingSteps}
-          onComplete={() => setIsAppReady(true)}
-        />
-      )
-    }
-  }
-
   // Защита от рендеринга меню до инициализации данных
   // ВАЖНО: Строгие проверки для предотвращения React error #300
   // Проверяем, что location инициализирован, navGroups создан и НЕ пустой, и переводы готовы
@@ -949,7 +956,73 @@ export function Layout() {
     
     return true
   }, [location, translationsReady, navGroups, t])
-  
+
+  // Для публичных страниц проверяем только базовые данные
+  const basicDataReady = translationsReady && !!t && !!location?.pathname
+
+  // ВАЖНО: Для Telegram мобильной версии проверяем готовность ВСЕХ критичных данных
+  // Для других платформ достаточно базовых данных
+  const allCriticalDataReady = useMemo(() => {
+    if (isPublicPage) {
+      return basicDataReady
+    }
+    
+    // Для Telegram мобильной версии требуем готовность всех шагов загрузки
+    if (isMiniApp) {
+      return allStepsReady && isDataReady
+    }
+    
+    // Для других платформ достаточно базовых данных
+    return basicDataReady
+  }, [isPublicPage, basicDataReady, isMiniApp, allStepsReady, isDataReady])
+
+  // Устанавливаем готовность приложения
+  // ВАЖНО: Для Telegram мобильной версии не устанавливаем isAppReady автоматически
+  // Пусть AppLoadingScreen сам установит готовность через onComplete
+  useEffect(() => {
+    // Для публичных страниц или если не Telegram мобильная версия
+    if (isPublicPage || !isMiniApp) {
+      if (basicDataReady || loadingTimeout) {
+        if (!isAppReady) {
+          setIsAppReady(true)
+        }
+      }
+    }
+    // Для Telegram мобильной версии isAppReady устанавливается через AppLoadingScreen.onComplete
+  }, [basicDataReady, loadingTimeout, isAppReady, isPublicPage, isMiniApp])
+
+  // Для публичных страниц НЕ показываем загрузочный экран
+  // Разрешаем рендеринг сразу, даже если данные еще не готовы
+  if (isPublicPage) {
+    // Для публичных страниц просто продолжаем рендеринг
+    // Не блокируем доступ - страницы логина/регистрации должны загружаться быстро
+  } else {
+    // Для защищенных страниц показываем загрузочный экран
+    // ВАЖНО: Для Telegram мобильной версии показываем до полной готовности ВСЕХ данных
+    // Для других платформ показываем только если базовые данные не готовы
+    
+    // Показываем загрузочный экран если:
+    // 1. Для Telegram мобильной версии: пока не готовы ВСЕ критичные данные
+    // 2. Для других платформ: пока не готовы базовые данные
+    // 3. Приложение еще не готово
+    // 4. Таймаут еще не истек (для других платформ)
+    const shouldShowLoading = isMiniApp 
+      ? (!allCriticalDataReady && !isAppReady)
+      : (!basicDataReady && !loadingTimeout && !isAppReady)
+    
+    if (shouldShowLoading) {
+      return (
+        <AppLoadingScreen
+          steps={loadingSteps}
+          onComplete={() => {
+            // ВАЖНО: Устанавливаем isAppReady только после полной готовности всех данных
+            setIsAppReady(true)
+          }}
+        />
+      )
+    }
+  }
+
   // ВАЖНО: Не рендерим навигацию, если данные не готовы
   // Это критично для предотвращения React error #300 при быстром использовании приложения
   if (!isDataReady || !isAppReady) {
