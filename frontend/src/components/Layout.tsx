@@ -979,12 +979,12 @@ export function Layout() {
   // ВАЖНО: Для Telegram Mini App данные уже загружены через TelegramLoadingScreen
   // Используем useMemo для стабильности проверки, чтобы избежать React error #310
   const shouldShowShellLoading = useMemo(() => {
-    // Для Telegram Mini App не показываем loading, если загрузка уже завершена
-    if (isMiniApp && telegramLoadingComplete) {
+    // Для Mini App полностью отключаем промежуточный экран "Загрузка..."
+    if (isMiniApp) {
       return false
     }
     return !isDataReady || !isAppReady
-  }, [isDataReady, isAppReady, isMiniApp, telegramLoadingComplete])
+  }, [isDataReady, isAppReady, isMiniApp])
 
 
   // Убрали промежуточный экран "Загрузка..." — после TelegramLoadingScreen

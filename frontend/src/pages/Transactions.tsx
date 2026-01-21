@@ -661,7 +661,8 @@ export function Transactions() {
       setShowForm(false)
       
       // Invalidate React Query cache for analytics/reports
-      queryClient.invalidateQueries({ queryKey: ['analytics'] })
+      queryClient.invalidateQueries({ queryKey: ['monthly-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['analytics'], exact: false })
       queryClient.invalidateQueries({ queryKey: ['balance'] })
       queryClient.invalidateQueries({ queryKey: ['recent-transactions'] })
       queryClient.invalidateQueries({ queryKey: ['biography'] })
@@ -713,7 +714,8 @@ export function Transactions() {
             await loadGoals()
             setShowForm(false)
             
-            queryClient.invalidateQueries({ queryKey: ['analytics'] })
+            queryClient.invalidateQueries({ queryKey: ['monthly-stats'] })
+            queryClient.invalidateQueries({ queryKey: ['analytics'], exact: false })
             queryClient.invalidateQueries({ queryKey: ['balance'] })
             queryClient.invalidateQueries({ queryKey: ['recent-transactions'] })
             

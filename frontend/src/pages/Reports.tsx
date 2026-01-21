@@ -364,7 +364,7 @@ export function Reports() {
     },
     staleTime: 60000, // Cache for 1 minute - data is fresh for 1 minute
     refetchOnWindowFocus: false, // Don't refetch on window focus to improve performance
-    refetchOnMount: false, // Use cached data if available
+    refetchOnMount: true, // Refetch when returning after data changes
     refetchInterval: false, // Don't auto-refetch on interval
     retry: 1, // Retry once on failure
     gcTime: 600000, // Keep in cache for 10 minutes - увеличили для лучшей производительности

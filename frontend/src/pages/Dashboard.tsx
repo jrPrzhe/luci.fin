@@ -214,6 +214,8 @@ export function Dashboard() {
   const [quickFormType, setQuickFormType] = useState<'income' | 'expense' | 'transfer' | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
   const [categoriesLoading, setCategoriesLoading] = useState(false)
+  const getCategoriesKey = (transactionType: 'income' | 'expense') => ['categories', transactionType]
+  const CATEGORIES_STALE_TIME = 5 * 60 * 1000
   const [submitting, setSubmitting] = useState(false)
   const [showAddCategoryForm, setShowAddCategoryForm] = useState(false)
   const [creatingCategory, setCreatingCategory] = useState(false)
@@ -625,6 +627,13 @@ export function Dashboard() {
   const loadCategories = async (transactionType: 'income' | 'expense'): Promise<void> => {
     console.log(`[loadCategories] Starting to load categories for ${transactionType}`)
     try {
+      const cached = queryClient.getQueryData<Category[]>(getCategoriesKey(transactionType))
+      if (cached && cached.length > 0) {
+        console.log(`[loadCategories] Using cached ${transactionType} categories (${cached.length})`)
+        setCategories(cached)
+        return
+      }
+
       // Call API with Promise.race for timeout
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => {
@@ -636,7 +645,12 @@ export function Dashboard() {
       // Call API: getCategories(transactionType?, favoritesOnly?, includeShared?)
       console.log(`[loadCategories] Calling API...`)
       const cats = await Promise.race([
-        api.getCategories(transactionType, false, true),
+        queryClient.fetchQuery({
+          queryKey: getCategoriesKey(transactionType),
+          queryFn: () => api.getCategories(transactionType, false, true),
+          staleTime: CATEGORIES_STALE_TIME,
+          gcTime: 10 * 60 * 1000,
+        }),
         timeoutPromise
       ]) as any[]
       
@@ -673,8 +687,19 @@ export function Dashboard() {
     
     // Reset categories and set loading state
     setCategories([])
-    setCategoriesLoading(true)
-    console.log(`[handleQuickAction] Set categoriesLoading = true`)
+    if (type === 'income' || type === 'expense') {
+      const cached = queryClient.getQueryData<Category[]>(getCategoriesKey(type))
+      if (cached && cached.length > 0) {
+        setCategories(cached)
+        setCategoriesLoading(false)
+        console.log(`[handleQuickAction] Used cached categories (${cached.length})`)
+      } else {
+        setCategoriesLoading(true)
+        console.log(`[handleQuickAction] Set categoriesLoading = true`)
+      }
+    } else {
+      setCategoriesLoading(false)
+    }
     
     // Reset form data
     // Filter active accounts only (use accounts directly from query)
@@ -733,6 +758,23 @@ export function Dashboard() {
     }
     console.log(`[handleQuickAction] Completed`)
   }
+
+  // Prefetch categories for quick actions to improve responsiveness
+  useEffect(() => {
+    if (!hasToken) return
+    queryClient.prefetchQuery({
+      queryKey: getCategoriesKey('income'),
+      queryFn: () => api.getCategories('income', false, true),
+      staleTime: CATEGORIES_STALE_TIME,
+      gcTime: 10 * 60 * 1000,
+    })
+    queryClient.prefetchQuery({
+      queryKey: getCategoriesKey('expense'),
+      queryFn: () => api.getCategories('expense', false, true),
+      staleTime: CATEGORIES_STALE_TIME,
+      gcTime: 10 * 60 * 1000,
+    })
+  }, [hasToken, queryClient])
 
   // Handle URL parameters for quick action (from quests)
   useEffect(() => {
