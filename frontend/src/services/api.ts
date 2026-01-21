@@ -304,6 +304,13 @@ class ApiClient {
       this.token = null
     }
 
+    // Telegram-only: avoid calling /auth/me without a token
+    if (endpoint.includes('/auth/me') && !token && isTelegramWebApp()) {
+      const errorObj = new Error('Telegram auth: no token available for /auth/me')
+      ;(errorObj as any).response = { status: 401, data: { detail: 'No token' } }
+      throw errorObj
+    }
+
     // Отладка для проверки отправки токена
     if (endpoint.includes('/auth/me')) {
       console.log('[API] Request to /auth/me:', {
