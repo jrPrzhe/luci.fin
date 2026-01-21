@@ -485,6 +485,65 @@ export function Layout() {
     }
   }, [queryClient])
 
+  // ВАЖНО: Для Telegram Mini App проверяем токен при монтировании
+  // Если токен уже есть, но isAuthorized еще null, обновляем состояние
+  // Это предотвращает бесконечный цикл загрузки
+  useEffect(() => {
+    // Только для Telegram Mini App и только если авторизация еще не определена
+    if (isMiniApp && isAuthorized === null && !isCheckingAuth) {
+      const checkExistingToken = async () => {
+        // Проверяем токен синхронно
+        let token = storageSync.getItem('token')
+        
+        // Если не нашли синхронно, пробуем асинхронно
+        if (!token) {
+          try {
+            const { default: storage } = await import('../utils/storage')
+            token = await Promise.race([
+              storage.getItem('token'),
+              new Promise<string | null>((resolve) => setTimeout(() => resolve(null), 500))
+            ])
+          } catch (error) {
+            console.warn('[Layout] Failed to get token from Cloud Storage:', error)
+          }
+        }
+        
+        // Если токен найден, проверяем его валидность
+        if (token) {
+          try {
+            const user = await api.getCurrentUser()
+            if (user) {
+              console.log('[Layout] Token found, user authenticated, updating authorization status')
+              api.setToken(token)
+              setIsAuthorized(true)
+              setIsCheckingAuth(false)
+              queryClient.setQueryData(['currentUser'], user)
+            } else {
+              // Токен невалидный
+              setIsAuthorized(false)
+              setIsCheckingAuth(false)
+            }
+          } catch (error) {
+            // Токен невалидный или ошибка сети
+            console.warn('[Layout] Token validation failed:', error)
+            setIsAuthorized(false)
+            setIsCheckingAuth(false)
+          }
+        } else {
+          // Токена нет, но это нормально для первого запуска - UnifiedAuthHandler обработает
+          // Не устанавливаем isAuthorized в false, чтобы не блокировать авторизацию
+        }
+      }
+      
+      // Небольшая задержка, чтобы дать UnifiedAuthHandler время на запуск
+      const timeoutId = setTimeout(() => {
+        checkExistingToken()
+      }, 1000)
+      
+      return () => clearTimeout(timeoutId)
+    }
+  }, [isMiniApp, isAuthorized, isCheckingAuth, queryClient])
+
   // Проверяем авторизацию при изменении пути
   useEffect(() => {
     // НЕ проверяем авторизацию на страницах логина/регистрации/онбординга - они обрабатываются отдельно
@@ -1045,12 +1104,15 @@ export function Layout() {
   // Это критично для предотвращения React error #300 при быстром использовании приложения
   // ВАЖНО: Для Telegram Mini App не рендерим защищенные страницы до завершения авторизации
   // чтобы избежать проблем с hooks в дочерних компонентах (особенно Dashboard)
-  const shouldShowLoading = !isDataReady || !isAppReady
+  // ВАЖНО: Используем useMemo для стабильности проверки, чтобы избежать React error #310
+  const shouldShowLoading = useMemo(() => {
+    return !isDataReady || !isAppReady || (isAuthorized === null && !isPublicPage && isMiniApp)
+  }, [isDataReady, isAppReady, isAuthorized, isPublicPage, isMiniApp])
   
   // КРИТИЧЕСКИ ВАЖНО: Для Telegram Mini App не рендерим Dashboard до завершения авторизации
   // Это предотвращает React error #300, когда Dashboard рендерится с hasToken=false,
   // а затем ре-рендерится с hasToken=true, что может вызвать разное количество hooks
-  if (shouldShowLoading || (isAuthorized === null && !isPublicPage && isMiniApp)) {
+  if (shouldShowLoading) {
     return (
       <div className={`min-h-screen flex flex-col xl:flex-row bg-telegram-bg dark:bg-telegram-dark-bg ${valentineEnabled ? 'valentine-mode' : ''} ${strangerThingsEnabled ? 'theme-stranger-things' : ''}`}>
         <div className="flex-1 flex items-center justify-center">
