@@ -327,7 +327,9 @@ class ApiClient {
     // Admin endpoints may take longer due to data aggregation
     // Questionnaire endpoint needs longer timeout for AI analysis
     const timeoutDuration = endpoint.includes('/admin/') ? 30000 : 
-                           endpoint.includes('/questionnaire') ? 60000 : 10000 // 60 seconds for questionnaire, 30 seconds for admin, 10 seconds for others
+                           endpoint.includes('/questionnaire') ? 60000 : 
+                           endpoint.includes('/update-category-limits') ? 30000 :
+                           10000 // 60 seconds for questionnaire, 30 seconds for admin/update-category-limits, 10 seconds for others
     const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(() => reject(new Error('Превышено время ожидания ответа от сервера. Пожалуйста, попробуйте позже.')), timeoutDuration)
     })

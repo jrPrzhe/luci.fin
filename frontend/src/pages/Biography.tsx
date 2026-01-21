@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../services/api'
 import { OnboardingWizard } from '../components/OnboardingWizard'
@@ -39,6 +39,19 @@ export function Biography() {
   const [editedIncome, setEditedIncome] = useState<number>(0)
   const [isUpdatingLimits, setIsUpdatingLimits] = useState(false)
   const [showUpdateButton, setShowUpdateButton] = useState(false)
+  const updatePollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const updateStartRef = useRef<number | null>(null)
+
+  const getLimitsSignature = (bio: Biography | null) => {
+    if (!bio) return ''
+    const limitsSig = Array.isArray(bio.category_limits)
+      ? bio.category_limits
+          .map(limit => `${limit.id}:${limit.updated_at}:${limit.user_limit}:${limit.ai_recommended_limit}:${limit.actual_spent}`)
+          .sort()
+          .join('|')
+      : ''
+    return `${bio.updated_at || ''}|${limitsSig}`
+  }
 
   const { data: biography, isLoading, refetch } = useQuery({
     queryKey: ['biography'],
@@ -147,13 +160,60 @@ export function Biography() {
     }
 
     setIsUpdatingLimits(true)
+    const initialSignature = getLimitsSignature(biography)
+    const startedAt = Date.now()
+    updateStartRef.current = startedAt
+
+    const startPolling = () => {
+      if (updatePollRef.current) {
+        clearInterval(updatePollRef.current)
+      }
+
+      updatePollRef.current = setInterval(async () => {
+        const elapsed = Date.now() - (updateStartRef.current || startedAt)
+        if (elapsed > 60000) {
+          clearInterval(updatePollRef.current as ReturnType<typeof setInterval>)
+          updatePollRef.current = null
+          setIsUpdatingLimits(false)
+          showError('Обновление лимитов заняло слишком много времени. Попробуйте позже.')
+          return
+        }
+
+        try {
+          const result = await refetch()
+          const nextBiography = result?.data || null
+          const nextSignature = getLimitsSignature(nextBiography)
+          if (nextSignature && nextSignature !== initialSignature) {
+            clearInterval(updatePollRef.current as ReturnType<typeof setInterval>)
+            updatePollRef.current = null
+            setIsUpdatingLimits(false)
+            setShowUpdateButton(false)
+            await queryClient.invalidateQueries({ queryKey: ['gamification-status'] })
+            showSuccess('Лимиты категорий обновлены')
+          }
+        } catch (error) {
+          console.warn('Polling biography update failed:', error)
+        }
+      }, 2000)
+    }
+
+    startPolling()
     try {
-      await api.updateCategoryLimits()
-      setShowUpdateButton(false)
-      await refetch()
-      // Обновляем статус геймификации чтобы отобразить новое количество сердец
-      await queryClient.invalidateQueries({ queryKey: ['gamification-status'] })
-      showSuccess('Лимиты категорий обновлены успешно')
+      showSuccess('Обновление лимитов запущено. Мы уведомим вас по готовности.')
+      api.updateCategoryLimits().catch((error: any) => {
+        console.error('Error updating category limits:', error)
+        const errorMessage = error?.message || 'Ошибка при обновлении лимитов'
+        if (updatePollRef.current) {
+          clearInterval(updatePollRef.current)
+          updatePollRef.current = null
+        }
+        setIsUpdatingLimits(false)
+        if (errorMessage.includes('Недостаточно сердец')) {
+          showError(errorMessage, 8000)
+        } else {
+          showError(errorMessage)
+        }
+      })
     } catch (error: any) {
       console.error('Error updating category limits:', error)
       const errorMessage = error.message || 'Ошибка при обновлении лимитов'
@@ -162,10 +222,16 @@ export function Biography() {
       } else {
         showError(errorMessage)
       }
-    } finally {
-      setIsUpdatingLimits(false)
     }
   }
+
+  useEffect(() => {
+    return () => {
+      if (updatePollRef.current) {
+        clearInterval(updatePollRef.current)
+      }
+    }
+  }, [])
 
   if (isLoading) {
     return (
