@@ -1,5 +1,5 @@
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { isTelegramWebApp } from '../utils/telegram'
 import { isVKWebApp } from '../utils/vk'
@@ -544,7 +544,7 @@ export function Layout() {
   }
 
   // Группы меню - автоматически открываем группу с активным элементом
-  const getExpandedGroupsForPath = (path: string) => {
+  const getExpandedGroupsForPath = useCallback((path: string) => {
     const groups: Record<string, boolean> = {
       finance: false,
       planning: false,
@@ -566,26 +566,30 @@ export function Layout() {
     }
     
     return groups
-  }
+  }, [])
 
+  const currentPath = location?.pathname || '/'
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(() => 
-    getExpandedGroupsForPath(location.pathname)
+    getExpandedGroupsForPath(currentPath)
   )
 
-  const toggleGroup = (groupKey: string) => {
+  const toggleGroup = useCallback((groupKey: string) => {
     setExpandedGroups(prev => ({
       ...prev,
       [groupKey]: !prev[groupKey]
     }))
-  }
+  }, [])
 
   // Обновляем открытые группы при изменении пути
   useEffect(() => {
-    const newExpanded = getExpandedGroupsForPath(location.pathname)
-    setExpandedGroups(newExpanded)
-  }, [location.pathname])
+    if (location?.pathname) {
+      const newExpanded = getExpandedGroupsForPath(location.pathname)
+      setExpandedGroups(newExpanded)
+    }
+  }, [location?.pathname, getExpandedGroupsForPath])
 
-  const navGroups = [
+  // Мемоизируем navGroups, чтобы избежать пересоздания при каждом рендере
+  const navGroups = useMemo(() => [
     {
       key: 'finance',
       label: 'Финансы',
@@ -620,10 +624,10 @@ export function Layout() {
         ...(user?.is_admin ? [{ path: '/analytics', label: t.nav.analytics, icon: '📊' }] : []),
       ]
     }
-  ]
+  ], [t.nav, t.profile.about, user?.is_admin])
 
   // Плоский список для мобильной навигации (старый формат)
-  const navItems = navGroups.flatMap(group => group.items)
+  const navItems = useMemo(() => navGroups.flatMap(group => group.items), [navGroups])
 
   return (
     <div className={`min-h-screen flex flex-col xl:flex-row bg-telegram-bg dark:bg-telegram-dark-bg ${valentineEnabled ? 'valentine-mode' : ''} ${strangerThingsEnabled ? 'theme-stranger-things' : ''}`}>
