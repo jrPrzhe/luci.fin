@@ -962,6 +962,52 @@ export function Dashboard() {
         }
       }
       
+      const updateMonthlyCaches = (transactionType: 'income' | 'expense', amount: number, dateIso: string) => {
+        try {
+          const txDate = new Date(dateIso)
+          const now = new Date()
+          if (txDate.getFullYear() !== now.getFullYear() || txDate.getMonth() !== now.getMonth()) {
+            return
+          }
+
+          queryClient.setQueryData(['monthly-stats'], (prev: any) => {
+            const prevIncome = typeof prev?.income === 'number' ? prev.income : 0
+            const prevExpense = typeof prev?.expense === 'number' ? prev.expense : 0
+            if (transactionType === 'income') {
+              return { ...prev, income: prevIncome + amount, expense: prevExpense }
+            }
+            if (transactionType === 'expense') {
+              return { ...prev, income: prevIncome, expense: prevExpense + amount }
+            }
+            return prev
+          })
+
+          queryClient.setQueryData(['analytics', 'month'], (prev: any) => {
+            const totals = prev?.totals
+            if (!totals || typeof totals !== 'object') return prev
+            const income = typeof totals.income === 'number' ? totals.income : 0
+            const expense = typeof totals.expense === 'number' ? totals.expense : 0
+            const nextIncome = transactionType === 'income' ? income + amount : income
+            const nextExpense = transactionType === 'expense' ? expense + amount : expense
+            return {
+              ...prev,
+              totals: {
+                ...totals,
+                income: nextIncome,
+                expense: nextExpense,
+                net: (typeof totals.net === 'number' ? totals.net : nextIncome - nextExpense),
+              },
+            }
+          })
+        } catch (error) {
+          console.warn('[Dashboard] Failed to update monthly caches:', error)
+        }
+      }
+
+      if (quickFormType === 'income' || quickFormType === 'expense') {
+        updateMonthlyCaches(quickFormType, submitData.amount, submitData.transaction_date)
+      }
+
       // Close form immediately (optimistic UI update)
       setShowQuickForm(false)
       setQuickFormType(null)
@@ -998,19 +1044,23 @@ export function Dashboard() {
         await Promise.all([
           queryClient.refetchQueries({ 
             queryKey: ['balance'], 
-            type: 'active'
+            type: 'all'
           }),
           queryClient.refetchQueries({ 
             queryKey: ['recent-transactions'], 
-            type: 'active'
+            type: 'all'
           }),
           queryClient.refetchQueries({ 
             queryKey: ['monthly-stats'], 
-            type: 'active'
+            type: 'all'
           }),
           queryClient.refetchQueries({ 
             queryKey: ['goals'], 
-            type: 'active'
+            type: 'all'
+          }),
+          queryClient.refetchQueries({
+            queryKey: ['analytics'],
+            type: 'all'
           }),
         ])
         

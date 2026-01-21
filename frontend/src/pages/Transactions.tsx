@@ -660,6 +660,52 @@ export function Transactions() {
       await loadGoals()  // Reload goals to update progress
       setShowForm(false)
       
+      const updateMonthlyCaches = (transactionType: 'income' | 'expense', amount: number, dateIso: string) => {
+        try {
+          const txDate = new Date(dateIso)
+          const now = new Date()
+          if (txDate.getFullYear() !== now.getFullYear() || txDate.getMonth() !== now.getMonth()) {
+            return
+          }
+
+          queryClient.setQueryData(['monthly-stats'], (prev: any) => {
+            const prevIncome = typeof prev?.income === 'number' ? prev.income : 0
+            const prevExpense = typeof prev?.expense === 'number' ? prev.expense : 0
+            if (transactionType === 'income') {
+              return { ...prev, income: prevIncome + amount, expense: prevExpense }
+            }
+            if (transactionType === 'expense') {
+              return { ...prev, income: prevIncome, expense: prevExpense + amount }
+            }
+            return prev
+          })
+
+          queryClient.setQueryData(['analytics', 'month'], (prev: any) => {
+            const totals = prev?.totals
+            if (!totals || typeof totals !== 'object') return prev
+            const income = typeof totals.income === 'number' ? totals.income : 0
+            const expense = typeof totals.expense === 'number' ? totals.expense : 0
+            const nextIncome = transactionType === 'income' ? income + amount : income
+            const nextExpense = transactionType === 'expense' ? expense + amount : expense
+            return {
+              ...prev,
+              totals: {
+                ...totals,
+                income: nextIncome,
+                expense: nextExpense,
+                net: (typeof totals.net === 'number' ? totals.net : nextIncome - nextExpense),
+              },
+            }
+          })
+        } catch (error) {
+          console.warn('[Transactions] Failed to update monthly caches:', error)
+        }
+      }
+
+      if (submitData?.transaction_type === 'income' || submitData?.transaction_type === 'expense') {
+        updateMonthlyCaches(submitData.transaction_type, submitData.amount, submitData.transaction_date)
+      }
+
       // Invalidate React Query cache for analytics/reports
       queryClient.invalidateQueries({ queryKey: ['monthly-stats'] })
       queryClient.invalidateQueries({ queryKey: ['analytics'], exact: false })

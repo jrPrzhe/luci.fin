@@ -1007,6 +1007,7 @@ export function Layout() {
           console.log('[Layout] Telegram loading complete, updating authorization status')
           // После завершения загрузки разрешаем рендеринг Layout
           setTelegramLoadingComplete(true)
+          setIsAppReady(true)
         }}
       />
     )

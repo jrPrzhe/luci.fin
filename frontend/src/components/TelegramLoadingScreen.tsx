@@ -15,6 +15,15 @@ export function TelegramLoadingScreen({ onComplete }: TelegramLoadingScreenProps
   const [currentStep, setCurrentStep] = useState('Проверка авторизации...')
   const [hasToken, setHasToken] = useState(false)
   const reauthInFlight = useRef<Promise<boolean> | null>(null)
+  const startTimeRef = useRef(Date.now())
+
+  const completeWithMinDelay = useCallback(() => {
+    const elapsed = Date.now() - startTimeRef.current
+    const remaining = Math.max(3000 - elapsed, 0)
+    setTimeout(() => {
+      onComplete()
+    }, remaining)
+  }, [onComplete])
 
   const reauthTelegram = useCallback(async () => {
     if (reauthInFlight.current) {
@@ -164,18 +173,14 @@ export function TelegramLoadingScreen({ onComplete }: TelegramLoadingScreenProps
       setProgress(100)
       setCurrentStep('Готово!')
       
-      // Небольшая задержка для плавного перехода
-      setTimeout(() => {
-        onComplete()
-      }, 300)
+      // Минимум 3 секунды на экране запуска
+      completeWithMinDelay()
     } catch (error) {
       console.error('[TelegramLoadingScreen] Error loading data:', error)
       // Даже при ошибке продолжаем
-      setTimeout(() => {
-        onComplete()
-      }, 300)
+      completeWithMinDelay()
     }
-  }, [hasToken, queryClient, onComplete])
+  }, [hasToken, queryClient, completeWithMinDelay])
 
   // Основной эффект - проверка токена
   useEffect(() => {
@@ -199,9 +204,7 @@ export function TelegramLoadingScreen({ onComplete }: TelegramLoadingScreenProps
         console.warn('[TelegramLoadingScreen] Token check timeout, continuing...')
         setProgress(100)
         setCurrentStep('Продолжаем...')
-        setTimeout(() => {
-          onComplete()
-        }, 500)
+        completeWithMinDelay()
       } else {
         // Обновляем прогресс проверки токена (0-20%)
         const tokenProgress = Math.min((checkCount / maxChecks) * 20, 20)
@@ -221,7 +224,7 @@ export function TelegramLoadingScreen({ onComplete }: TelegramLoadingScreenProps
       mounted = false
       clearInterval(checkTokenInterval)
     }
-  }, [checkToken, loadInitialData])
+  }, [checkToken, loadInitialData, completeWithMinDelay])
 
   // Анимация прогресса для плавности
   const [animatedProgress, setAnimatedProgress] = useState(0)
