@@ -591,63 +591,98 @@ export function Layout() {
   // Мемоизируем navGroups, чтобы избежать пересоздания при каждом рендере
   // Используем стабильные зависимости - только примитивные значения
   const isAdmin = user?.is_admin ?? false
+  
+  // Проверяем готовность всех необходимых переводов
+  const translationsReady = useMemo(() => {
+    try {
+      return !!(
+        t?.nav?.dashboard &&
+        t?.nav?.transactions &&
+        t?.nav?.accounts &&
+        t?.nav?.categories &&
+        t?.nav?.reports &&
+        t?.nav?.biography &&
+        t?.nav?.quests &&
+        t?.nav?.achievements &&
+        t?.nav?.goals &&
+        t?.nav?.budgets &&
+        t?.nav?.profile &&
+        t?.nav?.analytics &&
+        t?.profile?.about
+      )
+    } catch {
+      return false
+    }
+  }, [t])
+  
   const navGroups = useMemo(() => {
-    const settingsItems = [
-      { path: '/profile', label: t.nav.profile, icon: '⚙️' },
-      { path: '/about', label: t.profile.about, icon: '📚' },
-    ]
-    
-    // Добавляем analytics только если пользователь админ
-    if (isAdmin) {
-      settingsItems.push({ path: '/analytics', label: t.nav.analytics, icon: '📊' })
+    // Защита от выполнения до готовности переводов
+    if (!translationsReady) {
+      return []
     }
     
-    return [
-      {
-        key: 'finance',
-        label: 'Финансы',
-        icon: '💰',
-        items: [
-          { path: '/', label: t.nav.dashboard, icon: '📊' },
-          { path: '/transactions', label: t.nav.transactions, icon: '💸' },
-          { path: '/accounts', label: t.nav.accounts, icon: '💳' },
-          { path: '/categories', label: t.nav.categories, icon: '📦' },
-          { path: '/reports', label: t.nav.reports, icon: '📈' },
-        ]
-      },
-      {
-        key: 'planning',
-        label: 'Планирование',
-        icon: '🎯',
-        items: [
-          { path: '/biography', label: t.nav.biography, icon: '📝' },
-          { path: '/quests', label: t.nav.quests, icon: '🎯' },
-          { path: '/achievements', label: t.nav.achievements, icon: '🏆' },
-          { path: '/goals', label: t.nav.goals, icon: '🎯' },
-          { path: '/shared-budgets', label: t.nav.budgets, icon: '👥' },
-        ]
-      },
-      {
-        key: 'settings',
-        label: 'Настройки',
-        icon: '⚙️',
-        items: settingsItems,
+    try {
+      const settingsItems = [
+        { path: '/profile', label: t.nav.profile || 'Профиль', icon: '⚙️' },
+        { path: '/about', label: t.profile.about || 'О приложении', icon: '📚' },
+      ]
+      
+      // Добавляем analytics только если пользователь админ
+      if (isAdmin) {
+        settingsItems.push({ path: '/analytics', label: t.nav.analytics || 'Аналитика', icon: '📊' })
       }
-    ]
+      
+      return [
+        {
+          key: 'finance',
+          label: 'Финансы',
+          icon: '💰',
+          items: [
+            { path: '/', label: t.nav.dashboard || 'Дашборд', icon: '📊' },
+            { path: '/transactions', label: t.nav.transactions || 'Транзакции', icon: '💸' },
+            { path: '/accounts', label: t.nav.accounts || 'Счета', icon: '💳' },
+            { path: '/categories', label: t.nav.categories || 'Категории', icon: '📦' },
+            { path: '/reports', label: t.nav.reports || 'Отчеты', icon: '📈' },
+          ]
+        },
+        {
+          key: 'planning',
+          label: 'Планирование',
+          icon: '🎯',
+          items: [
+            { path: '/biography', label: t.nav.biography || 'Биография', icon: '📝' },
+            { path: '/quests', label: t.nav.quests || 'Задания', icon: '🎯' },
+            { path: '/achievements', label: t.nav.achievements || 'Достижения', icon: '🏆' },
+            { path: '/goals', label: t.nav.goals || 'Цели', icon: '🎯' },
+            { path: '/shared-budgets', label: t.nav.budgets || 'Бюджеты', icon: '👥' },
+          ]
+        },
+        {
+          key: 'settings',
+          label: 'Настройки',
+          icon: '⚙️',
+          items: settingsItems,
+        }
+      ]
+    } catch (error) {
+      console.error('Error creating navGroups:', error)
+      return []
+    }
   }, [
-    t.nav.dashboard,
-    t.nav.transactions,
-    t.nav.accounts,
-    t.nav.categories,
-    t.nav.reports,
-    t.nav.biography,
-    t.nav.quests,
-    t.nav.achievements,
-    t.nav.goals,
-    t.nav.budgets,
-    t.nav.profile,
-    t.nav.analytics,
-    t.profile.about,
+    translationsReady,
+    t?.nav?.dashboard,
+    t?.nav?.transactions,
+    t?.nav?.accounts,
+    t?.nav?.categories,
+    t?.nav?.reports,
+    t?.nav?.biography,
+    t?.nav?.quests,
+    t?.nav?.achievements,
+    t?.nav?.goals,
+    t?.nav?.budgets,
+    t?.nav?.profile,
+    t?.nav?.analytics,
+    t?.profile?.about,
     isAdmin
   ])
 
@@ -656,7 +691,7 @@ export function Layout() {
 
   // Защита от рендеринга меню до инициализации данных
   // Проверяем, что location инициализирован, navGroups создан, и переводы готовы
-  if (!location || !location.pathname || !navGroups || navGroups.length === 0 || !t?.nav) {
+  if (!location || !location.pathname || !translationsReady || !navGroups || navGroups.length === 0) {
     return (
       <div className={`min-h-screen flex flex-col xl:flex-row bg-telegram-bg dark:bg-telegram-dark-bg ${valentineEnabled ? 'valentine-mode' : ''} ${strangerThingsEnabled ? 'theme-stranger-things' : ''}`}>
         <div className="flex-1 flex items-center justify-center">
