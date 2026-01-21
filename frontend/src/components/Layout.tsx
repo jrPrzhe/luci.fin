@@ -920,27 +920,16 @@ export function Layout() {
   }, [isCheckingAuth, isAuthorized])
   
   // Показываем загрузку во время проверки авторизации
-  if (showAuthLoading && (isCheckingAuth && isAuthorized !== true) && 
-      location?.pathname !== '/onboarding' && 
-      location?.pathname !== '/login' && 
-      location?.pathname !== '/register') {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-telegram-bg dark:bg-telegram-dark-bg">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-telegram-primary dark:border-telegram-dark-primary mb-4"></div>
-          <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{t?.common?.loading || 'Загрузка...'}</p>
-        </div>
-      </div>
-    )
-  }
+  const shouldShowAuthLoading = showAuthLoading && (isCheckingAuth && isAuthorized !== true) && 
+    location?.pathname !== '/onboarding' && 
+    location?.pathname !== '/login' && 
+    location?.pathname !== '/register'
   
   // Если авторизация неизвестна, но проверка не идет - не блокируем, пусть Layout рендерится
   // Это важно для Telegram Mini App, где авторизация происходит асинхронно через auth handlers
 
   // Если на странице онбординга и не авторизован, показываем онбординг
-  if (location?.pathname === '/onboarding' && !isAuthorized) {
-    return null // Онбординг сам обработает навигацию
-  }
+  const shouldShowOnboarding = location?.pathname === '/onboarding' && !isAuthorized
 
   // Определяем публичные страницы - для них не нужна авторизация
   // ВАЖНО: Определяем ДО проверок авторизации, чтобы использовать в условиях
@@ -951,42 +940,22 @@ export function Layout() {
   // Показываем приветствие сразу после авторизации (до главного меню)
   // Приоритет: приветствие показывается перед Layout
   // Для ВК миниаппа не показываем приветствие
-  if (showWelcome && isAuthorized === true && !isVK) {
-    const onboardingCompleted = storageSync.getItem('onboarding_completed') === 'true'
-    if (onboardingCompleted) {
-      return <Welcome userName={userName} onComplete={handleWelcomeComplete} />
-    }
-  }
+  const onboardingCompleted = storageSync.getItem('onboarding_completed') === 'true'
+  const shouldShowWelcome = showWelcome && isAuthorized === true && !isVK && onboardingCompleted
 
   // КРИТИЧЕСКИ ВАЖНО: Не блокируем рендеринг, если авторизация еще не определена
   // Для Telegram/VK Mini App авторизация происходит асинхронно через auth handlers
   // Если мы вернем null здесь, приложение будет показывать пустой экран
   // Вместо этого даем время на авторизацию и редиректим только если точно не авторизованы
-  if (isAuthorized === false) {
-    // Только если точно знаем, что не авторизованы (не null!)
-    // И только если не на странице логина/регистрации
-    if (location?.pathname && location.pathname !== '/login' && location.pathname !== '/register') {
-      console.log('[Layout] User not authorized, redirecting to login')
-      // Редирект уже должен был произойти в useEffect выше
-      // Но на всякий случай возвращаем null здесь
-      return null
-    }
-  }
+  const shouldBlockUnauthorized = isAuthorized === false &&
+    location?.pathname &&
+    location.pathname !== '/login' &&
+    location.pathname !== '/register'
 
   // ВАЖНО: Для Telegram Mini App используем специальный экран загрузки
   // который проверяет токен и предзагружает данные для основных вкладок
   // Это предотвращает проблемы с hooks, так как Layout монтируется только после завершения загрузки
-  if (isAuthorized === null && !isPublicPage && isMiniApp && !telegramLoadingComplete) {
-    return (
-      <TelegramLoadingScreen
-        onComplete={() => {
-          console.log('[Layout] Telegram loading complete, updating authorization status')
-          // После завершения загрузки разрешаем рендеринг Layout
-          setTelegramLoadingComplete(true)
-        }}
-      />
-    )
-  }
+  const shouldShowTelegramLoading = isAuthorized === null && !isPublicPage && isMiniApp && !telegramLoadingComplete
   
   if (isAuthorized === null) {
     console.log('[Layout] Authorization status unknown, allowing render to continue (Mini App auth in progress)')
@@ -1067,49 +1036,74 @@ export function Layout() {
 
   // Для публичных страниц НЕ показываем загрузочный экран
   // Разрешаем рендеринг сразу, даже если данные еще не готовы
-  if (isPublicPage) {
-    // Для публичных страниц просто продолжаем рендеринг
-    // Не блокируем доступ - страницы логина/регистрации должны загружаться быстро
-  } else {
-    // Для защищенных страниц показываем загрузочный экран
-    // ВАЖНО: Для Telegram мобильной версии показываем до полной готовности ВСЕХ данных
-    // Для других платформ показываем только если базовые данные не готовы
-    
-    // Показываем загрузочный экран если:
-    // 1. Для Telegram мобильной версии: пока не готовы ВСЕ критичные данные
-    // 2. Для других платформ: пока не готовы базовые данные
-    // 3. Приложение еще не готово
-    // 4. Таймаут еще не истек (для других платформ)
-    const shouldShowLoading = isMiniApp 
+  const shouldShowAppLoadingScreen = !isPublicPage && (
+    isMiniApp
       ? (!allCriticalDataReady && !isAppReady)
       : (!basicDataReady && !loadingTimeout && !isAppReady)
-    
-    if (shouldShowLoading) {
-      return (
-        <AppLoadingScreen
-          steps={loadingSteps}
-          onComplete={() => {
-            // ВАЖНО: Устанавливаем isAppReady только после полной готовности всех данных
-            setIsAppReady(true)
-          }}
-        />
-      )
-    }
-  }
+  )
 
   // ВАЖНО: Не рендерим навигацию, если данные не готовы
   // Это критично для предотвращения React error #300 при быстром использовании приложения
   // ВАЖНО: Для Telegram Mini App данные уже загружены через TelegramLoadingScreen
   // Используем useMemo для стабильности проверки, чтобы избежать React error #310
-  const shouldShowLoading = useMemo(() => {
+  const shouldShowShellLoading = useMemo(() => {
     // Для Telegram Mini App не показываем loading, если загрузка уже завершена
     if (isMiniApp && telegramLoadingComplete) {
       return false
     }
     return !isDataReady || !isAppReady
   }, [isDataReady, isAppReady, isMiniApp, telegramLoadingComplete])
-  
-  if (shouldShowLoading) {
+
+
+  if (shouldShowAuthLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-telegram-bg dark:bg-telegram-dark-bg">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-telegram-primary dark:border-telegram-dark-primary mb-4"></div>
+          <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{t?.common?.loading || 'Загрузка...'}</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (shouldShowOnboarding) {
+    return null
+  }
+
+  if (shouldShowWelcome) {
+    return <Welcome userName={userName} onComplete={handleWelcomeComplete} />
+  }
+
+  if (shouldBlockUnauthorized) {
+    console.log('[Layout] User not authorized, redirecting to login')
+    return null
+  }
+
+  if (shouldShowTelegramLoading) {
+    return (
+      <TelegramLoadingScreen
+        onComplete={() => {
+          console.log('[Layout] Telegram loading complete, updating authorization status')
+          // После завершения загрузки разрешаем рендеринг Layout
+          setTelegramLoadingComplete(true)
+        }}
+      />
+    )
+  }
+
+  if (shouldShowAppLoadingScreen) {
+    return (
+      <AppLoadingScreen
+        steps={loadingSteps}
+        onComplete={() => {
+          // ВАЖНО: Устанавливаем isAppReady только после полной готовности всех данных
+          setIsAppReady(true)
+        }}
+      />
+    )
+  }
+
+  if (shouldShowShellLoading) {
     return (
       <div className={`min-h-screen flex flex-col xl:flex-row bg-telegram-bg dark:bg-telegram-dark-bg ${valentineEnabled ? 'valentine-mode' : ''} ${strangerThingsEnabled ? 'theme-stranger-things' : ''}`}>
         <div className="flex-1 flex items-center justify-center">
