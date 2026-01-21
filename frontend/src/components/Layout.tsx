@@ -5,7 +5,6 @@ import { isTelegramWebApp } from '../utils/telegram'
 import { isVKWebApp } from '../utils/vk'
 import { api } from '../services/api'
 import { storageSync } from '../utils/storage'
-import { Welcome } from './Welcome'
 import { Stories } from './Stories'
 import { HeartEffect } from './HeartEffect'
 import { Garland } from './Garland'
@@ -26,8 +25,6 @@ export function Layout() {
   const queryClient = useQueryClient()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null)
-  const [showWelcome, setShowWelcome] = useState(false)
-  const [userName, setUserName] = useState<string>()
   const [isCheckingAuth, setIsCheckingAuth] = useState(false)
   const [showStories, setShowStories] = useState(false)
   const [showOnboardingWizard, setShowOnboardingWizard] = useState(false)
@@ -554,7 +551,7 @@ export function Layout() {
     }
 
     // Не проверяем, если уже авторизованы и показываем приветствие
-    if (isAuthorized === true && showWelcome) {
+    if (isAuthorized === true) {
       return
     }
 
@@ -672,13 +669,8 @@ export function Layout() {
             const isExistingUser = hasAccounts
             
             if (isExistingUser) {
-              // Для существующих пользователей - только приветствие, без онбординга
-              // Для ВК миниаппа не показываем приветствие
+              // Для существующих пользователей - без приветствия
               storageSync.setItem('onboarding_completed', 'true')
-              setUserName(user?.first_name || user?.username || 'Пользователь')
-              if (!isVK) {
-                setShowWelcome(true)
-              }
               sessionStorage.removeItem('justLoggedIn')
             } else {
               // Для новых пользователей проверяем флаг онбординга
@@ -689,14 +681,8 @@ export function Layout() {
                 setIsCheckingAuth(false)
                 navigate('/onboarding')
                 return
-              } else {
-                setUserName(user?.first_name || user?.username || 'Пользователь')
-                // Для ВК миниаппа не показываем приветствие
-                if (!isVK) {
-                  setShowWelcome(true)
-                }
-                sessionStorage.removeItem('justLoggedIn')
               }
+              sessionStorage.removeItem('justLoggedIn')
             }
           }
           // Устанавливаем авторизацию после проверки приветствия
@@ -725,7 +711,7 @@ export function Layout() {
     }, 500)
 
     return () => clearTimeout(timeout)
-  }, [navigate, location.pathname, showWelcome, isCheckingAuth, isAuthorized])
+  }, [navigate, location.pathname, isCheckingAuth, isAuthorized])
 
   // Проверяем флаг justLoggedIn сразу после авторизации (до рендеринга Layout)
   // Проверка justLoggedIn теперь происходит сразу после успешной авторизации в checkAuth
@@ -792,20 +778,15 @@ export function Layout() {
           if (user) {
             // Сразу проверяем флаг justLoggedIn после успешной авторизации (до установки isAuthorized)
             const justLoggedIn = sessionStorage.getItem('justLoggedIn') === 'true'
-            if (justLoggedIn && !showWelcome) {
+            if (justLoggedIn) {
               // Проверяем, является ли пользователь новым или существующим
               const accounts = await api.getAccounts().catch(() => [])
               const hasAccounts = Array.isArray(accounts) && accounts.length > 0
               const isExistingUser = hasAccounts
               
               if (isExistingUser) {
-                // Для существующих пользователей - только приветствие, без онбординга
-                // Для ВК миниаппа не показываем приветствие
+                // Для существующих пользователей - без приветствия
                 storageSync.setItem('onboarding_completed', 'true')
-                setUserName(user?.first_name || user?.username || 'Пользователь')
-                if (!isVK) {
-                  setShowWelcome(true)
-                }
                 sessionStorage.removeItem('justLoggedIn')
               } else {
                 // Для новых пользователей проверяем флаг онбординга
@@ -817,11 +798,6 @@ export function Layout() {
                   navigate('/onboarding')
                   return
                 } else {
-                  setUserName(user?.first_name || user?.username || 'Пользователь')
-                  // Для ВК миниаппа не показываем приветствие
-                  if (!isVK) {
-                    setShowWelcome(true)
-                  }
                   sessionStorage.removeItem('justLoggedIn')
                 }
               }
@@ -878,7 +854,7 @@ export function Layout() {
       clearInterval(interval)
       clearTimeout(timeout)
     }
-  }, [isAuthorized, showWelcome, isCheckingAuth, location.pathname, navigate])
+  }, [isAuthorized, isCheckingAuth, location.pathname, navigate])
 
 
   const handleLogout = () => {
@@ -887,17 +863,6 @@ export function Layout() {
     navigate('/login')
   }
 
-  const handleWelcomeComplete = () => {
-    setShowWelcome(false)
-    // Возвращаемся на сохраненный путь или на дашборд
-    const params = new URLSearchParams(window.location.search)
-    const returnTo = params.get('returnTo') || '/'
-    if (returnTo && returnTo !== '/login' && returnTo !== '/register') {
-      navigate(returnTo)
-    } else {
-      navigate('/')
-    }
-  }
 
   // Показываем загрузку во время проверки авторизации
   // НЕ показываем загрузку на странице онбординга и логина/регистрации
@@ -937,11 +902,7 @@ export function Layout() {
                       location?.pathname === '/register' || 
                       location?.pathname === '/onboarding'
 
-  // Показываем приветствие сразу после авторизации (до главного меню)
-  // Приоритет: приветствие показывается перед Layout
-  // Для ВК миниаппа не показываем приветствие
-  const onboardingCompleted = storageSync.getItem('onboarding_completed') === 'true'
-  const shouldShowWelcome = showWelcome && isAuthorized === true && !isVK && onboardingCompleted
+  // Приветственный экран отключен
 
   // КРИТИЧЕСКИ ВАЖНО: Не блокируем рендеринг, если авторизация еще не определена
   // Для Telegram/VK Mini App авторизация происходит асинхронно через auth handlers
@@ -1070,9 +1031,6 @@ export function Layout() {
     return null
   }
 
-  if (shouldShowWelcome) {
-    return <Welcome userName={userName} onComplete={handleWelcomeComplete} />
-  }
 
   if (shouldBlockUnauthorized) {
     console.log('[Layout] User not authorized, redirecting to login')
