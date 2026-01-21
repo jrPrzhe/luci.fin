@@ -15,6 +15,14 @@ class ApiClient {
   private refreshToken: string | null = null
   private isRefreshing: boolean = false
   private refreshPromise: Promise<string | null> | null = null
+  private authMeLastAt: number = 0
+  private authMePromise: Promise<any> | null = null
+  private authMeLastResult: any | null = null
+  private authMeLastError: any | null = null
+  private telegramReauthPromise: Promise<boolean> | null = null
+  private telegramReauthLastAt: number = 0
+  private readonly authMeDebounceMs = 2000
+  private readonly telegramReauthDebounceMs = 5000
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl
@@ -196,6 +204,39 @@ class ApiClient {
     return this.refreshPromise
   }
 
+  private async reauthTelegram(): Promise<boolean> {
+    const now = Date.now()
+    if (this.telegramReauthPromise && now - this.telegramReauthLastAt < this.telegramReauthDebounceMs) {
+      return this.telegramReauthPromise
+    }
+
+    this.telegramReauthLastAt = now
+    this.telegramReauthPromise = (async () => {
+      try {
+        // Reset tokens before reauth
+        this.setToken(null, null)
+        const { getPlatformAuthData, authWithPlatform } = await import('../utils/platform')
+        const initData = await getPlatformAuthData('telegram', 10000)
+        if (!initData) {
+          return false
+        }
+        const response = await authWithPlatform('telegram', initData, null)
+        if (!response?.access_token) {
+          return false
+        }
+        this.setToken(response.access_token, response.refresh_token)
+        return true
+      } catch (error) {
+        console.warn('[ApiClient] Telegram reauth failed:', error)
+        return false
+      } finally {
+        this.telegramReauthPromise = null
+      }
+    })()
+
+    return this.telegramReauthPromise
+  }
+
   async request<T>(
     endpoint: string,
     options: RequestInit = {}
@@ -315,6 +356,61 @@ class ApiClient {
       }
 
       if (!response.ok) {
+        // Telegram-only: if /auth/me returns 401, reset token and re-auth via initData
+        if (response.status === 401 && endpoint.includes('/auth/me')) {
+          const { isTelegramWebApp } = await import('../utils/telegram')
+          if (isTelegramWebApp()) {
+            const reauthOk = await this.reauthTelegram()
+            if (reauthOk) {
+              const retryToken = this.token
+              if (retryToken) {
+                headers['Authorization'] = `Bearer ${retryToken}`
+              }
+              const retryHeaders = new Headers()
+              for (const [key, value] of Object.entries(headers)) {
+                retryHeaders.append(key, value)
+              }
+              const retryResponse = await fetch(url, {
+                ...options,
+                headers: retryHeaders,
+                cache: 'no-store',
+              })
+              if (retryResponse.ok) {
+                if (retryResponse.status === 304) {
+                  const endpoint = url.toLowerCase()
+                  if (endpoint.includes('/transactions') || endpoint.includes('/accounts') || endpoint.includes('/categories') || endpoint.includes('/shared-budgets')) {
+                    return [] as T
+                  }
+                  return {} as T
+                }
+                if (retryResponse.status === 204) {
+                  return {} as T
+                }
+                const contentType = retryResponse.headers.get('content-type')
+                const text = await retryResponse.text().catch(() => '')
+                if (text.includes('<!DOCTYPE') || text.includes('<html')) {
+                  throw new Error(`Backend вернул HTML вместо JSON. Возможно, сервис недоступен или endpoint не существует. Статус: ${retryResponse.status}`)
+                }
+                if (contentType && contentType.includes('application/json')) {
+                  if (!text || text.trim() === '') {
+                    const endpoint = url.toLowerCase()
+                    if (endpoint.includes('/transactions') || endpoint.includes('/accounts') || endpoint.includes('/categories') || endpoint.includes('/shared-budgets')) {
+                      return [] as T
+                    }
+                    return {} as T
+                  }
+                  try {
+                    return JSON.parse(text)
+                  } catch (e) {
+                    return {} as T
+                  }
+                }
+                return {} as T
+              }
+            }
+          }
+        }
+
         // Handle 401 Unauthorized - try to refresh token
         if (response.status === 401 && this.refreshToken && !endpoint.includes('/auth/refresh')) {
           // Try to refresh the token
@@ -1038,6 +1134,39 @@ class ApiClient {
     is_premium: boolean
     is_admin: boolean
   }> {
+    const { isTelegramWebApp } = await import('../utils/telegram')
+    if (isTelegramWebApp()) {
+      const now = Date.now()
+      if (now - this.authMeLastAt < this.authMeDebounceMs) {
+        if (this.authMePromise) {
+          return this.authMePromise
+        }
+        if (this.authMeLastError) {
+          return Promise.reject(this.authMeLastError)
+        }
+        if (this.authMeLastResult) {
+          return Promise.resolve(this.authMeLastResult)
+        }
+      }
+
+      this.authMeLastAt = now
+      this.authMePromise = this.request('/api/v1/auth/me')
+        .then((result) => {
+          this.authMeLastResult = result
+          this.authMeLastError = null
+          return result
+        })
+        .catch((error) => {
+          this.authMeLastError = error
+          throw error
+        })
+        .finally(() => {
+          this.authMePromise = null
+        })
+
+      return this.authMePromise
+    }
+
     return this.request('/api/v1/auth/me')
   }
 

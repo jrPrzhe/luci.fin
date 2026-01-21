@@ -1,8 +1,9 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { api } from '../services/api'
 import { storageSync } from '../utils/storage'
 import { isTelegramWebApp } from '../utils/telegram'
+import { authWithPlatform, getPlatformAuthData } from '../utils/platform'
 
 interface TelegramLoadingScreenProps {
   onComplete: () => void
@@ -13,6 +14,36 @@ export function TelegramLoadingScreen({ onComplete }: TelegramLoadingScreenProps
   const [progress, setProgress] = useState(0)
   const [currentStep, setCurrentStep] = useState('Проверка авторизации...')
   const [hasToken, setHasToken] = useState(false)
+  const reauthInFlight = useRef<Promise<boolean> | null>(null)
+
+  const reauthTelegram = useCallback(async () => {
+    if (reauthInFlight.current) {
+      return reauthInFlight.current
+    }
+
+    reauthInFlight.current = (async () => {
+      try {
+        api.setToken(null, null)
+        const initData = await getPlatformAuthData('telegram', 10000)
+        if (!initData) {
+          return false
+        }
+        const response = await authWithPlatform('telegram', initData, null)
+        if (!response?.access_token) {
+          return false
+        }
+        api.setToken(response.access_token, response.refresh_token)
+        return true
+      } catch (error) {
+        console.warn('[TelegramLoadingScreen] Telegram reauth failed:', error)
+        return false
+      } finally {
+        reauthInFlight.current = null
+      }
+    })()
+
+    return reauthInFlight.current
+  }, [])
 
   // Проверка токена
   const checkToken = useCallback(async () => {
@@ -43,7 +74,20 @@ export function TelegramLoadingScreen({ onComplete }: TelegramLoadingScreenProps
           setCurrentStep('Авторизация подтверждена')
           return true
         }
-      } catch (error) {
+      } catch (error: any) {
+        if (error?.response?.status === 401) {
+          // Telegram-only: reset token and re-auth via initData
+          const reauthOk = await reauthTelegram()
+          if (reauthOk) {
+            const user = await api.getCurrentUser()
+            if (user) {
+              setHasToken(true)
+              setProgress(20)
+              setCurrentStep('Авторизация подтверждена')
+              return true
+            }
+          }
+        }
         console.warn('[TelegramLoadingScreen] Token validation failed:', error)
       }
     }
