@@ -2,13 +2,19 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../services/api'
 import { useI18n } from '../contexts/I18nContext'
+import { storageSync } from '../utils/storage'
 
 export function DailyQuestsCompact() {
   const { t } = useI18n()
   const navigate = useNavigate()
+  
+  // Проверяем наличие токена перед запросом
+  const hasToken = !!storageSync.getItem('token')
+  
   const { data: quests, isLoading } = useQuery({
     queryKey: ['daily-quests'],
     queryFn: () => api.getDailyQuests(),
+    enabled: hasToken, // Запрос только если есть токен
     staleTime: 60000, // 1 minute
   })
 

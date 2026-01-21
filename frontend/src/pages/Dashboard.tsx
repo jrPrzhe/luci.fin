@@ -9,6 +9,7 @@ import { UserStatsModal } from '../components/UserStatsModal'
 import { useToast } from '../contexts/ToastContext'
 import { LoadingSpinner } from '../components/LoadingSpinner'
 import { useValentineTheme } from '../contexts/ValentineContext'
+import { storageSync } from '../utils/storage'
 
 // Available colors and emojis for categories (same as Categories page)
 const AVAILABLE_COLORS = [
@@ -414,6 +415,9 @@ export function Dashboard() {
     }
   }, [showQuickForm])
 
+  // Проверяем наличие токена перед запросами
+  const hasToken = !!storageSync.getItem('token')
+  
   const { data: balance, isLoading: balanceLoading, isError: balanceError } = useQuery({
     queryKey: ['balance'],
     queryFn: async () => {
@@ -424,6 +428,7 @@ export function Dashboard() {
         return { total: 0, currency: 'RUB', accounts: [] }
       }
     },
+    enabled: hasToken, // Запрос только если есть токен
     retry: 1,
     staleTime: 30000, // 30 seconds
     refetchOnWindowFocus: false,
@@ -441,6 +446,7 @@ export function Dashboard() {
         return []
       }
     },
+    enabled: hasToken, // Запрос только если есть токен
     retry: 1,
     staleTime: 60000, // 1 minute
     refetchOnWindowFocus: false,
@@ -458,6 +464,7 @@ export function Dashboard() {
         return []
       }
     },
+    enabled: hasToken, // Запрос только если есть токен
     retry: 1,
     staleTime: 30000, // 30 seconds
     refetchOnWindowFocus: false,
@@ -469,6 +476,7 @@ export function Dashboard() {
   const { data: currentUser } = useQuery({
     queryKey: ['currentUser'],
     queryFn: () => api.getCurrentUser(),
+    enabled: hasToken, // Запрос только если есть токен
     staleTime: 300000, // 5 minutes
     refetchOnWindowFocus: false,
     refetchOnMount: false, // Используем кэш при монтировании
@@ -511,6 +519,7 @@ export function Dashboard() {
         return { income: 0, expense: 0 }
       }
     },
+    enabled: hasToken, // Запрос только если есть токен
     retry: 1,
     staleTime: 10000, // Уменьшено с 30 до 10 секунд для более частого обновления
     refetchOnWindowFocus: true, // Включено для обновления при возврате на вкладку
@@ -527,6 +536,7 @@ export function Dashboard() {
   const { data: goals = [] } = useQuery({
     queryKey: ['goals'],
     queryFn: () => api.getGoals('active'),
+    enabled: hasToken, // Запрос только если есть токен
     staleTime: 30000,
     refetchOnWindowFocus: false,
   })
@@ -535,6 +545,7 @@ export function Dashboard() {
   const { data: gamificationStatus } = useQuery({
     queryKey: ['gamification-status'],
     queryFn: () => api.getGamificationStatus(),
+    enabled: hasToken, // Запрос только если есть токен
     staleTime: 30000,
     refetchOnWindowFocus: false,
   })
@@ -1161,8 +1172,8 @@ export function Dashboard() {
               })()
             ) : (
               <div className="w-full h-full rounded-full bg-white/20 flex items-center justify-center text-xl md:text-2xl">
-                💰
-              </div>
+            💰
+          </div>
             )}
           </button>
         </div>
@@ -1284,9 +1295,9 @@ export function Dashboard() {
                       if (showAddCategoryForm) {
                         setShowAddCategoryForm(false)
                       } else {
-                        setShowQuickForm(false)
-                        setQuickFormType(null)
-                        setQuickFormStep('category')
+                      setShowQuickForm(false)
+                      setQuickFormType(null)
+                      setQuickFormStep('category')
                         setShowAddCategoryForm(false)
                       }
                     }}
@@ -1362,8 +1373,8 @@ export function Dashboard() {
                   <div>
                     <div className="flex items-center justify-between mb-3">
                       <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-                        {t.dashboard.form.selectCategory} ({categories.length} {t.dashboard.form.available})
-                      </p>
+                      {t.dashboard.form.selectCategory} ({categories.length} {t.dashboard.form.available})
+                    </p>
                       <button
                         onClick={() => setShowAddCategoryForm(true)}
                         className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-telegram-primary/15 dark:bg-telegram-dark-primary/20 text-telegram-primary dark:text-telegram-dark-primary hover:bg-telegram-primary/25 dark:hover:bg-telegram-dark-primary/30 border border-telegram-primary/30 dark:border-telegram-dark-primary/40 rounded-telegram transition-all shadow-sm hover:shadow-md active:scale-[0.98]"

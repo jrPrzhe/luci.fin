@@ -151,8 +151,19 @@ export function UnifiedAuthHandler() {
               }
             }
             
+            // Убеждаемся, что токен установлен в API клиенте
+            if (savedToken) {
+              api.setToken(savedToken)
+            }
+            
             // Mark that user just logged in
             sessionStorage.setItem('justLoggedIn', 'true')
+            
+            // Уведомляем Layout о завершении авторизации через событие
+            // Это позволяет Layout обновить состояние авторизации
+            window.dispatchEvent(new CustomEvent('authCompleted', { 
+              detail: { token: savedToken, user: response.user } 
+            }))
             
             // Track event
             try {

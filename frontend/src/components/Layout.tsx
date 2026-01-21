@@ -95,10 +95,13 @@ export function Layout() {
   }
 
   // Получаем данные пользователя для проверки админ-статуса
+  // ВАЖНО: enabled только если авторизован И есть токен
+  const hasToken = storageSync.getItem('token')
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
     queryFn: () => api.getCurrentUser(),
-    enabled: isAuthorized === true,
+    enabled: isAuthorized === true && !!hasToken,
+    retry: false, // Не повторяем запрос при ошибке авторизации
   })
 
   // Группы меню - автоматически открываем группу с активным элементом
@@ -388,6 +391,30 @@ export function Layout() {
     })
   }, [])
 
+  // Слушаем событие завершения авторизации от UnifiedAuthHandler
+  useEffect(() => {
+    const handleAuthCompleted = (event: CustomEvent) => {
+      const { token, user } = (event as CustomEvent<{ token: string | null; user?: any }>).detail || {}
+      if (token) {
+        console.log('[Layout] Auth completed event received, updating authorization status')
+        // Устанавливаем токен в API клиенте
+        api.setToken(token)
+        // Обновляем состояние авторизации
+        setIsAuthorized(true)
+        setIsCheckingAuth(false)
+        // Если есть данные пользователя, обновляем кэш
+        if (user) {
+          queryClient.setQueryData(['currentUser'], user)
+        }
+      }
+    }
+
+    window.addEventListener('authCompleted', handleAuthCompleted as EventListener)
+    return () => {
+      window.removeEventListener('authCompleted', handleAuthCompleted as EventListener)
+    }
+  }, [queryClient])
+
   // Проверяем авторизацию при изменении пути
   useEffect(() => {
     // НЕ проверяем авторизацию на страницах логина/регистрации/онбординга - они обрабатываются отдельно
@@ -517,7 +544,7 @@ export function Layout() {
               // Для существующих пользователей - только приветствие, без онбординга
               // Для ВК миниаппа не показываем приветствие
               storageSync.setItem('onboarding_completed', 'true')
-              setUserName(user.first_name || user.username || 'Пользователь')
+              setUserName(user?.first_name || user?.username || 'Пользователь')
               if (!isVK) {
                 setShowWelcome(true)
               }
@@ -532,7 +559,7 @@ export function Layout() {
                 navigate('/onboarding')
                 return
               } else {
-                setUserName(user.first_name || user.username || 'Пользователь')
+                setUserName(user?.first_name || user?.username || 'Пользователь')
                 // Для ВК миниаппа не показываем приветствие
                 if (!isVK) {
                   setShowWelcome(true)
@@ -644,7 +671,7 @@ export function Layout() {
                 // Для существующих пользователей - только приветствие, без онбординга
                 // Для ВК миниаппа не показываем приветствие
                 storageSync.setItem('onboarding_completed', 'true')
-                setUserName(user.first_name || user.username || 'Пользователь')
+                setUserName(user?.first_name || user?.username || 'Пользователь')
                 if (!isVK) {
                   setShowWelcome(true)
                 }
@@ -659,7 +686,7 @@ export function Layout() {
                   navigate('/onboarding')
                   return
                 } else {
-                  setUserName(user.first_name || user.username || 'Пользователь')
+                  setUserName(user?.first_name || user?.username || 'Пользователь')
                   // Для ВК миниаппа не показываем приветствие
                   if (!isVK) {
                     setShowWelcome(true)
