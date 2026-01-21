@@ -334,19 +334,24 @@ export async function initStorage(): Promise<void> {
   if (isVKWebApp() || isTelegramWebApp()) {
     try {
       // Загружаем важные ключи в кэш для синхронного доступа
+      // ВАЖНО: token загружаем первым, так как он критичен для авторизации
       const importantKeys = ['token', 'refresh_token', 'language', 'theme', 'valentineTheme', 'onboarding_completed']
       for (const key of importantKeys) {
         try {
           const value = await storage.getItem(key)
           if (value !== null) {
             syncCache.set(key, value)
+            // Логируем загрузку токена для отладки
+            if (key === 'token') {
+              console.log('[initStorage] Token loaded from storage and cached:', value.substring(0, 20) + '...')
+            }
           }
         } catch (error) {
-          console.warn(`Failed to load ${key} from storage:`, error)
+          console.warn(`[initStorage] Failed to load ${key} from storage:`, error)
         }
       }
     } catch (error) {
-      console.warn('Failed to initialize storage:', error)
+      console.warn('[initStorage] Failed to initialize storage:', error)
     }
   }
 }

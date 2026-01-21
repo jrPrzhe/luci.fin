@@ -9,7 +9,7 @@ import { UserStatsModal } from '../components/UserStatsModal'
 import { useToast } from '../contexts/ToastContext'
 import { LoadingSpinner } from '../components/LoadingSpinner'
 import { useValentineTheme } from '../contexts/ValentineContext'
-import { storageSync } from '../utils/storage'
+import { storageSync, default as storage, isTelegramWebApp } from '../utils/storage'
 
 // Available colors and emojis for categories (same as Categories page)
 const AVAILABLE_COLORS = [
@@ -416,7 +416,76 @@ export function Dashboard() {
   }, [showQuickForm])
 
   // Проверяем наличие токена перед запросами
-  const hasToken = !!storageSync.getItem('token')
+  // ВАЖНО: Для Telegram мобильной версии токен загружается асинхронно
+  const [hasToken, setHasToken] = useState(false)
+  
+  // Загружаем токен асинхронно для Telegram/VK
+  useEffect(() => {
+    let mounted = true
+    
+    const loadToken = async () => {
+      // Сначала проверяем синхронно (для веба)
+      let token = storageSync.getItem('token')
+      
+      // Если не нашли и это Telegram/VK, пробуем асинхронно
+      if (!token && isTelegramWebApp()) {
+        try {
+          console.log('[Dashboard] Loading token asynchronously from Telegram Cloud Storage...')
+          token = await storage.getItem('token')
+          // Обновляем кэш для синхронного доступа
+          if (token && mounted) {
+            // Обновляем кэш через setItem для правильной синхронизации
+            storageSync.setItem('token', token)
+            console.log('[Dashboard] Token loaded and cached successfully')
+          } else if (mounted) {
+            console.log('[Dashboard] Token not found in Telegram Cloud Storage')
+          }
+        } catch (error) {
+          console.warn('[Dashboard] Failed to load token asynchronously:', error)
+        }
+      }
+      
+      if (mounted) {
+        const tokenExists = !!token
+        setHasToken(tokenExists)
+        if (tokenExists) {
+          console.log('[Dashboard] Token available, enabling API requests')
+        }
+      }
+    }
+    
+    // Загружаем токен сразу
+    loadToken()
+    
+    // Также слушаем событие завершения авторизации
+    const handleAuthCompleted = () => {
+      if (mounted) {
+        console.log('[Dashboard] Auth completed event received, reloading token...')
+        loadToken()
+      }
+    }
+    
+    window.addEventListener('authCompleted', handleAuthCompleted)
+    
+    // Периодически проверяем токен (на случай, если он загрузится позже)
+    // Максимум 10 проверок (5 секунд)
+    let checkCount = 0
+    const maxChecks = 10
+    const interval = setInterval(() => {
+      if (!hasToken && checkCount < maxChecks && mounted) {
+        checkCount++
+        loadToken()
+      } else if (hasToken || checkCount >= maxChecks) {
+        clearInterval(interval)
+      }
+    }, 500)
+    
+    return () => {
+      mounted = false
+      window.removeEventListener('authCompleted', handleAuthCompleted)
+      clearInterval(interval)
+    }
+  }, []) // Пустой массив зависимостей - запускаем только один раз
   
   const { data: balance, isLoading: balanceLoading, isError: balanceError } = useQuery({
     queryKey: ['balance'],
