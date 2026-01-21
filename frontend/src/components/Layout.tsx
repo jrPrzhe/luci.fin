@@ -328,12 +328,16 @@ export function Layout() {
   }, [location?.pathname, isAuthorized, translationsReady, t, user, queryClient, isCheckingAuth])
 
   // Проверяем готовность всех шагов загрузки
-  // Делаем проверку менее строгой - разрешаем рендеринг, если хотя бы базовые данные готовы
+  // ВАЖНО: Для предотвращения React error #300 нужно убедиться, что ВСЕ критические данные готовы
   const allStepsReady = useMemo(() => {
     // Если нет шагов, считаем готовым
     if (loadingSteps.length === 0) return true
     
-    // Проверяем базовые шаги (переводы и location) - они должны быть готовы
+    // ВАЖНО: Проверяем, что navGroups полностью готов (не пустой массив)
+    // navGroups может быть пустым массивом [], что технически проходит проверку, но означает, что данные еще не готовы
+    const navGroupsReady = navGroups && Array.isArray(navGroups) && navGroups.length > 0
+    
+    // Проверяем базовые шаги (переводы и location) - они ДОЛЖНЫ быть готовы
     const basicSteps = loadingSteps.filter(step => step.key === 'translations' || step.key === 'location')
     const basicStepsReady = basicSteps.length === 0 || basicSteps.every(step => {
       if ('checkReady' in step && typeof step.checkReady === 'function') {
@@ -342,12 +346,14 @@ export function Layout() {
       return false
     })
     
-    // Если базовые шаги готовы, разрешаем рендеринг
-    // Остальные шаги (авторизация, пользователь) могут загружаться в фоне
-    if (basicStepsReady) return true
+    // ВАЖНО: Разрешаем рендеринг ТОЛЬКО если базовые шаги готовы И navGroups готов
+    // Это предотвращает попытки рендеринга навигации до полной инициализации
+    if (basicStepsReady && navGroupsReady) {
+      return true
+    }
     
     // Если базовые шаги не готовы, проверяем все шаги
-    return loadingSteps.every(step => {
+    const allStepsReadyCheck = loadingSteps.every(step => {
       if ('checkReady' in step && typeof step.checkReady === 'function') {
         return step.checkReady()
       }
@@ -360,7 +366,10 @@ export function Layout() {
       }
       return false
     })
-  }, [loadingSteps, queryClient])
+    
+    // ВАЖНО: Даже если все шаги готовы, проверяем navGroups
+    return allStepsReadyCheck && navGroupsReady
+  }, [loadingSteps, queryClient, navGroups])
 
   // Таймаут для загрузочного экрана - через 5 секунд разрешаем рендеринг
   const [loadingTimeout, setLoadingTimeout] = useState(false)
@@ -375,15 +384,23 @@ export function Layout() {
   }, [])
 
   // Автоматически устанавливаем готовность, когда все шаги готовы
+  // ВАЖНО: Добавляем дополнительную задержку для Telegram мобильной версии
+  // Это дает время всем данным полностью инициализироваться перед рендерингом
   useEffect(() => {
     if (allStepsReady && !isAppReady && loadingSteps.length > 0) {
-      // Небольшая задержка для плавного перехода
+      // ВАЖНО: Для Telegram мобильной версии добавляем дополнительную задержку
+      // Это предотвращает React error #300 при быстром использовании приложения
+      const delay = isMiniApp ? 500 : 300 // 500мс для Telegram, 300мс для других
       const timer = setTimeout(() => {
-        setIsAppReady(true)
-      }, 300)
+        // Дополнительная проверка перед установкой isAppReady
+        // Убеждаемся, что navGroups все еще готов
+        if (navGroups && Array.isArray(navGroups) && navGroups.length > 0) {
+          setIsAppReady(true)
+        }
+      }, delay)
       return () => clearTimeout(timer)
     }
-  }, [allStepsReady, isAppReady, loadingSteps.length])
+  }, [allStepsReady, isAppReady, loadingSteps.length, navGroups, isMiniApp])
 
   // Предзагрузка изображений для Stories при монтировании компонента
   useEffect(() => {
@@ -896,9 +913,46 @@ export function Layout() {
   }
 
   // Защита от рендеринга меню до инициализации данных
-  // Проверяем, что location инициализирован, navGroups создан, и переводы готовы
-  // Также проверяем, что t (translations) готов
-  if (!location || !location.pathname || !translationsReady || !navGroups || navGroups.length === 0 || !t) {
+  // ВАЖНО: Строгие проверки для предотвращения React error #300
+  // Проверяем, что location инициализирован, navGroups создан и НЕ пустой, и переводы готовы
+  const isDataReady = useMemo(() => {
+    // Проверяем location
+    if (!location || typeof location !== 'object' || !location.pathname || typeof location.pathname !== 'string') {
+      return false
+    }
+    
+    // Проверяем переводы
+    if (!translationsReady || !t) {
+      return false
+    }
+    
+    // ВАЖНО: Проверяем, что navGroups не только существует, но и содержит элементы
+    // Пустой массив [] технически проходит проверку navGroups.length === 0, но означает, что данные еще не готовы
+    if (!navGroups || !Array.isArray(navGroups) || navGroups.length === 0) {
+      return false
+    }
+    
+    // ВАЖНО: Дополнительная проверка - убеждаемся, что каждый group имеет все необходимые свойства
+    const allGroupsValid = navGroups.every((group: any) => {
+      return group && 
+             typeof group === 'object' && 
+             group.key && 
+             typeof group.key === 'string' && 
+             group.items && 
+             Array.isArray(group.items) && 
+             group.items.length > 0
+    })
+    
+    if (!allGroupsValid) {
+      return false
+    }
+    
+    return true
+  }, [location, translationsReady, navGroups, t])
+  
+  // ВАЖНО: Не рендерим навигацию, если данные не готовы
+  // Это критично для предотвращения React error #300 при быстром использовании приложения
+  if (!isDataReady || !isAppReady) {
     return (
       <div className={`min-h-screen flex flex-col xl:flex-row bg-telegram-bg dark:bg-telegram-dark-bg ${valentineEnabled ? 'valentine-mode' : ''} ${strangerThingsEnabled ? 'theme-stranger-things' : ''}`}>
         <div className="flex-1 flex items-center justify-center">
