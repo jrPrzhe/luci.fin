@@ -881,6 +881,12 @@ export function Layout() {
     return null // Онбординг сам обработает навигацию
   }
 
+  // Определяем публичные страницы - для них не нужна авторизация
+  // ВАЖНО: Определяем ДО проверок авторизации, чтобы использовать в условиях
+  const isPublicPage = location?.pathname === '/login' || 
+                      location?.pathname === '/register' || 
+                      location?.pathname === '/onboarding'
+
   // Показываем приветствие сразу после авторизации (до главного меню)
   // Приоритет: приветствие показывается перед Layout
   // Для ВК миниаппа не показываем приветствие
@@ -909,15 +915,27 @@ export function Layout() {
   // Если авторизация еще неизвестна (null), продолжаем рендеринг
   // Auth handlers обработают авторизацию в фоне
   // Это предотвращает пустой экран во время авторизации через Mini App
+  // ВАЖНО: Для Telegram Mini App не рендерим защищенные страницы до завершения авторизации
+  // чтобы избежать проблем с hooks в дочерних компонентах (особенно Dashboard)
+  // Dashboard может рендериться с hasToken=false, а затем ре-рендериться с hasToken=true,
+  // что может вызвать React error #300 из-за разного количества hooks
   if (isAuthorized === null) {
-    console.log('[Layout] Authorization status unknown, allowing render to continue (Mini App auth in progress)')
-    // Продолжаем рендеринг - не блокируем UI
+    if (!isPublicPage && isMiniApp) {
+      console.log('[Layout] Authorization status unknown in Telegram Mini App, showing loading to prevent hooks error...')
+      // Показываем загрузку вместо рендеринга Dashboard до завершения авторизации
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-telegram-bg dark:bg-telegram-dark-bg">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-telegram-primary dark:border-telegram-dark-primary mb-4"></div>
+            <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{t?.common?.loading || 'Загрузка...'}</p>
+          </div>
+        </div>
+      )
+    } else {
+      console.log('[Layout] Authorization status unknown, allowing render to continue (Mini App auth in progress)')
+      // Продолжаем рендеринг - не блокируем UI (для веб-версии)
+    }
   }
-
-  // Определяем публичные страницы - для них не нужна авторизация
-  const isPublicPage = location?.pathname === '/login' || 
-                      location?.pathname === '/register' || 
-                      location?.pathname === '/onboarding'
 
   // Защита от рендеринга меню до инициализации данных
   // ВАЖНО: Строгие проверки для предотвращения React error #300
@@ -1025,19 +1043,20 @@ export function Layout() {
 
   // ВАЖНО: Не рендерим навигацию, если данные не готовы
   // Это критично для предотвращения React error #300 при быстром использовании приложения
-  // ВАЖНО: Всегда рендерим Outlet, даже если данные не готовы, чтобы избежать проблем с hooks
-  // Вместо этого показываем загрузку внутри Layout
+  // ВАЖНО: Для Telegram Mini App не рендерим защищенные страницы до завершения авторизации
+  // чтобы избежать проблем с hooks в дочерних компонентах (особенно Dashboard)
   const shouldShowLoading = !isDataReady || !isAppReady
-
-  // ВАЖНО: Если данные не готовы, показываем загрузку, но НЕ возвращаемся рано
-  // Это предотвращает проблемы с hooks в дочерних компонентах
-  if (shouldShowLoading) {
+  
+  // КРИТИЧЕСКИ ВАЖНО: Для Telegram Mini App не рендерим Dashboard до завершения авторизации
+  // Это предотвращает React error #300, когда Dashboard рендерится с hasToken=false,
+  // а затем ре-рендерится с hasToken=true, что может вызвать разное количество hooks
+  if (shouldShowLoading || (isAuthorized === null && !isPublicPage && isMiniApp)) {
     return (
       <div className={`min-h-screen flex flex-col xl:flex-row bg-telegram-bg dark:bg-telegram-dark-bg ${valentineEnabled ? 'valentine-mode' : ''} ${strangerThingsEnabled ? 'theme-stranger-things' : ''}`}>
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <div className="text-4xl mb-4">⏳</div>
-            <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">Загрузка...</p>
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-telegram-primary dark:border-telegram-dark-primary mb-4"></div>
+            <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">{t?.common?.loading || 'Загрузка...'}</p>
           </div>
         </div>
       </div>
