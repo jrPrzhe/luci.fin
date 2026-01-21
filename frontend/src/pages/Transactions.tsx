@@ -297,7 +297,7 @@ export function Transactions() {
         setLoading(true)
         setTransactions([])
         // ВАЖНО: Помечаем, что данные загружаются (для кэширования)
-        dataLoadedRef.current = false
+        // Флаг будет установлен в true после успешной загрузки
       } else {
         setLoadingMore(true)
       }
@@ -457,6 +457,33 @@ export function Transactions() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+  
+  // ВАЖНО: Отслеживаем изменения фильтров и перезагружаем данные при необходимости
+  // Но только если это не первая загрузка (чтобы не дублировать запрос)
+  const filtersChangedRef = useRef(false)
+  useEffect(() => {
+    // Пропускаем, если это первая загрузка (обрабатывается в useEffect выше)
+    if (!getDataLoadedFlag()) {
+      return
+    }
+    
+    // Пропускаем, если есть accountId или categoryId из навигации (обрабатывается в другом useEffect)
+    if (accountIdFromNavigation.current || categoryIdFromNavigation.current) {
+      return
+    }
+    
+    // Пропускаем первое срабатывание (когда фильтры еще не менялись)
+    if (!filtersChangedRef.current) {
+      filtersChangedRef.current = true
+      return
+    }
+    
+    // Перезагружаем данные при изменении фильтров
+    // Сбрасываем флаг кэша, так как данные изменились
+    setDataLoadedFlag(false)
+    loadData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterType, transactionTypeFilter, dateFilter, customStartDate, customEndDate, selectedAccountId, selectedCategoryId])
 
   const loadCategories = async (transactionType: 'income' | 'expense' | 'transfer') => {
     if (transactionType === 'transfer') {
@@ -564,6 +591,8 @@ export function Transactions() {
 
       // Reset form and reload
       resetForm()
+      // ВАЖНО: Сбрасываем флаг кэша при создании/обновлении транзакции
+      setDataLoadedFlag(false)
       await loadData()
       await loadGoals()  // Reload goals to update progress
       setShowForm(false)
@@ -615,6 +644,8 @@ export function Transactions() {
             console.log('[Transactions] Duplicate transaction found, transaction was created successfully:', duplicate)
             // Transaction was created, treat as success
             resetForm()
+            // ВАЖНО: Сбрасываем флаг кэша при создании транзакции
+            setDataLoadedFlag(false)
             await loadData()
             await loadGoals()
             setShowForm(false)
@@ -682,6 +713,9 @@ export function Transactions() {
           
           // Оптимистично удаляем транзакцию из состояния
           setTransactions(prev => prev.filter(t => t.id !== id))
+          
+          // ВАЖНО: Сбрасываем флаг кэша при удалении транзакции
+          setDataLoadedFlag(false)
           
           // Перезагружаем данные для синхронизации с сервером (но не блокируем UI)
           loadData().catch(err => {
