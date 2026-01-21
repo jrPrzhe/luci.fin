@@ -589,42 +589,67 @@ export function Layout() {
   }, [location?.pathname, getExpandedGroupsForPath])
 
   // Мемоизируем navGroups, чтобы избежать пересоздания при каждом рендере
-  const navGroups = useMemo(() => [
-    {
-      key: 'finance',
-      label: 'Финансы',
-      icon: '💰',
-      items: [
-        { path: '/', label: t.nav.dashboard, icon: '📊' },
-        { path: '/transactions', label: t.nav.transactions, icon: '💸' },
-        { path: '/accounts', label: t.nav.accounts, icon: '💳' },
-        { path: '/categories', label: t.nav.categories, icon: '📦' },
-        { path: '/reports', label: t.nav.reports, icon: '📈' },
-      ]
-    },
-    {
-      key: 'planning',
-      label: 'Планирование',
-      icon: '🎯',
-      items: [
-        { path: '/biography', label: t.nav.biography, icon: '📝' },
-        { path: '/quests', label: t.nav.quests, icon: '🎯' },
-        { path: '/achievements', label: t.nav.achievements, icon: '🏆' },
-        { path: '/goals', label: t.nav.goals, icon: '🎯' },
-        { path: '/shared-budgets', label: t.nav.budgets, icon: '👥' },
-      ]
-    },
-    {
-      key: 'settings',
-      label: 'Настройки',
-      icon: '⚙️',
-      items: [
-        { path: '/profile', label: t.nav.profile, icon: '⚙️' },
-        { path: '/about', label: t.profile.about, icon: '📚' },
-        ...(user?.is_admin ? [{ path: '/analytics', label: t.nav.analytics, icon: '📊' }] : []),
-      ]
+  // Используем стабильные зависимости - только примитивные значения
+  const isAdmin = user?.is_admin ?? false
+  const navGroups = useMemo(() => {
+    const settingsItems = [
+      { path: '/profile', label: t.nav.profile, icon: '⚙️' },
+      { path: '/about', label: t.profile.about, icon: '📚' },
+    ]
+    
+    // Добавляем analytics только если пользователь админ
+    if (isAdmin) {
+      settingsItems.push({ path: '/analytics', label: t.nav.analytics, icon: '📊' })
     }
-  ], [t.nav, t.profile.about, user?.is_admin])
+    
+    return [
+      {
+        key: 'finance',
+        label: 'Финансы',
+        icon: '💰',
+        items: [
+          { path: '/', label: t.nav.dashboard, icon: '📊' },
+          { path: '/transactions', label: t.nav.transactions, icon: '💸' },
+          { path: '/accounts', label: t.nav.accounts, icon: '💳' },
+          { path: '/categories', label: t.nav.categories, icon: '📦' },
+          { path: '/reports', label: t.nav.reports, icon: '📈' },
+        ]
+      },
+      {
+        key: 'planning',
+        label: 'Планирование',
+        icon: '🎯',
+        items: [
+          { path: '/biography', label: t.nav.biography, icon: '📝' },
+          { path: '/quests', label: t.nav.quests, icon: '🎯' },
+          { path: '/achievements', label: t.nav.achievements, icon: '🏆' },
+          { path: '/goals', label: t.nav.goals, icon: '🎯' },
+          { path: '/shared-budgets', label: t.nav.budgets, icon: '👥' },
+        ]
+      },
+      {
+        key: 'settings',
+        label: 'Настройки',
+        icon: '⚙️',
+        items: settingsItems,
+      }
+    ]
+  }, [
+    t.nav.dashboard,
+    t.nav.transactions,
+    t.nav.accounts,
+    t.nav.categories,
+    t.nav.reports,
+    t.nav.biography,
+    t.nav.quests,
+    t.nav.achievements,
+    t.nav.goals,
+    t.nav.budgets,
+    t.nav.profile,
+    t.nav.analytics,
+    t.profile.about,
+    isAdmin
+  ])
 
   // Плоский список для мобильной навигации (старый формат)
   const navItems = useMemo(() => navGroups.flatMap(group => group.items), [navGroups])
@@ -681,7 +706,8 @@ export function Layout() {
         </div>
         
         <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
-          {navGroups.map((group) => {
+          {navGroups && navGroups.length > 0 && navGroups.map((group) => {
+            if (!group || !group.key || !group.items) return null
             const isExpanded = expandedGroups[group.key] ?? false
             const currentPath = location?.pathname || '/'
             const hasActiveItem = group.items.some(item => currentPath === item.path)
@@ -707,9 +733,10 @@ export function Layout() {
                 </button>
                 
                 {/* Подменю группы */}
-                {isExpanded && (
+                {isExpanded && group.items && group.items.length > 0 && (
                   <div className="ml-4 space-y-0.5">
                     {group.items.map((item) => {
+                      if (!item || !item.path) return null
                       const isActive = currentPath === item.path
                       return (
                         <Link
@@ -717,8 +744,8 @@ export function Layout() {
                           to={item.path}
                           className={`nav-item ${isActive ? 'active' : ''} pl-8`}
                         >
-                          <span className="text-base">{item.icon}</span>
-                          <span className="font-medium text-sm">{item.label}</span>
+                          <span className="text-base">{item.icon || ''}</span>
+                          <span className="font-medium text-sm">{item.label || ''}</span>
                         </Link>
                       )
                     })}
@@ -929,7 +956,8 @@ export function Layout() {
             </div>
             
             <nav className="p-2 space-y-1">
-              {navGroups.map((group) => {
+              {navGroups && navGroups.length > 0 && navGroups.map((group) => {
+                if (!group || !group.key || !group.items) return null
                 const isExpanded = expandedGroups[group.key] ?? false
                 const currentPath = location?.pathname || '/'
                 const hasActiveItem = group.items.some(item => currentPath === item.path)
@@ -955,9 +983,10 @@ export function Layout() {
                     </button>
                     
                     {/* Подменю группы */}
-                    {isExpanded && (
+                    {isExpanded && group.items && group.items.length > 0 && (
                       <div className="ml-4 space-y-0.5">
                         {group.items.map((item) => {
+                          if (!item || !item.path) return null
                           const isActive = currentPath === item.path
                           return (
                             <Link
@@ -966,8 +995,8 @@ export function Layout() {
                               onClick={() => setMobileMenuOpen(false)}
                               className={`nav-item ${isActive ? 'active' : ''} pl-8`}
                             >
-                              <span className="text-base">{item.icon}</span>
-                              <span className="font-medium text-sm">{item.label}</span>
+                              <span className="text-base">{item.icon || ''}</span>
+                              <span className="font-medium text-sm">{item.label || ''}</span>
                             </Link>
                           )
                         })}
