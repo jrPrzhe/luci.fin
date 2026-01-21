@@ -1,6 +1,6 @@
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { isTelegramWebApp } from '../utils/telegram'
 import { isVKWebApp } from '../utils/vk'
 import { api } from '../services/api'
@@ -21,6 +21,7 @@ import { OnboardingWizard } from './OnboardingWizard'
 export function Layout() {
   const navigate = useNavigate()
   const location = useLocation()
+  const queryClient = useQueryClient()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isAuthorized, setIsAuthorized] = useState<boolean | null>(null)
   const [showWelcome, setShowWelcome] = useState(false)
@@ -788,11 +789,47 @@ export function Layout() {
                     {group.items.map((item) => {
                       if (!item || !item.path) return null
                       const isActive = currentPath === item.path
+                      
+                      // Предзагрузка данных при наведении
+                      const handleMouseEnter = () => {
+                        if (item.path === '/transactions') {
+                          queryClient.prefetchQuery({
+                            queryKey: ['accounts'],
+                            queryFn: () => api.getAccounts(),
+                            staleTime: 60000,
+                          })
+                        } else if (item.path === '/accounts') {
+                          queryClient.prefetchQuery({
+                            queryKey: ['accounts'],
+                            queryFn: () => api.getAccounts(),
+                            staleTime: 60000,
+                          })
+                        } else if (item.path === '/reports') {
+                          queryClient.prefetchQuery({
+                            queryKey: ['analytics', 'month'],
+                            queryFn: () => api.getAnalytics('month'),
+                            staleTime: 60000,
+                          })
+                        } else if (item.path === '/') {
+                          queryClient.prefetchQuery({
+                            queryKey: ['balance'],
+                            queryFn: () => api.getBalance(),
+                            staleTime: 30000,
+                          })
+                          queryClient.prefetchQuery({
+                            queryKey: ['accounts'],
+                            queryFn: () => api.getAccounts(),
+                            staleTime: 60000,
+                          })
+                        }
+                      }
+                      
                       return (
                         <Link
                           key={item.path}
                           to={item.path}
                           className={`nav-item ${isActive ? 'active' : ''} pl-8`}
+                          onMouseEnter={handleMouseEnter}
                         >
                           <span className="text-base">{item.icon || ''}</span>
                           <span className="font-medium text-sm">{item.label || ''}</span>
@@ -1038,12 +1075,48 @@ export function Layout() {
                         {group.items.map((item) => {
                           if (!item || !item.path) return null
                           const isActive = currentPath === item.path
+                          
+                          // Предзагрузка данных при наведении
+                          const handleMouseEnter = () => {
+                            if (item.path === '/transactions') {
+                              queryClient.prefetchQuery({
+                                queryKey: ['accounts'],
+                                queryFn: () => api.getAccounts(),
+                                staleTime: 60000,
+                              })
+                            } else if (item.path === '/accounts') {
+                              queryClient.prefetchQuery({
+                                queryKey: ['accounts'],
+                                queryFn: () => api.getAccounts(),
+                                staleTime: 60000,
+                              })
+                            } else if (item.path === '/reports') {
+                              queryClient.prefetchQuery({
+                                queryKey: ['analytics', 'month'],
+                                queryFn: () => api.getAnalytics('month'),
+                                staleTime: 60000,
+                              })
+                            } else if (item.path === '/') {
+                              queryClient.prefetchQuery({
+                                queryKey: ['balance'],
+                                queryFn: () => api.getBalance(),
+                                staleTime: 30000,
+                              })
+                              queryClient.prefetchQuery({
+                                queryKey: ['accounts'],
+                                queryFn: () => api.getAccounts(),
+                                staleTime: 60000,
+                              })
+                            }
+                          }
+                          
                           return (
                             <Link
                               key={item.path}
                               to={item.path}
                               onClick={() => setMobileMenuOpen(false)}
                               className={`nav-item ${isActive ? 'active' : ''} pl-8`}
+                              onMouseEnter={handleMouseEnter}
                             >
                               <span className="text-base">{item.icon || ''}</span>
                               <span className="font-medium text-sm">{item.label || ''}</span>

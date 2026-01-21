@@ -86,6 +86,8 @@ export function Accounts() {
     retry: 1,
     staleTime: 60000, // 1 minute - same as Dashboard
     refetchOnWindowFocus: false,
+    refetchOnMount: false, // Используем кэш при монтировании
+    gcTime: 600000, // 10 minutes - кэшируем для быстрого доступа
   })
   
   // Use React Query for shared budgets
@@ -381,7 +383,8 @@ export function Accounts() {
     return !isNaN(balanceNumber) && balanceNumber >= 0
   })() : true
 
-  if (accountsLoading) {
+  // Защита от рендеринга до загрузки данных
+  if (accountsLoading || !accountsData) {
     return <LoadingSpinner />
   }
 

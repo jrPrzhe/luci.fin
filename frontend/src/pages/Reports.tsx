@@ -367,7 +367,7 @@ export function Reports() {
     refetchOnMount: false, // Use cached data if available
     refetchInterval: false, // Don't auto-refetch on interval
     retry: 1, // Retry once on failure
-    gcTime: 300000, // Keep in cache for 5 minutes (formerly cacheTime)
+    gcTime: 600000, // Keep in cache for 10 minutes - увеличили для лучшей производительности
   })
 
   const { data: user } = useQuery({
@@ -559,7 +559,8 @@ export function Reports() {
   }, [analytics?.totals?.currency])
 
   // Now we can do conditional returns after all hooks
-  if (isLoading) {
+  // Защита от рендеринга до загрузки данных
+  if (isLoading || !t?.reports) {
     return <LoadingSpinner />
   }
 
@@ -567,7 +568,7 @@ export function Reports() {
     return (
       <div className="min-h-screen p-4 md:p-6">
         <div className="card p-6 text-center">
-          <p className="text-red-500">{t.reports.error}</p>
+          <p className="text-red-500">{t.reports.error || 'Ошибка загрузки данных'}</p>
         </div>
       </div>
     )

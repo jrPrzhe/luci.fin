@@ -427,7 +427,8 @@ export function Dashboard() {
     retry: 1,
     staleTime: 30000, // 30 seconds
     refetchOnWindowFocus: false,
-    gcTime: 0, // Не кешировать при ошибках, чтобы избежать проблем с кешем
+    refetchOnMount: false, // Используем кэш при монтировании
+    gcTime: 300000, // 5 minutes - кэшируем для быстрого доступа
   })
 
   const { data: accounts, isLoading: accountsLoading, isError: accountsError } = useQuery({
@@ -443,7 +444,8 @@ export function Dashboard() {
     retry: 1,
     staleTime: 60000, // 1 minute
     refetchOnWindowFocus: false,
-    gcTime: 0, // Не кешировать при ошибках, чтобы избежать проблем с кешем
+    refetchOnMount: false, // Используем кэш при монтировании
+    gcTime: 600000, // 10 minutes - кэшируем для быстрого доступа
   })
 
   const { data: recentTransactions, isLoading: transactionsLoading, isError: transactionsError } = useQuery({
@@ -459,15 +461,18 @@ export function Dashboard() {
     retry: 1,
     staleTime: 30000, // 30 seconds
     refetchOnWindowFocus: false,
-    gcTime: 0, // Не кешировать при ошибках, чтобы избежать проблем с кешем
+    refetchOnMount: false, // Используем кэш при монтировании
+    gcTime: 300000, // 5 minutes - кэшируем для быстрого доступа
   })
 
   // Получаем данные текущего пользователя для проверки премиум статуса
   const { data: currentUser } = useQuery({
     queryKey: ['currentUser'],
     queryFn: () => api.getCurrentUser(),
-    staleTime: 60000, // 1 minute
+    staleTime: 300000, // 5 minutes
     refetchOnWindowFocus: false,
+    refetchOnMount: false, // Используем кэш при монтировании
+    gcTime: 600000, // 10 minutes - кэшируем для быстрого доступа
   })
 
   // Получаем доходы и расходы за текущий месяц через аналитику (быстрее чем загрузка всех транзакций)

@@ -107,8 +107,8 @@ export function Transactions() {
     retry: 1,
     staleTime: 60000, // 1 minute - same as Dashboard
     refetchOnWindowFocus: false,
-    // Не кешировать при ошибках, чтобы избежать проблем с кешем в режиме инкогнито
-    gcTime: 0,
+    refetchOnMount: false, // Используем кэш при монтировании
+    gcTime: 600000, // 10 minutes - кэшируем для быстрого доступа
   })
   const [showForm, setShowForm] = useState(false)
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
@@ -774,7 +774,9 @@ export function Transactions() {
     }).format(Math.round(amount))
   }
 
-  if (loading) {
+  // Защита от рендеринга до загрузки данных
+  // Проверяем, что accounts загружены (они нужны для формы и фильтров)
+  if (loading || accountsLoading || !accounts) {
     return <LoadingSpinner />
   }
 
