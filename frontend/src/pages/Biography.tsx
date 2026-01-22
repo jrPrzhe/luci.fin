@@ -149,7 +149,7 @@ export function Biography() {
     }
 
     const heartLevel = gamificationStatus.profile.heart_level
-    const HEARTS_COST = 30
+    const HEARTS_COST = 1
 
     if (heartLevel < HEARTS_COST) {
       showError(
@@ -363,7 +363,7 @@ export function Biography() {
                       )}
                     </button>
                     <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-2 text-center">
-                      Стоимость: 30 ❤️ сердец Люси
+                      Стоимость: 1 ❤️ сердце Люси
                     </p>
                     {gamificationStatus?.profile && (
                       <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1 text-center">
