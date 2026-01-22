@@ -95,11 +95,10 @@ export function Layout() {
 
   // Получаем данные пользователя для проверки админ-статуса
   // ВАЖНО: enabled только если авторизован И есть токен
-  const hasToken = storageSync.getItem('token')
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
     queryFn: () => api.getCurrentUser(),
-    enabled: isAuthorized === true && !!hasToken,
+    enabled: isAuthorized === true,
     retry: false, // Не повторяем запрос при ошибке авторизации
   })
 
