@@ -426,8 +426,8 @@ async def update_category_limits(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Обновить лимиты категорий через ИИ (стоимость: 30 сердец Люси)"""
-    HEARTS_COST = 30
+    """Обновить лимиты категорий через ИИ (стоимость: 1 сердце Люси)"""
+    HEARTS_COST = 1
     
     # Проверяем баланс сердец
     profile = get_or_create_profile(current_user.id, db)
