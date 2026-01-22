@@ -131,11 +131,12 @@ async def submit_questionnaire(
         
         # Анализируем анкету через ИИ для генерации плановых лимитов
         try:
-            ai_analysis = await analyze_questionnaire_with_ai(
+        ai_analysis = await analyze_questionnaire_with_ai(
                 questionnaire=questionnaire,
                 currency=current_user.default_currency,
                 db=db,
-                current_user=current_user
+            current_user=current_user,
+            force_recalculate=False
             )
             
             # Обновляем биографию с результатами ИИ
@@ -188,7 +189,8 @@ async def analyze_questionnaire_with_ai(
     questionnaire: QuestionnaireRequest,
     currency: str,
     db: Session,
-    current_user: User
+    current_user: User,
+    force_recalculate: bool = False
 ) -> dict:
     """Анализировать анкету через ИИ для генерации плановых лимитов"""
     assistant = AIAssistant()
@@ -247,6 +249,9 @@ async def analyze_questionnaire_with_ai(
 }}
 
 Важно: recommended_limits должны быть числами, не строками. Включи все категории из анкеты."""
+
+    if force_recalculate:
+        prompt += "\n\nВажно: доход пользователя изменился. Пересчитай плановые лимиты заново на основе нового дохода. Не оставляй прежние значения без пересчета."
 
     try:
         import asyncio
@@ -469,9 +474,15 @@ async def update_category_limits(
     
     # Подготавливаем данные для ИИ
     category_limits = {}
-    if questionnaire_response.category_limits:
+    if biography.category_limits:
         category_limits = {
-            k: Decimal(str(v)) 
+            limit.category_name: Decimal(str(limit.user_limit))
+            for limit in biography.category_limits
+            if limit.user_limit is not None
+        }
+    elif questionnaire_response.category_limits:
+        category_limits = {
+            k: Decimal(str(v))
             for k, v in questionnaire_response.category_limits.items()
         }
     
@@ -494,7 +505,8 @@ async def update_category_limits(
             questionnaire=temp_questionnaire,
             currency=current_user.default_currency,
             db=db,
-            current_user=current_user
+            current_user=current_user,
+            force_recalculate=True
         )
         
         # Обновляем плановые лимиты от ИИ
