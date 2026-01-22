@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../services/api'
 import { OnboardingWizard } from '../components/OnboardingWizard'
 import { useToast } from '../contexts/ToastContext'
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 
 interface CategoryLimit {
   id: number
@@ -39,6 +40,7 @@ export function Biography() {
   const [editedIncome, setEditedIncome] = useState<number>(0)
   const [isUpdatingLimits, setIsUpdatingLimits] = useState(false)
   const [showUpdateButton, setShowUpdateButton] = useState(false)
+  const [showIncomeHistory, setShowIncomeHistory] = useState(false)
   const updatePollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const updateStartRef = useRef<number | null>(null)
 
@@ -91,6 +93,29 @@ export function Biography() {
       setShowWizard(true)
     }
   }, [newUserStatus, biography])
+
+  const { data: biographyHistory = [], isLoading: historyLoading } = useQuery({
+    queryKey: ['biography-history'],
+    queryFn: () => api.getBiographyHistory(),
+    enabled: showIncomeHistory,
+    staleTime: 60000,
+  })
+
+  const incomeHistory = useMemo(() => {
+    return (biographyHistory || [])
+      .filter((entry: any) => entry && entry.monthly_income)
+      .map((entry: any) => ({
+        date: entry.period_start || entry.created_at,
+        income: Number(entry.monthly_income) || 0,
+      }))
+      .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
+  }, [biographyHistory])
+
+  const formatDateLabel = (value: string) => {
+    if (!value) return ''
+    const date = new Date(value)
+    return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' })
+  }
 
   const handleWizardComplete = async () => {
     setShowWizard(false)
@@ -301,14 +326,22 @@ export function Biography() {
               <h2 className="text-xl font-semibold text-telegram-text dark:text-telegram-dark-text">
                 💰 Ваш доход
               </h2>
-              {!isEditingIncome && (
+              <div className="flex items-center gap-3">
                 <button
-                  onClick={handleEditIncome}
+                  onClick={() => setShowIncomeHistory(true)}
                   className="text-sm text-telegram-primary dark:text-telegram-dark-primary hover:underline"
                 >
-                  Изменить
+                  История дохода
                 </button>
-              )}
+                {!isEditingIncome && (
+                  <button
+                    onClick={handleEditIncome}
+                    className="text-sm text-telegram-primary dark:text-telegram-dark-primary hover:underline"
+                  >
+                    Изменить
+                  </button>
+                )}
+              </div>
             </div>
             {isEditingIncome ? (
               <div className="space-y-3">
@@ -535,6 +568,71 @@ export function Biography() {
           </p>
         </div>
       </div>
+
+      {showIncomeHistory && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-telegram-bg dark:bg-telegram-dark-bg rounded-telegram w-full max-w-2xl shadow-xl border border-telegram-border dark:border-telegram-dark-border">
+            <div className="flex items-center justify-between p-4 border-b border-telegram-border dark:border-telegram-dark-border">
+              <h3 className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text">
+                История дохода
+              </h3>
+              <button
+                onClick={() => setShowIncomeHistory(false)}
+                className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-4 space-y-4">
+              {historyLoading ? (
+                <div className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+                  Загрузка...
+                </div>
+              ) : incomeHistory.length === 0 ? (
+                <div className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+                  Пока нет истории изменений дохода.
+                </div>
+              ) : (
+                <>
+                  <div className="h-40">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={incomeHistory}>
+                        <XAxis dataKey="date" tickFormatter={formatDateLabel} />
+                        <YAxis />
+                        <Tooltip
+                          formatter={(value: number) => `${value.toLocaleString('ru-RU')} ₽`}
+                          labelFormatter={(label: string) => formatDateLabel(label)}
+                        />
+                        <Line type="monotone" dataKey="income" stroke="#3390EC" strokeWidth={2} dot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  <div className="max-h-52 overflow-auto border border-telegram-border dark:border-telegram-dark-border rounded-telegram">
+                    <table className="w-full text-sm">
+                      <thead className="bg-telegram-surface dark:bg-telegram-dark-surface text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+                        <tr>
+                          <th className="text-left px-3 py-2">Дата</th>
+                          <th className="text-right px-3 py-2">Доход</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {incomeHistory.map((entry, idx) => (
+                          <tr key={`${entry.date}-${idx}`} className="border-t border-telegram-border dark:border-telegram-dark-border">
+                            <td className="px-3 py-2">{formatDateLabel(entry.date)}</td>
+                            <td className="px-3 py-2 text-right">{entry.income.toLocaleString('ru-RU')} ₽</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
