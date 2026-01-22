@@ -131,12 +131,12 @@ async def submit_questionnaire(
         
         # Анализируем анкету через ИИ для генерации плановых лимитов
         try:
-        ai_analysis = await analyze_questionnaire_with_ai(
+            ai_analysis = await analyze_questionnaire_with_ai(
                 questionnaire=questionnaire,
                 currency=current_user.default_currency,
                 db=db,
-            current_user=current_user,
-            force_recalculate=False
+                current_user=current_user,
+                force_recalculate=False
             )
             
             # Обновляем биографию с результатами ИИ
