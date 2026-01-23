@@ -768,12 +768,12 @@ export function Categories() {
                 )}
               </h3>
               {(showFavoritesSection || showFavoritesOnly) && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
+                <div className="grid grid-cols-4 gap-2 md:gap-3">
                   {favoriteCategories.map((category) => (
                     <div key={`category-wrapper-${category.id}`}>
                       <div
                         id={`category-${category.id}`}
-                        className="card hover:shadow-lg transition-all relative group p-2 sm:p-3 md:p-4 cursor-pointer active:scale-[0.99]"
+                        className="card hover:shadow-lg transition-all relative group p-1.5 md:p-4 cursor-pointer active:scale-[0.99]"
                         style={{
                           borderLeft: `3px solid ${category.color || '#4CAF50'}`,
                         }}
@@ -804,7 +804,7 @@ export function Categories() {
                         <div className="flex flex-col items-center gap-2">
                           {/* Иконка категории */}
                           <div
-                            className="w-11 h-11 sm:w-12 sm:h-12 md:w-12 md:h-12 rounded-full flex items-center justify-center text-2xl md:text-2xl flex-shrink-0"
+                            className="w-9 h-9 md:w-12 md:h-12 rounded-full flex items-center justify-center text-xl md:text-2xl flex-shrink-0"
                             style={{ backgroundColor: `${category.color || '#4CAF50'}20` }}
                           >
                             {category.icon || '📦'}
@@ -812,7 +812,7 @@ export function Categories() {
                           
                           {/* Название категории */}
                           <div className="w-full text-center px-1">
-                            <h4 className="font-semibold text-telegram-text dark:text-telegram-dark-text text-sm md:text-base mb-0.5 text-center leading-tight min-h-[2.5rem] flex items-start justify-center">
+                            <h4 className="font-semibold text-telegram-text dark:text-telegram-dark-text text-[11px] md:text-base mb-0.5 text-center leading-tight min-h-[2.75rem] flex items-start justify-center">
                               <span className="inline-flex items-start gap-1.5 clamp-2">
                                 {renderBudgetGroupDot(category.budget_group)}
                                 <span>{translateCategoryName(category.name)}</span>
@@ -893,12 +893,12 @@ export function Categories() {
               )}
               {showAllCategoriesSection && (
                 regularCategories.length > 0 ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
+                  <div className="grid grid-cols-4 gap-2 md:gap-3">
                     {regularCategories.map((category) => (
                       <div key={`category-wrapper-${category.id}`}>
                         <div
                           id={`category-${category.id}`}
-                          className="card hover:shadow-lg transition-all relative group p-2 sm:p-3 md:p-4 cursor-pointer active:scale-[0.99]"
+                          className="card hover:shadow-lg transition-all relative group p-1.5 md:p-4 cursor-pointer active:scale-[0.99]"
                           style={{
                             borderLeft: `3px solid ${category.color || '#4CAF50'}`,
                           }}
@@ -944,7 +944,7 @@ export function Categories() {
                           <div className="flex flex-col items-center gap-2">
                             {/* Иконка категории */}
                             <div
-                              className="w-11 h-11 sm:w-12 sm:h-12 md:w-12 md:h-12 rounded-full flex items-center justify-center text-2xl md:text-2xl flex-shrink-0"
+                              className="w-9 h-9 md:w-12 md:h-12 rounded-full flex items-center justify-center text-xl md:text-2xl flex-shrink-0"
                               style={{ backgroundColor: `${category.color || '#4CAF50'}20` }}
                             >
                               {category.icon || '📦'}
@@ -952,7 +952,7 @@ export function Categories() {
                             
                             {/* Название категории */}
                             <div className="w-full text-center px-1">
-                              <h4 className="font-semibold text-telegram-text dark:text-telegram-dark-text text-sm md:text-base mb-0.5 text-center leading-tight min-h-[2.5rem] flex items-start justify-center">
+                              <h4 className="font-semibold text-telegram-text dark:text-telegram-dark-text text-[11px] md:text-base mb-0.5 text-center leading-tight min-h-[2.75rem] flex items-start justify-center">
                                 <span className="inline-flex items-start gap-1.5 clamp-2">
                                   {renderBudgetGroupDot(category.budget_group)}
                                   <span>{translateCategoryName(category.name)}</span>
