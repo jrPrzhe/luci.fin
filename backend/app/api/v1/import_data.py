@@ -518,10 +518,12 @@ async def import_data(
                 # Trim category name to 25 characters
                 category_name = cat_data['name'][:25] if cat_data['name'] else ""
                 
+                budget_group = "needs" if category_type == CategoryTransactionType.EXPENSE else None
                 new_category = Category(
                     user_id=current_user.id,
                     name=category_name,
                     transaction_type=category_type,
+                    budget_group=budget_group,
                     is_active=True,
                     is_system=False
                 )
@@ -621,10 +623,12 @@ async def import_data(
                     # Trim category name to 25 characters
                     trimmed_category_name = category_name[:25] if category_name else ""
                     
+                    budget_group = "needs" if category_type == CategoryTransactionType.EXPENSE else None
                     new_category = Category(
                         user_id=current_user.id,
                         name=trimmed_category_name,
                         transaction_type=category_type,
+                        budget_group=budget_group,
                         is_active=True,
                         is_system=False
                     )

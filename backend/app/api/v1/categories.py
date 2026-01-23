@@ -5,7 +5,7 @@ from typing import List, Optional
 from app.core.database import get_db
 from app.api.v1.auth import get_current_user
 from app.models.user import User
-from app.models.category import Category, TransactionType
+from app.models.category import Category, TransactionType, BudgetGroup
 from app.schemas.category import CategoryCreate, CategoryUpdate, CategoryResponse, CategorySetFavorite
 
 router = APIRouter()
@@ -41,7 +41,7 @@ async def get_categories(
                 ELSE NULL
             END as name,
             transaction_type::text, parent_id,
-            icon, color, is_system, is_active, is_favorite, budget_limit,
+            icon, color, is_system, is_active, is_favorite, budget_limit, budget_group,
             created_at, updated_at
         FROM categories
         WHERE 1=1
@@ -157,8 +157,9 @@ async def get_categories(
                     "is_active": row[9],
                     "is_favorite": row[10],
                     "budget_limit": float(row[11]) if row[11] else None,
-                    "created_at": row[12],
-                    "updated_at": row[13],
+                    "budget_group": safe_decode(row[12]),
+                    "created_at": row[13],
+                    "updated_at": row[14],
                 }
                 categories.append(CategoryResponse(**cat_dict))
             except Exception as e:
@@ -176,7 +177,7 @@ async def get_categories(
                 simple_sql = """
                     SELECT 
                         id, user_id, shared_budget_id, name, transaction_type::text, parent_id,
-                        icon, color, is_system, is_active, is_favorite, budget_limit,
+                        icon, color, is_system, is_active, is_favorite, budget_limit, budget_group,
                         created_at, updated_at
                     FROM categories
                     WHERE 1=1
@@ -242,8 +243,9 @@ async def get_categories(
                             "is_active": row[9],
                             "is_favorite": row[10],
                             "budget_limit": float(row[11]) if row[11] else None,
-                            "created_at": row[12],
-                            "updated_at": row[13],
+                            "budget_group": safe_decode(row[12]),
+                            "created_at": row[13],
+                            "updated_at": row[14],
                         }
                         categories.append(CategoryResponse(**cat_dict))
                     except Exception as e2:
@@ -403,6 +405,17 @@ async def create_category(
             # Validate the value is one of the allowed values
             if transaction_type_value not in ['income', 'expense', 'both']:
                 raise ValueError(f"Invalid transaction_type: {transaction_type_value}. Must be one of: income, expense, both")
+
+            budget_group_value = category.budget_group
+            if transaction_type_value == 'income':
+                budget_group_value = None
+            elif budget_group_value is None:
+                budget_group_value = "needs"
+
+            if isinstance(budget_group_value, BudgetGroup):
+                budget_group_value = budget_group_value.value
+            elif isinstance(budget_group_value, str):
+                budget_group_value = budget_group_value.lower()
             
             # Create category with lowercase string for transaction_type
             # Ensure name is trimmed to 25 characters (additional safety check)
@@ -417,6 +430,7 @@ async def create_category(
                 color=category.color,
                 parent_id=category.parent_id,
                 budget_limit=category.budget_limit,
+                budget_group=budget_group_value,
                 is_favorite=category.is_favorite or False,
                 is_system=False,
                 is_active=True
@@ -551,6 +565,19 @@ async def update_category(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Неверный тип транзакции. Используйте: income, expense или both"
             )
+
+        if update_data['transaction_type'] == 'income':
+            update_data['budget_group'] = None
+        elif update_data['transaction_type'] == 'expense' and 'budget_group' not in update_data:
+            update_data['budget_group'] = category.budget_group or "needs"
+
+    if 'budget_group' in update_data:
+        budget_group_value = update_data['budget_group']
+        if isinstance(budget_group_value, BudgetGroup):
+            budget_group_value = budget_group_value.value
+        elif isinstance(budget_group_value, str):
+            budget_group_value = budget_group_value.lower()
+        update_data['budget_group'] = budget_group_value
     
     for field, value in update_data.items():
         setattr(category, field, value)

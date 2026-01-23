@@ -293,6 +293,7 @@ export const en = {
       iconLabel: 'Icon (emoji)',
       iconHint: 'Select an emoji from the list',
       colorLabel: 'Color',
+      budgetGroupLabel: 'Budget group',
       favoriteLabel: '⭐ Add to favorites (top categories)',
       save: 'Save',
       create: 'Create',
@@ -304,6 +305,11 @@ export const en = {
       deleteConfirm: 'Are you sure you want to delete this category?',
       toggleAllConfirm: 'Favorite status changed for {count} categories',
       noCategoriesToChange: 'No categories to change',
+    },
+    budgetGroups: {
+      needs: 'Needs',
+      wants: 'Wants',
+      savings: 'Savings',
     },
     // Переводы базовых категорий
     names: {

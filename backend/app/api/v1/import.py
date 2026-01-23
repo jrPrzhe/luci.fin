@@ -303,10 +303,12 @@ async def import_data(
                 elif cat_data['type'] == 'income':
                     category_type = CategoryTransactionType.INCOME
                 
+                budget_group = "needs" if category_type == CategoryTransactionType.EXPENSE else None
                 new_category = Category(
                     user_id=current_user.id,
                     name=cat_data['name'],
                     transaction_type=category_type,
+                    budget_group=budget_group,
                     is_active=True,
                     is_system=False
                 )
@@ -358,10 +360,12 @@ async def import_data(
                     elif trans_data['type'] == 'income':
                         category_type = CategoryTransactionType.INCOME
                     
+                    budget_group = "needs" if category_type == CategoryTransactionType.EXPENSE else None
                     new_category = Category(
                         user_id=current_user.id,
                         name=trans_data['category'],
                         transaction_type=category_type,
+                        budget_group=budget_group,
                         is_active=True,
                         is_system=False
                     )

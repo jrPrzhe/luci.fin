@@ -76,6 +76,10 @@ def add_categories_to_user(user_id: int, db: Session):
             transaction_type_value = transaction_type_value.value  # Get "income", "expense", or "both"
         elif isinstance(transaction_type_value, str):
             transaction_type_value = transaction_type_value.lower()
+
+        budget_group_value = cat_data.get("budget_group")
+        if budget_group_value is None and transaction_type_value == "expense":
+            budget_group_value = "needs"
         
         categories.append(Category(
             user_id=user_id,
@@ -83,6 +87,7 @@ def add_categories_to_user(user_id: int, db: Session):
             transaction_type=transaction_type_value,  # Use string value instead of enum
             icon=icon,
             color=cat_data["color"],
+            budget_group=budget_group_value,
             is_system=True,
             is_active=True,
             is_favorite=cat_data.get("is_favorite", False)

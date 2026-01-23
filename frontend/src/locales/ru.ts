@@ -293,6 +293,7 @@ export const ru = {
       iconLabel: 'Иконка (эмодзи)',
       iconHint: 'Выберите эмодзи из списка',
       colorLabel: 'Цвет',
+      budgetGroupLabel: 'Группа бюджета',
       favoriteLabel: '⭐ Добавить в избранные (топ категории)',
       save: 'Сохранить',
       create: 'Создать',
@@ -304,6 +305,11 @@ export const ru = {
       deleteConfirm: 'Вы уверены, что хотите удалить эту категорию?',
       toggleAllConfirm: 'Статус избранного изменен для {count} категорий',
       noCategoriesToChange: 'Нет категорий для изменения',
+    },
+    budgetGroups: {
+      needs: 'Нужды',
+      wants: 'Желания',
+      savings: 'Сбережения',
     },
     // Переводы базовых категорий (русские названия остаются как есть)
     names: {

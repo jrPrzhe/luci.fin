@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field, field_validator
 from typing import Optional, Union
 from datetime import datetime
-from app.models.category import TransactionType
+from app.models.category import TransactionType, BudgetGroup
 
 
 class CategoryBase(BaseModel):
@@ -11,6 +11,7 @@ class CategoryBase(BaseModel):
     color: Optional[str] = Field(None, max_length=7, description="HEX color code")
     parent_id: Optional[int] = Field(None, description="Parent category ID for subcategories")
     budget_limit: Optional[float] = Field(None, description="Monthly budget limit")
+    budget_group: Optional[BudgetGroup] = Field(None, description="Budget group for 50/30/20")
     
     @field_validator('name', mode='before')
     @classmethod
@@ -38,6 +39,25 @@ class CategoryBase(BaseModel):
             return TransactionType(str(v).lower())
         except (ValueError, AttributeError):
             raise ValueError(f"Invalid transaction_type: {v}. Must be one of: income, expense, both")
+
+    @field_validator('budget_group', mode='before')
+    @classmethod
+    def validate_budget_group(cls, v):
+        """Validate budget group values"""
+        if v is None:
+            return None
+        if isinstance(v, BudgetGroup):
+            return v
+        if isinstance(v, str):
+            v_lower = v.lower()
+            try:
+                return BudgetGroup(v_lower)
+            except ValueError:
+                raise ValueError("Invalid budget_group. Must be one of: needs, wants, savings")
+        try:
+            return BudgetGroup(str(v).lower())
+        except (ValueError, AttributeError):
+            raise ValueError("Invalid budget_group. Must be one of: needs, wants, savings")
 
 
 class CategoryCreate(CategoryBase):
@@ -54,6 +74,7 @@ class CategoryUpdate(BaseModel):
     is_favorite: Optional[bool] = None
     is_active: Optional[bool] = None
     budget_limit: Optional[float] = None
+    budget_group: Optional[BudgetGroup] = None
     
     @field_validator('name', mode='before')
     @classmethod
@@ -85,6 +106,25 @@ class CategoryUpdate(BaseModel):
             return TransactionType(str(v).lower())
         except (ValueError, AttributeError):
             raise ValueError(f"Invalid transaction_type: {v}. Must be one of: income, expense, both")
+
+    @field_validator('budget_group', mode='before')
+    @classmethod
+    def validate_budget_group(cls, v):
+        """Validate budget group values"""
+        if v is None:
+            return None
+        if isinstance(v, BudgetGroup):
+            return v
+        if isinstance(v, str):
+            v_lower = v.lower()
+            try:
+                return BudgetGroup(v_lower)
+            except ValueError:
+                raise ValueError("Invalid budget_group. Must be one of: needs, wants, savings")
+        try:
+            return BudgetGroup(str(v).lower())
+        except (ValueError, AttributeError):
+            raise ValueError("Invalid budget_group. Must be one of: needs, wants, savings")
 
 
 class CategoryResponse(CategoryBase):

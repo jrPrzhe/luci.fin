@@ -160,6 +160,7 @@ class TransactionResponse(BaseModel):
     category_id: Optional[int] = None
     category_name: Optional[str] = None
     category_icon: Optional[str] = None
+    category_budget_group: Optional[str] = None
     description: Optional[str] = None
     shared_budget_id: Optional[int] = None
     goal_id: Optional[int] = None
@@ -219,7 +220,7 @@ async def get_transactions(
             t.category_id, t.description, t.shared_budget_id, t.goal_id,
             t.transaction_date, t.to_account_id, t.created_at, t.updated_at, t.user_id,
             a.shared_budget_id as account_shared_budget_id,
-            c.name as category_name, c.icon as category_icon,
+            c.name as category_name, c.icon as category_icon, c.budget_group as category_budget_group,
             g.name as goal_name
         FROM transactions t
         LEFT JOIN accounts a ON t.account_id = a.id
@@ -356,7 +357,8 @@ async def get_transactions(
                 "is_shared": row[14] is not None if row[14] is not None else False,
                 "category_name": row[15],
                 "category_icon": row[16],
-                "goal_name": row[17],
+                "category_budget_group": row[17],
+                "goal_name": row[18],
             }
             
             result.append(TransactionResponse(**trans_dict))
@@ -1492,12 +1494,14 @@ async def create_transaction(
     # Get category and goal names if needed
     category_name = None
     category_icon = None
+    category_budget_group = None
     if transaction.category_id:
-        cat_sql = "SELECT name, icon FROM categories WHERE id = :cat_id"
+        cat_sql = "SELECT name, icon, budget_group FROM categories WHERE id = :cat_id"
         cat_result = db.execute(sa_text(cat_sql), {"cat_id": transaction.category_id}).first()
         if cat_result:
             category_name = cat_result[0]
             category_icon = cat_result[1]
+            category_budget_group = cat_result[2]
     
     goal_name = None
     if transaction.goal_id:
@@ -1524,6 +1528,7 @@ async def create_transaction(
         "category_id": transaction.category_id,
         "category_name": category_name,
         "category_icon": category_icon,
+        "category_budget_group": category_budget_group,
         "description": transaction.description,
         "shared_budget_id": transaction.shared_budget_id,
         "goal_id": transaction.goal_id,

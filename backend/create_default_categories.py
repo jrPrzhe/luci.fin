@@ -75,6 +75,7 @@ def create_default_categories_for_user(user_id: int, db: Session):
             transaction_type=transaction_type_value,  # Use string value instead of enum
             icon=cat_data["icon"],
             color=cat_data["color"],
+            budget_group=cat_data.get("budget_group", "needs"),
             is_system=True,
             is_active=True,
             is_favorite=cat_data.get("is_favorite", False)
@@ -95,6 +96,7 @@ def create_default_categories_for_user(user_id: int, db: Session):
             transaction_type=transaction_type_value,  # Use string value instead of enum
             icon=cat_data["icon"],
             color=cat_data["color"],
+            budget_group=cat_data.get("budget_group"),
             is_system=True,
             is_active=True,
             is_favorite=cat_data.get("is_favorite", False)

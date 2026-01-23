@@ -4,12 +4,15 @@ import { useToast } from '../contexts/ToastContext'
 import { useI18n } from '../contexts/I18nContext'
 import { LoadingSpinner } from '../components/LoadingSpinner'
 
+type BudgetGroup = 'needs' | 'wants' | 'savings'
+
 interface Category {
   id: number
   name: string
   icon?: string
   color?: string
   transaction_type: 'income' | 'expense' | 'both'
+  budget_group?: BudgetGroup | null
   is_favorite: boolean
   is_system: boolean
   is_active: boolean
@@ -123,6 +126,7 @@ export function Categories() {
     transaction_type: 'expense' as 'income' | 'expense' | 'both',
     icon: '',
     color: '#4CAF50',
+    budget_group: 'needs' as BudgetGroup,
     is_favorite: false,
   })
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
@@ -174,17 +178,21 @@ export function Categories() {
       return
     }
 
+    const budgetGroupValue = formData.transaction_type === 'income' ? null : formData.budget_group
+
     try {
       if (editingCategory) {
         await api.updateCategory(editingCategory.id, {
           ...formData,
-          name: trimmedName
+          name: trimmedName,
+          budget_group: budgetGroupValue,
         })
         showSuccess(t.categories.form.updated)
       } else {
         await api.createCategory({
           ...formData,
-          name: trimmedName
+          name: trimmedName,
+          budget_group: budgetGroupValue,
         })
         showSuccess(t.categories.form.created)
       }
@@ -215,6 +223,7 @@ export function Categories() {
       transaction_type: category.transaction_type,
       icon: category.icon || '',
       color: validColor,
+      budget_group: category.budget_group || 'needs',
       is_favorite: category.is_favorite,
     })
   }
@@ -321,6 +330,7 @@ export function Categories() {
       transaction_type: 'expense',
       icon: '',
       color: '#4CAF50',
+      budget_group: 'needs',
       is_favorite: false,
     })
     setEditingCategory(null)
@@ -354,6 +364,33 @@ export function Categories() {
     }
   }
 
+  const getBudgetGroupMeta = (group?: BudgetGroup | null) => {
+    if (!group) return null
+    const labels = t.categories.budgetGroups
+    const colors: Record<BudgetGroup, string> = {
+      needs: '#3B82F6',
+      wants: '#EC4899',
+      savings: '#22C55E',
+    }
+    return {
+      label: labels[group],
+      color: colors[group],
+    }
+  }
+
+  const renderBudgetGroupDot = (group?: BudgetGroup | null) => {
+    const meta = getBudgetGroupMeta(group)
+    if (!meta) return null
+    return (
+      <span
+        className="inline-block w-2 h-2 rounded-full opacity-70"
+        style={{ backgroundColor: meta.color }}
+        title={meta.label}
+        aria-label={meta.label}
+      />
+    )
+  }
+
   // When showFavoritesOnly is true, categories are already filtered on server
   // So we just need to filter by transaction type if needed
   const filteredCategories = categories.filter(cat => {
@@ -371,6 +408,8 @@ export function Categories() {
   const regularCategories = showFavoritesOnly 
     ? []  // No regular categories when showing only favorites
     : filteredCategories.filter(cat => !cat.is_favorite)
+
+  const showBudgetGroupSelect = formData.transaction_type !== 'income'
 
   if (loading) {
     return <LoadingSpinner />
@@ -517,6 +556,23 @@ export function Categories() {
                 {formData.name.length}/25
               </div>
             </div>
+
+            {showBudgetGroupSelect && (
+              <div>
+                <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
+                  {t.categories.form.budgetGroupLabel}
+                </label>
+                <select
+                  value={formData.budget_group}
+                  onChange={(e) => setFormData({ ...formData, budget_group: e.target.value as BudgetGroup })}
+                  className="input text-sm"
+                >
+                  <option value="needs">{t.categories.budgetGroups.needs} (50%)</option>
+                  <option value="wants">{t.categories.budgetGroups.wants} (30%)</option>
+                  <option value="savings">{t.categories.budgetGroups.savings} (20%)</option>
+                </select>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
@@ -713,7 +769,10 @@ export function Categories() {
                           {/* Название категории */}
                           <div className="w-full text-center px-1">
                             <h4 className="font-semibold text-telegram-text dark:text-telegram-dark-text text-xs md:text-base lg:text-lg mb-0.5 text-center break-words leading-tight">
-                              {translateCategoryName(category.name)}
+                              <span className="inline-flex items-center gap-1.5">
+                                {renderBudgetGroupDot(category.budget_group)}
+                                <span>{translateCategoryName(category.name)}</span>
+                              </span>
                             </h4>
                             <p className="text-[10px] md:text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-1 leading-tight">
                               {getTransactionTypeIcon(category.transaction_type)} {getTransactionTypeLabel(category.transaction_type)}
@@ -817,7 +876,10 @@ export function Categories() {
                             {/* Название категории */}
                             <div className="w-full text-center px-1">
                               <h4 className="font-semibold text-telegram-text dark:text-telegram-dark-text text-xs md:text-base lg:text-lg mb-0.5 text-center break-words leading-tight">
-                                {translateCategoryName(category.name)}
+                                <span className="inline-flex items-center gap-1.5">
+                                  {renderBudgetGroupDot(category.budget_group)}
+                                  <span>{translateCategoryName(category.name)}</span>
+                                </span>
                               </h4>
                               <p className="text-[10px] md:text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-1 leading-tight">
                                 {getTransactionTypeIcon(category.transaction_type)} {getTransactionTypeLabel(category.transaction_type)}
@@ -899,6 +961,23 @@ export function Categories() {
                                   {formData.name.length}/25
                                 </div>
                               </div>
+
+                              {showBudgetGroupSelect && (
+                                <div>
+                                  <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
+                                    {t.categories.form.budgetGroupLabel}
+                                  </label>
+                                  <select
+                                    value={formData.budget_group}
+                                    onChange={(e) => setFormData({ ...formData, budget_group: e.target.value as BudgetGroup })}
+                                    className="input text-sm"
+                                  >
+                                    <option value="needs">{t.categories.budgetGroups.needs} (50%)</option>
+                                    <option value="wants">{t.categories.budgetGroups.wants} (30%)</option>
+                                    <option value="savings">{t.categories.budgetGroups.savings} (20%)</option>
+                                  </select>
+                                </div>
+                              )}
 
                               <div>
                                 <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
@@ -1082,6 +1161,23 @@ export function Categories() {
                     {formData.name.length}/25
                   </div>
                 </div>
+
+                {showBudgetGroupSelect && (
+                  <div>
+                    <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
+                      {t.categories.form.budgetGroupLabel}
+                    </label>
+                    <select
+                      value={formData.budget_group}
+                      onChange={(e) => setFormData({ ...formData, budget_group: e.target.value as BudgetGroup })}
+                      className="input text-sm"
+                    >
+                      <option value="needs">{t.categories.budgetGroups.needs} (50%)</option>
+                      <option value="wants">{t.categories.budgetGroups.wants} (30%)</option>
+                      <option value="savings">{t.categories.budgetGroups.savings} (20%)</option>
+                    </select>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">

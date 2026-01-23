@@ -7,6 +7,8 @@ import { useI18n } from '../contexts/I18nContext'
 import { LoadingSpinner } from '../components/LoadingSpinner'
 import { storageSync } from '../utils/storage'
 
+type BudgetGroup = 'needs' | 'wants' | 'savings'
+
 interface Transaction {
   id: number
   account_id: number
@@ -16,6 +18,7 @@ interface Transaction {
   category_id?: number
   category_name?: string
   category_icon?: string
+  category_budget_group?: BudgetGroup | null
   description?: string
   transaction_date: string
   to_account_id?: number
@@ -42,6 +45,7 @@ interface Category {
   icon?: string
   color?: string
   transaction_type: 'income' | 'expense' | 'both'
+  budget_group?: BudgetGroup | null
   is_favorite: boolean
 }
 
@@ -908,6 +912,33 @@ export function Transactions() {
     }
   }
 
+  const getBudgetGroupMeta = (group?: BudgetGroup | null) => {
+    if (!group) return null
+    const labels = t.categories.budgetGroups
+    const colors: Record<BudgetGroup, string> = {
+      needs: '#3B82F6',
+      wants: '#EC4899',
+      savings: '#22C55E',
+    }
+    return {
+      label: labels[group],
+      color: colors[group],
+    }
+  }
+
+  const renderBudgetGroupDot = (group?: BudgetGroup | null) => {
+    const meta = getBudgetGroupMeta(group)
+    if (!meta) return null
+    return (
+      <span
+        className="inline-block w-2 h-2 rounded-full opacity-70"
+        style={{ backgroundColor: meta.color }}
+        title={meta.label}
+        aria-label={meta.label}
+      />
+    )
+  }
+
   const getAccountName = (accountId: number) => {
     const account = accounts.find(a => a.id === accountId)
     return account ? account.name : `${t.transactions.accountPrefix}${accountId}`
@@ -1657,6 +1688,7 @@ export function Transactions() {
                     {transaction.category_name && (
                       <div className="flex items-center gap-1 min-w-0">
                         <span className="flex-shrink-0">{transaction.category_icon || '📦'}</span>
+                        {renderBudgetGroupDot(transaction.category_budget_group)}
                         <span className="truncate">{translateCategoryName(transaction.category_name)}</span>
                       </div>
                     )}

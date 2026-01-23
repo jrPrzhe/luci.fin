@@ -11,6 +11,12 @@ class TransactionType(str, enum.Enum):
     BOTH = "both"
 
 
+class BudgetGroup(str, enum.Enum):
+    NEEDS = "needs"
+    WANTS = "wants"
+    SAVINGS = "savings"
+
+
 class TransactionTypeEnum(TypeDecorator):
     """Custom type decorator to ensure enum values are used instead of names"""
     impl = String  # Use String as base type, not Enum, to have full control
@@ -109,6 +115,7 @@ class Category(Base):
     
     # Settings
     budget_limit = Column(Integer, nullable=True)  # Monthly limit in default currency
+    budget_group = Column(String(20), nullable=True)
     
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
