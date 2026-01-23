@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
@@ -256,6 +256,7 @@ export function Reports() {
   const [expandedCategoryType, setExpandedCategoryType] = useState<'income' | 'expense' | 'total' | null>(null)
   const [showScrollTop, setShowScrollTop] = useState(false)
   const locale = language === 'ru' ? 'ru-RU' : 'en-US'
+  const prevPeriodRef = useRef<typeof period>('month')
 
   // Handle scroll to show/hide scroll to top button
   useEffect(() => {
@@ -281,8 +282,9 @@ export function Reports() {
         queryFn: () => api.getAnalytics(period),
         staleTime: 60000,
       })
-      // Clear custom dates when switching to non-custom period
-      if (startDate || endDate) {
+      // Clear custom dates ONLY when switching away from custom period.
+      // Otherwise, picking a date while period is "month" would be immediately wiped.
+      if (prevPeriodRef.current === 'custom') {
         setStartDate('')
         setEndDate('')
       }
@@ -294,6 +296,8 @@ export function Reports() {
         staleTime: 60000,
       })
     }
+
+    prevPeriodRef.current = period
   }, [period, queryClient, startDate, endDate])
   
   // Function to translate Interesting Facts texts
