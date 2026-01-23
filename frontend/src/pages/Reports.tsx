@@ -753,7 +753,18 @@ export function Reports() {
               <input
                 type="date"
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                onChange={(e) => {
+                  const next = (e.currentTarget.value || '').slice(0, 10)
+                  setStartDate(next)
+                }}
+                onInput={(e) => {
+                  const next = ((e.currentTarget as HTMLInputElement).value || '').slice(0, 10)
+                  setStartDate(next)
+                }}
+                onBlur={(e) => {
+                  const next = (e.currentTarget.value || '').slice(0, 10)
+                  if (next !== startDate) setStartDate(next)
+                }}
                 className="input w-full"
                 max={endDate || undefined}
               />
@@ -765,7 +776,18 @@ export function Reports() {
               <input
                 type="date"
                 value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
+                onChange={(e) => {
+                  const next = (e.currentTarget.value || '').slice(0, 10)
+                  setEndDate(next)
+                }}
+                onInput={(e) => {
+                  const next = ((e.currentTarget as HTMLInputElement).value || '').slice(0, 10)
+                  setEndDate(next)
+                }}
+                onBlur={(e) => {
+                  const next = (e.currentTarget.value || '').slice(0, 10)
+                  if (next !== endDate) setEndDate(next)
+                }}
                 className="input w-full"
                 min={startDate || undefined}
                 max={new Date().toISOString().split('T')[0]}

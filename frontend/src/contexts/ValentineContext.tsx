@@ -15,8 +15,16 @@ const VALENTINE_THEME_KEY = 'valentineTheme'
 
 export function ValentineProvider({ children }: { children: ReactNode }) {
   const [isEnabled, setIsEnabled] = useState<boolean>(() => {
-    // Инициализация: используем значение по умолчанию (включен)
-    // Реальное значение будет загружено из профиля пользователя в useEffect
+    // Быстрое восстановление при старте: сначала берём из sync storage (localStorage/cache).
+    // Затем в useEffect уточняем из профиля/async storage.
+    try {
+      const saved = storageSync.getItem(VALENTINE_THEME_KEY)
+      if (saved !== null) {
+        return saved === 'true'
+      }
+    } catch (error) {
+      console.log('Could not load valentineTheme from storage on init:', error)
+    }
     return true
   })
   

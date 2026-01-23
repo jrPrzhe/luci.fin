@@ -34,10 +34,18 @@ export function Layout() {
   const mainRef = useRef<HTMLElement | null>(null)
   const isMiniApp = isTelegramWebApp()
   const isVK = isVKWebApp()
-  const { isEnabled: valentineEnabled } = useValentineTheme()
+  const { isEnabled: valentineEnabled, setIsEnabled: setValentineEnabled } = useValentineTheme()
   const { isEnabled: strangerThingsEnabled, setIsElevenMode } = useStrangerThingsTheme()
   const { theme, toggleTheme } = useTheme()
   const { t, language, setLanguage } = useI18n()
+
+  // Enforce mutual exclusivity: Valentine OR Stranger Things (dark theme is independent).
+  // If both became enabled (e.g., old saved state), prefer Stranger Things.
+  useEffect(() => {
+    if (valentineEnabled && strangerThingsEnabled) {
+      setValentineEnabled(false)
+    }
+  }, [valentineEnabled, strangerThingsEnabled, setValentineEnabled])
   
   // Пасхалка: 11 быстрых кликов на название "Люся.Бюджет" активирует режим Одиннадцать
   const [titleClickCount, setTitleClickCount] = useState(0)
@@ -1058,7 +1066,7 @@ export function Layout() {
 
   if (shouldShowShellLoading) {
     return (
-      <div className={`min-h-screen flex flex-col xl:flex-row bg-telegram-bg dark:bg-telegram-dark-bg ${valentineEnabled ? 'valentine-mode' : ''} ${strangerThingsEnabled ? 'theme-stranger-things' : ''}`}>
+      <div className={`min-h-screen flex flex-col xl:flex-row bg-telegram-bg dark:bg-telegram-dark-bg ${valentineEnabled && !strangerThingsEnabled ? 'valentine-mode' : ''} ${strangerThingsEnabled ? 'theme-stranger-things' : ''}`}>
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-telegram-primary dark:border-telegram-dark-primary mb-4"></div>
@@ -1070,7 +1078,7 @@ export function Layout() {
   }
 
   return (
-    <div className={`min-h-screen flex flex-col xl:flex-row bg-telegram-bg dark:bg-telegram-dark-bg ${valentineEnabled ? 'valentine-mode' : ''} ${strangerThingsEnabled ? 'theme-stranger-things' : ''}`}>
+    <div className={`min-h-screen flex flex-col xl:flex-row bg-telegram-bg dark:bg-telegram-dark-bg ${valentineEnabled && !strangerThingsEnabled ? 'valentine-mode' : ''} ${strangerThingsEnabled ? 'theme-stranger-things' : ''}`}>
       {/* Сердца для Дня святого Валентина */}
       {valentineEnabled && !strangerThingsEnabled && <HeartEffect />}
       

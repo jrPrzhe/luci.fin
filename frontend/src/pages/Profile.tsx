@@ -18,9 +18,27 @@ export function Profile() {
   const [initialCurrency, setInitialCurrency] = useState('RUB')
   const [showResetConfirm, setShowResetConfirm] = useState(false)
   const { theme, toggleTheme } = useTheme()
-  const { isEnabled: valentineEnabled, toggle: toggleValentine } = useValentineTheme()
-  const { isEnabled: strangerThingsEnabled, toggle: toggleStrangerThings } = useStrangerThingsTheme()
+  const { isEnabled: valentineEnabled, setIsEnabled: setValentineEnabled } = useValentineTheme()
+  const { isEnabled: strangerThingsEnabled, setIsEnabled: setStrangerThingsEnabled } = useStrangerThingsTheme()
   const { language, setLanguage, t } = useI18n()
+
+  // ВАЖНО: темы Valentine и Stranger Things — взаимоисключающие.
+  // Тёмная тема независима и может сочетаться с любой из них.
+  const handleToggleValentineExclusive = () => {
+    const next = !valentineEnabled
+    if (next) {
+      setStrangerThingsEnabled(false)
+    }
+    setValentineEnabled(next)
+  }
+
+  const handleToggleStrangerThingsExclusive = () => {
+    const next = !strangerThingsEnabled
+    if (next) {
+      setValentineEnabled(false)
+    }
+    setStrangerThingsEnabled(next)
+  }
 
   const { data: user, isLoading } = useQuery({
     queryKey: ['currentUser'],
@@ -247,7 +265,7 @@ export function Profile() {
             </div>
           </button>
           <button
-            onClick={toggleValentine}
+            onClick={handleToggleValentineExclusive}
             className="w-full flex items-center justify-between p-3 rounded-telegram hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors text-left"
           >
             <div className="flex items-center gap-3">
@@ -270,7 +288,7 @@ export function Profile() {
             </div>
           </button>
           <button
-            onClick={toggleStrangerThings}
+            onClick={handleToggleStrangerThingsExclusive}
             className="w-full flex items-center justify-between p-3 rounded-telegram hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors text-left"
           >
             <div className="flex items-center gap-3">
