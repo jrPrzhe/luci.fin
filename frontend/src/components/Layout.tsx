@@ -213,7 +213,7 @@ export function Layout() {
           label: 'Планирование',
           icon: '🎯',
           items: [
-            { path: '/biography', label: t.nav.biography || 'Биография', icon: '📝' },
+            { path: '/biography', label: t.nav.biography || 'План', icon: '🧠' },
             { path: '/quests', label: t.nav.quests || 'Задания', icon: '🎯' },
             { path: '/achievements', label: t.nav.achievements || 'Достижения', icon: '🏆' },
             { path: '/goals', label: t.nav.goals || 'Цели', icon: '🎯' },

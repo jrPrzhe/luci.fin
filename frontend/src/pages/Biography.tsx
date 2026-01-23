@@ -41,6 +41,7 @@ export function Biography() {
   const [isUpdatingLimits, setIsUpdatingLimits] = useState(false)
   const [showUpdateButton, setShowUpdateButton] = useState(false)
   const [showIncomeHistory, setShowIncomeHistory] = useState(false)
+  const incomeDetailsRef = useRef<HTMLDetailsElement | null>(null)
   const updatePollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const updateStartRef = useRef<number | null>(null)
 
@@ -133,6 +134,9 @@ export function Biography() {
 
   const handleEditIncome = () => {
     if (biography?.monthly_income) {
+      if (incomeDetailsRef.current) {
+        incomeDetailsRef.current.open = true
+      }
       setEditedIncome(Number(biography.monthly_income))
       setIsEditingIncome(true)
     }
@@ -299,6 +303,18 @@ export function Biography() {
     )
   }
 
+  const currency = biography.category_limits?.[0]?.currency || 'RUB'
+  const incomeValue = biography.monthly_income ? Math.round(Number(biography.monthly_income)) : 0
+  const incomeLabel = `${incomeValue.toLocaleString('ru-RU', { useGrouping: true, maximumFractionDigits: 0 })} ${currency}`
+
+  const getTextPreview = (value: string | null | undefined, maxLen = 140) => {
+    const raw = (value || '').trim()
+    if (!raw) return ''
+    const normalized = raw.replace(/\s+/g, ' ')
+    if (normalized.length <= maxLen) return normalized
+    return `${normalized.slice(0, maxLen - 1)}…`
+  }
+
   return (
     <div className="p-6">
       {showWizard && (
@@ -312,126 +328,189 @@ export function Biography() {
         {/* Заголовок */}
         <div>
           <h1 className="text-3xl font-bold text-telegram-text dark:text-telegram-dark-text mb-2">
-            Биография
+            Ваш план
           </h1>
           <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-            Ваш персональный финансовый план на основе анкетирования
+            Коротко и по делу: доход, приоритеты и лимиты на месяц
           </p>
         </div>
 
-        {/* Доходы */}
+        {/* Доход */}
         {biography.monthly_income && (
-          <div className="card p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-telegram-text dark:text-telegram-dark-text">
-                💰 Ваш доход
-              </h2>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setShowIncomeHistory(true)}
-                  className="text-sm text-telegram-primary dark:text-telegram-dark-primary hover:underline"
-                >
-                  История дохода
-                </button>
-                {!isEditingIncome && (
+          <details
+            ref={incomeDetailsRef}
+            className="group card p-0 overflow-hidden"
+          >
+            <summary className="cursor-pointer select-none p-5 [&::-webkit-details-marker]:hidden">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-base font-semibold text-telegram-text dark:text-telegram-dark-text">
+                    💰 Доход
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold bg-telegram-surface dark:bg-telegram-dark-surface border border-telegram-border dark:border-telegram-dark-border text-telegram-primary dark:text-telegram-dark-primary">
+                      {incomeLabel}
+                    </span>
+                    <span className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+                      в месяц
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
                   <button
-                    onClick={handleEditIncome}
-                    className="text-sm text-telegram-primary dark:text-telegram-dark-primary hover:underline"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setShowIncomeHistory(true)
+                    }}
+                    className="px-3 py-1 rounded-full text-xs font-semibold border border-telegram-border dark:border-telegram-dark-border bg-telegram-bg dark:bg-telegram-dark-bg text-telegram-text dark:text-telegram-dark-text hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover"
                   >
-                    Изменить
+                    📈 История
                   </button>
-                )}
-              </div>
-            </div>
-            {isEditingIncome ? (
-              <div className="space-y-3">
-                <input
-                  type="number"
-                  value={editedIncome || ''}
-                  onChange={(e) => setEditedIncome(parseFloat(e.target.value) || 0)}
-                  className="w-full px-4 py-3 border border-telegram-border dark:border-telegram-dark-border rounded-telegram bg-telegram-bg dark:bg-telegram-dark-bg text-telegram-text dark:text-telegram-dark-text text-lg"
-                  placeholder="Введите сумму"
-                  min="0"
-                  autoFocus
-                />
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleSaveIncome}
-                    className="btn-primary flex-1"
-                  >
-                    Сохранить
-                  </button>
-                  <button
-                    onClick={handleCancelEditIncome}
-                    className="btn-secondary flex-1"
-                  >
-                    Отмена
-                  </button>
+                  {!isEditingIncome && (
+                    <button
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        handleEditIncome()
+                      }}
+                      className="px-3 py-1 rounded-full text-xs font-semibold border border-telegram-border dark:border-telegram-dark-border bg-telegram-bg dark:bg-telegram-dark-bg text-telegram-text dark:text-telegram-dark-text hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover"
+                    >
+                      ✏️ Изменить
+                    </button>
+                  )}
+                  <span className="ml-1 text-telegram-textSecondary dark:text-telegram-dark-textSecondary transition-transform duration-200 group-open:rotate-180">
+                    ▾
+                  </span>
                 </div>
               </div>
-            ) : (
-              <>
-                <p className="text-2xl font-bold text-telegram-primary dark:text-telegram-dark-primary">
-                  {Math.round(Number(biography.monthly_income)).toLocaleString('ru-RU', { useGrouping: true, maximumFractionDigits: 0 })} {biography.category_limits[0]?.currency || 'RUB'}
-                </p>
-                <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-2">
-                  в месяц
-                </p>
-                {showUpdateButton && (
-                  <div className="mt-4 pt-4 border-t border-telegram-border dark:border-telegram-dark-border">
+            </summary>
+
+            <div className="px-5 pb-5 pt-1 border-t border-telegram-border dark:border-telegram-dark-border">
+              {isEditingIncome ? (
+                <div className="space-y-3">
+                  <input
+                    type="number"
+                    value={editedIncome || ''}
+                    onChange={(e) => setEditedIncome(parseFloat(e.target.value) || 0)}
+                    className="w-full px-4 py-3 border border-telegram-border dark:border-telegram-dark-border rounded-telegram bg-telegram-bg dark:bg-telegram-dark-bg text-telegram-text dark:text-telegram-dark-text text-lg"
+                    placeholder="Введите сумму"
+                    min="0"
+                    autoFocus
+                  />
+                  <div className="flex gap-2">
                     <button
-                      onClick={handleUpdateCategoryLimits}
-                      disabled={isUpdatingLimits}
-                      className="w-full btn-primary flex items-center justify-center gap-2"
+                      onClick={handleSaveIncome}
+                      className="btn-primary flex-1"
                     >
-                      {isUpdatingLimits ? (
-                        <>
-                          <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                          Обновление...
-                        </>
-                      ) : (
-                        <>
-                          🔄 Обновить лимиты категорий
-                        </>
-                      )}
+                      Сохранить
                     </button>
-                    <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-2 text-center">
-                      Стоимость: 1 ❤️ сердце Люси
-                    </p>
-                    {gamificationStatus?.profile && (
-                      <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1 text-center">
-                        У вас: {gamificationStatus.profile.heart_level} ❤️
-                      </p>
+                    <button
+                      onClick={handleCancelEditIncome}
+                      className="btn-secondary flex-1"
+                    >
+                      Отмена
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-end justify-between gap-3">
+                    <div>
+                      <div className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+                        Текущий доход
+                      </div>
+                      <div className="text-xl font-bold text-telegram-text dark:text-telegram-dark-text">
+                        {incomeLabel}
+                      </div>
+                    </div>
+                    {showUpdateButton && (
+                      <div className="text-right">
+                        <div className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+                          Стоимость: 1 ❤️
+                          {gamificationStatus?.profile ? ` · У вас: ${gamificationStatus.profile.heart_level} ❤️` : ''}
+                        </div>
+                      </div>
                     )}
                   </div>
-                )}
-              </>
-            )}
-          </div>
+
+                  {showUpdateButton && (
+                    <div className="mt-4">
+                      <button
+                        onClick={handleUpdateCategoryLimits}
+                        disabled={isUpdatingLimits}
+                        className="w-full btn-primary flex items-center justify-center gap-2"
+                      >
+                        {isUpdatingLimits ? (
+                          <>
+                            <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            Обновление...
+                          </>
+                        ) : (
+                          <>🔄 Обновить лимиты категорий</>
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </details>
         )}
 
-        {/* Проблемы и цели */}
+        {/* Проблемы и цель (коротко → раскрыть) */}
         {(biography.problems || biography.goal) && (
           <div className="grid md:grid-cols-2 gap-6">
             {biography.problems && (
-              <div className="card p-6">
-                <h2 className="text-xl font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
-                  ⚠️ Ваши проблемы
-                </h2>
-                <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary whitespace-pre-wrap">
-                  {biography.problems}
-                </p>
-              </div>
+              <details className="group card p-0 overflow-hidden">
+                <summary className="cursor-pointer select-none p-5 [&::-webkit-details-marker]:hidden">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-base font-semibold text-telegram-text dark:text-telegram-dark-text">
+                        ⚠️ Проблемы
+                      </div>
+                      <div className="mt-1 text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+                        {getTextPreview(biography.problems, 160)}
+                      </div>
+                    </div>
+                    <span className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary transition-transform duration-200 group-open:rotate-180">
+                      ▾
+                    </span>
+                  </div>
+                </summary>
+                <div className="px-5 pb-5 pt-1 border-t border-telegram-border dark:border-telegram-dark-border">
+                  <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary whitespace-pre-wrap">
+                    {biography.problems}
+                  </p>
+                </div>
+              </details>
             )}
             {biography.goal && (
-              <div className="card p-6">
-                <h2 className="text-xl font-semibold text-telegram-text dark:text-telegram-dark-text mb-4">
-                  🎯 Ваша цель
-                </h2>
-                <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary whitespace-pre-wrap">
-                  {biography.goal}
-                </p>
-              </div>
+              <details className="group card p-0 overflow-hidden">
+                <summary className="cursor-pointer select-none p-5 [&::-webkit-details-marker]:hidden">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-base font-semibold text-telegram-text dark:text-telegram-dark-text">
+                        🎯 Цель
+                      </div>
+                      <div className="mt-1 text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+                        {getTextPreview(biography.goal, 160)}
+                      </div>
+                    </div>
+                    <span className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary transition-transform duration-200 group-open:rotate-180">
+                      ▾
+                    </span>
+                  </div>
+                </summary>
+                <div className="px-5 pb-5 pt-1 border-t border-telegram-border dark:border-telegram-dark-border">
+                  <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary whitespace-pre-wrap">
+                    {biography.goal}
+                  </p>
+                </div>
+              </details>
             )}
           </div>
         )}
