@@ -924,14 +924,17 @@ export function Categories() {
                                   if (!category.is_system) {
                                     handleEdit(category)
                                   }
+                                  if (category.is_system) {
+                                    showError('Нельзя редактировать: системная категория')
+                                  }
                                 }}
-                                disabled={category.is_system}
                                 className={`p-1.5 rounded-full transition-all active:scale-95 ${
                                   category.is_system
                                     ? 'text-telegram-textSecondary dark:text-telegram-dark-textSecondary opacity-50 cursor-not-allowed'
                                     : 'text-telegram-primary hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover'
                                 }`}
                                 aria-label={category.is_system ? 'Нельзя редактировать: системная категория' : 'Редактировать'}
+                                aria-disabled={category.is_system}
                               >
                                 <span className="text-base">✏️</span>
                               </button>
@@ -1096,9 +1099,11 @@ export function Categories() {
                   </div>
                 </div>
                 <div className="rounded-telegram border border-telegram-border dark:border-telegram-dark-border p-3">
-                  <div className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary">Статус</div>
+                  <div className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary">Бюджетная группа</div>
                   <div className="mt-1 text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
-                    {selectedCategory.is_active ? 'Активна' : 'Отключена'}
+                    {selectedCategory.transaction_type === 'income' || !selectedCategory.budget_group
+                      ? '—'
+                      : `${t.categories.budgetGroups[selectedCategory.budget_group]} (${getBudgetGroupPercent(selectedCategory.budget_group)})`}
                   </div>
                 </div>
               </div>
@@ -1110,9 +1115,11 @@ export function Categories() {
                 >
                   <button
                     type="button"
-                    disabled={selectedCategory.is_system}
                     onClick={() => {
-                      if (selectedCategory.is_system) return
+                      if (selectedCategory.is_system) {
+                        showError('Нельзя редактировать: системная категория')
+                        return
+                      }
                       closeCategoryDetails()
                       handleEdit(selectedCategory)
                     }}
@@ -1122,6 +1129,7 @@ export function Categories() {
                         : 'bg-telegram-primary text-white hover:bg-telegram-primaryHover'
                     }`}
                     aria-label={selectedCategory.is_system ? 'Нельзя редактировать: системная категория' : t.common.edit}
+                    aria-disabled={selectedCategory.is_system}
                   >
                     ✏️ {t.common.edit}
                   </button>

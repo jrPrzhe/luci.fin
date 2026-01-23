@@ -1,5 +1,5 @@
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom'
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { isTelegramWebApp } from '../utils/telegram'
 import { isVKWebApp } from '../utils/vk'
@@ -30,6 +30,8 @@ export function Layout() {
   const [showOnboardingWizard, setShowOnboardingWizard] = useState(false)
   const [isAppReady, setIsAppReady] = useState(false)
   const [telegramLoadingComplete, setTelegramLoadingComplete] = useState(false)
+  const [showScrollTop, setShowScrollTop] = useState(false)
+  const mainRef = useRef<HTMLElement | null>(null)
   const isMiniApp = isTelegramWebApp()
   const isVK = isVKWebApp()
   const { isEnabled: valentineEnabled } = useValentineTheme()
@@ -150,6 +152,36 @@ export function Layout() {
       setExpandedGroups(newExpanded)
     }
   }, [location, getExpandedGroupsForPath])
+
+  // Floating "scroll to top" button (especially useful in Telegram Mini App)
+  useEffect(() => {
+    const handleScroll = () => {
+      const el = mainRef.current
+      const y = el ? el.scrollTop : window.scrollY
+      setShowScrollTop(y > 300)
+    }
+
+    const el = mainRef.current
+    // Listen to both, since some layouts scroll inside <main>
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    el?.addEventListener('scroll', handleScroll, { passive: true } as any)
+    handleScroll()
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll as any)
+      el?.removeEventListener('scroll', handleScroll as any)
+    }
+  }, [location.pathname])
+
+  const scrollToTop = () => {
+    const el = mainRef.current
+    try {
+      el?.scrollTo({ top: 0, behavior: 'smooth' })
+    } catch {
+      if (el) el.scrollTop = 0
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   // Мемоизируем navGroups, чтобы избежать пересоздания при каждом рендере
   // Используем стабильные зависимости - только примитивные значения
@@ -1580,11 +1612,24 @@ export function Layout() {
       )}
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto pb-16 xl:pb-0 w-full">
+      <main ref={mainRef} className="flex-1 overflow-auto pb-16 xl:pb-0 w-full">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 lg:py-6 w-full">
           <Outlet />
         </div>
       </main>
+
+      {/* Scroll to top (does not block bottom nav) */}
+      {showScrollTop && (
+        <button
+          onClick={scrollToTop}
+          className="fixed right-4 z-50 w-12 h-12 rounded-full bg-telegram-primary hover:bg-telegram-primaryHover text-white shadow-telegram-lg flex items-center justify-center transition-transform active:scale-95"
+          style={{ bottom: 'calc(env(safe-area-inset-bottom) + 88px)' }}
+          aria-label="Наверх"
+          title="Наверх"
+        >
+          <span className="text-xl">↑</span>
+        </button>
+      )}
 
       {/* Mobile Bottom Navigation - только в Mini App на мобильных */}
       {isMiniApp && (
