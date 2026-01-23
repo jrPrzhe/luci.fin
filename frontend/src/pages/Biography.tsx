@@ -342,18 +342,9 @@ export function Biography() {
 
       <div className="space-y-6">
         {/* Заголовок */}
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <h1 className="text-3xl font-bold text-telegram-text dark:text-telegram-dark-text mb-2">
-              Ваш план
-            </h1>
-            <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-              Коротко и по делу: доход, приоритеты и лимиты на месяц
-            </p>
-          </div>
-
+        <div className="space-y-3">
           {(biography.problems || biography.goal) && (
-            <div className="shrink-0 flex flex-wrap items-center justify-end gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
               {biography.problems && (
                 <button
                   onClick={() => openAndScroll(problemsDetailsRef)}
@@ -380,6 +371,15 @@ export function Biography() {
               )}
             </div>
           )}
+
+          <div>
+            <h1 className="text-3xl font-bold text-telegram-text dark:text-telegram-dark-text mb-2">
+              Ваш план
+            </h1>
+            <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+              Коротко и по делу: доход, приоритеты и лимиты на месяц
+            </p>
+          </div>
         </div>
 
         {/* Доход */}

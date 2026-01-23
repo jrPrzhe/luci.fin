@@ -101,6 +101,7 @@ export function Categories() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
   const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all')
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
   const [isTogglingAll, setIsTogglingAll] = useState(false)
@@ -338,6 +339,14 @@ export function Categories() {
     setShowEmojiPicker(false)
   }
 
+  const openCategoryDetails = (category: Category) => {
+    setSelectedCategory(category)
+  }
+
+  const closeCategoryDetails = () => {
+    setSelectedCategory(null)
+  }
+
   const getTransactionTypeLabel = (type: string) => {
     switch (type) {
       case 'income':
@@ -376,6 +385,16 @@ export function Categories() {
       label: labels[group],
       color: colors[group],
     }
+  }
+
+  const getBudgetGroupPercent = (group?: BudgetGroup | null) => {
+    if (!group) return null
+    const percents: Record<BudgetGroup, string> = {
+      needs: '50%',
+      wants: '30%',
+      savings: '20%',
+    }
+    return percents[group]
   }
 
   const renderBudgetGroupDot = (group?: BudgetGroup | null) => {
@@ -418,7 +437,12 @@ export function Categories() {
   return (
     <div className="p-4 md:p-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-telegram-text dark:text-telegram-dark-text">{t.categories.title}</h1>
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-telegram-text dark:text-telegram-dark-text">{t.categories.title}</h1>
+          <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
+            Нажмите на категорию, чтобы открыть карточку и редактировать
+          </p>
+        </div>
         <div className="flex gap-2">
           <button
             onClick={() => setIsEditingMode(!isEditingMode)}
@@ -428,7 +452,15 @@ export function Categories() {
                 : 'bg-telegram-surface dark:bg-telegram-dark-surface text-telegram-text dark:text-telegram-dark-text hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover'
             }`}
           >
-            {isEditingMode ? `✓ ${t.categories.filters.editing}` : '✏️'}
+            {isEditingMode ? (
+              <>
+                ✓ <span className="hidden md:inline">{t.categories.filters.editing}</span>
+              </>
+            ) : (
+              <>
+                ✏️ <span className="hidden md:inline">{t.categories.filters.editing}</span>
+              </>
+            )}
           </button>
           {isEditingMode && (
             <button
@@ -741,15 +773,27 @@ export function Categories() {
                     <div key={`category-wrapper-${category.id}`}>
                       <div
                         id={`category-${category.id}`}
-                        className="card hover:shadow-lg transition-all relative group p-1.5 md:p-4"
+                        className="card hover:shadow-lg transition-all relative group p-1.5 md:p-4 cursor-pointer active:scale-[0.99]"
                         style={{
                           borderLeft: `3px solid ${category.color || '#4CAF50'}`,
+                        }}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => openCategoryDetails(category)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            openCategoryDetails(category)
+                          }
                         }}
                       >
                         {/* Кнопка редактирования в правом верхнем углу - только для несистемных категорий */}
                         {isEditingMode && !category.is_system && (
                           <button
-                            onClick={() => handleEdit(category)}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleEdit(category)
+                            }}
                             className="absolute top-2 right-2 p-1.5 text-telegram-primary hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover rounded-full transition-all active:scale-95"
                             title={t.common.edit}
                           >
@@ -797,7 +841,10 @@ export function Categories() {
                           {isEditingMode && (
                             <div className="flex items-center justify-center gap-2 w-full pt-2 border-t border-telegram-hover dark:border-telegram-dark-hover mt-auto">
                               <button
-                                onClick={() => handleToggleFavorite(category.id, category.is_favorite)}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleToggleFavorite(category.id, category.is_favorite)
+                                }}
                                 className="p-2 text-yellow-500 hover:text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/30 rounded-full transition-all active:scale-95"
                                 title="Убрать из избранного"
                               >
@@ -805,7 +852,10 @@ export function Categories() {
                               </button>
                               {!category.is_system && (
                                 <button
-                                  onClick={() => handleDelete(category.id)}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleDelete(category.id)
+                                  }}
                                   className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-all active:scale-95"
                                   title="Удалить"
                                 >
@@ -848,20 +898,44 @@ export function Categories() {
                       <div key={`category-wrapper-${category.id}`}>
                         <div
                           id={`category-${category.id}`}
-                          className="card hover:shadow-lg transition-all relative group p-1.5 md:p-4"
+                          className="card hover:shadow-lg transition-all relative group p-1.5 md:p-4 cursor-pointer active:scale-[0.99]"
                           style={{
                             borderLeft: `3px solid ${category.color || '#4CAF50'}`,
+                          }}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => openCategoryDetails(category)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault()
+                              openCategoryDetails(category)
+                            }
                           }}
                         >
                           {/* Кнопка редактирования в правом верхнем углу */}
                           {isEditingMode && (
-                            <button
-                              onClick={() => handleEdit(category)}
-                              className="absolute top-2 right-2 p-1.5 text-telegram-primary hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover rounded-full transition-all active:scale-95"
-                              title="Редактировать"
+                            <span
+                              className="absolute top-2 right-2"
+                              title={category.is_system ? 'Нельзя редактировать: системная категория' : 'Редактировать'}
                             >
-                              <span className="text-base">✏️</span>
-                            </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  if (!category.is_system) {
+                                    handleEdit(category)
+                                  }
+                                }}
+                                disabled={category.is_system}
+                                className={`p-1.5 rounded-full transition-all active:scale-95 ${
+                                  category.is_system
+                                    ? 'text-telegram-textSecondary dark:text-telegram-dark-textSecondary opacity-50 cursor-not-allowed'
+                                    : 'text-telegram-primary hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover'
+                                }`}
+                                aria-label={category.is_system ? 'Нельзя редактировать: системная категория' : 'Редактировать'}
+                              >
+                                <span className="text-base">✏️</span>
+                              </button>
+                            </span>
                           )}
                           
                           <div className="flex flex-col items-center gap-1.5 md:gap-2.5">
@@ -904,7 +978,10 @@ export function Categories() {
                             {isEditingMode && (
                               <div className="flex items-center justify-center gap-2 w-full pt-2 border-t border-telegram-hover dark:border-telegram-dark-hover mt-auto">
                                 <button
-                                  onClick={() => handleToggleFavorite(category.id, category.is_favorite)}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleToggleFavorite(category.id, category.is_favorite)
+                                  }}
                                   className="p-2 text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-yellow-500 dark:hover:text-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-900/30 rounded-full transition-all active:scale-95"
                                   title="Добавить в избранное"
                                 >
@@ -912,7 +989,10 @@ export function Categories() {
                                 </button>
                                 {!category.is_system && (
                                   <button
-                                    onClick={() => handleDelete(category.id)}
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleDelete(category.id)
+                                    }}
                                     className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-all active:scale-95"
                                     title="Удалить"
                                   >
@@ -923,177 +1003,6 @@ export function Categories() {
                             )}
                           </div>
                         </div>
-                        
-                        {/* Форма редактирования показывается сразу под редактируемой категорией */}
-                        {editingCategory && editingCategory.id === category.id && (
-                          <div id={`edit-form-${category.id}`} className="card mb-3 mt-3">
-                            <div className="flex justify-between items-center mb-4">
-                              <h2 className="text-xl font-semibold text-telegram-text dark:text-telegram-dark-text">
-                                {t.categories.filters.editCategory}
-                              </h2>
-                              <button
-                                onClick={resetForm}
-                                className="text-telegram-textSecondary hover:text-telegram-text"
-                              >
-                                ✕
-                              </button>
-                            </div>
-
-                            <form onSubmit={handleSubmit} className="space-y-4">
-                              <div>
-                                <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                                  {t.categories.form.nameLabel} <span className="text-red-500 dark:text-red-400">*</span>
-                                </label>
-                                <input
-                                  type="text"
-                                  value={formData.name}
-                                  onChange={(e) => {
-                                    const value = e.target.value
-                                    const trimmedValue = value.slice(0, 25)
-                                    setFormData({ ...formData, name: trimmedValue })
-                                  }}
-                                  className="input"
-                                  placeholder={t.categories.form.namePlaceholder}
-                                  maxLength={25}
-                                  required
-                                />
-                                <div className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1 text-right">
-                                  {formData.name.length}/25
-                                </div>
-                              </div>
-
-                              {showBudgetGroupSelect && (
-                                <div>
-                                  <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                                    {t.categories.form.budgetGroupLabel}
-                                  </label>
-                                  <select
-                                    value={formData.budget_group}
-                                    onChange={(e) => setFormData({ ...formData, budget_group: e.target.value as BudgetGroup })}
-                                    className="input text-sm"
-                                  >
-                                    <option value="needs">{t.categories.budgetGroups.needs} (50%)</option>
-                                    <option value="wants">{t.categories.budgetGroups.wants} (30%)</option>
-                                    <option value="savings">{t.categories.budgetGroups.savings} (20%)</option>
-                                  </select>
-                                </div>
-                              )}
-
-                              <div>
-                                <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                                  {t.categories.form.typeLabel} <span className="text-red-500 dark:text-red-400">*</span>
-                                </label>
-                                <select
-                                  value={formData.transaction_type}
-                                  onChange={(e) => setFormData({ ...formData, transaction_type: e.target.value as any })}
-                                  className="input"
-                                  required
-                                >
-                                  <option value="expense">💸 {t.categories.filters.transactionType.expense}</option>
-                                  <option value="income">💰 {t.categories.filters.transactionType.income}</option>
-                                  <option value="both">💵 {t.categories.filters.transactionType.both}</option>
-                                </select>
-                              </div>
-
-                              <div>
-                                <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                                  {t.categories.form.iconLabel}
-                                </label>
-                                <div className="relative emoji-picker-container">
-                                  <button
-                                    type="button"
-                                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                                    className="w-full input flex items-center justify-between cursor-pointer hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors"
-                                  >
-                                    <span className="text-2xl">{formData.icon || '📦'}</span>
-                                    <span className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-                                      {showEmojiPicker ? '▼' : '▶'}
-                                    </span>
-                                  </button>
-                                  {showEmojiPicker && (
-                                    <div className="absolute z-50 mt-2 w-full bg-telegram-surface dark:bg-telegram-dark-surface border border-telegram-border dark:border-telegram-dark-border rounded-telegram shadow-lg max-h-64 overflow-y-auto">
-                                      <div className="p-2 sm:p-3 grid grid-cols-6 sm:grid-cols-8 gap-1 sm:gap-2">
-                                        {AVAILABLE_EMOJIS.map((emoji, index) => (
-                                          <button
-                                            key={index}
-                                            type="button"
-                                            onClick={() => {
-                                              setFormData({ ...formData, icon: emoji })
-                                              setShowEmojiPicker(false)
-                                            }}
-                                            className="text-xl sm:text-2xl p-1.5 sm:p-2 hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover rounded-telegram transition-colors active:scale-95"
-                                            title={emoji}
-                                          >
-                                            {emoji}
-                                          </button>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                                <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mt-1">
-                                  {t.categories.form.iconHint}
-                                </p>
-                              </div>
-
-                              <div>
-                                <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
-                                  {t.categories.form.colorLabel}
-                                </label>
-                                <div className="grid grid-cols-8 gap-2">
-                                  {AVAILABLE_COLORS.map((color) => (
-                                    <button
-                                      key={color}
-                                      type="button"
-                                      onClick={() => {
-                                        setFormData({ ...formData, color: color })
-                                      }}
-                                      className={`w-full h-10 rounded-telegram transition-all relative ${
-                                        formData.color === color
-                                          ? 'ring-2 ring-telegram-primary ring-offset-2 scale-110'
-                                          : 'hover:scale-105'
-                                      }`}
-                                      style={{ backgroundColor: color }}
-                                      title={color}
-                                    >
-                                      {formData.color === color && (
-                                        <span className="absolute inset-0 flex items-center justify-center text-white text-sm font-bold drop-shadow-lg">
-                                          ✓
-                                        </span>
-                                      )}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-
-                              <div className="flex items-center gap-2">
-                                <input
-                                  type="checkbox"
-                                  id={`is_favorite_${category.id}`}
-                                  checked={formData.is_favorite}
-                                  onChange={(e) => setFormData({ ...formData, is_favorite: e.target.checked })}
-                                  className="w-4 h-4 rounded"
-                                />
-                                <label htmlFor={`is_favorite_${category.id}`} className="text-sm text-telegram-text dark:text-telegram-dark-text">
-                                  {t.categories.form.favoriteLabel}
-                                </label>
-                              </div>
-
-                              <div className="flex gap-3">
-                                <button type="submit" className="btn-primary flex-1">
-                                  {t.categories.form.save}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={resetForm}
-                                  className="btn-secondary"
-                                >
-                                  {t.categories.form.cancel}
-                                </button>
-                              </div>
-                            </form>
-                          </div>
-                        )}
                       </div>
                     ))}
                   </div>
@@ -1107,6 +1016,126 @@ export function Categories() {
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Category Details Modal */}
+      {selectedCategory && (
+        <div
+          className="fixed inset-0 bg-black/50 dark:bg-black/70 z-50 flex items-center justify-center p-4"
+          onClick={closeCategoryDetails}
+        >
+          <div
+            className="bg-telegram-surface dark:bg-telegram-dark-surface rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto border border-telegram-border dark:border-telegram-dark-border"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-5 border-b border-telegram-border dark:border-telegram-dark-border">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="w-12 h-12 rounded-full flex items-center justify-center text-2xl shrink-0"
+                    style={{ backgroundColor: `${selectedCategory.color || '#4CAF50'}20` }}
+                  >
+                    {selectedCategory.icon || '📦'}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-lg font-semibold text-telegram-text dark:text-telegram-dark-text break-words">
+                      {translateCategoryName(selectedCategory.name)}
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+                      <span className="inline-flex items-center gap-1">
+                        {getTransactionTypeIcon(selectedCategory.transaction_type)} {getTransactionTypeLabel(selectedCategory.transaction_type)}
+                      </span>
+                      {selectedCategory.transaction_type !== 'income' && selectedCategory.budget_group && (
+                        <span className="inline-flex items-center gap-1">
+                          {renderBudgetGroupDot(selectedCategory.budget_group)}
+                          {t.categories.budgetGroups[selectedCategory.budget_group]} · {getBudgetGroupPercent(selectedCategory.budget_group)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={closeCategoryDetails}
+                  className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary hover:text-telegram-text dark:hover:text-telegram-dark-text transition-colors"
+                  aria-label={t.common.close}
+                  title={t.common.close}
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {(selectedCategory.is_system || selectedCategory.shared_budget_id) && (
+                <div className="mt-3 flex items-center gap-2">
+                  {selectedCategory.is_system && (
+                    <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-telegram-border dark:border-telegram-dark-border text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+                      📋 Системная
+                    </span>
+                  )}
+                  {selectedCategory.shared_budget_id && (
+                    <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-telegram-border dark:border-telegram-dark-border text-blue-600 dark:text-blue-400">
+                      👥 Общая
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="p-5 space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-telegram border border-telegram-border dark:border-telegram-dark-border p-3">
+                  <div className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary">Цвет</div>
+                  <div className="mt-1 flex items-center gap-2">
+                    <span className="inline-block w-4 h-4 rounded-full" style={{ backgroundColor: selectedCategory.color || '#4CAF50' }} />
+                    <span className="text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
+                      {selectedCategory.color || '#4CAF50'}
+                    </span>
+                  </div>
+                </div>
+                <div className="rounded-telegram border border-telegram-border dark:border-telegram-dark-border p-3">
+                  <div className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary">Статус</div>
+                  <div className="mt-1 text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
+                    {selectedCategory.is_active ? 'Активна' : 'Отключена'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between gap-3 pt-2">
+                <span
+                  className="flex-1"
+                  title={selectedCategory.is_system ? 'Нельзя редактировать: системная категория' : t.common.edit}
+                >
+                  <button
+                    type="button"
+                    disabled={selectedCategory.is_system}
+                    onClick={() => {
+                      if (selectedCategory.is_system) return
+                      closeCategoryDetails()
+                      handleEdit(selectedCategory)
+                    }}
+                    className={`w-full px-4 py-3 rounded-telegram font-semibold transition-all ${
+                      selectedCategory.is_system
+                        ? 'bg-telegram-hover dark:bg-telegram-dark-hover text-telegram-textSecondary dark:text-telegram-dark-textSecondary cursor-not-allowed'
+                        : 'bg-telegram-primary text-white hover:bg-telegram-primaryHover'
+                    }`}
+                    aria-label={selectedCategory.is_system ? 'Нельзя редактировать: системная категория' : t.common.edit}
+                  >
+                    ✏️ {t.common.edit}
+                  </button>
+                </span>
+                <button
+                  type="button"
+                  onClick={closeCategoryDetails}
+                  className="px-4 py-3 rounded-telegram border border-telegram-border dark:border-telegram-dark-border bg-telegram-bg dark:bg-telegram-dark-bg text-telegram-text dark:text-telegram-dark-text font-semibold hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover"
+                >
+                  {t.common.close}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
