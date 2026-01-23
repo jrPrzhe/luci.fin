@@ -768,12 +768,12 @@ export function Categories() {
                 )}
               </h3>
               {(showFavoritesSection || showFavoritesOnly) && (
-                <div className="grid grid-cols-4 md:grid-cols-3 gap-1.5 md:gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
                   {favoriteCategories.map((category) => (
                     <div key={`category-wrapper-${category.id}`}>
                       <div
                         id={`category-${category.id}`}
-                        className="card hover:shadow-lg transition-all relative group p-1.5 md:p-4 cursor-pointer active:scale-[0.99]"
+                        className="card hover:shadow-lg transition-all relative group p-2 sm:p-3 md:p-4 cursor-pointer active:scale-[0.99]"
                         style={{
                           borderLeft: `3px solid ${category.color || '#4CAF50'}`,
                         }}
@@ -801,10 +801,10 @@ export function Categories() {
                           </button>
                         )}
                         
-                        <div className="flex flex-col items-center gap-1.5 md:gap-2.5">
+                        <div className="flex flex-col items-center gap-2">
                           {/* Иконка категории */}
                           <div
-                            className="w-8 h-8 md:w-12 md:h-12 lg:w-14 lg:h-14 rounded-full flex items-center justify-center text-lg md:text-2xl lg:text-3xl flex-shrink-0"
+                            className="w-11 h-11 sm:w-12 sm:h-12 md:w-12 md:h-12 rounded-full flex items-center justify-center text-2xl md:text-2xl flex-shrink-0"
                             style={{ backgroundColor: `${category.color || '#4CAF50'}20` }}
                           >
                             {category.icon || '📦'}
@@ -812,13 +812,13 @@ export function Categories() {
                           
                           {/* Название категории */}
                           <div className="w-full text-center px-1">
-                            <h4 className="font-semibold text-telegram-text dark:text-telegram-dark-text text-xs md:text-base lg:text-lg mb-0.5 text-center break-words leading-tight">
-                              <span className="inline-flex items-center gap-1.5">
+                            <h4 className="font-semibold text-telegram-text dark:text-telegram-dark-text text-sm md:text-base mb-0.5 text-center leading-tight min-h-[2.5rem] flex items-start justify-center">
+                              <span className="inline-flex items-start gap-1.5 clamp-2">
                                 {renderBudgetGroupDot(category.budget_group)}
                                 <span>{translateCategoryName(category.name)}</span>
                               </span>
                             </h4>
-                            <p className="text-[10px] md:text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-1 leading-tight">
+                            <p className="hidden sm:block text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-1 leading-tight">
                               {getTransactionTypeIcon(category.transaction_type)} {getTransactionTypeLabel(category.transaction_type)}
                             </p>
                             {(category.is_system || category.shared_budget_id) && (
@@ -893,12 +893,12 @@ export function Categories() {
               )}
               {showAllCategoriesSection && (
                 regularCategories.length > 0 ? (
-                  <div className="grid grid-cols-4 md:grid-cols-3 gap-1.5 md:gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
                     {regularCategories.map((category) => (
                       <div key={`category-wrapper-${category.id}`}>
                         <div
                           id={`category-${category.id}`}
-                          className="card hover:shadow-lg transition-all relative group p-1.5 md:p-4 cursor-pointer active:scale-[0.99]"
+                          className="card hover:shadow-lg transition-all relative group p-2 sm:p-3 md:p-4 cursor-pointer active:scale-[0.99]"
                           style={{
                             borderLeft: `3px solid ${category.color || '#4CAF50'}`,
                           }}
@@ -941,10 +941,10 @@ export function Categories() {
                             </span>
                           )}
                           
-                          <div className="flex flex-col items-center gap-1.5 md:gap-2.5">
+                          <div className="flex flex-col items-center gap-2">
                             {/* Иконка категории */}
                             <div
-                              className="w-8 h-8 md:w-12 md:h-12 lg:w-14 lg:h-14 rounded-full flex items-center justify-center text-lg md:text-2xl lg:text-3xl flex-shrink-0"
+                              className="w-11 h-11 sm:w-12 sm:h-12 md:w-12 md:h-12 rounded-full flex items-center justify-center text-2xl md:text-2xl flex-shrink-0"
                               style={{ backgroundColor: `${category.color || '#4CAF50'}20` }}
                             >
                               {category.icon || '📦'}
@@ -952,13 +952,13 @@ export function Categories() {
                             
                             {/* Название категории */}
                             <div className="w-full text-center px-1">
-                              <h4 className="font-semibold text-telegram-text dark:text-telegram-dark-text text-xs md:text-base lg:text-lg mb-0.5 text-center break-words leading-tight">
-                                <span className="inline-flex items-center gap-1.5">
+                              <h4 className="font-semibold text-telegram-text dark:text-telegram-dark-text text-sm md:text-base mb-0.5 text-center leading-tight min-h-[2.5rem] flex items-start justify-center">
+                                <span className="inline-flex items-start gap-1.5 clamp-2">
                                   {renderBudgetGroupDot(category.budget_group)}
                                   <span>{translateCategoryName(category.name)}</span>
                                 </span>
                               </h4>
-                              <p className="text-[10px] md:text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-1 leading-tight">
+                              <p className="hidden sm:block text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-1 leading-tight">
                                 {getTransactionTypeIcon(category.transaction_type)} {getTransactionTypeLabel(category.transaction_type)}
                               </p>
                               {(category.is_system || category.shared_budget_id) && (

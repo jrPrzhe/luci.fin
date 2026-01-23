@@ -50,6 +50,14 @@
 }
 
 @layer components {
+  /* Clamp long text to N lines (no tailwind plugin needed) */
+  .clamp-2 {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+
   /* Telegram-style buttons */
   .btn-primary {
     @apply bg-telegram-primary text-white px-5 py-2.5 rounded-telegram 
