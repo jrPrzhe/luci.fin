@@ -42,6 +42,8 @@ export function Biography() {
   const [showUpdateButton, setShowUpdateButton] = useState(false)
   const [showIncomeHistory, setShowIncomeHistory] = useState(false)
   const incomeDetailsRef = useRef<HTMLDetailsElement | null>(null)
+  const problemsDetailsRef = useRef<HTMLDetailsElement | null>(null)
+  const goalDetailsRef = useRef<HTMLDetailsElement | null>(null)
   const updatePollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const updateStartRef = useRef<number | null>(null)
 
@@ -315,6 +317,20 @@ export function Biography() {
     return `${normalized.slice(0, maxLen - 1)}…`
   }
 
+  const openAndScroll = (ref: React.RefObject<HTMLDetailsElement | null>) => {
+    const el = ref.current
+    if (!el) return
+    el.open = true
+    // allow <details> to expand before scroll
+    requestAnimationFrame(() => {
+      try {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      } catch {
+        el.scrollIntoView()
+      }
+    })
+  }
+
   return (
     <div className="p-6">
       {showWizard && (
@@ -326,13 +342,44 @@ export function Biography() {
 
       <div className="space-y-6">
         {/* Заголовок */}
-        <div>
-          <h1 className="text-3xl font-bold text-telegram-text dark:text-telegram-dark-text mb-2">
-            Ваш план
-          </h1>
-          <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-            Коротко и по делу: доход, приоритеты и лимиты на месяц
-          </p>
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="text-3xl font-bold text-telegram-text dark:text-telegram-dark-text mb-2">
+              Ваш план
+            </h1>
+            <p className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
+              Коротко и по делу: доход, приоритеты и лимиты на месяц
+            </p>
+          </div>
+
+          {(biography.problems || biography.goal) && (
+            <div className="shrink-0 flex flex-wrap items-center justify-end gap-2">
+              {biography.problems && (
+                <button
+                  onClick={() => openAndScroll(problemsDetailsRef)}
+                  className="inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold border border-telegram-border dark:border-telegram-dark-border bg-telegram-surface dark:bg-telegram-dark-surface text-telegram-text dark:text-telegram-dark-text hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover shadow-telegram"
+                  title="Открыть: Проблемы"
+                >
+                  <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-telegram-bg dark:bg-telegram-dark-bg border border-telegram-border dark:border-telegram-dark-border">
+                    ⚠️
+                  </span>
+                  Проблема
+                </button>
+              )}
+              {biography.goal && (
+                <button
+                  onClick={() => openAndScroll(goalDetailsRef)}
+                  className="inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold border border-telegram-border dark:border-telegram-dark-border bg-telegram-surface dark:bg-telegram-dark-surface text-telegram-text dark:text-telegram-dark-text hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover shadow-telegram"
+                  title="Открыть: Цель"
+                >
+                  <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-telegram-bg dark:bg-telegram-dark-bg border border-telegram-border dark:border-telegram-dark-border">
+                    🎯
+                  </span>
+                  Цель
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Доход */}
@@ -465,7 +512,7 @@ export function Biography() {
         {(biography.problems || biography.goal) && (
           <div className="grid md:grid-cols-2 gap-6">
             {biography.problems && (
-              <details className="group card p-0 overflow-hidden">
+              <details ref={problemsDetailsRef} className="group card p-0 overflow-hidden">
                 <summary className="cursor-pointer select-none p-5 [&::-webkit-details-marker]:hidden">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -489,7 +536,7 @@ export function Biography() {
               </details>
             )}
             {biography.goal && (
-              <details className="group card p-0 overflow-hidden">
+              <details ref={goalDetailsRef} className="group card p-0 overflow-hidden">
                 <summary className="cursor-pointer select-none p-5 [&::-webkit-details-marker]:hidden">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -522,9 +569,31 @@ export function Biography() {
               📊 Лимиты категорий
             </h2>
             <p className="text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary mb-4">
-              Мы предлагаем вам план на месяц - показатели, к которым нужно стремиться. 
-              ИИ проанализировал ваши данные и предложил оптимальные лимиты.
+              Это ваш “план на месяц” по категориям: сколько тратить комфортно, чтобы приблизиться к цели.
             </p>
+
+            <details className="mb-5 rounded-telegram border border-telegram-border dark:border-telegram-dark-border bg-telegram-bg dark:bg-telegram-dark-bg overflow-hidden">
+              <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-telegram-text dark:text-telegram-dark-text [&::-webkit-details-marker]:hidden">
+                ℹ️ Как читать лимиты
+                <span className="ml-2 text-telegram-textSecondary dark:text-telegram-dark-textSecondary font-normal">
+                  (простое объяснение)
+                </span>
+              </summary>
+              <div className="px-4 pb-4 pt-0 text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary space-y-2">
+                <div>
+                  <span className="font-semibold text-telegram-text dark:text-telegram-dark-text">Ваш лимит</span> — то, что вы указали в анкете для категории.
+                </div>
+                <div>
+                  <span className="font-semibold text-telegram-text dark:text-telegram-dark-text">План от ИИ</span> — рекомендуемый лимит на месяц (ИИ опирается на вашу анкету и данные в приложении).
+                </div>
+                <div>
+                  <span className="font-semibold text-telegram-text dark:text-telegram-dark-text">Потрачено</span> — сколько уже потрачено в текущем периоде.
+                </div>
+                <div>
+                  <span className="font-semibold text-telegram-text dark:text-telegram-dark-text">Осталось / Превышение</span> — сколько ещё можно потратить по плану (или на сколько вы вышли за план).
+                </div>
+              </div>
+            </details>
 
             <div className="space-y-4">
               {biography.category_limits.map((limit: CategoryLimit) => {
@@ -563,7 +632,7 @@ export function Biography() {
                     <div className="space-y-1">
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-                          Ваш фактический лимит:
+                          Ваш лимит (из анкеты):
                         </span>
                         <span className="text-telegram-text dark:text-telegram-dark-text font-semibold">
                           {userLimit.toLocaleString('ru-RU')} {currency}
@@ -588,7 +657,7 @@ export function Biography() {
                       <div className="space-y-1">
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-                            Плановый лимит от ИИ:
+                            План от ИИ (рекомендуемый):
                           </span>
                           <span className="text-telegram-primary dark:text-telegram-dark-primary font-semibold">
                             {aiLimit.toLocaleString('ru-RU')} {currency}
@@ -614,7 +683,7 @@ export function Biography() {
                       <div className="pt-2 border-t border-telegram-border dark:border-telegram-dark-border">
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-                            Разница с планом:
+                            {actualSpent <= aiLimit ? 'Осталось до плана:' : 'Превышение плана:'}
                           </span>
                           <span
                             className={`font-semibold ${
@@ -623,8 +692,7 @@ export function Biography() {
                                 : 'text-red-500'
                             }`}
                           >
-                            {actualSpent <= aiLimit ? '+' : ''}
-                            {(aiLimit - actualSpent).toLocaleString('ru-RU')} {currency}
+                            {(Math.abs(aiLimit - actualSpent)).toLocaleString('ru-RU')} {currency}
                           </span>
                         </div>
                       </div>
