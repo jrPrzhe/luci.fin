@@ -11,6 +11,8 @@ import { LoadingSpinner } from '../components/LoadingSpinner'
 import { useValentineTheme } from '../contexts/ValentineContext'
 import { storageSync, default as storage, isTelegramWebApp } from '../utils/storage'
 
+type BudgetGroup = 'needs' | 'wants' | 'savings'
+
 // Available colors and emojis for categories (same as Categories page)
 const AVAILABLE_COLORS = [
   '#4CAF50', '#2196F3', '#FF9800', '#F44336', '#9C27B0', '#00BCD4',
@@ -46,21 +48,36 @@ function AddCategoryForm({
     icon: string
     color: string
     is_favorite: boolean
+    budget_group?: BudgetGroup | null
   }) => void
   creating: boolean
 }) {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string
+    transaction_type: 'income' | 'expense' | 'both'
+    icon: string
+    color: string
+    is_favorite: boolean
+    budget_group?: BudgetGroup | null
+  }>(() => ({
     name: '',
     transaction_type: transactionType as 'income' | 'expense' | 'both',
     icon: '📦',
     color: '#4CAF50',
     is_favorite: false,
-  })
+    budget_group: transactionType === 'expense' ? ('needs' as BudgetGroup) : null,
+  }))
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onCreate(formData)
+    onCreate({
+      ...formData,
+      budget_group:
+        transactionType === 'expense'
+          ? ((formData.budget_group ?? 'needs') as BudgetGroup)
+          : null,
+    })
   }
 
   return (
@@ -156,6 +173,25 @@ function AddCategoryForm({
         </label>
       </div>
 
+      {transactionType === 'expense' && (
+        <div>
+          <label className="block text-sm font-medium text-telegram-text dark:text-telegram-dark-text mb-2">
+            Группа бюджета <span className="text-red-500">*</span>
+          </label>
+          <select
+            value={(formData.budget_group ?? 'needs') as BudgetGroup}
+            onChange={(e) => setFormData({ ...formData, budget_group: e.target.value as BudgetGroup })}
+            className="input w-full"
+            disabled={creating}
+            required
+          >
+            <option value="needs">Нужды</option>
+            <option value="wants">Желания</option>
+            <option value="savings">Сбережения</option>
+          </select>
+        </div>
+      )}
+
       <div className="flex gap-3 pt-2">
         <button
           type="button"
@@ -199,6 +235,7 @@ interface Category {
   icon?: string
   color?: string
   transaction_type: 'income' | 'expense' | 'both'
+  budget_group?: BudgetGroup | null
   is_favorite: boolean
 }
 
@@ -624,11 +661,15 @@ export function Dashboard() {
     refetchOnWindowFocus: false,
   })
 
-  const loadCategories = async (transactionType: 'income' | 'expense'): Promise<void> => {
+  const loadCategories = async (
+    transactionType: 'income' | 'expense',
+    options?: { force?: boolean },
+  ): Promise<void> => {
+    const force = options?.force === true
     console.log(`[loadCategories] Starting to load categories for ${transactionType}`)
     try {
       const cached = queryClient.getQueryData<Category[]>(getCategoriesKey(transactionType))
-      if (cached && cached.length > 0) {
+      if (!force && cached && cached.length > 0) {
         console.log(`[loadCategories] Using cached ${transactionType} categories (${cached.length})`)
         setCategories(cached)
         return
@@ -648,7 +689,7 @@ export function Dashboard() {
         queryClient.fetchQuery({
           queryKey: getCategoriesKey(transactionType),
           queryFn: () => api.getCategories(transactionType, false, true),
-          staleTime: CATEGORIES_STALE_TIME,
+          staleTime: force ? 0 : CATEGORIES_STALE_TIME,
           gcTime: 10 * 60 * 1000,
         }),
         timeoutPromise
@@ -774,7 +815,7 @@ export function Dashboard() {
       staleTime: CATEGORIES_STALE_TIME,
       gcTime: 10 * 60 * 1000,
     })
-  }, [hasToken, queryClient])
+  }, [hasToken, queryClient, CATEGORIES_STALE_TIME])
 
   // Handle URL parameters for quick action (from quests)
   useEffect(() => {
@@ -802,6 +843,7 @@ export function Dashboard() {
     icon: string
     color: string
     is_favorite: boolean
+    budget_group?: BudgetGroup | null
   }) => {
     if (!categoryData.name.trim()) {
       showError('Название категории обязательно')
@@ -816,15 +858,36 @@ export function Dashboard() {
 
     setCreatingCategory(true)
     try {
+      const budgetGroupValue =
+        categoryData.transaction_type === 'income'
+          ? null
+          : ((categoryData.budget_group ?? 'needs') as BudgetGroup)
+
       const newCategory = await api.createCategory({
         ...categoryData,
-        name: trimmedName
+        name: trimmedName,
+        budget_group: budgetGroupValue,
       })
       showSuccess('Категория создана')
       
-      // Reload categories
+      // Optimistically add/refresh categories so the new one is immediately selectable
       if (quickFormType === 'income' || quickFormType === 'expense') {
-        await loadCategories(quickFormType)
+        const key = getCategoriesKey(quickFormType)
+        queryClient.setQueryData<Category[]>(key, (prev) => {
+          const prevArr = Array.isArray(prev) ? prev : []
+          return [newCategory as Category, ...prevArr.filter(c => c.id !== (newCategory as Category).id)]
+        })
+        setCategories((prev) => [newCategory as Category, ...prev.filter(c => c.id !== (newCategory as Category).id)])
+
+        // Also mark categories stale for other screens that may rely on cached data
+        queryClient.invalidateQueries({ queryKey: ['categories'] })
+
+        // Force refresh in case cache is fresh but missing server-side defaults
+        try {
+          await loadCategories(quickFormType, { force: true })
+        } catch {
+          // Keep optimistic list if refresh fails
+        }
       }
       
       // Close the add category form
@@ -1637,19 +1700,22 @@ export function Dashboard() {
                 <div className="bg-telegram-surface dark:bg-telegram-dark-surface p-2 rounded-telegram mb-2 flex items-center gap-2 min-w-0">
                   {(() => {
                     const selectedCategory = categories.find(c => c.id === parseInt(quickFormData.category_id))
-                    return selectedCategory ? (
+                    const icon = selectedCategory?.icon || '📦'
+                    const color = selectedCategory?.color || '#4CAF50'
+                    const name = selectedCategory?.name || t.dashboard.form.selectCategory
+                    return (
                       <>
                         <div
                           className="w-6 h-6 rounded-full flex items-center justify-center text-sm flex-shrink-0"
-                          style={{ backgroundColor: `${selectedCategory.color || '#4CAF50'}20` }}
+                          style={{ backgroundColor: `${color}20` }}
                         >
-                          {selectedCategory.icon || '📦'}
+                          {icon}
                         </div>
-                        <span 
+                        <span
                           className="font-medium text-sm text-telegram-text dark:text-telegram-dark-text flex-1 min-w-0 break-words overflow-wrap-anywhere"
                           style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
                         >
-                          {selectedCategory.name}
+                          {name}
                         </span>
                         <button
                           type="button"
@@ -1663,7 +1729,7 @@ export function Dashboard() {
                           {t.dashboard.form.change}
                         </button>
                       </>
-                    ) : null
+                    )
                   })()}
                 </div>
               )}
