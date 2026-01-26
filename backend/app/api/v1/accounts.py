@@ -296,10 +296,30 @@ async def get_balance(
         except Exception as e:
             logger.error(f"Error calculating shared account balances: {e}", exc_info=True)
     
-    # Convert to list and calculate total with currency conversion
+    # Determine goal accounts (savings) to exclude from "available" total balance.
+    # Goals create a dedicated account (Goal.account_id). Users expect these funds
+    # to be shown "in the goal", not inside the main "total/available" balance.
+    goal_account_ids = set()
+    goal_account_names: dict[int, str] = {}
+    try:
+        from app.models.goal import Goal
+        goals_rows = db.query(Goal.account_id, Goal.name).filter(
+            Goal.user_id == current_user.id,
+            Goal.account_id.isnot(None)
+        ).all()
+        for acc_id, goal_name in goals_rows:
+            if acc_id:
+                goal_account_ids.add(int(acc_id))
+                goal_account_names[int(acc_id)] = goal_name or "Цель"
+    except Exception as e:
+        # Don't fail balance endpoint if goals query fails
+        logger.warning(f"Failed to load goal accounts for balance exclusion: {e}")
+
+    # Convert to list and calculate totals with currency conversion
     target_currency = (current_user.default_currency or "USD").upper()
     account_balances = []
     total_balance = Decimal("0")
+    goals_total = Decimal("0")
     
     for account_id, acc_data in account_balances_map.items():
         balance_float = float(acc_data["balance"])
@@ -321,17 +341,26 @@ async def get_balance(
                 # Don't add to total if conversion failed to avoid incorrect totals
                 converted_balance = Decimal("0")
         
-        total_balance += converted_balance
+        is_goal_account = int(account_id) in goal_account_ids
+        if is_goal_account:
+            goals_total += converted_balance
+        else:
+            total_balance += converted_balance
         
         account_balances.append({
             "id": acc_data["id"],
             "name": acc_data["name"],
             "balance": balance_float,
-            "currency": account_currency
+            "currency": account_currency,
+            "is_goal_account": is_goal_account,
+            "goal_name": goal_account_names.get(int(account_id)) if is_goal_account else None,
         })
     
     return {
+        # "total" is the available balance (excludes goal/savings accounts)
         "total": float(total_balance),
+        # Keep goal/savings total separately for future UI (optional)
+        "goals_total": float(goals_total),
         "currency": target_currency,
         "accounts": account_balances
     }

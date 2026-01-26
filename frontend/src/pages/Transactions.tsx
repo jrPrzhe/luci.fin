@@ -20,6 +20,8 @@ interface Transaction {
   category_icon?: string
   category_budget_group?: BudgetGroup | null
   description?: string
+  goal_id?: number
+  goal_name?: string
   transaction_date: string
   to_account_id?: number
   parent_transaction_id?: number
@@ -1644,7 +1646,10 @@ export function Transactions() {
               if (transaction.transaction_type === 'income' && transaction.description) {
                 const descLower = transaction.description.toLowerCase().trim()
                 if (descLower.startsWith('перевод из')) {
-                  return false
+                  // But DO show goal-related transactions, they must be visible to explain "to goal" movements
+                  if (!transaction.goal_id) {
+                    return false
+                  }
                 }
               }
               return true
@@ -1682,6 +1687,14 @@ export function Transactions() {
                         </span>
                       )}
                     </div>
+                    {transaction.goal_id && (
+                      <div className="flex items-center gap-1 min-w-0">
+                        <span className="flex-shrink-0">🎯</span>
+                        <span className="truncate">
+                          На цель: {transaction.goal_name || 'Цель'}
+                        </span>
+                      </div>
+                    )}
                     {transaction.transaction_type === 'transfer' && transaction.to_account_id && (
                       <div className="truncate">→ {getAccountName(transaction.to_account_id)}</div>
                     )}

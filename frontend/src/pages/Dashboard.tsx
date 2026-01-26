@@ -1999,7 +1999,10 @@ export function Dashboard() {
                 if (transaction.transaction_type === 'income' && transaction.description) {
                   const descLower = transaction.description.toLowerCase().trim()
                   if (descLower.startsWith('перевод из')) {
-                    return false
+                    // But DO show goal-related transactions so user understands it's "to goal"
+                    if (!transaction.goal_id) {
+                      return false
+                    }
                   }
                 }
                 // ВАЖНО: Проверяем, что transaction имеет id
@@ -2016,6 +2019,11 @@ export function Dashboard() {
                 const transactionDate = transaction.transaction_date ? new Date(transaction.transaction_date) : new Date()
                 const amount = typeof transaction.amount === 'number' ? transaction.amount : 0
                 const currency = transaction.currency || '₽'
+                const goalName = transaction.goal_name || ''
+                const isGoalTx = !!transaction.goal_id
+                const title = isGoalTx
+                  ? `🎯 ${goalName || 'Цель'}`
+                  : (categoryName || description || t.dashboard.form.category)
                 
                 return (
                   <div 
@@ -2037,13 +2045,17 @@ export function Dashboard() {
                           <span className="text-base">{categoryIcon}</span>
                         )}
                         <p className="font-medium text-sm md:text-base text-telegram-text dark:text-telegram-dark-text truncate">
-                          {categoryName || description || t.dashboard.form.category}
+                          {title}
                         </p>
                       </div>
                       <p className="text-xs text-telegram-textSecondary dark:text-telegram-dark-textSecondary truncate">
                         {transactionDate.toLocaleDateString('ru-RU')}
-                        {description && categoryName && (
-                          <span className="ml-2">• <span className="truncate">{description}</span></span>
+                        {isGoalTx ? (
+                          description ? <span className="ml-2">• <span className="truncate">{description}</span></span> : null
+                        ) : (
+                          description && categoryName ? (
+                            <span className="ml-2">• <span className="truncate">{description}</span></span>
+                          ) : null
                         )}
                       </p>
                     </div>
