@@ -2,34 +2,24 @@
 
 en = {
     "start": {
-        "greeting": "Hello, {name}! 👋\n\nI'll help you manage your finances through VKontakte.\n\n",
-        "commands": "📋 *Available commands:*\n",
-        "balance": "💰 balance - current balance\n",
-        "transactions": "📝 transactions - recent transactions\n",
-        "add_expense": "💸 expense - add expense\n",
-        "add_income": "💰 income - add income\n",
-        "report": "📊 report - get AI report\n",
-        "goal": "🎯 goal - create financial goal\n",
-        "help": "❓ help - help\n",
-        "language": "🌍 language - change language\n\n",
-        "important": "*Important:* To use the bot, you need to register first through the web interface or Mini App.",
+        "greeting": "Hello, {name}! 👋\n\nI'm Lucy — your helper in VK.\n\n⚠️ Important: all main actions (record expenses/income, categories, plans) happen in the *Mini App*.\nI'm here to remind you and quickly open the app.\n\n",
+        "commands": "📌 *What I can do in chat:*\n",
+        "balance": "💰 balance — check total balance\n",
+        "transactions": "📝 transactions — recent records\n",
+        "help": "❓ help — tips\n\n",
+        "important": "👇 Tap the button below to open the Mini App.",
     },
     "help": {
         "title": "📊 *Available commands:*\n\n",
         "start": "start - start working with the bot\n",
         "balance": "💰 balance - show current balance across all accounts\n",
         "transactions": "📝 transactions - show recent transactions\n",
-        "add_expense": "💸 expense - add new expense\n",
-        "add_income": "💰 income - add new income\n",
-        "report": "📊 report - get AI financial analysis\n",
-        "goal": "🎯 goal - create financial goal with AI plan\n",
-        "language": "🌍 language - change language\n",
         "cancel": "cancel - cancel current operation\n",
         "help": "❓ help - this help\n\n",
         "usage": "*Usage:*\n",
-        "usage_expense": "• After \"expense\" or \"income\" command, select an account and follow instructions\n",
-        "usage_report": "• \"report\" command analyzes your transactions and provides recommendations\n",
-        "usage_goal": "• \"goal\" command will create a personalized plan to achieve your financial goal",
+        "usage_expense": "• To record expenses/income, open the Mini App using the «📱 Open Mini App» button\n",
+        "usage_report": "• Reports and plans are also available in the Mini App\n",
+        "usage_goal": "• Goals are created in the Mini App — it's easier to fill details there",
     },
     "language": {
         "select": "🌍 *Select Language / Выберите язык*\n\n",
@@ -56,13 +46,13 @@ en = {
     "buttons": {
         "balance": "💰 Balance",
         "transactions": "📝 Transactions",
-        "expense": "💸 Expense",
-        "income": "💰 Income",
         "report": "📊 Report",
         "goal": "🎯 Goal",
         "help": "❓ Help",
         "language": "🌍 Language",
-        "app": "📱 App",
+        "app": "📱 Open Mini App",
+        "app_expense": "💸 Record expense",
+        "app_income": "💰 Record income",
     },
     "auth": {
         "failed": "❌ Failed to authenticate. Please register first.",
@@ -81,6 +71,9 @@ en = {
         "error": "❌ Failed to get transactions",
     },
     "expense": {
+        # New funnel behavior (preferred)
+        "redirect": "💸 Record expenses in the Mini App — it's faster and has categories/budget groups.\n\nTap the button below 👇",
+        # Legacy keys kept for backward compatibility (old in-chat flow)
         "title": "💸 *Adding Expense*\n\n",
         "select_account": "Select account:",
         "enter_amount": "Enter expense amount:",
@@ -91,6 +84,9 @@ en = {
         "error": "❌ Error adding expense",
     },
     "income": {
+        # New funnel behavior (preferred)
+        "redirect": "💰 Record income in the Mini App — it's easier and nothing gets lost.\n\nTap the button below 👇",
+        # Legacy keys kept for backward compatibility (old in-chat flow)
         "title": "💰 *Adding Income*\n\n",
         "select_account": "Select account:",
         "enter_amount": "Enter income amount:",
@@ -99,6 +95,10 @@ en = {
         "skip_category": "⏭️ Skip category",
         "created": "✅ Income successfully added!\n\n*Amount:* {amount} {currency}\n*Account:* {account}\n*Category:* {category}\n*Description:* {description}",
         "error": "❌ Error adding income",
+    },
+    "funnel": {
+        "open_app_hint": "📱 Open the Mini App with the button below — that's where you manage your finances.",
+        "feature_in_app": "This feature is available in the Mini App.",
     },
     "report": {
         "generating": "🤖 Generating report... Please wait.",

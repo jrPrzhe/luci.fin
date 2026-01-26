@@ -530,8 +530,52 @@ async def send_daily_reminder_vk(user: User, db: Session) -> bool:
         
         message_parts.append("")
         message_parts.append("💡 Выполняй задания, чтобы получить XP и поднять уровень! 🚀")
+        message_parts.append("")
+        message_parts.append("📱 Записывать траты и доходы удобнее в мини‑приложении — открой его кнопкой ниже.")
         
         message = "\n".join(message_parts)
+
+        # Inline keyboard for VK Mini App (keeps users in the funnel)
+        miniapp_url = (getattr(settings, "VK_MINIAPP_URL", "") or "").strip().rstrip("/")
+        keyboard_json = None
+        if miniapp_url:
+            # We use open_link + hash to keep it simple and compatible with any app hosting.
+            # The miniapp can optionally parse window.location.hash in the future.
+            keyboard = {
+                "inline": True,
+                "one_time": False,
+                "buttons": [
+                    [
+                        {
+                            "action": {
+                                "type": "open_link",
+                                "link": miniapp_url,
+                                "label": "📱 Открыть мини‑приложение",
+                            },
+                            "color": "primary",
+                        }
+                    ],
+                    [
+                        {
+                            "action": {
+                                "type": "open_link",
+                                "link": f"{miniapp_url}#action=expense",
+                                "label": "💸 Записать расход",
+                            },
+                            "color": "secondary",
+                        },
+                        {
+                            "action": {
+                                "type": "open_link",
+                                "link": f"{miniapp_url}#action=income",
+                                "label": "💰 Записать доход",
+                            },
+                            "color": "secondary",
+                        },
+                    ],
+                ],
+            }
+            keyboard_json = json.dumps(keyboard, ensure_ascii=False)
         
         # Отправляем в VK через VK API
         if not settings.VK_BOT_TOKEN:
@@ -562,6 +606,8 @@ async def send_daily_reminder_vk(user: User, db: Session) -> bool:
                 "random_id": random_id,
                 "v": "5.131"
             }
+            if keyboard_json:
+                payload["keyboard"] = keyboard_json
             
             async with httpx.AsyncClient(timeout=10.0) as client:
                 # VK API требует POST запрос с form-data (не JSON!)

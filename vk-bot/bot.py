@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 VK_BOT_TOKEN = config("VK_BOT_TOKEN", default="")
 BACKEND_URL_RAW = config("BACKEND_URL", default="http://localhost:8000")
 GROUP_ID = config("VK_GROUP_ID", default="")
+VK_MINIAPP_URL = config("VK_MINIAPP_URL", default="https://vk.com/app54321962_144352158").rstrip("/")
 
 # Normalize BACKEND_URL
 BACKEND_URL = BACKEND_URL_RAW.rstrip("/")
@@ -294,6 +295,52 @@ def create_inline_keyboard(buttons: list, one_time: bool = False):
         keyboard.row()
     return keyboard.get_json()
 
+def get_miniapp_url(action: Optional[str] = None) -> str:
+    """Build VK Mini App URL with optional action hash."""
+    base = (VK_MINIAPP_URL or "").strip().rstrip("/")
+    if not base:
+        return "https://vk.com/app54321962_144352158"
+    if action:
+        return f"{base}#action={action}"
+    return base
+
+
+def build_miniapp_keyboard(lang: str):
+    """Keyboard that drives users into the Mini App."""
+    keyboard = Keyboard(one_time=False)
+
+    # Primary CTA
+    keyboard.add(OpenLink(get_miniapp_url(), t("buttons.app", lang)))
+    keyboard.row()
+
+    # Quick actions (still open the miniapp, optionally with hash)
+    keyboard.add(OpenLink(get_miniapp_url("expense"), t("buttons.app_expense", lang)))
+    keyboard.add(OpenLink(get_miniapp_url("income"), t("buttons.app_income", lang)))
+    keyboard.row()
+
+    # Secondary shortcuts
+    keyboard.add(Text(t("buttons.balance", lang), payload=json.dumps({"command": "balance"})))
+    keyboard.add(Text(t("buttons.transactions", lang), payload=json.dumps({"command": "transactions"})))
+    keyboard.row()
+
+    keyboard.add(Text(t("buttons.help", lang), payload=json.dumps({"command": "help"})))
+    return keyboard
+
+
+async def redirect_to_miniapp(message: Message, lang: str, kind: str):
+    """Explain that actions happen in the Mini App and provide buttons."""
+    # Clear any in-progress legacy flow state to avoid confusion
+    user_id = int(str(message.from_id))
+    if user_id in user_states:
+        del user_states[user_id]
+
+    key = "expense.redirect" if kind == "expense" else "income.redirect"
+    text = f"{t(key, lang)}\n\n{t('funnel.open_app_hint', lang)}"
+    await message.answer(text, keyboard=build_miniapp_keyboard(lang))
+
+
+async def feature_in_miniapp(message: Message, lang: str):
+    await message.answer(f"{t('funnel.feature_in_app', lang)}\n\n{t('funnel.open_app_hint', lang)}", keyboard=build_miniapp_keyboard(lang))
 
 @bot.on.message(CommandRule("start", ["начать", "старт"]))
 async def start_handler(message: Message):
@@ -325,38 +372,11 @@ async def start_handler(message: Message):
             t("start.commands", lang) +
             t("start.balance", lang) +
             t("start.transactions", lang) +
-            t("start.add_expense", lang) +
-            t("start.add_income", lang) +
-            t("start.report", lang) +
-            t("start.goal", lang) +
             t("start.help", lang) +
             t("start.important", lang)
         )
         
-        # Create keyboard with buttons (localized)
-        keyboard = Keyboard(one_time=False)
-        
-        # First row: Balance and Transactions
-        keyboard.add(Text(t("buttons.balance", lang), payload=json.dumps({"command": "balance"})))
-        keyboard.add(Text(t("buttons.transactions", lang), payload=json.dumps({"command": "transactions"})))
-        keyboard.row()
-        
-        # Second row: Add Expense and Add Income
-        keyboard.add(Text(t("buttons.expense", lang), payload=json.dumps({"command": "expense"})))
-        keyboard.add(Text(t("buttons.income", lang), payload=json.dumps({"command": "income"})))
-        keyboard.row()
-        
-        # Third row: Report and Goal
-        keyboard.add(Text(t("buttons.report", lang), payload=json.dumps({"command": "report"})))
-        keyboard.add(Text(t("buttons.goal", lang), payload=json.dumps({"command": "goal"})))
-        keyboard.row()
-        
-        # Fourth row: Help
-        keyboard.add(Text(t("buttons.help", lang), payload=json.dumps({"command": "help"})))
-        keyboard.row()
-        
-        # Fifth row: Application button
-        keyboard.add(OpenLink("https://vk.com/app54321962_144352158", t("buttons.app", lang)))
+        keyboard = build_miniapp_keyboard(lang)
         
         await message.answer(message_text, keyboard=keyboard)
         logger.info(f"Sent start message with keyboard to user {message.from_id}")
@@ -399,10 +419,6 @@ async def help_handler(message: Message):
         t("help.start", lang) +
         t("help.balance", lang) +
         t("help.transactions", lang) +
-        t("help.add_expense", lang) +
-        t("help.add_income", lang) +
-        t("help.report", lang) +
-        t("help.goal", lang) +
         t("help.cancel", lang) +
         t("help.help", lang) +
         t("help.usage", lang) +
@@ -411,7 +427,7 @@ async def help_handler(message: Message):
         t("help.usage_goal", lang)
     )
     
-    await message.answer(help_text)
+    await message.answer(f"{help_text}\n\n{t('funnel.open_app_hint', lang)}", keyboard=build_miniapp_keyboard(lang))
 
 
 @bot.on.message(CommandRule("balance", ["баланс"]))
@@ -457,7 +473,7 @@ async def balance_handler(message: Message):
                     acc_balance = acc.get("balance", 0)
                     message_text += t("balance.account_item", lang, name=acc_name, amount=f"{int(round(acc_balance)):,}", currency=currency)
             
-            await message.answer(message_text)
+            await message.answer(f"{message_text}\n\n{t('funnel.open_app_hint', lang)}", keyboard=build_miniapp_keyboard(lang))
         elif response.status_code == 401:
             await message.answer(t("auth.failed", lang))
         else:
@@ -911,7 +927,7 @@ async def transactions_handler(message: Message):
                                amount=f"{sign}{int(round(amount)):,}",
                                currency=currency)
             
-            await message.answer(message_text)
+            await message.answer(f"{message_text}\n\n{t('funnel.open_app_hint', lang)}", keyboard=build_miniapp_keyboard(lang))
         elif response.status_code == 401:
             await message.answer(t("auth.failed", lang))
         else:
@@ -965,18 +981,20 @@ async def button_handler(message: Message):
                 await transactions_handler(message)
                 return
             elif command == "expense":
-                await add_expense_start(message)
+                lang = await get_user_language(vk_id)
+                await redirect_to_miniapp(message, lang, "expense")
                 return
             elif command == "income":
-                await add_income_start(message)
+                lang = await get_user_language(vk_id)
+                await redirect_to_miniapp(message, lang, "income")
                 return
             elif command == "report":
                 lang = await get_user_language(vk_id)
-                await message.answer(t("report.generating", lang))
+                await feature_in_miniapp(message, lang)
                 return
             elif command == "goal":
                 lang = await get_user_language(vk_id)
-                await message.answer(t("goal.enter_info", lang))
+                await feature_in_miniapp(message, lang)
                 return
             elif command == "help":
                 await help_handler(message)
@@ -1008,6 +1026,18 @@ async def button_handler(message: Message):
         return
     elif text_lower in ["транзакции", "transactions"]:
         await transactions_handler(message)
+        return
+    elif text_lower in ["расход", "expense"]:
+        lang = await get_user_language(vk_id)
+        await redirect_to_miniapp(message, lang, "expense")
+        return
+    elif text_lower in ["доход", "income"]:
+        lang = await get_user_language(vk_id)
+        await redirect_to_miniapp(message, lang, "income")
+        return
+    elif text_lower in ["отчет", "отчёт", "report", "goal", "цель"]:
+        lang = await get_user_language(vk_id)
+        await feature_in_miniapp(message, lang)
         return
     elif text_lower in ["помощь", "справка", "help"]:
         await help_handler(message)
@@ -1044,7 +1074,7 @@ async def button_handler(message: Message):
     if not text.startswith("/") and text.strip():
         logger.info(f"Received unknown message from {message.from_id}: {text[:100]}")
         lang = await get_user_language(vk_id)
-        await message.answer(t("common.unknown_command", lang))
+        await message.answer(f"{t('common.unknown_command', lang)}\n\n{t('funnel.open_app_hint', lang)}", keyboard=build_miniapp_keyboard(lang))
 
 
 if __name__ == "__main__":

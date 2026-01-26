@@ -57,6 +57,9 @@ class Settings(BaseSettings):
     VK_BOT_TOKEN: str = ""
     VK_GROUP_ID: str = ""
     VK_APP_SECRET: str = ""  # Secret Key for VK Mini App signature verification
+    # Public link to VK Mini App (used in VK-bot and reminders)
+    # Example: https://vk.com/app54321962_144352158
+    VK_MINIAPP_URL: str = "https://vk.com/app54321962_144352158"
     
     # External APIs
     EXCHANGE_RATE_API_KEY: str = ""
