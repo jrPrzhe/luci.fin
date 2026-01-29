@@ -953,6 +953,9 @@ async def login_telegram(
                 # Don't fail the login if account creation fails
                 db.rollback()
         
+        # Ensure default categories for users who missed initial setup
+        ensure_default_categories(db, user, logger)
+
         # Create tokens
         access_token = create_access_token(data={"sub": user.id})
         refresh_token = create_refresh_token(data={"sub": user.id})
@@ -1356,6 +1359,9 @@ async def login_vk(
                 logger.error(f"Failed to create default account/categories: {e}", exc_info=True)
                 db.rollback()
         
+        # Ensure default categories for users who missed initial setup
+        ensure_default_categories(db, user, logger)
+
         # Create tokens
         access_token = create_access_token(data={"sub": user.id})
         refresh_token = create_refresh_token(data={"sub": user.id})
