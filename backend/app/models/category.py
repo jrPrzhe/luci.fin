@@ -19,13 +19,17 @@ class BudgetGroup(str, enum.Enum):
 
 class TransactionTypeEnum(TypeDecorator):
     """Custom type decorator to ensure enum values are used instead of names"""
-    impl = String  # Use String as base type, not Enum, to have full control
+    impl = Enum  # Use Enum to match DB enum type
     cache_ok = True
     
     def __init__(self):
-        # Don't use Enum at all - use String and handle conversion manually
-        # This ensures we always send lowercase strings to DB
-        super().__init__(length=20)  # String with max length
+        # Use existing DB enum type to avoid type mismatch
+        super().__init__(
+            TransactionType,
+            name='transactiontype',
+            create_type=False,
+            values_callable=lambda x: [e.value for e in TransactionType]
+        )
     
     def process_bind_param(self, value, dialect):
         if value is None:
