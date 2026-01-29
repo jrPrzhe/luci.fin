@@ -182,6 +182,85 @@ def verify_vk_signature(params: dict, secret_key: str) -> bool:
     return is_valid
 
 
+def ensure_default_categories(db: Session, user: User, logger=None) -> int:
+    """Ensure user has default categories; returns created count."""
+    import logging
+    from app.models.category import Category, TransactionType
+
+    if logger is None:
+        logger = logging.getLogger(__name__)
+
+    try:
+        existing_count = db.query(Category).filter(Category.user_id == user.id).count()
+        if existing_count > 0:
+            return 0
+
+        DEFAULT_EXPENSE_CATEGORIES = [
+            {"name": "Продукты", "icon": "🛒", "color": "#4CAF50", "transaction_type": TransactionType.EXPENSE, "is_favorite": True},
+            {"name": "Транспорт", "icon": "🚗", "color": "#2196F3", "transaction_type": TransactionType.EXPENSE, "is_favorite": True},
+            {"name": "Коммунальные услуги", "icon": "💡", "color": "#FFC107", "transaction_type": TransactionType.EXPENSE, "is_favorite": True},
+            {"name": "Связь и интернет", "icon": "📱", "color": "#00BCD4", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+            {"name": "Кафе и рестораны", "icon": "🍽️", "color": "#FF9800", "transaction_type": TransactionType.EXPENSE, "is_favorite": True},
+            {"name": "Доставка еды", "icon": "🍕", "color": "#FF5722", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+            {"name": "Здоровье", "icon": "🏥", "color": "#F44336", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+            {"name": "Аптека", "icon": "💊", "color": "#E91E63", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+            {"name": "Красота и уход", "icon": "💅", "color": "#9C27B0", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+            {"name": "Одежда", "icon": "👕", "color": "#E91E63", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+            {"name": "Обувь", "icon": "👟", "color": "#795548", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+            {"name": "Бытовая техника", "icon": "🏠", "color": "#607D8B", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+            {"name": "Развлечения", "icon": "🎬", "color": "#9C27B0", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+            {"name": "Кино и театр", "icon": "🎭", "color": "#673AB7", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+            {"name": "Хобби", "icon": "🎨", "color": "#9C27B0", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+            {"name": "Образование", "icon": "📚", "color": "#3F51B5", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+            {"name": "Курсы", "icon": "🎓", "color": "#2196F3", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+            {"name": "Подарки", "icon": "🎁", "color": "#FF5722", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+            {"name": "Праздники", "icon": "🎉", "color": "#FF9800", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+            {"name": "Дети", "icon": "👶", "color": "#FFC107", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+            {"name": "Домашние животные", "icon": "🐾", "color": "#795548", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+            {"name": "Прочее", "icon": "📦", "color": "#607D8B", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+        ]
+        DEFAULT_INCOME_CATEGORIES = [
+            {"name": "Зарплата", "icon": "💰", "color": "#4CAF50", "transaction_type": TransactionType.INCOME, "is_favorite": True},
+            {"name": "Премия", "icon": "🎯", "color": "#FFC107", "transaction_type": TransactionType.INCOME, "is_favorite": False},
+            {"name": "Фриланс", "icon": "💼", "color": "#9C27B0", "transaction_type": TransactionType.INCOME, "is_favorite": True},
+            {"name": "Подработка", "icon": "⚡", "color": "#FF9800", "transaction_type": TransactionType.INCOME, "is_favorite": False},
+            {"name": "Инвестиции", "icon": "📈", "color": "#2196F3", "transaction_type": TransactionType.INCOME, "is_favorite": False},
+            {"name": "Дивиденды", "icon": "💹", "color": "#4CAF50", "transaction_type": TransactionType.INCOME, "is_favorite": False},
+            {"name": "Подарки", "icon": "🎁", "color": "#FF9800", "transaction_type": TransactionType.INCOME, "is_favorite": False},
+            {"name": "Возврат покупки", "icon": "↩️", "color": "#00BCD4", "transaction_type": TransactionType.INCOME, "is_favorite": False},
+            {"name": "Кэшбэк", "icon": "💳", "color": "#4CAF50", "transaction_type": TransactionType.INCOME, "is_favorite": False},
+            {"name": "Прочее", "icon": "📦", "color": "#607D8B", "transaction_type": TransactionType.INCOME, "is_favorite": False},
+        ]
+
+        categories = []
+        for cat_data in DEFAULT_EXPENSE_CATEGORIES + DEFAULT_INCOME_CATEGORIES:
+            transaction_type_value = cat_data["transaction_type"]
+            if isinstance(transaction_type_value, TransactionType):
+                transaction_type_value = transaction_type_value.value
+            elif isinstance(transaction_type_value, str):
+                transaction_type_value = transaction_type_value.lower()
+
+            categories.append(Category(
+                user_id=user.id,
+                name=cat_data["name"],
+                transaction_type=transaction_type_value,
+                icon=cat_data["icon"],
+                color=cat_data["color"],
+                is_system=True,
+                is_active=True,
+                is_favorite=cat_data.get("is_favorite", False)
+            ))
+
+        db.add_all(categories)
+        db.commit()
+        logger.info(f"Created {len(categories)} default categories for user {user.id}")
+        return len(categories)
+    except Exception as e:
+        logger.error(f"Failed to create default categories for user {user.id}: {e}", exc_info=True)
+        db.rollback()
+        return 0
+
+
 def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
@@ -1376,9 +1455,10 @@ async def get_bot_token(
             
             logger.info(f"Auto-created user for telegram_id: {telegram_id}, user_id: {user.id}")
             
-            # Create default account for new user
+            # Create default account and categories for new user
             try:
                 from app.models.account import Account, AccountType
+                from app.models.category import Category, TransactionType
                 default_account = Account(
                     user_id=user.id,
                     name="Основной счёт",
@@ -1389,10 +1469,68 @@ async def get_bot_token(
                     description="Автоматически созданный счёт"
                 )
                 db.add(default_account)
+
+                DEFAULT_EXPENSE_CATEGORIES = [
+                    {"name": "Продукты", "icon": "🛒", "color": "#4CAF50", "transaction_type": TransactionType.EXPENSE, "is_favorite": True},
+                    {"name": "Транспорт", "icon": "🚗", "color": "#2196F3", "transaction_type": TransactionType.EXPENSE, "is_favorite": True},
+                    {"name": "Коммунальные услуги", "icon": "💡", "color": "#FFC107", "transaction_type": TransactionType.EXPENSE, "is_favorite": True},
+                    {"name": "Связь и интернет", "icon": "📱", "color": "#00BCD4", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Кафе и рестораны", "icon": "🍽️", "color": "#FF9800", "transaction_type": TransactionType.EXPENSE, "is_favorite": True},
+                    {"name": "Доставка еды", "icon": "🍕", "color": "#FF5722", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Здоровье", "icon": "🏥", "color": "#F44336", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Аптека", "icon": "💊", "color": "#E91E63", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Красота и уход", "icon": "💅", "color": "#9C27B0", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Одежда", "icon": "👕", "color": "#E91E63", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Обувь", "icon": "👟", "color": "#795548", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Бытовая техника", "icon": "🏠", "color": "#607D8B", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Развлечения", "icon": "🎬", "color": "#9C27B0", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Кино и театр", "icon": "🎭", "color": "#673AB7", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Хобби", "icon": "🎨", "color": "#9C27B0", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Образование", "icon": "📚", "color": "#3F51B5", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Курсы", "icon": "🎓", "color": "#2196F3", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Подарки", "icon": "🎁", "color": "#FF5722", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Праздники", "icon": "🎉", "color": "#FF9800", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Дети", "icon": "👶", "color": "#FFC107", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Домашние животные", "icon": "🐾", "color": "#795548", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Прочее", "icon": "📦", "color": "#607D8B", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                ]
+                DEFAULT_INCOME_CATEGORIES = [
+                    {"name": "Зарплата", "icon": "💰", "color": "#4CAF50", "transaction_type": TransactionType.INCOME, "is_favorite": True},
+                    {"name": "Премия", "icon": "🎯", "color": "#FFC107", "transaction_type": TransactionType.INCOME, "is_favorite": False},
+                    {"name": "Фриланс", "icon": "💼", "color": "#9C27B0", "transaction_type": TransactionType.INCOME, "is_favorite": True},
+                    {"name": "Подработка", "icon": "⚡", "color": "#FF9800", "transaction_type": TransactionType.INCOME, "is_favorite": False},
+                    {"name": "Инвестиции", "icon": "📈", "color": "#2196F3", "transaction_type": TransactionType.INCOME, "is_favorite": False},
+                    {"name": "Дивиденды", "icon": "💹", "color": "#4CAF50", "transaction_type": TransactionType.INCOME, "is_favorite": False},
+                    {"name": "Подарки", "icon": "🎁", "color": "#FF9800", "transaction_type": TransactionType.INCOME, "is_favorite": False},
+                    {"name": "Возврат покупки", "icon": "↩️", "color": "#00BCD4", "transaction_type": TransactionType.INCOME, "is_favorite": False},
+                    {"name": "Кэшбэк", "icon": "💳", "color": "#4CAF50", "transaction_type": TransactionType.INCOME, "is_favorite": False},
+                    {"name": "Прочее", "icon": "📦", "color": "#607D8B", "transaction_type": TransactionType.INCOME, "is_favorite": False},
+                ]
+
+                categories = []
+                for cat_data in DEFAULT_EXPENSE_CATEGORIES + DEFAULT_INCOME_CATEGORIES:
+                    transaction_type_value = cat_data["transaction_type"]
+                    if isinstance(transaction_type_value, TransactionType):
+                        transaction_type_value = transaction_type_value.value
+                    elif isinstance(transaction_type_value, str):
+                        transaction_type_value = transaction_type_value.lower()
+
+                    categories.append(Category(
+                        user_id=user.id,
+                        name=cat_data["name"],
+                        transaction_type=transaction_type_value,
+                        icon=cat_data["icon"],
+                        color=cat_data["color"],
+                        is_system=True,
+                        is_active=True,
+                        is_favorite=cat_data.get("is_favorite", False)
+                    ))
+
+                db.add_all(categories)
                 db.commit()
-                logger.info(f"Created default account for user {user.id}")
+                logger.info(f"Created default account and {len(categories)} categories for user {user.id}")
             except Exception as e:
-                logger.error(f"Failed to create default account: {e}")
+                logger.error(f"Failed to create default account/categories: {e}", exc_info=True)
                 db.rollback()
                 
         except Exception as e:
@@ -1410,6 +1548,9 @@ async def get_bot_token(
             detail="User account is inactive"
         )
     
+    # Ensure default categories for users who missed initial setup
+    ensure_default_categories(db, user, logger)
+
     # Create token
     access_token = create_access_token(data={"sub": user.id})
     logger.info(f"Token created for user {user.id} (telegram_id: {telegram_id})")
@@ -1482,9 +1623,10 @@ async def get_bot_token_vk(
             
             logger.info(f"Auto-created user for vk_id: {vk_id}, user_id: {user.id}")
             
-            # Create default account for new user
+            # Create default account and categories for new user
             try:
                 from app.models.account import Account, AccountType
+                from app.models.category import Category, TransactionType
                 default_account = Account(
                     user_id=user.id,
                     name="Основной счёт",
@@ -1495,10 +1637,68 @@ async def get_bot_token_vk(
                     description="Автоматически созданный счёт"
                 )
                 db.add(default_account)
+
+                DEFAULT_EXPENSE_CATEGORIES = [
+                    {"name": "Продукты", "icon": "🛒", "color": "#4CAF50", "transaction_type": TransactionType.EXPENSE, "is_favorite": True},
+                    {"name": "Транспорт", "icon": "🚗", "color": "#2196F3", "transaction_type": TransactionType.EXPENSE, "is_favorite": True},
+                    {"name": "Коммунальные услуги", "icon": "💡", "color": "#FFC107", "transaction_type": TransactionType.EXPENSE, "is_favorite": True},
+                    {"name": "Связь и интернет", "icon": "📱", "color": "#00BCD4", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Кафе и рестораны", "icon": "🍽️", "color": "#FF9800", "transaction_type": TransactionType.EXPENSE, "is_favorite": True},
+                    {"name": "Доставка еды", "icon": "🍕", "color": "#FF5722", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Здоровье", "icon": "🏥", "color": "#F44336", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Аптека", "icon": "💊", "color": "#E91E63", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Красота и уход", "icon": "💅", "color": "#9C27B0", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Одежда", "icon": "👕", "color": "#E91E63", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Обувь", "icon": "👟", "color": "#795548", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Бытовая техника", "icon": "🏠", "color": "#607D8B", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Развлечения", "icon": "🎬", "color": "#9C27B0", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Кино и театр", "icon": "🎭", "color": "#673AB7", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Хобби", "icon": "🎨", "color": "#9C27B0", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Образование", "icon": "📚", "color": "#3F51B5", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Курсы", "icon": "🎓", "color": "#2196F3", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Подарки", "icon": "🎁", "color": "#FF5722", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Праздники", "icon": "🎉", "color": "#FF9800", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Дети", "icon": "👶", "color": "#FFC107", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Домашние животные", "icon": "🐾", "color": "#795548", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                    {"name": "Прочее", "icon": "📦", "color": "#607D8B", "transaction_type": TransactionType.EXPENSE, "is_favorite": False},
+                ]
+                DEFAULT_INCOME_CATEGORIES = [
+                    {"name": "Зарплата", "icon": "💰", "color": "#4CAF50", "transaction_type": TransactionType.INCOME, "is_favorite": True},
+                    {"name": "Премия", "icon": "🎯", "color": "#FFC107", "transaction_type": TransactionType.INCOME, "is_favorite": False},
+                    {"name": "Фриланс", "icon": "💼", "color": "#9C27B0", "transaction_type": TransactionType.INCOME, "is_favorite": True},
+                    {"name": "Подработка", "icon": "⚡", "color": "#FF9800", "transaction_type": TransactionType.INCOME, "is_favorite": False},
+                    {"name": "Инвестиции", "icon": "📈", "color": "#2196F3", "transaction_type": TransactionType.INCOME, "is_favorite": False},
+                    {"name": "Дивиденды", "icon": "💹", "color": "#4CAF50", "transaction_type": TransactionType.INCOME, "is_favorite": False},
+                    {"name": "Подарки", "icon": "🎁", "color": "#FF9800", "transaction_type": TransactionType.INCOME, "is_favorite": False},
+                    {"name": "Возврат покупки", "icon": "↩️", "color": "#00BCD4", "transaction_type": TransactionType.INCOME, "is_favorite": False},
+                    {"name": "Кэшбэк", "icon": "💳", "color": "#4CAF50", "transaction_type": TransactionType.INCOME, "is_favorite": False},
+                    {"name": "Прочее", "icon": "📦", "color": "#607D8B", "transaction_type": TransactionType.INCOME, "is_favorite": False},
+                ]
+
+                categories = []
+                for cat_data in DEFAULT_EXPENSE_CATEGORIES + DEFAULT_INCOME_CATEGORIES:
+                    transaction_type_value = cat_data["transaction_type"]
+                    if isinstance(transaction_type_value, TransactionType):
+                        transaction_type_value = transaction_type_value.value
+                    elif isinstance(transaction_type_value, str):
+                        transaction_type_value = transaction_type_value.lower()
+
+                    categories.append(Category(
+                        user_id=user.id,
+                        name=cat_data["name"],
+                        transaction_type=transaction_type_value,
+                        icon=cat_data["icon"],
+                        color=cat_data["color"],
+                        is_system=True,
+                        is_active=True,
+                        is_favorite=cat_data.get("is_favorite", False)
+                    ))
+
+                db.add_all(categories)
                 db.commit()
-                logger.info(f"Created default account for user {user.id}")
+                logger.info(f"Created default account and {len(categories)} categories for user {user.id}")
             except Exception as e:
-                logger.error(f"Failed to create default account: {e}")
+                logger.error(f"Failed to create default account/categories: {e}", exc_info=True)
                 db.rollback()
                 
         except Exception as e:
@@ -1516,6 +1716,9 @@ async def get_bot_token_vk(
             detail="User account is inactive"
         )
     
+    # Ensure default categories for users who missed initial setup
+    ensure_default_categories(db, user, logger)
+
     # Create token
     access_token = create_access_token(data={"sub": user.id})
     logger.info(f"Token created for user {user.id} (vk_id: {vk_id})")
