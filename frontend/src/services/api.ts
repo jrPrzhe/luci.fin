@@ -365,8 +365,8 @@ class ApiClient {
       }
 
       if (!response.ok) {
-        // Telegram-only: if /auth/me returns 401, reset token and re-auth via initData
-        if (response.status === 401 && endpoint.includes('/auth/me')) {
+        // Telegram-only: re-auth via initData on 401 (any endpoint)
+        if (response.status === 401 && !endpoint.includes('/auth/telegram') && !endpoint.includes('/auth/refresh')) {
           const { isTelegramWebApp } = await import('../utils/telegram')
           if (isTelegramWebApp()) {
             const reauthOk = await this.reauthTelegram()
