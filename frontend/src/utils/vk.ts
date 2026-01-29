@@ -144,6 +144,19 @@ export async function getVKLaunchParams(): Promise<string> {
     return ''
   }
 
+  const restoreCachedParams = (): string => {
+    try {
+      const cached = sessionStorage.getItem('vk_launch_params')
+      if (cached) {
+        launchParamsCache = cached
+        return cached
+      }
+    } catch (error) {
+      // Ignore sessionStorage errors
+    }
+    return ''
+  }
+
   const urlParams = new URLSearchParams(window.location.search)
   const vkParams: string[] = []
 
@@ -157,9 +170,37 @@ export async function getVKLaunchParams(): Promise<string> {
   const params = vkParams.join('&')
   if (params) {
     launchParamsCache = params
+    try {
+      sessionStorage.setItem('vk_launch_params', params)
+    } catch (error) {
+      // Ignore sessionStorage errors
+    }
+    return params
   }
-  
-  return params
+
+  // Fallback: check hash parameters (SPA navigation / mobile)
+  const hash = window.location.hash
+  if (hash) {
+    const hashParams = new URLSearchParams(hash.split('?')[1] || '')
+    const hashVKParams: string[] = []
+    for (const [key, value] of hashParams.entries()) {
+      if (key.startsWith('vk_') || key === 'sign') {
+        hashVKParams.push(`${key}=${encodeURIComponent(value)}`)
+      }
+    }
+    const hashJoined = hashVKParams.join('&')
+    if (hashJoined) {
+      launchParamsCache = hashJoined
+      try {
+        sessionStorage.setItem('vk_launch_params', hashJoined)
+      } catch (error) {
+        // Ignore sessionStorage errors
+      }
+      return hashJoined
+    }
+  }
+
+  return restoreCachedParams()
 }
 
 /**

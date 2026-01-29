@@ -71,7 +71,8 @@ export function UnifiedAuthHandler() {
             // Token invalid, continue with auth
             logger.log('[UnifiedAuthHandler] Existing token invalid, will re-authenticate')
             storageSync.removeItem('token')
-            api.setToken(null)
+            storageSync.removeItem('refresh_token')
+            api.setToken(null, null)
           }
         }
 
