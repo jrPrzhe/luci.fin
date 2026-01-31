@@ -39,6 +39,8 @@ class UserStatsResponse(BaseModel):
 class UsersStatsPage(BaseModel):
     items: List[UserStatsResponse]
     total: int
+    telegram_count: int
+    vk_count: int
     page: int
     per_page: int
 
@@ -79,6 +81,8 @@ async def get_all_users(
     ).group_by(Category.user_id).subquery()
 
     total = db.query(func.count(User.id)).scalar() or 0
+    telegram_count = db.query(func.count(User.id)).filter(User.telegram_id.isnot(None)).scalar() or 0
+    vk_count = db.query(func.count(User.id)).filter(User.vk_id.isnot(None)).scalar() or 0
 
     query = db.query(
         User,
@@ -131,6 +135,8 @@ async def get_all_users(
     return UsersStatsPage(
         items=items,
         total=total,
+        telegram_count=telegram_count,
+        vk_count=vk_count,
         page=page,
         per_page=per_page,
     )

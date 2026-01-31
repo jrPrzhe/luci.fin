@@ -14,11 +14,16 @@ export function Statistics() {
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 20
 
-  const { data: users, isLoading, error } = useQuery({
-    queryKey: ['adminUsers'],
+  const { data: usersResponse, isLoading, error } = useQuery({
+    queryKey: ['adminUsers', currentPage, itemsPerPage, sortColumn, sortDirection],
     queryFn: async () => {
       try {
-        return await api.getAdminUsers()
+        return await api.getAdminUsers({
+          page: currentPage,
+          per_page: itemsPerPage,
+          sort: sortColumn,
+          direction: sortDirection,
+        })
       } catch (err: any) {
         const errorMessage = err?.message || String(err)
         
@@ -100,38 +105,13 @@ export function Statistics() {
     }
   }
 
-  // Функция сортировки
-  const sortedUsers = users ? [...users].sort((a, b) => {
-    let aValue: any
-    let bValue: any
-
-    if (sortColumn === 'name') {
-      const aName = a.first_name && a.last_name
-        ? `${a.first_name} ${a.last_name}`
-        : a.first_name || a.last_name || a.username || a.email.split('@')[0]
-      const bName = b.first_name && b.last_name
-        ? `${b.first_name} ${b.last_name}`
-        : b.first_name || b.last_name || b.username || b.email.split('@')[0]
-      aValue = aName.toLowerCase()
-      bValue = bName.toLowerCase()
-    } else if (sortColumn === 'created_at') {
-      aValue = a.created_at ? new Date(a.created_at).getTime() : 0
-      bValue = b.created_at ? new Date(b.created_at).getTime() : 0
-    } else if (sortColumn === 'last_login') {
-      aValue = a.last_login ? new Date(a.last_login).getTime() : 0
-      bValue = b.last_login ? new Date(b.last_login).getTime() : 0
-    }
-
-    if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1
-    if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1
-    return 0
-  }) : []
-
-  // Пагинация
-  const totalPages = Math.ceil(sortedUsers.length / itemsPerPage)
+  const users = usersResponse?.items || []
+  const totalUsers = usersResponse?.total || 0
+  const telegramUsers = usersResponse?.telegram_count || 0
+  const vkUsers = usersResponse?.vk_count || 0
+  const totalPages = Math.ceil(totalUsers / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const paginatedUsers = sortedUsers.slice(startIndex, endIndex)
+  const endIndex = Math.min(startIndex + users.length, totalUsers)
 
   // Обработчик клика на заголовок колонки
   const handleSort = (column: SortColumn) => {
@@ -197,11 +177,6 @@ export function Statistics() {
       </div>
     )
   }
-
-  // Calculate statistics
-  const totalUsers = users?.length || 0
-  const telegramUsers = users?.filter(user => user.telegram_id).length || 0
-  const vkUsers = users?.filter(user => user.vk_id).length || 0
 
   return (
     <div className="min-h-screen p-4 md:p-6 animate-fade-in max-w-6xl mx-auto w-full">
@@ -313,7 +288,7 @@ export function Statistics() {
                 </tr>
               </thead>
               <tbody>
-                {paginatedUsers.map((user) => {
+              {users.map((user) => {
                   const activity = getActivityLevel(user.last_login)
                   const fullName = user.first_name && user.last_name
                     ? `${user.last_name} ${user.first_name}`
@@ -380,10 +355,10 @@ export function Statistics() {
         )}
 
         {/* Пагинация */}
-        {users && users.length > itemsPerPage && (
+      {totalUsers > itemsPerPage && (
           <div className="mt-4 flex items-center justify-between flex-wrap gap-2">
             <div className="text-xs md:text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-              Показано {startIndex + 1}-{Math.min(endIndex, sortedUsers.length)} из {sortedUsers.length}
+            Показано {totalUsers === 0 ? 0 : startIndex + 1}-{endIndex} из {totalUsers}
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -422,7 +397,7 @@ export function Statistics() {
               </div>
               <button
                 onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                disabled={currentPage === totalPages}
+            disabled={currentPage === totalPages || totalPages === 0}
                 className="px-3 py-1.5 text-xs md:text-sm btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Следующая →

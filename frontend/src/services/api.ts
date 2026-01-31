@@ -1205,6 +1205,8 @@ class ApiClient {
     is_premium: boolean
     }>
     total: number
+    telegram_count: number
+    vk_count: number
     page: number
     per_page: number
   }> {
