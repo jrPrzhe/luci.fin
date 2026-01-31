@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../services/api'
 
-type SortColumn = 'name' | 'created_at' | 'last_login'
+type SortColumn = 'name' | 'created_at' | 'last_login' | 'transaction_count'
 type SortDirection = 'asc' | 'desc'
 
 export function Statistics() {
@@ -279,8 +279,11 @@ export function Statistics() {
                   <th className="text-left py-3 px-2 text-xs md:text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
                     Активность
                   </th>
-                  <th className="text-left py-3 px-2 text-xs md:text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
-                    Статистика
+                  <th
+                    className="text-left py-3 px-2 text-xs md:text-sm font-semibold text-telegram-text dark:text-telegram-dark-text cursor-pointer hover:bg-telegram-hover dark:hover:bg-telegram-dark-hover transition-colors select-none"
+                    onClick={() => handleSort('transaction_count')}
+                  >
+                    Транзакций <SortIcon column="transaction_count" />
                   </th>
                   <th className="text-left py-3 px-2 text-xs md:text-sm font-semibold text-telegram-text dark:text-telegram-dark-text">
                     Действия

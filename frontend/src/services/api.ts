@@ -1183,7 +1183,7 @@ class ApiClient {
   async getAdminUsers(params?: {
     page?: number
     per_page?: number
-    sort?: 'name' | 'created_at' | 'last_login'
+    sort?: 'name' | 'created_at' | 'last_login' | 'transaction_count'
     direction?: 'asc' | 'desc'
   }): Promise<{
     items: Array<{

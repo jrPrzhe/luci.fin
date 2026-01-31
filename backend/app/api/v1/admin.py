@@ -55,7 +55,7 @@ async def get_all_users(
     db: Session = Depends(get_db),
     page: int = 1,
     per_page: int = 20,
-    sort: Literal["name", "created_at", "last_login"] = "created_at",
+    sort: Literal["name", "created_at", "last_login", "transaction_count"] = "created_at",
     direction: Literal["asc", "desc"] = "desc",
 ):
     """
@@ -99,6 +99,8 @@ async def get_all_users(
 
     if sort == "name":
         sort_expr = func.lower(func.coalesce(User.first_name, User.last_name, User.username, User.email))
+    elif sort == "transaction_count":
+        sort_expr = func.coalesce(transaction_counts.c.transaction_count, 0)
     elif sort == "last_login":
         sort_expr = User.last_login
     else:
