@@ -1180,7 +1180,13 @@ class ApiClient {
   }
 
   // Admin API
-  async getAdminUsers(): Promise<Array<{
+  async getAdminUsers(params?: {
+    page?: number
+    per_page?: number
+    sort?: 'name' | 'created_at' | 'last_login'
+    direction?: 'asc' | 'desc'
+  }): Promise<{
+    items: Array<{
     id: number
     email: string
     username: string | null
@@ -1197,8 +1203,19 @@ class ApiClient {
     is_active: boolean
     is_verified: boolean
     is_premium: boolean
-  }>> {
-    return this.request('/api/v1/admin/users')
+    }>
+    total: number
+    page: number
+    per_page: number
+  }> {
+    const searchParams = new URLSearchParams()
+    if (params?.page) searchParams.set('page', String(params.page))
+    if (params?.per_page) searchParams.set('per_page', String(params.per_page))
+    if (params?.sort) searchParams.set('sort', params.sort)
+    if (params?.direction) searchParams.set('direction', params.direction)
+    const query = searchParams.toString()
+    const url = query ? `/api/v1/admin/users?${query}` : '/api/v1/admin/users'
+    return this.request(url)
   }
 
   async resetUserSettings(userId: number): Promise<any> {

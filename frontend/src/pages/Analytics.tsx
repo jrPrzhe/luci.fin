@@ -345,27 +345,16 @@ function UsersStatsTab() {
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 20
 
-  const { data: users, isLoading, error, refetch } = useQuery({
-    queryKey: ['adminUsers'],
+  const { data: usersResponse, isLoading, error, refetch } = useQuery({
+    queryKey: ['adminUsers', currentPage, itemsPerPage, sortColumn, sortDirection],
     queryFn: async () => {
       try {
-        return await api.request<Array<{
-          id: number
-          email: string
-          username: string | null
-          first_name: string | null
-          last_name: string | null
-          telegram_id: string | null
-          telegram_username: string | null
-          created_at: string
-          last_login: string | null
-          transaction_count: number
-          account_count: number
-          category_count: number
-          is_active: boolean
-          is_verified: boolean
-          is_premium: boolean
-        }>>('/api/v1/admin/users')
+        return await api.getAdminUsers({
+          page: currentPage,
+          per_page: itemsPerPage,
+          sort: sortColumn,
+          direction: sortDirection,
+        })
       } catch (err: any) {
         const errorMessage = err.message || String(err)
         
@@ -512,37 +501,11 @@ function UsersStatsTab() {
   }
 
   // Функция сортировки
-  const sortedUsers = users ? [...users].sort((a, b) => {
-    let aValue: any
-    let bValue: any
-
-    if (sortColumn === 'name') {
-      const aName = a.first_name && a.last_name
-        ? `${a.first_name} ${a.last_name}`
-        : a.first_name || a.last_name || a.username || a.email.split('@')[0]
-      const bName = b.first_name && b.last_name
-        ? `${b.first_name} ${b.last_name}`
-        : b.first_name || b.last_name || b.username || b.email.split('@')[0]
-      aValue = aName.toLowerCase()
-      bValue = bName.toLowerCase()
-    } else if (sortColumn === 'created_at') {
-      aValue = a.created_at ? new Date(a.created_at).getTime() : 0
-      bValue = b.created_at ? new Date(b.created_at).getTime() : 0
-    } else if (sortColumn === 'last_login') {
-      aValue = a.last_login ? new Date(a.last_login).getTime() : 0
-      bValue = b.last_login ? new Date(b.last_login).getTime() : 0
-    }
-
-    if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1
-    if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1
-    return 0
-  }) : []
-
-  // Пагинация
-  const totalPages = Math.ceil(sortedUsers.length / itemsPerPage)
+  const users = usersResponse?.items || []
+  const totalUsers = usersResponse?.total || 0
+  const totalPages = Math.ceil(totalUsers / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const paginatedUsers = sortedUsers.slice(startIndex, endIndex)
+  const endIndex = Math.min(startIndex + users.length, totalUsers)
 
   // Обработчик клика на заголовок колонки
   const handleSort = (column: SortColumn) => {
@@ -667,7 +630,7 @@ function UsersStatsTab() {
                 </tr>
               </thead>
               <tbody>
-                {paginatedUsers.map((user) => {
+                {users.map((user) => {
                   const activity = getActivityLevel(user.last_login)
                   const userName = user.first_name && user.last_name
                     ? `${user.first_name} ${user.last_name}`
@@ -740,10 +703,10 @@ function UsersStatsTab() {
         )}
 
         {/* Пагинация */}
-        {users && users.length > itemsPerPage && (
+        {totalUsers > itemsPerPage && (
           <div className="mt-4 flex items-center justify-between flex-wrap gap-2">
             <div className="text-xs md:text-sm text-telegram-textSecondary dark:text-telegram-dark-textSecondary">
-              Показано {startIndex + 1}-{Math.min(endIndex, sortedUsers.length)} из {sortedUsers.length}
+              Показано {totalUsers === 0 ? 0 : startIndex + 1}-{endIndex} из {totalUsers}
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -782,7 +745,7 @@ function UsersStatsTab() {
               </div>
               <button
                 onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                disabled={currentPage === totalPages}
+                disabled={currentPage === totalPages || totalPages === 0}
                 className="px-3 py-1.5 text-xs md:text-sm btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Следующая →

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from typing import List, Optional
+from typing import List, Optional, Literal
 from datetime import datetime
 from app.core.database import get_db
 from app.models.user import User
@@ -36,40 +36,80 @@ class UserStatsResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class UsersStatsPage(BaseModel):
+    items: List[UserStatsResponse]
+    total: int
+    page: int
+    per_page: int
+
+
 class PremiumUpdateRequest(BaseModel):
     is_premium: bool
 
 
-@router.get("/users", response_model=List[UserStatsResponse])
+@router.get("/users", response_model=UsersStatsPage)
 async def get_all_users(
     current_admin: User = Depends(get_current_admin),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    page: int = 1,
+    per_page: int = 20,
+    sort: Literal["name", "created_at", "last_login"] = "created_at",
+    direction: Literal["asc", "desc"] = "desc",
 ):
     """
     Get list of all users with statistics
     Only accessible by admins
     """
-    # Get all users with their statistics
-    users = db.query(User).all()
-    
-    result = []
-    for user in users:
-        # Count transactions
-        transaction_count = db.query(func.count(Transaction.id)).filter(
-            Transaction.user_id == user.id
-        ).scalar() or 0
-        
-        # Count accounts
-        account_count = db.query(func.count(Account.id)).filter(
-            Account.user_id == user.id
-        ).scalar() or 0
-        
-        # Count categories
-        category_count = db.query(func.count(Category.id)).filter(
-            Category.user_id == user.id
-        ).scalar() or 0
-        
-        result.append(UserStatsResponse(
+    page = max(page, 1)
+    per_page = max(1, min(per_page, 100))
+
+    transaction_counts = db.query(
+        Transaction.user_id.label("user_id"),
+        func.count(Transaction.id).label("transaction_count")
+    ).group_by(Transaction.user_id).subquery()
+
+    account_counts = db.query(
+        Account.user_id.label("user_id"),
+        func.count(Account.id).label("account_count")
+    ).group_by(Account.user_id).subquery()
+
+    category_counts = db.query(
+        Category.user_id.label("user_id"),
+        func.count(Category.id).label("category_count")
+    ).group_by(Category.user_id).subquery()
+
+    total = db.query(func.count(User.id)).scalar() or 0
+
+    query = db.query(
+        User,
+        func.coalesce(transaction_counts.c.transaction_count, 0).label("transaction_count"),
+        func.coalesce(account_counts.c.account_count, 0).label("account_count"),
+        func.coalesce(category_counts.c.category_count, 0).label("category_count"),
+    ).outerjoin(
+        transaction_counts, transaction_counts.c.user_id == User.id
+    ).outerjoin(
+        account_counts, account_counts.c.user_id == User.id
+    ).outerjoin(
+        category_counts, category_counts.c.user_id == User.id
+    )
+
+    if sort == "name":
+        sort_expr = func.lower(func.coalesce(User.first_name, User.last_name, User.username, User.email))
+    elif sort == "last_login":
+        sort_expr = User.last_login
+    else:
+        sort_expr = User.created_at
+
+    if direction == "asc":
+        query = query.order_by(sort_expr.asc().nulls_last())
+    else:
+        query = query.order_by(sort_expr.desc().nulls_last())
+
+    rows = query.offset((page - 1) * per_page).limit(per_page).all()
+
+    items = []
+    for user, transaction_count, account_count, category_count in rows:
+        items.append(UserStatsResponse(
             id=user.id,
             email=user.email,
             username=user.username,
@@ -80,15 +120,20 @@ async def get_all_users(
             vk_id=user.vk_id,
             created_at=user.created_at,
             last_login=user.last_login,
-            transaction_count=transaction_count,
-            account_count=account_count,
-            category_count=category_count,
+            transaction_count=transaction_count or 0,
+            account_count=account_count or 0,
+            category_count=category_count or 0,
             is_active=user.is_active,
             is_verified=user.is_verified,
             is_premium=user.is_premium if hasattr(user, 'is_premium') else False
         ))
-    
-    return result
+
+    return UsersStatsPage(
+        items=items,
+        total=total,
+        page=page,
+        per_page=per_page,
+    )
 
 
 @router.post("/users/{user_id}/reset", response_model=UserResponse)
